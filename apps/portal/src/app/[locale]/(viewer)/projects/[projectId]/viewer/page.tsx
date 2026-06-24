@@ -14,6 +14,7 @@ import React, {
 } from 'react';
 
 import { Skeleton } from '@bimstitch/ui';
+import { X } from '@bimstitch/ui/icons';
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import type {
@@ -147,6 +148,12 @@ export default function ViewerPage(): JSX.Element {
   // Viewport layout for IFC models: 3D only / Split (3D + plan) / 2D (plan).
   const [viewMode, setViewMode] = useState<ViewMode>('3d');
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
+  // Dismiss state for the "no models loaded" hint shown over the live-empty
+  // scene; re-shown whenever the scene goes empty again.
+  const [emptyHintDismissed, setEmptyHintDismissed] = useState(false);
+  useEffect(() => {
+    if (!scope.emptyScene) setEmptyHintDismissed(false);
+  }, [scope.emptyScene]);
 
   // PDF-mode state — owned here so the toolbar, pages panel, status bar, and
   // DocumentViewer all read/write the same source of truth.
@@ -479,7 +486,9 @@ export default function ViewerPage(): JSX.Element {
     isDrawing ? (bundle?.metadata_url ?? null) : null,
   );
   const drawingPage = isDrawing ? (pdfGeometry?.p[0] ?? null) : null;
-  const shellReady = bundle !== null && error === null;
+  // The IFC shell (toolbar etc.) is ready when a model bundle is loaded OR we're
+  // intentionally showing a live, empty federated scene (user deselected all).
+  const shellReady = (bundle !== null || scope.emptyScene) && error === null;
   const ifcShellReady = shellReady && isIfc && viewerReady;
   const pdfShellReady = shellReady && isPdf;
 
@@ -767,26 +776,21 @@ export default function ViewerPage(): JSX.Element {
       <ErrorBanner message={error} tone="soft" className="m-6 text-body2" />
     );
   } else if (scope.isEmpty) {
+    // Genuinely empty project — nothing has been processed. No "load all"
+    // affordance here: there is nothing to load.
     canvas = (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
         <p className="text-body2 font-semibold text-foreground">{tFed('empty')}</p>
         <p className="max-w-sm text-body3 text-foreground-secondary">{tFed('emptyHint')}</p>
-        <button
-          type="button"
-          onClick={loadAllModels}
-          className="inline-flex h-8 items-center rounded-md border border-border bg-surface-low px-3 text-body3 font-medium text-foreground hover:bg-background-hover"
-        >
-          {tFed('loadAll')}
-        </button>
       </div>
     );
-  } else if (bundle === null) {
+  } else if (bundle === null && !scope.emptyScene) {
     canvas = <Skeleton className="absolute inset-0" />;
-  } else if (isDrawing) {
+  } else if (bundle !== null && isDrawing) {
     canvas = drawingPage !== null
       ? <DrawingCanvas page={drawingPage} />
       : <Skeleton className="absolute inset-0" />;
-  } else if (isPdf) {
+  } else if (bundle !== null && isPdf) {
     canvas = (
       <DocumentViewer
         ref={setDocumentHandle}
@@ -875,6 +879,34 @@ export default function ViewerPage(): JSX.Element {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
         {canvas}
+
+        {/* Live-empty federated scene: non-blocking hint so the user can bring
+            models back (the dropdown stays in the header). Dismissible. */}
+        {scope.emptyScene && !emptyHintDismissed ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-6 z-40 flex justify-center px-4">
+            <div className="pointer-events-auto flex max-w-md items-center gap-3 rounded-lg border border-border bg-surface-low px-4 py-3 shadow-md">
+              <div className="min-w-0">
+                <p className="text-body3 font-semibold text-foreground">{tFed('cleared')}</p>
+                <p className="text-caption text-foreground-secondary">{tFed('clearedHint')}</p>
+              </div>
+              <button
+                type="button"
+                onClick={loadAllModels}
+                className="inline-flex h-8 shrink-0 items-center rounded-md bg-primary px-3 text-body3 font-medium text-primary-foreground hover:bg-primary-hover"
+              >
+                {tFed('loadAll')}
+              </button>
+              <button
+                type="button"
+                aria-label={tFed('dismiss')}
+                onClick={() => { setEmptyHintDismissed(true); }}
+                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-foreground-tertiary hover:bg-background-hover hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {(loadingActive || overlayFading) ? (
           <ViewerLoadingOverlay

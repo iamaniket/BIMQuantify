@@ -199,8 +199,8 @@ export function useActivityTable(projectId: string): {
   return { table, timeWindow, setTimeWindow, typeFilter, setTypeFilter, search, setSearch };
 }
 
-/** The 4-column activity feed table (When / Actor / Type / Activity). A hook
- * because every cell label is localized via `useTranslations`. */
+/** The 5-column activity feed table (When / Actor / Type / Resource / Activity).
+ * A hook because every cell label is localized via `useTranslations`. */
 export function useActivityColumns(): Column<ProjectActivityEntry>[] {
   const t = useTranslations('activity');
   const locale = useLocale() as Locale;
@@ -209,12 +209,12 @@ export function useActivityColumns(): Column<ProjectActivityEntry>[] {
     {
       header: t('colWhen'),
       sortKey: 'created_at',
-      className: 'w-[124px] whitespace-nowrap font-sans text-caption text-foreground-tertiary',
+      className: 'whitespace-nowrap font-sans text-caption text-foreground-tertiary',
       cell: (entry) => formatDateTime(entry.created_at, locale),
     },
     {
       header: t('colActor'),
-      className: 'w-[150px] font-sans text-body3 text-foreground-secondary',
+      className: 'max-w-[200px] font-sans text-body3 text-foreground-secondary',
       cell: (entry) => (
         <div className="truncate" title={entry.actor_name ?? t('systemActor')}>
           {entry.actor_name ?? t('systemActor')}
@@ -224,7 +224,7 @@ export function useActivityColumns(): Column<ProjectActivityEntry>[] {
     {
       header: t('colType'),
       sortKey: 'action',
-      className: 'w-[100px] font-sans text-body3',
+      className: 'font-sans text-body3',
       cell: (entry) => {
         const s = categoryStyle(entry.category);
         return (
@@ -243,7 +243,7 @@ export function useActivityColumns(): Column<ProjectActivityEntry>[] {
     {
       header: t('colResource'),
       sortKey: 'resource_type',
-      className: 'w-[130px] font-sans text-body3 text-foreground-secondary',
+      className: 'max-w-[180px] font-sans text-body3 text-foreground-secondary',
       // activity.resource.<type> labels exist for the known resource types;
       // anything new title-cases the raw code rather than crashing on a miss.
       cell: (entry) => {
@@ -254,9 +254,10 @@ export function useActivityColumns(): Column<ProjectActivityEntry>[] {
     },
     {
       header: t('colActivity'),
-      // Flex column: fills the remaining width under `table-fixed` and ellipsizes
-      // long file names on one line; the full text is available on hover via title.
-      className: 'font-sans text-body3',
+      // The widest column under `table-auto`; capped so it ellipsizes long file
+      // names on one line and shares slack with the other columns instead of
+      // ballooning. The full text is available on hover via title.
+      className: 'max-w-[480px] font-sans text-body3',
       cell: (entry) => {
         const i18nKey = ACTION_I18N_KEY[entry.action];
         const description = i18nKey !== undefined ? t(i18nKey, descriptionParams(entry)) : entry.action;

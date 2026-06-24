@@ -62,7 +62,7 @@ export function AuthHeroBrand(): JSX.Element {
 
       {/* Top: brand row */}
       <div className="relative flex items-center gap-3">
-        <BrandMark size={38} tone="on-dark" />
+        <BrandMark size={38} />
         <div>
           <div className="font-display text-[18px] font-semibold leading-tight tracking-tight text-white">
             BimDossier

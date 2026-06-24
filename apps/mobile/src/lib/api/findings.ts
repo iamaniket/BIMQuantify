@@ -34,11 +34,13 @@ export async function createFinding(
   token: string,
   projectId: string,
   input: FindingCreateInput,
+  idempotencyKey?: string,
 ): Promise<Finding> {
   return apiClient.post(
     `/projects/${projectId}/findings`,
     input,
     FindingSchema,
     token,
+    idempotencyKey !== undefined ? { 'Idempotency-Key': idempotencyKey } : undefined,
   );
 }

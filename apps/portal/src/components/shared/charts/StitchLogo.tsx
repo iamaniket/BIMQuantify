@@ -1,18 +1,18 @@
 import type { JSX } from 'react';
 
-import { BRAND_GLYPH_WHITE_DATA_URI } from '@bimstitch/brand';
+import { BRAND_LOGO_DATA_URI } from '@bimstitch/brand';
 
 type Props = {
   size?: number;
-  /** Retained for API compatibility; the white glyph art is rendered directly. */
+  /** Retained for API compatibility; the brand logo art is rendered directly. */
   color?: string;
   className?: string;
 };
 
 /**
- * BimDossier logomark — the white "BD" glyph from the canonical brand art,
- * for blue/dark surfaces such as the sidebar footer chip (a blue square would
- * be blue-on-blue there).
+ * BimDossier logomark — the full-colour "A"-folder brand logo, rendered in the
+ * sidebar footer chip (a translucent-white tile gives it backing on the blue
+ * gradient).
  */
 export function DossierLogo({
   size = 22,
@@ -26,7 +26,7 @@ export function DossierLogo({
         display: 'inline-block',
         width: size,
         height: size,
-        backgroundImage: `url(${BRAND_GLYPH_WHITE_DATA_URI})`,
+        backgroundImage: `url(${BRAND_LOGO_DATA_URI})`,
         backgroundSize: 'contain',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',

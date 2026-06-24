@@ -163,7 +163,6 @@ export default function ProjectActivityPage(): JSX.Element {
           isError={table.isError}
           errorMessage={t('list.loadError')}
           rowClassName="hover:bg-background-hover"
-          tableClassName="table-fixed"
           clipHorizontal
         />
         <TablePaginationFooter

@@ -53,6 +53,9 @@ export const FindingCreateSchema = z.object({
   anchor_x: z.union([z.number(), z.null()]).optional(),
   anchor_y: z.union([z.number(), z.null()]).optional(),
   anchor_z: z.union([z.number(), z.null()]).optional(),
+  // Attachment ids of photos captured while logging the finding. The server
+  // normalizes these into finding_attachments link rows.
+  photo_ids: z.union([z.array(z.string()), z.null()]).optional(),
 });
 
 export type FindingCreateInput = z.infer<typeof FindingCreateSchema>;

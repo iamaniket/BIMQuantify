@@ -91,15 +91,31 @@ class AdminUserRead(BaseModel):
 class ImpersonateRequest(BaseModel):
     """Body for `POST /admin/impersonate/{user_id}`.
 
-    Both fields optional. `organization_id` lets the super admin specify
-    which org context to enter (must be one the target user is an active
-    member of); omitting it falls back to the target's
-    `active_organization_id`. `ttl_seconds` clamps the token lifetime DOWN
-    only — values above the configured ceiling are silently capped.
+    `reason` is REQUIRED — an impersonation token authenticates fully as the
+    target user, so every session must record *why* the super admin entered
+    it. The reason is persisted into the `auth.impersonate.start` audit row
+    so the customer (and we) can always see the justification.
+
+    `organization_id` lets the super admin specify which org context to enter
+    (must be one the target user is an active member of); omitting it falls
+    back to the target's `active_organization_id`. `ttl_seconds` clamps the
+    token lifetime DOWN only — values above the configured ceiling are
+    silently capped.
     """
 
+    reason: str = Field(min_length=3, max_length=500)
     organization_id: UUID | None = None
     ttl_seconds: int | None = Field(default=None, ge=60)
+
+    @field_validator("reason")
+    @classmethod
+    def _reason_not_blank(cls, value: str) -> str:
+        # `min_length` only bounds the raw string; strip so a whitespace-only
+        # reason ("   ") can't satisfy the requirement, and store it trimmed.
+        stripped = value.strip()
+        if len(stripped) < 3:
+            raise ValueError("reason must be at least 3 non-whitespace characters")
+        return stripped
 
 
 class ImpersonatedUserSummary(BaseModel):
@@ -115,6 +131,19 @@ class ImpersonateResponse(BaseModel):
     expires_in: int
     expires_at: datetime
     impersonated_user: ImpersonatedUserSummary
+
+
+class ImpersonateStopResponse(BaseModel):
+    """Result of `POST /admin/impersonate/stop`.
+
+    Echoes who was impersonated and by whom so the caller (portal) can
+    confirm the right session ended before restoring the super admin's own
+    token.
+    """
+
+    stopped: bool = True
+    impersonated_user_id: UUID
+    impersonator_user_id: UUID
 
 
 # ---------------------------------------------------------------------------

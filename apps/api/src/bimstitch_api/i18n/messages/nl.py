@@ -119,6 +119,8 @@ nl_messages: Catalog = {
     "errors.INTERNAL_ERROR": "Er is aan onze kant iets misgegaan. Probeer het later opnieuw.",
     "errors.VALIDATION_ERROR": "Een deel van de ingevoerde gegevens is ongeldig. Controleer uw invoer en probeer het opnieuw.",
     "errors.INVALID_SORT_KEY": "Op die kolom kan niet worden gesorteerd.",
+    "errors.IDEMPOTENCY_KEY_INVALID": "De Idempotency-Key-header is ongeldig.",
+    "errors.IDEMPOTENCY_KEY_CONFLICT": "Dit verzoek wordt al verwerkt. Probeer het zo opnieuw.",
 
     # --- authenticatie / sessie ---
     "errors.UNAUTHORIZED": "U moet inloggen om door te gaan.",
@@ -154,6 +156,8 @@ nl_messages: Catalog = {
     "errors.CANNOT_IMPERSONATE_SUPERUSER": "U kunt geen andere superbeheerder imiteren.",
     "errors.CANNOT_IMPERSONATE_INACTIVE": "U kunt geen inactieve gebruiker imiteren.",
     "errors.CANNOT_IMPERSONATE_UNVERIFIED": "U kunt geen niet-geverifieerde gebruiker imiteren.",
+    "errors.NOT_AN_IMPERSONATION_SESSION": "Dit is geen impersonatiesessie, dus er is niets om te stoppen.",
+    "errors.IMPERSONATION_STOP_UNAVAILABLE": "We konden de impersonatiesessie niet beëindigen. Probeer het opnieuw.",
 
     # --- gebruikers / leden ---
     "errors.USER_NOT_FOUND": "Die gebruiker kon niet worden gevonden.",

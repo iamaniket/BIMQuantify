@@ -271,6 +271,11 @@ class ProjectFile(
     )
     capture_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     server_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # Offline-replay dedup for attachment initiate (mobile outbox). NULL for
+    # online uploads, model-source rows, and every pre-existing row. A replayed
+    # initiate re-sends the same client-minted key so the route returns the
+    # original row (with a freshly re-presigned URL). See idempotency.py.
+    idempotency_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
     # Editable vector annotation document for image attachments — the
     # `Annotation2D[]` drawn over the photo plus the source-version pointer. The
     # *displayed* bytes are the flattened (burned-in) raster uploaded as a new
@@ -389,5 +394,16 @@ class ProjectFile(
             "ix_project_files_parent",
             "parent_file_id",
             postgresql_where=text("parent_file_id IS NOT NULL"),
+        ),
+        # Offline-replay dedup for attachment initiate: at most one row per
+        # (uploader, idempotency key). Scoped to the uploader so a leaked key
+        # can't replay another member's upload; partial so online (key-less) and
+        # model-source rows are exempt.
+        Index(
+            "uq_project_files_uploader_idempotency_key",
+            "uploaded_by_user_id",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
         ),
     )

@@ -25,6 +25,7 @@ export type {
   ViewerContext,
   ViewerEvents,
   CullingMode,
+  ShadowMode,
   MaterialLook,
   ItemId,
   Vec3,

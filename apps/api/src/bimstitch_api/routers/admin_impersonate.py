@@ -17,16 +17,26 @@ Restrictions:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import OAuth2PasswordBearer
+from redis.asyncio import Redis
+from redis.exceptions import RedisError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimstitch_api import audit
 from bimstitch_api.auth.dependencies import require_superuser
-from bimstitch_api.auth.tokens import create_token_with_jti
+from bimstitch_api.auth.tokens import (
+    DecodedToken,
+    TokenError,
+    create_token_with_jti,
+    decode_token_full,
+)
+from bimstitch_api.cache import get_redis_dep
+from bimstitch_api.cache.blocklist import revoke_jti
 from bimstitch_api.config import get_settings
 from bimstitch_api.db import get_async_session
 from bimstitch_api.models.organization_member import (
@@ -38,9 +48,102 @@ from bimstitch_api.schemas.admin import (
     ImpersonatedUserSummary,
     ImpersonateRequest,
     ImpersonateResponse,
+    ImpersonateStopResponse,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin-impersonate"])
+
+# auto_error=True: a `stop` call without a bearer token is a 401, not a
+# silent no-op — the endpoint identifies the session from the token itself.
+_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/jwt/login", auto_error=True)
+
+
+def _remaining_ttl_seconds(decoded: DecodedToken) -> int:
+    return max(decoded.exp - int(datetime.now(tz=UTC).timestamp()), 0)
+
+
+# NOTE: this literal-path route MUST be declared before `/impersonate/{user_id}`.
+# Starlette matches in declaration order and `{user_id}` (str convertor) would
+# otherwise swallow "stop" and fail UUID validation with a 422.
+@router.post(
+    "/impersonate/stop",
+    response_model=ImpersonateStopResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def stop_impersonation(
+    request: Request,
+    access_token: str = Depends(_oauth2_scheme),
+    session: AsyncSession = Depends(get_async_session),
+    redis: Redis = Depends(get_redis_dep),
+) -> ImpersonateStopResponse:
+    """End the active impersonation session immediately.
+
+    Called WITH the impersonation access token — the `imp`-bearing token the
+    portal swapped in. Possessing that token is what authorizes ending it, so
+    this endpoint deliberately does NOT gate on `require_superuser`: the
+    token's `sub` is the impersonated (regular) user, who is not a super
+    admin. We verify instead that the presented token actually carries an
+    `imp` claim.
+
+    The impersonation token is access-only and would otherwise linger until
+    its (short) TTL expires. Revoking its JTI on the blocklist cuts the
+    session off at once, and an `auth.impersonate.stop` audit row — attributed
+    to the real super admin — closes the bracket opened by
+    `auth.impersonate.start`.
+    """
+    try:
+        decoded = decode_token_full(access_token, "access")
+    except TokenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)
+        ) from exc
+
+    impersonator_id = decoded.impersonator_user_id
+    if impersonator_id is None:
+        # A normal (non-impersonated) token has nothing to stop.
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="NOT_AN_IMPERSONATION_SESSION",
+        )
+
+    # Fail closed: if the blocklist write can't persist, report the session as
+    # not-yet-ended (503) rather than 200 for a token that still authenticates.
+    try:
+        if decoded.jti:
+            await revoke_jti(redis, decoded.jti, _remaining_ttl_seconds(decoded))
+    except RedisError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="IMPERSONATION_STOP_UNAVAILABLE",
+        ) from exc
+
+    await audit.record_for_org(
+        session,
+        decoded.active_organization_id,
+        action="auth.impersonate.stop",
+        resource_type="user",
+        resource_id=decoded.user_id,
+        after={
+            "target_user_id": str(decoded.user_id),
+            "organization_id": (
+                str(decoded.active_organization_id)
+                if decoded.active_organization_id
+                else None
+            ),
+            "jti": decoded.jti,
+        },
+        # The super admin (recorded in `imp`) is the real actor ending the
+        # session, mirroring how the start event attributes itself.
+        actor_user_id=impersonator_id,
+        impersonator_user_id=impersonator_id,
+        request=request,
+    )
+    await session.commit()
+
+    return ImpersonateStopResponse(
+        impersonated_user_id=decoded.user_id,
+        impersonator_user_id=impersonator_id,
+    )
 
 
 @router.post(
@@ -51,13 +154,10 @@ router = APIRouter(prefix="/admin", tags=["admin-impersonate"])
 async def start_impersonation(
     user_id: UUID,
     request: Request,
-    payload: ImpersonateRequest | None = None,
+    payload: ImpersonateRequest,
     requester: User = Depends(require_superuser),
     session: AsyncSession = Depends(get_async_session),
 ) -> ImpersonateResponse:
-    if payload is None:
-        payload = ImpersonateRequest()
-
     if user_id == requester.id:
         # Self-impersonation has no support value and would muddy audit.
         raise HTTPException(
@@ -138,6 +238,7 @@ async def start_impersonation(
             "organization_id": str(resolved_org) if resolved_org else None,
             "ttl_seconds": ttl,
             "jti": minted.jti,
+            "reason": payload.reason,
         },
         # Actor here is the super admin starting the session; record the
         # impersonator field explicitly because the start event itself is

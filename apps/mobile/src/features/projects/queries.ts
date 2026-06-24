@@ -1,17 +1,24 @@
 import { listModelsWithVersions } from '@/lib/api/models';
 import { listProjects } from '@/lib/api/projects';
-import { useAuthQuery } from '@/lib/query/useAuthQuery';
+import { useOfflineListQuery } from '@/lib/query/useOfflineQuery';
 import type { ProjectFile } from '@/lib/api/schemas/files';
 import type { ModelWithVersions } from '@/lib/api/schemas/models';
-import type { ProjectList } from '@/lib/api/schemas/projects';
+import type { Project } from '@/lib/api/schemas/projects';
 
 export function useProjects() {
-  return useAuthQuery<ProjectList>(['projects'], (token) => listProjects(token));
+  return useOfflineListQuery<Project>(
+    ['projects'],
+    'project',
+    'all',
+    (token) => listProjects(token),
+  );
 }
 
 export function useProjectModels(projectId: string) {
-  return useAuthQuery<ModelWithVersions[]>(
+  return useOfflineListQuery<ModelWithVersions>(
     ['projects', projectId, 'models'],
+    'model',
+    projectId,
     (token) => listModelsWithVersions(token, projectId),
     { enabled: projectId.length > 0 },
   );

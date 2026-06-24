@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import {
   AppDialog, Select, Tabs, TabsContent, TabsList, TabsTrigger,
 } from '@bimstitch/ui';
-import type { CameraFlyPluginOptions, CullingMode, ViewerHandle, ZoomOptions } from '@bimstitch/viewer';
+import type { CameraFlyPluginOptions, CullingMode, ShadowMode, ViewerHandle, ZoomOptions } from '@bimstitch/viewer';
 
 import {
   DEFAULT_VIEWER_SETTINGS,
@@ -54,6 +54,32 @@ function Viewer3DSection({
             });
           }}
         />
+        {settings.shadows.enabled && (
+          <>
+            <p className="text-body3 text-foreground-secondary">
+              {t('shadowModeHint')}
+            </p>
+            <Field fullWidth label={t('shadowMode')}>
+              <Select
+                selectSize="md"
+                value={settings.shadows.mode}
+                onChange={(e) => {
+                  onChange({
+                    ...settings,
+                    shadows: {
+                      ...settings.shadows,
+                      mode: e.target.value as ShadowMode,
+                    },
+                  });
+                }}
+              >
+                <option value="auto">{t('shadowModeAuto')}</option>
+                <option value="boxes">{t('shadowModeBoxes')}</option>
+                <option value="geometry">{t('shadowModeExact')}</option>
+              </Select>
+            </Field>
+          </>
+        )}
       </Section>
       <Section title={t('visualEffects')} note={undefined}>
         <Toggle
@@ -510,6 +536,14 @@ function applyLiveCommands3D(
   if (snapZoom.maxFactor !== draftZoom.maxFactor) zoomPatch.maxFactor = draftZoom.maxFactor;
   if (Object.keys(zoomPatch).length > 0) {
     handle.commands.execute('zoom.setOptions', zoomPatch).catch(() => undefined);
+  }
+
+  // Contact-shadow silhouette source — re-bakes live (no remount). The on/off
+  // toggle still remounts (see needsReload); only the mode applies in place.
+  if (snapshot.shadows.mode !== draft.shadows.mode) {
+    handle.commands
+      .execute('shadows.setMode', { mode: draft.shadows.mode })
+      .catch(() => undefined);
   }
 
   // Hover / selection highlight colors — recolor live (no remount).

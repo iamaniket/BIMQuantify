@@ -34,6 +34,7 @@ from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.finding_custom_values import build_custom_values
 from bimstitch_api.i18n import resolve_org_locale, t
+from bimstitch_api.idempotency import idempotency_key_header, is_idempotency_conflict
 from bimstitch_api.models.audit_log import AuditLog
 from bimstitch_api.models.finding import Finding, FindingSeverity, FindingStatus
 from bimstitch_api.models.finding_attachment import FindingAttachment
@@ -160,6 +161,7 @@ async def create_finding(
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
+    idempotency_key: str | None = Depends(idempotency_key_header),
 ) -> Finding:
     project = await load_project_or_404(session, project_id)
     membership = await require_membership(session, project.id, user.id)
@@ -175,6 +177,22 @@ async def create_finding(
         )
         raise
     require_project_writable(project)
+
+    # Idempotent replay (offline mobile outbox): if this creator already used
+    # this key, return the original finding instead of inserting a duplicate.
+    if idempotency_key is not None:
+        prior = (
+            await session.execute(
+                select(Finding).where(
+                    Finding.project_id == project.id,
+                    Finding.created_by_user_id == user.id,
+                    Finding.idempotency_key == idempotency_key,
+                    Finding.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if prior is not None:
+            return prior
 
     data = payload.model_dump()
     photo_ids = data.pop("photo_ids", None)
@@ -206,6 +224,7 @@ async def create_finding(
         status=FindingStatus.draft,
         template_id=template_id,
         custom_values=custom_values,
+        idempotency_key=idempotency_key,
         **data,
     )
     replace_attachment_links(
@@ -221,6 +240,14 @@ async def create_finding(
     try:
         await session.flush()
     except IntegrityError as exc:
+        # Concurrent replay lost the race to insert the same idempotency key —
+        # the partial-unique index is the backstop. 409 is retryable; the
+        # client's next attempt hits the pre-check above and gets the row.
+        if idempotency_key is not None and is_idempotency_conflict(exc):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="IDEMPOTENCY_KEY_CONFLICT",
+            ) from exc
         # A photo/reference id that doesn't reference a real attachment trips the
         # FK — surface a clean 422 instead of a 500.
         raise HTTPException(

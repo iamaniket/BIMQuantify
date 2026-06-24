@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 
 import { useCreateFindingMutation } from '@/features/findings/queries';
+import { PhotoStrip } from '@/features/photos/PhotoStrip';
+import { usePhotoCapture } from '@/features/photos/usePhotoCapture';
 import type { FindingSeverityValue } from '@/lib/api/schemas/findings';
 import { humanize } from '@/lib/format';
 import { useAuth } from '@/providers/AuthProvider';
@@ -48,6 +50,7 @@ export default function FindingCreateScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState<FindingSeverityValue>('medium');
+  const photos = usePhotoCapture(projectId ?? '');
 
   const anchorX = params.anchorX != null ? parseFloat(params.anchorX) : null;
   const anchorY = params.anchorY != null ? parseFloat(params.anchorY) : null;
@@ -66,6 +69,7 @@ export default function FindingCreateScreen() {
       return;
     }
 
+    const photoIds = photos.photoIds();
     mutation.mutate(
       {
         title: title.trim(),
@@ -77,6 +81,7 @@ export default function FindingCreateScreen() {
         anchor_x: anchorX,
         anchor_y: anchorY,
         anchor_z: anchorZ,
+        photo_ids: photoIds.length > 0 ? photoIds : null,
       },
       {
         onSuccess: () => { router.back(); },
@@ -85,7 +90,7 @@ export default function FindingCreateScreen() {
         },
       },
     );
-  }, [title, description, severity, params, fileType, anchorX, anchorY, anchorZ, mutation, router]);
+  }, [title, description, severity, params, fileType, anchorX, anchorY, anchorZ, photos, mutation, router]);
 
   if (tokens === null) return <Redirect href="/login" />;
   if (!projectId) return <Redirect href="/projects" />;
@@ -164,10 +169,16 @@ export default function FindingCreateScreen() {
             </View>
           </View>
 
+          {/* Photos */}
+          <View style={styles.field}>
+            <Text style={styles.label}>Photos</Text>
+            <PhotoStrip photos={photos.photos} onAdd={photos.add} onRemove={photos.remove} />
+          </View>
+
           {/* Save */}
           <Pressable
-            style={[styles.saveBtn, mutation.isPending && styles.saveBtnDisabled]}
-            disabled={mutation.isPending}
+            style={[styles.saveBtn, (mutation.isPending || photos.isBusy) && styles.saveBtnDisabled]}
+            disabled={mutation.isPending || photos.isBusy}
             onPress={handleSave}
           >
             {mutation.isPending ? (

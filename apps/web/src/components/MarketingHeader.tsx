@@ -30,7 +30,7 @@ export function MarketingHeader(): JSX.Element {
     <header className="sticky top-0 z-40 border-b border-border bg-background">
       <div className="mx-auto flex w-full max-w-8xl items-center justify-between gap-4 px-6 py-3">
         <Link href="/" className="flex items-center gap-2 text-primary">
-          <BrandMark size={28} variant="glyph-mono" />
+          <BrandMark size={28} />
           <span className="text-title3 font-semibold">{t('brand')}</span>
         </Link>
 

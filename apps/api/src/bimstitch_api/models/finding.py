@@ -3,7 +3,17 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, Date, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (
+    CheckConstraint,
+    Date,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    text,
+)
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
@@ -148,6 +158,13 @@ class Finding(TimestampMixin, SoftDeleteMixin, TenantBase):
     # Genuinely dynamic, schema-less form answers → JSONB (cf. Job.payload).
     custom_values: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
+    # Offline-replay dedup (mobile outbox). NULL for online (portal) creates and
+    # every pre-existing row. When a mobile client replays a queued create after
+    # a lost response, it re-sends the same client-minted key here; the per-user
+    # partial-unique index below makes the second insert a no-op the route turns
+    # into "return the original finding". See bimstitch_api/idempotency.py.
+    idempotency_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
     project: Mapped["Project"] = relationship()
     assignee: Mapped[User | None] = relationship(User, foreign_keys=[assignee_user_id])
     created_by: Mapped[User] = relationship(User, foreign_keys=[created_by_user_id])
@@ -193,5 +210,15 @@ class Finding(TimestampMixin, SoftDeleteMixin, TenantBase):
             "linked_model_id",
             "linked_element_global_id",
             postgresql_where="linked_model_id IS NOT NULL AND linked_element_global_id IS NOT NULL",
+        ),
+        # Offline-replay dedup: at most one finding per (creator, idempotency
+        # key). Scoped to the creator so a leaked key can't replay another
+        # member's write; partial so online (key-less) creates are exempt.
+        Index(
+            "uq_findings_creator_idempotency_key",
+            "created_by_user_id",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
         ),
     )

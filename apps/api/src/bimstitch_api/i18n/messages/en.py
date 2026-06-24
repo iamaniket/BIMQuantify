@@ -151,6 +151,8 @@ en_messages: Catalog = {
     "errors.INTERNAL_ERROR": "Something went wrong on our end. Please try again later.",
     "errors.VALIDATION_ERROR": "Some of the submitted data is invalid. Please check your input and try again.",
     "errors.INVALID_SORT_KEY": "That column can't be sorted.",
+    "errors.IDEMPOTENCY_KEY_INVALID": "The Idempotency-Key header is malformed.",
+    "errors.IDEMPOTENCY_KEY_CONFLICT": "This request is already being processed. Please try again in a moment.",
 
     # --- auth / session ---
     "errors.UNAUTHORIZED": "You need to sign in to continue.",
@@ -186,6 +188,8 @@ en_messages: Catalog = {
     "errors.CANNOT_IMPERSONATE_SUPERUSER": "You can't impersonate another super-admin.",
     "errors.CANNOT_IMPERSONATE_INACTIVE": "You can't impersonate an inactive user.",
     "errors.CANNOT_IMPERSONATE_UNVERIFIED": "You can't impersonate an unverified user.",
+    "errors.NOT_AN_IMPERSONATION_SESSION": "This isn't an impersonation session, so there's nothing to stop.",
+    "errors.IMPERSONATION_STOP_UNAVAILABLE": "We couldn't end the impersonation session. Please try again.",
 
     # --- users / members ---
     "errors.USER_NOT_FOUND": "That user could not be found.",

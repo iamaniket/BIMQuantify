@@ -90,7 +90,10 @@ export function IfcViewerCanvas({
     <IfcViewer
       key={`${scope.sceneKey}:${viewerEpoch}`}
       ref={viewerHandleRef}
-      bundle={scope.primaryBundle!}
+      // Omit `bundle` entirely when there's no primary (live-empty federated
+      // scene) — exactOptionalPropertyTypes forbids passing an explicit
+      // `undefined` to the now-optional prop.
+      {...(scope.primaryBundle ? { bundle: scope.primaryBundle } : {})}
       additionalBundles={scope.additionalBundles}
       viewCube={{
         enabled: settings.viewCube.enabled,
@@ -98,6 +101,7 @@ export function IfcViewerCanvas({
       }}
       shadows={{
         enabled: settings.shadows.enabled,
+        mode: settings.shadows.mode,
       }}
       background={{ color: settings.background.color }}
       effects={settings.effects}

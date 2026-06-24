@@ -37,8 +37,14 @@ export type ViewerScope = {
   isError: boolean;
   /** Single-bundle load error (404 "not processed", etc.), already humanized. */
   errorMessage: string | null;
-  /** Multi-model with zero ready models. */
+  /** Multi-model, project genuinely has NO processed models (nothing to load). */
   isEmpty: boolean;
+  /**
+   * Multi-model, project HAS models but the user has deselected them all (zero
+   * selected). The viewer renders a live, empty scene instead of the
+   * "no models" panel so models can be re-added from the dropdown.
+   */
+  emptyScene: boolean;
 
   // What `IfcViewer` loads (IFC only; null for a single non-IFC file).
   primaryBundle: ViewerBundle | null;
@@ -233,6 +239,7 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
       isError: singleQuery.isError,
       errorMessage: bundleErrorMessage(singleQuery.error),
       isEmpty: false,
+      emptyScene: false,
       primaryBundle:
         activeBundle !== null && isIfc
           ? singlePrimaryBundle(activeBundle, singleFileId)
@@ -257,6 +264,11 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
   // Multi-model.
   const expiresIn = manifestQuery.data?.expires_in ?? 0;
   const activeBundle = activeEntry !== null ? entryToBundleResponse(activeEntry, expiresIn) : null;
+  // Manifest loaded cleanly (not loading, not errored). The two "no visible
+  // model" states are split off this: a genuinely empty PROJECT vs. a user who
+  // cleared the selection. Errors fall through to errorMessage, not either flag.
+  const manifestModels = manifestQuery.data?.models ?? [];
+  const manifestLoadedOk = !manifestQuery.isLoading && !manifestQuery.isError;
   return {
     ready,
     mode: 'multi',
@@ -265,9 +277,11 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
     // Surface manifest failures (was hardcoded null, which rendered the silent
     // empty-state — a failed federated load looked identical to "no models").
     errorMessage: bundleErrorMessage(manifestQuery.error),
-    // "Empty" means loaded-OK-but-zero-models, NOT errored — else an error would
-    // show the empty-state instead of the error banner.
-    isEmpty: !manifestQuery.isLoading && !manifestQuery.isError && entries.length === 0,
+    // Genuinely empty PROJECT: nothing has been processed → "no models" panel.
+    isEmpty: manifestLoadedOk && manifestModels.length === 0,
+    // Cleared selection: the project HAS models but none are selected → render a
+    // live, empty viewer (handled by the page) instead of the panel.
+    emptyScene: manifestLoadedOk && manifestModels.length > 0 && entries.length === 0,
     primaryBundle: primary !== null ? entryToBundle(primary) : null,
     additionalBundles: entries
       .filter((_, i) => i !== primaryIndex)

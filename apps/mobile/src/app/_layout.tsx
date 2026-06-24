@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/providers/AuthProvider';
+import { OfflineProvider } from '@/providers/OfflineProvider';
 import { QueryProvider } from '@/providers/QueryProvider';
 
 // Hold the native splash until Fraunces (the auth-screen display serif) is
@@ -44,8 +45,10 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryProvider>
           <AuthProvider>
-            <Stack screenOptions={{ headerShown: false }} />
-            <StatusBar style="auto" />
+            <OfflineProvider>
+              <Stack screenOptions={{ headerShown: false }} />
+              <StatusBar style="auto" />
+            </OfflineProvider>
           </AuthProvider>
         </QueryProvider>
       </SafeAreaProvider>

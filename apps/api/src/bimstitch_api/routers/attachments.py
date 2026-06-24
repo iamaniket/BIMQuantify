@@ -24,6 +24,7 @@ from bimstitch_api import audit
 from bimstitch_api.auth.fastapi_users import current_verified_user
 from bimstitch_api.auth.permissions import Action, Resource, require_permission
 from bimstitch_api.config import Settings, get_settings
+from bimstitch_api.idempotency import idempotency_key_header, is_idempotency_conflict
 from bimstitch_api.jobs import dispatch_job
 from bimstitch_api.models.job import Job, JobStatus, JobType
 from bimstitch_api.models.project_file import (
@@ -136,6 +137,7 @@ async def initiate_attachment_upload(
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
+    idempotency_key: str | None = Depends(idempotency_key_header),
 ) -> AttachmentInitiateResponse:
     project = await load_project_or_404(session, project_id)
     membership = await require_membership(session, project.id, user.id)
@@ -156,6 +158,36 @@ async def initiate_attachment_upload(
     upload_service.ensure_allowed_extension(ext, ATTACHMENT_ALLOWED_EXTENSIONS)
     category = ATTACHMENT_ALLOWED_EXTENSIONS[ext]
     upload_service.ensure_within_size_limit(payload.size_bytes, settings.attachment_max_bytes)
+
+    # Idempotent replay (offline mobile outbox): if this uploader already used
+    # this key, return the original row with a FRESH presigned URL — the
+    # original may have expired during the offline window. This runs before the
+    # content-sha256 dedup so a keyed replay returns the row instead of 409ing.
+    if idempotency_key is not None:
+        prior = (
+            await session.execute(
+                select(ProjectFile).where(
+                    ProjectFile.project_id == project.id,
+                    ProjectFile.role == ProjectFileRole.attachment,
+                    ProjectFile.uploaded_by_user_id == user.id,
+                    ProjectFile.idempotency_key == idempotency_key,
+                    ProjectFile.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if prior is not None:
+            fresh_url = await storage.presigned_put_url(
+                prior.storage_key,
+                prior.content_type,
+                prior.size_bytes,
+                bucket=get_attachments_bucket(),
+            )
+            return AttachmentInitiateResponse(
+                attachment_id=prior.id,
+                upload_url=fresh_url,
+                storage_key=prior.storage_key,
+                expires_in=storage.presign_ttl,
+            )
 
     existing = (
         await session.execute(
@@ -211,11 +243,20 @@ async def initiate_attachment_upload(
         capture_metadata=capture_meta,
         version_number=version_number,
         parent_file_id=parent_id,
+        idempotency_key=idempotency_key,
     )
     session.add(att)
     try:
         await session.flush()
     except IntegrityError as exc:
+        # Concurrent replay lost the race to insert the same idempotency key —
+        # the partial-unique index is the backstop. 409 is retryable; the
+        # client's next attempt hits the pre-check above and gets the row.
+        if idempotency_key is not None and is_idempotency_conflict(exc):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="IDEMPOTENCY_KEY_CONFLICT",
+            ) from exc
         # The pre-check above catches the common duplicate; this guards the
         # concurrent race (two uploads of the same bytes, or a racing version
         # number in the group) so it surfaces as 409 rather than an unhandled

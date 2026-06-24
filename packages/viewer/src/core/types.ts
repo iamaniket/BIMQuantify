@@ -43,6 +43,19 @@ export interface Vec3 {
 export type CullingMode = 'auto' | 'on' | 'off';
 
 /**
+ * Contact-shadow silhouette source (driven live by the `shadows.setMode`
+ * command; initial value from `ShadowOptions.mode`).
+ *  - `'auto'`     — exact `'geometry'` bake while every model is fully resident
+ *                   (small models), `'boxes'` once any model is frustum-culled
+ *                   (large/federated). The default.
+ *  - `'boxes'`    — rasterise per-element bounding-box footprints (worker-side,
+ *                   no geometry streaming). Fast everywhere, slightly blockier.
+ *  - `'geometry'` — stream full geometry and bake the exact silhouette. Slow on
+ *                   large models (freezes the viewport); an escape hatch.
+ */
+export type ShadowMode = 'auto' | 'boxes' | 'geometry';
+
+/**
  * Whole-model "look" applied at the material level (see {@link ViewerContext.setActiveLook}).
  *  - `'normal'`     — untouched materials.
  *  - `'monochrome'` — desaturate the final shaded colour (keeps value, drops hue).

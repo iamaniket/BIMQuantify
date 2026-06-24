@@ -27,13 +27,14 @@ import { PluginManager } from './PluginManager.js';
 import { frameView } from './framing.js';
 import { COPLANAR_BIAS_EPS, COPLANAR_BIAS_LEVELS } from './depth-bias.js';
 import { LAYER_OVERLAY } from './layers.js';
-import { computeVisibleSolidBox } from './visibleBox.js';
+import { collectVisibleSolidBoxes, computeVisibleSolidBox } from './visibleBox.js';
+import type { ShadowBoxCacheEntry } from './visibleBox.js';
 import { ContactShadowBaker } from './contactShadow.js';
 import type { ContactShadowRect } from './contactShadow.js';
 import { applyLookToMaterial } from './displayLook.js';
 import { modelMap, threeScene } from './fragmentsCompat.js';
 import { boxSummary, isViewerDebug, vdump, vlog, vwarn } from './debugLog.js';
-import type { CullingMode, ItemId, MaterialLook, Plugin, ViewerContext, ViewerEvents } from './types.js';
+import type { CullingMode, ItemId, MaterialLook, Plugin, ShadowMode, ViewerContext, ViewerEvents } from './types.js';
 
 type World = SimpleWorld<SimpleScene, OrthoPerspectiveCamera, SimpleRenderer>;
 
@@ -52,6 +53,24 @@ export interface ShadowOptions {
    * devices. Does NOT affect model rendering quality.
    */
   resolution?: number;
+  /**
+   * Silhouette source. Default `'auto'`.
+   *
+   * - `'auto'` bakes the exact `'geometry'` silhouette while every model is
+   *   already fully resident (small models — cheap, no un-cull), and switches to
+   *   `'boxes'` as soon as any model is frustum-culled (large/federated — where
+   *   the un-cull would cost tens of seconds). Best of both: small models look
+   *   exactly as before, large models stay fast.
+   * - `'boxes'` always rasterises per-element bounding-box footprints (from
+   *   `getBoxes`, worker-computed, no geometry streaming) — fast everywhere, no
+   *   viewport freeze, near-free re-bakes. The soft blob slightly
+   *   over-approximates curved/angled geometry (most visible when a single such
+   *   element is isolated), but reads near-identical for normal buildings.
+   * - `'geometry'` always un-culls and streams full geometry, then bakes the
+   *   exact silhouette — pixel-accurate but ~tens of seconds on large models,
+   *   and freezes the viewport for the duration. An escape hatch for stills.
+   */
+  mode?: ShadowMode;
 }
 
 export interface BackgroundOptions {
@@ -293,7 +312,19 @@ export class Viewer {
   private readonly appliedLodMode = new Map<string, FRAGS.LodMode>();
   /** Per-model `onViewUpdated` unsubscribe — wakes the on-demand renderer as tiles stream. */
   private readonly viewUpdatedUnsubs = new Map<string, () => void>();
-  /** True while {@link bakeShadow} temporarily un-culls; suppresses renderer wake to avoid a flash. */
+  /** Silhouette source for the contact shadow (see {@link ShadowOptions.mode}). Default `auto`. */
+  private shadowMode: ShadowMode = 'auto';
+  /**
+   * Per-model element-box cache for the `boxes` shadow path (from `getBoxes`,
+   * worker-computed, no geometry streaming). Queried once per model, reused
+   * across bakes; invalidated on model unload. See {@link collectVisibleSolidBoxes}.
+   */
+  private readonly shadowBoxCache = new Map<string, ShadowBoxCacheEntry>();
+  /**
+   * True only while the `geometry` shadow path temporarily un-culls; suppresses
+   * renderer wake to avoid a flash. The `boxes` path never sets it (it bakes
+   * off-screen with no un-cull), so the renderer is never parked there.
+   */
   private shadowBaking = false;
   /**
    * Reentrancy guard for {@link bakeShadow}. Two overlapping bakes would
@@ -891,6 +922,20 @@ export class Viewer {
       { title: 'Set zoom options (speed / zoom limits)' },
     );
 
+    // Live contact-shadow mode switch (driven by the portal settings select).
+    // `auto` picks geometry-vs-boxes per resident state; `boxes`/`geometry` force
+    // a path. Applied with no remount — just re-bakes on the next idle.
+    this.commands.register<{ mode: ShadowMode }, void>(
+      'shadows.setMode',
+      (args) => {
+        const mode = (args as { mode?: unknown } | undefined)?.mode;
+        if (mode === 'auto' || mode === 'boxes' || mode === 'geometry') {
+          this.setShadowMode(mode);
+        }
+      },
+      { title: 'Set the contact-shadow silhouette source (auto / boxes / geometry)' },
+    );
+
     // On-demand rendering: park the renderer in MANUAL and only resume on a
     // visual change. Each event below means "something changed on screen" —
     // route it through markActive() so a frame (and the idle composite) is
@@ -1053,6 +1098,7 @@ export class Viewer {
       this.precomputedOutlines.delete(modelId);
       this.appliedLodMode.delete(modelId);
       this.elementCounts.delete(modelId);
+      this.shadowBoxCache.delete(modelId);
       await fragments.disposeModel(modelId).catch(() => undefined);
       if (this.modelId === modelId) {
         this.modelId = this.getModelIds()[0] ?? null;
@@ -1279,6 +1325,7 @@ export class Viewer {
   private applyLightingAndShadows(world: World): void {
     const opts = this.options.shadows ?? {};
     this.shadowsEnabled = opts.enabled ?? true;
+    this.shadowMode = opts.mode ?? 'auto';
     const sceneThree = threeScene(world.scene);
 
     // Forge-style neutral studio lighting: a hemisphere ambient + a soft
@@ -1440,6 +1487,22 @@ export class Viewer {
    * idle frame when `shadowDirty` — never per frame, since the top-down bake is
    * independent of the user's camera.
    */
+  /**
+   * Resolve the effective bake path. `boxes`/`geometry` are honoured verbatim.
+   * `auto` (default) keeps the exact geometry bake while every model is fully
+   * resident (`ALL_VISIBLE` — small models, no un-cull cost), and switches to the
+   * cheap box bake the moment any model is frustum-culled (`ALL_GEOMETRY` —
+   * large/federated, where un-culling would freeze the viewport for tens of
+   * seconds). So small models look exactly as before; large models stay fast.
+   */
+  private resolveShadowMode(): 'boxes' | 'geometry' {
+    if (this.shadowMode !== 'auto') return this.shadowMode;
+    for (const lod of this.appliedLodMode.values()) {
+      if (lod === FRAGS.LodMode.ALL_GEOMETRY) return 'boxes';
+    }
+    return 'geometry';
+  }
+
   private async bakeShadow(): Promise<void> {
     const ground = this.shadowGround;
     const ctx = this.ctx;
@@ -1455,26 +1518,116 @@ export class Viewer {
       return;
     }
 
-    // Never run two bakes at once (see `shadowBakeInFlight`): concurrent
-    // un-cull/re-cull + double `fragments.update` on the same models races the
-    // worker and can wedge the renderer in the parked `shadowBaking` state.
-    // Coalesce — re-dirty so the trailing idle re-bakes after this one settles.
+    // Never run two bakes at once (see `shadowBakeInFlight`). For the `geometry`
+    // path, concurrent un-cull/re-cull + double `fragments.update` on the same
+    // models races the worker and can wedge the renderer in the parked
+    // `shadowBaking` state; for both paths, two overlapping `getBoxes` / visible
+    // walks waste work. Coalesce — re-dirty so the trailing idle re-bakes after
+    // this one settles.
     if (this.shadowBakeInFlight) {
       this.shadowDirty = true;
       vlog('shadow', 'bake already in flight — coalescing (re-dirty for next idle)');
       return;
     }
     this.shadowBakeInFlight = true;
-    vlog('shadow', 'bake start');
-
+    const mode = this.resolveShadowMode();
+    vlog('shadow', `bake start (${mode}${this.shadowMode === 'auto' ? ' / auto' : ''})`);
     const token = ++this.shadowBakeToken;
 
-    // Native frustum culling (ALL_GEOMETRY) leaves only the user-camera frustum
-    // resident in `model.object`, but the silhouette bakes the whole footprint
-    // from a fixed top-down camera. Temporarily un-cull every culled model so
-    // the bake sees all geometry, then restore in `finally`. `shadowBaking`
-    // parks the renderer for the duration so the transient full-geometry pass
-    // never flashes onto the main canvas (markActive is a no-op while it's set).
+    try {
+      const hidden = this.commands.has('visibility.getHidden')
+        ? await this.commands
+            .execute<undefined, ItemId[]>('visibility.getHidden')
+            .catch(() => [] as ItemId[])
+        : [];
+      const xrayed =
+        this.pluginManager?.get<{ list(): ItemId[] }>('xray')?.list() ?? [];
+
+      if (mode === 'geometry') {
+        await this.bakeShadowGeometry(ground, ctx, baker, renderer, hidden, xrayed, token);
+      } else {
+        await this.bakeShadowBoxes(ground, ctx, baker, renderer, hidden, xrayed, token);
+      }
+    } finally {
+      // Always clear the park/guard flags — even on an early return or a thrown
+      // bake — so this method can never leave the renderer permanently parked
+      // (the "frozen a few frames after load" failure). markActive() below is a
+      // no-op while shadowBaking is true, so it MUST be cleared first. (`boxes`
+      // mode never sets shadowBaking; only `geometry`'s un-cull does.)
+      this.shadowBaking = false;
+      this.shadowBakeInFlight = false;
+      vlog('shadow', 'bake done');
+      // Repaint the fresh shadow mask with one idle-quality composite instead of
+      // waking the base renderer — markActive() would put the renderer back in
+      // AUTO and paint un-FXAA'd frames during the settle. Fall back to
+      // markActive when the composite path is unavailable.
+      const effects = this.pluginManager?.get<{ recomposite(): boolean }>('effects');
+      const composited = effects?.recomposite() ?? false;
+      if (!composited) this.markActive();
+    }
+  }
+
+  /**
+   * Default contact-shadow path: rasterise per-element bounding-box footprints
+   * (worker-computed via `getBoxes`, cached in {@link shadowBoxCache}) — no
+   * geometry streaming, no un-cull, no renderer park. Fast even on large models;
+   * visibility/x-ray re-bakes are a pure in-memory filter of the cache.
+   */
+  private async bakeShadowBoxes(
+    ground: THREE.Mesh,
+    ctx: ViewerContext,
+    baker: ContactShadowBaker,
+    renderer: THREE.WebGLRenderer,
+    hidden: ItemId[],
+    xrayed: ItemId[],
+    token: number,
+  ): Promise<void> {
+    const { boxes, framingBox } = await collectVisibleSolidBoxes(ctx, {
+      hidden,
+      xrayed,
+      boxCache: this.shadowBoxCache,
+    });
+
+    // A newer bake started while we awaited the (first-time) getBoxes — let it win.
+    if (token !== this.shadowBakeToken) return;
+
+    if (framingBox.isEmpty()) {
+      // Everything hidden / full x-ray — no solid geometry, so no shadow.
+      ground.visible = false;
+      return;
+    }
+
+    const rect = baker.bakeBoxes(renderer, boxes, framingBox);
+    if (rect === null) {
+      ground.visible = false;
+      return;
+    }
+
+    this.fitPlaneToRect(rect);
+    ground.visible = true;
+
+    // Fold the plane AABB into the depth box so its far edge never clips.
+    this.depthBox = this.computeWorldSceneBox();
+    this.depthBox.union(new THREE.Box3().setFromObject(ground));
+  }
+
+  /**
+   * Exact (escape-hatch) contact-shadow path: temporarily un-cull every
+   * frustum-culled model to `ALL_VISIBLE` so the top-down silhouette sees the
+   * whole footprint, bake the live geometry, then restore culling. Pixel-accurate
+   * but streams all geometry in and back out (~tens of seconds on large models)
+   * and parks the renderer (`shadowBaking`) so the transient full-geometry pass
+   * never flashes. Only reached when `ShadowOptions.mode === 'geometry'`.
+   */
+  private async bakeShadowGeometry(
+    ground: THREE.Mesh,
+    ctx: ViewerContext,
+    baker: ContactShadowBaker,
+    renderer: THREE.WebGLRenderer,
+    hidden: ItemId[],
+    xrayed: ItemId[],
+    token: number,
+  ): Promise<void> {
     const fragments = this.fragmentsModels;
     const unculled =
       fragments === null
@@ -1491,14 +1644,6 @@ export class Viewer {
     }
 
     try {
-      const hidden = this.commands.has('visibility.getHidden')
-        ? await this.commands
-            .execute<undefined, ItemId[]>('visibility.getHidden')
-            .catch(() => [] as ItemId[])
-        : [];
-      const xrayed =
-        this.pluginManager?.get<{ list(): ItemId[] }>('xray')?.list() ?? [];
-
       let box: THREE.Box3;
       if (hidden.length === 0 && xrayed.length === 0) {
         // Nothing hidden or ghosted — cheap whole-scene box.
@@ -1511,7 +1656,6 @@ export class Viewer {
       if (token !== this.shadowBakeToken) return;
 
       if (box.isEmpty()) {
-        // Everything hidden / full x-ray — no solid geometry, so no shadow.
         ground.visible = false;
         return;
       }
@@ -1533,7 +1677,6 @@ export class Viewer {
       this.fitPlaneToRect(rect);
       ground.visible = true;
 
-      // Fold the exact plane AABB into the depth box so its far edge never clips.
       this.depthBox = this.computeWorldSceneBox();
       this.depthBox.union(new THREE.Box3().setFromObject(ground));
     } finally {
@@ -1547,22 +1690,6 @@ export class Viewer {
         }
         await fragments.update(true).catch(() => undefined);
       }
-      // Always clear the park/guard flags — even on an early return or a thrown
-      // bake — so this method can never leave the renderer permanently parked
-      // (the "frozen a few frames after load" failure). markActive() below is a
-      // no-op while shadowBaking is true, so it MUST be cleared first.
-      this.shadowBaking = false;
-      this.shadowBakeInFlight = false;
-      vlog('shadow', 'bake done');
-      // Repaint the fresh shadow mask + restored geometry with one idle-quality
-      // composite instead of waking the base renderer — markActive() would put
-      // the renderer back in AUTO and paint un-FXAA'd frames during the settle
-      // (the post-stop "resolution stepping"). The forced fragments.update above
-      // already drained the restored geometry, so a single composite is enough.
-      // Fall back to markActive when the composite path is unavailable.
-      const effects = this.pluginManager?.get<{ recomposite(): boolean }>('effects');
-      const composited = effects?.recomposite() ?? false;
-      if (!composited) this.markActive();
     }
   }
 
@@ -1693,6 +1820,21 @@ export class Viewer {
   }
 
   /**
+   * Set the contact-shadow silhouette source and re-bake on the next idle.
+   * Applies live — unlike toggling shadows on/off (which remounts), switching
+   * mode just re-runs the (cheap) bake with the new path. Driven by the portal's
+   * viewer settings via the `shadows.setMode` command. No-op if unchanged.
+   */
+  setShadowMode(mode: ShadowMode): void {
+    if (this.shadowMode === mode) return;
+    this.shadowMode = mode;
+    this.shadowDirty = true;
+    // Wake the renderer so a `viewer:idle` fires and the idle handler re-bakes
+    // with the new mode (no per-frame cost; the bake itself is idle-driven).
+    this.markActive();
+  }
+
+  /**
    * Set the whole-model material look and re-apply it across every loaded
    * material (composed with each material's coplanar depth bias). Streamed-in
    * materials inherit the look via the `materials.list.onItemSet` hook, so this
@@ -1750,6 +1892,7 @@ export class Viewer {
     this.precomputedOutlines.delete(modelId);
     this.elementCounts.delete(modelId);
     this.appliedLodMode.delete(modelId);
+    this.shadowBoxCache.delete(modelId);
     this.viewUpdatedUnsubs.get(modelId)?.();
     this.viewUpdatedUnsubs.delete(modelId);
     if (this.modelId === modelId) {
@@ -1783,6 +1926,7 @@ export class Viewer {
     this.viewUpdatedUnsubs.clear();
     this.appliedLodMode.clear();
     this.elementCounts.clear();
+    this.shadowBoxCache.clear();
     this.fragmentsModels?.dispose().catch(() => undefined);
     this.fragmentsModels = null;
     if (this.shadowGround !== null) {

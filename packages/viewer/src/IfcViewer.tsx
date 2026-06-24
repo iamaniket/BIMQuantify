@@ -123,7 +123,10 @@ async function loadBundleInto(
 function buildDesired(props: IfcViewerProps): { key: string; bundle: ViewerBundle }[] {
   const seen = new Set<string>();
   const out: { key: string; bundle: ViewerBundle }[] = [];
-  for (const b of [props.bundle, ...(props.additionalBundles ?? [])]) {
+  // `bundle` is optional — an empty desired set is valid (the live-empty scene).
+  const all = [props.bundle, ...(props.additionalBundles ?? [])]
+    .filter((b): b is ViewerBundle => b != null);
+  for (const b of all) {
     const key = b.modelId ?? b.fragmentsUrl;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -189,6 +192,7 @@ function IfcViewerImpl(
   // `modelId` so a refreshed presigned URL never re-keys an already-loaded model
   // and a layer's visibility toggle never re-runs the diff.
   const desiredKey = [props.bundle, ...(props.additionalBundles ?? [])]
+    .filter((b): b is ViewerBundle => b != null)
     .map((b) => b.modelId ?? b.fragmentsUrl)
     .join('|');
 
@@ -434,25 +438,34 @@ function IfcViewerImpl(
         // failed) so a single bad model can never leave the scene unframed, then
         // fire onReady EXACTLY once. Later diffs preserve the camera and never
         // re-fire onReady/onError — they are pure incremental add/unload.
+        const fireReady = (): void => {
+          if (onReadyFiredRef.current) return;
+          onReadyFiredRef.current = true;
+          const handle = handleRef.current;
+          if (handle) props.onReady?.(handle);
+        };
         if (isFirstDiff) {
-          firstDiffRef.current = false;
           if (anySucceeded) {
+            firstDiffRef.current = false;
             try {
               await viewer.commands.execute('camera.zoomExtents');
               vlog('federate', 'framed scene (camera.zoomExtents)');
             } catch (err) {
               vwarn('federate', 'camera.zoomExtents failed', err);
             }
-            if (!onReadyFiredRef.current) {
-              onReadyFiredRef.current = true;
-              const handle = handleRef.current;
-              if (handle) props.onReady?.(handle);
-            }
+            fireReady();
           } else if (desired.length > 0) {
             // The initial desired set was non-empty but nothing loaded — fatal,
             // the scene is blank (matches the old "primary failed → onError").
+            firstDiffRef.current = false;
             verror('load', 'initial model set failed to load — scene is empty');
             props.onError?.(new Error('No model could be loaded'));
+          } else {
+            // Empty desired set (live-empty scene) is a VALID ready state: fire
+            // onReady so the host chrome appears, but DON'T consume firstDiff —
+            // the first model added later must still frame the camera once.
+            vlog('federate', 'empty desired set — viewer ready with no model');
+            fireReady();
           }
         }
       } finally {
