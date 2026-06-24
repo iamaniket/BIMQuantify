@@ -724,6 +724,79 @@ async def _create_attachment_row(project_id: str) -> str:
     return att_id
 
 
+async def _schema_for_project(session: AsyncSession, project_id: str) -> str:
+    """Find which schema (public or an ``org_*`` tenant schema) holds the project."""
+    candidates = (
+        await session.execute(
+            text(
+                "SELECT schema_name FROM information_schema.schemata "
+                "WHERE schema_name = 'public' OR schema_name LIKE 'org\\_%' ESCAPE '\\'"
+            )
+        )
+    ).scalars().all()
+    for cand in candidates:
+        hit = (
+            await session.execute(
+                text(f'SELECT 1 FROM "{cand}".projects WHERE id = :pid'),
+                {"pid": project_id},
+            )
+        ).scalar()
+        if hit:
+            return cand
+    return "public"
+
+
+async def _create_storey_row(
+    project_id: str,
+    model_id: str,
+    *,
+    name: str | None = None,
+    elevation: float | None = None,
+    ifc_guid: str | None = None,
+    express_id: int | None = None,
+    ordering: int | None = None,
+) -> str:
+    """Insert a storey row directly (storeys have no write API — they're
+    populated from extraction). Returns the storey id."""
+    from uuid import uuid4
+
+    from bimstitch_api.db import get_session_maker
+
+    sid = str(uuid4())
+    async with get_session_maker()() as s, s.begin():
+        target = await _schema_for_project(s, project_id)
+        await s.execute(
+            text(
+                f'INSERT INTO "{target}".storeys '
+                "(id, model_id, name, elevation_m, ifc_guid, express_id, ordering) "
+                "VALUES (:id, :mid, :name, :elev, :guid, :eid, :ord)"
+            ),
+            {
+                "id": sid,
+                "mid": model_id,
+                "name": name,
+                "elev": elevation,
+                "guid": ifc_guid,
+                "eid": express_id,
+                "ord": ordering,
+            },
+        )
+    return sid
+
+
+async def _set_model_primary_file_type(project_id: str, model_id: str, file_type: str) -> None:
+    """Stamp a model's ``primary_file_type`` directly (the upload flow normally
+    sets it on first file). Lets a test mint a 'PDF model' without a real upload."""
+    from bimstitch_api.db import get_session_maker
+
+    async with get_session_maker()() as s, s.begin():
+        target = await _schema_for_project(s, project_id)
+        await s.execute(
+            text(f'UPDATE "{target}".models SET primary_file_type = :ft WHERE id = :mid'),
+            {"ft": file_type, "mid": model_id},
+        )
+
+
 async def _add_member(
     client: AsyncClient,
     owner_token: str,

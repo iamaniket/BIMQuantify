@@ -14,6 +14,7 @@ from bimstitch_api.models.project_file import FileType
 if TYPE_CHECKING:
     from bimstitch_api.models.project import Project
     from bimstitch_api.models.project_file import ProjectFile
+    from bimstitch_api.models.storeys import Storey
 
 
 class ModelDiscipline(StrEnum):
@@ -95,6 +96,13 @@ class Model(TimestampMixin, SoftDeleteMixin, TenantBase):
         foreign_keys="ProjectFile.model_id",
         cascade="all, delete-orphan",
         order_by="ProjectFile.version_number.desc()",
+    )
+    # Storeys extracted from this model's IFC spatial tree (3D models only;
+    # PDF/DXF models leave this empty). The anchor a 2D PDF sheet pins to.
+    storeys: Mapped[list["Storey"]] = relationship(
+        back_populates="model",
+        cascade="all, delete-orphan",
+        order_by="Storey.ordering",
     )
 
     __table_args__ = (

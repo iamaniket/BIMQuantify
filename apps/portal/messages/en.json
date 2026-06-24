@@ -3490,7 +3490,32 @@
       "plan": "2D",
       "modelTooltip": "3D model",
       "splitTooltip": "Split — 3D and floor plan",
-      "planTooltip": "2D floor plan"
+      "planTooltip": "2D floor plan",
+      "calibrate": "Align",
+      "calibrateTooltip": "Align a PDF drawing to the model"
+    },
+    "aligned": {
+      "pickPdfModel": "PDF drawing",
+      "pickPage": "Page {n}",
+      "pickStorey": "Storey",
+      "pickPdf": "Click the same point on the PDF",
+      "pickModel": "Click the matching point on the model",
+      "start": "Start alignment",
+      "cancel": "Cancel",
+      "step": {
+        "pdf1": "Pick point 1 on the PDF",
+        "model1": "Pick point 1 on the model",
+        "pdf2": "Pick point 2 on the PDF",
+        "model2": "Pick point 2 on the model",
+        "solving": "Computing alignment…",
+        "done": "Sheet aligned"
+      },
+      "error": {
+        "MINIMAP_NOT_CALIBRATED": "The floor plan isn't ready for alignment yet.",
+        "generic": "Alignment failed. Please try again."
+      },
+      "noStoreys": "This model has no storeys yet. Re-extract the model to enable alignment.",
+      "noPdfModels": "No PDF model found. Upload a PDF as its own model first."
     },
     "explorer": {
       "filter": "Filter…",

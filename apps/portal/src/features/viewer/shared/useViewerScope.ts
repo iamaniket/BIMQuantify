@@ -65,6 +65,9 @@ export type ViewerScope = {
   planMetadataUrl: string | null;
   planViewerModelId: string | null;
   planFileId: string | null;
+  /** The plan model's API UUID (distinct from `planViewerModelId` = `file-<id>`).
+   * Used to query storeys + aligned sheets for the floor-plan / calibration UI. */
+  planModelId: string | null;
 
   // Multi-model only.
   entries: ProjectViewerModelEntry[];
@@ -254,6 +257,7 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
       planMetadataUrl: isIfc ? activeBundle.metadata_url : null,
       planViewerModelId: null, // single model — minimap targets the lone model
       planFileId: isIfc ? singleFileId : null,
+      planModelId: isIfc ? singleModelId : null,
       entries: [],
       setActiveByViewerModelId,
       setActiveByModelId,
@@ -301,6 +305,7 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
     planMetadataUrl: planEntry?.metadata_url ?? null,
     planViewerModelId: planEntry ? federatedModelId(planEntry.file_id) : null,
     planFileId: planEntry?.file_id ?? null,
+    planModelId: planEntry?.model_id ?? null,
     entries,
     setActiveByViewerModelId,
     setActiveByModelId,

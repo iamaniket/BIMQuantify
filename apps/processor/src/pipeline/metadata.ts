@@ -46,6 +46,15 @@ export type SpatialNode = {
   children: SpatialNode[];
 };
 
+/** A flat IfcBuildingStorey record sent to the API, which upserts it onto the
+ * model's `storeys` table (keyed by globalId). Derived from the spatial tree. */
+export type StoreyInfo = {
+  expressID: number;
+  globalId: string | null;
+  name: string | null;
+  elevation: number | null;
+};
+
 export type ElementEntry = {
   expressID: number;
   globalId: string | null;
@@ -240,6 +249,29 @@ function isSpatialType(type: string): boolean {
   return ['IfcSite', 'IfcBuilding', 'IfcBuildingStorey', 'IfcSpace'].includes(
     type,
   );
+}
+
+/**
+ * Flatten every IfcBuildingStorey out of the spatial tree, in document order.
+ * The API assigns display ordering by elevation on ingest. Pure over the tree
+ * the metadata walk already built, so no extra web-ifc crossings.
+ */
+export function extractStoreys(tree: SpatialNode | null): StoreyInfo[] {
+  if (tree === null) return [];
+  const out: StoreyInfo[] = [];
+  const walk = (node: SpatialNode): void => {
+    if (node.type === 'IfcBuildingStorey') {
+      out.push({
+        expressID: node.expressID,
+        globalId: node.globalId,
+        name: node.name,
+        elevation: node.elevation,
+      });
+    }
+    for (const child of node.children) walk(child);
+  };
+  walk(tree);
+  return out;
 }
 
 // IfcZone groups IfcSpaces via IfcRelAssignsToGroup (RelatingGroup = the zone,

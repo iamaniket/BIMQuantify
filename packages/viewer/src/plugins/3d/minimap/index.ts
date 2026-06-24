@@ -35,6 +35,9 @@ import {
   type ViewerVec3,
   type WorldBox,
 } from './planCoords.js';
+import { pdfToPlan, planToPdf, type SheetTransform } from './sheetTransform.js';
+
+export type { SheetTransform } from './sheetTransform.js';
 
 /** A world point projected onto the plan, with its recovered IFC elevation. */
 export type ProjectedPlanPoint = { x: number; y: number; elevation: number };
@@ -62,6 +65,12 @@ type CalibrateArgs = {
    * first). Omitted for the single-file viewer → falls back to the first model.
    */
   modelId?: string;
+  /**
+   * Optional aligned-PDF-sheet transform. When set, the minimap operates in PDF
+   * page coords (see {@link SheetTransform}); omit/null for the generated plan.
+   * Can also be switched later via `minimap.setSheetTransform`.
+   */
+  sheetTransform?: SheetTransform | null;
 };
 type NavigateArgs = { planX: number; planY: number; elevation: number };
 /** Lift a plan point at a storey elevation into viewer world space. */
@@ -97,7 +106,30 @@ export function minimapPlugin(
   /** Latest world-space camera pose, projected on the next animation frame. */
   let latestPose: CameraPose | null = null;
   let rafId: number | null = null;
+  // Active aligned-sheet transform (PDF<->plan). When set, the minimap operates
+  // in PDF page coords: world projections are pushed through planToPdf, and
+  // plan->world inputs are pulled back through pdfToPlan. Null -> the generated
+  // BIMFPLN2 footprint plan space, unchanged. The single Y-up negation stays in
+  // planToViewer/viewerToPlan; this only composes on top.
+  let sheetTransform: SheetTransform | null = null;
   const disposers: Array<() => void> = [];
+
+  /** World point -> active plan-surface 2D coords (PDF page if a sheet is set). */
+  const worldToPlanSpace = (p: ViewerVec3, cal: Calibration): { x: number; y: number } => {
+    const plan = viewerToPlan(p, cal);
+    return sheetTransform ? planToPdf(plan, sheetTransform) : plan;
+  };
+
+  /** Active plan-surface 2D coords + elevation -> world point (inverse). */
+  const planSpaceToWorld = (
+    px: number,
+    py: number,
+    elevation: number,
+    cal: Calibration,
+  ): ViewerVec3 => {
+    const plan = sheetTransform ? pdfToPlan({ x: px, y: py }, sheetTransform) : { x: px, y: py };
+    return planToViewer(plan.x, plan.y, elevation, cal);
+  };
 
   const projectAndEmit = (): void => {
     rafId = null;
@@ -106,8 +138,8 @@ export function minimapPlugin(
     const pose = latestPose;
     if (!ctx || !cal || !pose) return;
     ctx.events.emit('minimap:pose', {
-      here: viewerToPlan(pose.position, cal),
-      look: viewerToPlan(pose.target, cal),
+      here: worldToPlanSpace(pose.position, cal),
+      look: worldToPlanSpace(pose.target, cal),
     });
   };
 
@@ -134,6 +166,7 @@ export function minimapPlugin(
       .catch(() => null);
     if (!worldBox) return;
     planModelId = args.modelId ?? null;
+    sheetTransform = args.sheetTransform ?? null;
     calibration = makeCalibration(args.ifcBbox, worldBox, args.planAxisX, args.planAxisY);
     ctx.events.emit('minimap:calibrated', { calibrated: true });
     // Seed the marker immediately from the current camera pose.
@@ -150,7 +183,7 @@ export function minimapPlugin(
     const ctx = ctxRef;
     const cal = calibration;
     if (!ctx || !cal || !args) return;
-    const p = planToViewer(args.planX, args.planY, args.elevation, cal);
+    const p = planSpaceToWorld(args.planX, args.planY, args.elevation, cal);
     await ctx.commands
       .execute('camera.flyToPoint', { x: p.x, y: p.y, z: p.z, animate: true })
       .catch(() => undefined);
@@ -167,8 +200,8 @@ export function minimapPlugin(
     const cal = calibration;
     if (!ctx || !cal || !args) return;
     const h = args.elevation + EYE_HEIGHT;
-    const eye = planToViewer(args.planX, args.planY, h, cal);
-    const tgt = planToViewer(args.lookX, args.lookY, h, cal);
+    const eye = planSpaceToWorld(args.planX, args.planY, h, cal);
+    const tgt = planSpaceToWorld(args.lookX, args.lookY, h, cal);
     // Height lives on world Y (the IFC up-axis always lands on +Y — see planCoords).
     // When panning from the 2D plan, freeze the eye height so the drag moves only
     // horizontally instead of snapping to the storey floor.
@@ -218,8 +251,19 @@ export function minimapPlugin(
   };
 
   const project = (p: ViewerVec3, cal: Calibration): ProjectedPlanPoint => {
-    const plan = viewerToPlan(p, cal);
+    const plan = worldToPlanSpace(p, cal);
     return { x: plan.x, y: plan.y, elevation: viewerToPlanElevation(p, cal) };
+  };
+
+  /**
+   * Switch the active aligned-sheet transform without recalibrating. The portal
+   * calls this when the active storey's aligned PDF changes — pass the solved
+   * `{ scale, rotationRad, offsetX, offsetY }`, or null to revert to the
+   * generated-plan coordinate space. Re-emits the pose marker in the new space.
+   */
+  const setSheetTransform = (t: SheetTransform | null): void => {
+    sheetTransform = t;
+    scheduleProject();
   };
 
   /** Project a world-space point onto the plan (+elevation). Null until calibrated. */
@@ -245,7 +289,7 @@ export function minimapPlugin(
   const planToWorld = (args: PlanToWorldArgs): ViewerVec3 | null => {
     const cal = calibration;
     if (!cal || !args) return null;
-    return planToViewer(args.planX, args.planY, args.elevation, cal);
+    return planSpaceToWorld(args.planX, args.planY, args.elevation, cal);
   };
 
   /**
@@ -316,6 +360,10 @@ export function minimapPlugin(
         selectSpace(args as { spaceId: number }), {
         title: 'Select an IFC space in 3D by id',
       });
+      ctx.commands.register('minimap.setSheetTransform', (args: unknown) =>
+        setSheetTransform(args as SheetTransform | null), {
+        title: 'Set/clear the active aligned-PDF-sheet transform',
+      });
 
       // Re-project the marker whenever the camera moves (rAF-coalesced).
       const offCam = ctx.events.on('camera:change', (pose: { position: Vec3; target: Vec3 }) => {
@@ -327,6 +375,7 @@ export function minimapPlugin(
         calibration = null;
         activeStorey = null;
         isolated = false;
+        sheetTransform = null;
       });
       disposers.push(offCam, offModel);
     },
@@ -341,6 +390,7 @@ export function minimapPlugin(
       ctxRef = null;
       calibration = null;
       latestPose = null;
+      sheetTransform = null;
     },
   };
 

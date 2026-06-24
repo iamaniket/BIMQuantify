@@ -28,7 +28,7 @@ import { detectContentKind, shouldGenerateFloorPlan } from './classify.js';
 import { encodeFloorPlans, scanModelGeometry, sliceFloorPlans } from './floorplans.js';
 import { generateFragments } from './fragments.js';
 import { closeModel, getIfcApi, openModel } from './ifc.js';
-import { buildMetadata } from './metadata.js';
+import { buildMetadata, extractStoreys } from './metadata.js';
 import {
   encodeOutline,
   extractLocalEdgePositions,
@@ -249,6 +249,9 @@ async function runWalk(port: MessagePort, bytes: Uint8Array): Promise<void> {
       );
     }
 
+    // Tiny (tens of rows) — carried inline on the message, not via an artifact.
+    const storeys = extractStoreys(metadata.spatialTree);
+
     const encoder = new TextEncoder();
     const metadataJson = encoder.encode(JSON.stringify(metadata));
     const propertiesJson = encoder.encode(JSON.stringify(properties));
@@ -259,6 +262,7 @@ async function runWalk(port: MessagePort, bytes: Uint8Array): Promise<void> {
         propertiesJson,
         projectGlobalId: metadata.project.globalId,
         detectedKind,
+        storeys,
         timings: { metadata: metadataMs, properties: walkMs - metadataMs, walk: walkMs },
       } satisfies ExtractionWorkerMessage,
       [metadataJson.buffer as ArrayBuffer, propertiesJson.buffer as ArrayBuffer],

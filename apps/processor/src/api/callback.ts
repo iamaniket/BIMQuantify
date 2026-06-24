@@ -38,6 +38,14 @@ export type CallbackPayload = {
   // Failure classification, set on `failed` callbacks (see pipeline/errors.ts).
   retriable?: boolean;
   error_kind?: string;
+  // IfcBuildingStorey list (IFC `succeeded` only); the API upserts these onto
+  // the model's storeys table. Omitted when the model has none.
+  storeys?: {
+    expressID: number;
+    globalId: string | null;
+    name: string | null;
+    elevation: number | null;
+  }[];
 };
 
 export async function postCallback(payload: CallbackPayload): Promise<void> {

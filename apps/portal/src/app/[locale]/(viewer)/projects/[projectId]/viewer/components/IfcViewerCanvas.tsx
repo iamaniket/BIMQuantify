@@ -10,6 +10,8 @@ import type { FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
 import { FloorPlanPane } from '@/features/viewer/2d/FloorPlanPane';
 import { type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import type { Finding } from '@/lib/api/schemas';
+
+import { CalibrationPane } from './CalibrationPane';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 import type { ViewerSettings } from '@/lib/viewerSettings';
 import type { ViewerScope } from '@/features/viewer/shared/useViewerScope';
@@ -52,6 +54,10 @@ export interface IfcViewerCanvasProps {
   onFpHandle?: ((handle: FloorPlanViewerHandle | null) => void) | undefined;
   /** Report the active storey elevation for the plan-pick → world conversion. */
   onFpActiveElevationChange?: ((elevation: number | null) => void) | undefined;
+  /** The plan model's API UUID (owns storeys) — for the calibration pane + sheet substitution. */
+  planApiModelId: string | null;
+  /** Leave calibration mode (back to a normal view mode). */
+  onViewModeChange: (mode: ViewMode) => void;
 }
 
 export function IfcViewerCanvas({
@@ -85,7 +91,11 @@ export function IfcViewerCanvas({
   onRequestFloorPlanFindings,
   onFpHandle,
   onFpActiveElevationChange,
+  planApiModelId,
+  onViewModeChange,
 }: IfcViewerCanvasProps): JSX.Element {
+  // Calibration mode reuses the split layout (3D live left, chosen PDF right).
+  const isSplitLike = viewMode === 'split' || viewMode === 'calibration';
   const ifcViewerEl = (
     <IfcViewer
       key={`${scope.sceneKey}:${viewerEpoch}`}
@@ -153,21 +163,21 @@ export function IfcViewerCanvas({
   const threeDPaneClass =
     viewMode === '2d'
       ? 'hidden'
-      : viewMode === 'split'
+      : isSplitLike
         ? 'absolute inset-x-0 top-0 h-1/2 overflow-hidden md:inset-y-0 md:right-auto md:h-full'
         : 'absolute inset-0 overflow-hidden';
   const planPaneClass =
     viewMode === '2d'
       ? 'absolute inset-0 overflow-hidden'
-      : viewMode === 'split'
+      : isSplitLike
         ? 'absolute inset-x-0 bottom-0 h-1/2 overflow-hidden border-t border-border md:inset-y-0 md:right-0 md:left-auto md:h-full md:border-t-0'
         : 'absolute inset-0 overflow-hidden';
 
   // Desktop inline styles drive the dynamic split ratio; mobile uses h-1/2 class.
   const threeDSplitStyle =
-    viewMode === 'split' && !isMobile ? { width: `${splitRatio * 100}%` } : undefined;
+    isSplitLike && !isMobile ? { width: `${splitRatio * 100}%` } : undefined;
   const planSplitStyle =
-    viewMode === 'split' && !isMobile ? { width: `${(1 - splitRatio) * 100}%` } : undefined;
+    isSplitLike && !isMobile ? { width: `${(1 - splitRatio) * 100}%` } : undefined;
 
   return (
     <div
@@ -178,8 +188,8 @@ export function IfcViewerCanvas({
         {ifcViewerEl}
       </div>
 
-      {/* Draggable divider — desktop split mode only */}
-      {viewMode === 'split' && !isMobile && (
+      {/* Draggable divider — desktop split/calibration mode only */}
+      {isSplitLike && !isMobile && (
         <div
           ref={dividerRef}
           className="absolute inset-y-0 z-20 flex w-2 cursor-col-resize touch-none select-none flex-col items-center justify-center"
@@ -198,7 +208,19 @@ export function IfcViewerCanvas({
         </div>
       )}
 
-      {hasFloorPlans && viewMode !== '3d' && scope.planFloorPlansUrl ? (
+      {viewMode === 'calibration' ? (
+        <div ref={planPaneRef} className={planPaneClass} style={planSplitStyle}>
+          <CalibrationPane
+            projectId={projectId}
+            planApiModelId={planApiModelId}
+            viewerHandle={viewerHandleRef.current}
+            viewerReady={viewerReady}
+            metadata={planMetadata}
+            floorPlansUrl={scope.planFloorPlansUrl}
+            onExit={() => { onViewModeChange('2d'); }}
+          />
+        </div>
+      ) : hasFloorPlans && viewMode !== '3d' && scope.planFloorPlansUrl ? (
         <div ref={planPaneRef} className={planPaneClass} style={planSplitStyle}>
           <FloorPlanPane
             handle={viewerHandleRef.current}

@@ -37,15 +37,16 @@ from bimstitch_api.routers.activity import router as activity_router
 from bimstitch_api.routers.admin_blog import router as admin_blog_router
 from bimstitch_api.routers.admin_impersonate import router as admin_impersonate_router
 from bimstitch_api.routers.admin_organizations import router as admin_organizations_router
+from bimstitch_api.routers.aligned_sheets import router as aligned_sheets_router
 from bimstitch_api.routers.attachments import router as attachments_router
 from bimstitch_api.routers.bcf import router as bcf_router
-from bimstitch_api.routers.calendar import router as calendar_router
 from bimstitch_api.routers.borgingsplan import (
     moment_router as borgingsplan_moment_router,
 )
 from bimstitch_api.routers.borgingsplan import (
     plan_router as borgingsplan_plan_router,
 )
+from bimstitch_api.routers.calendar import router as calendar_router
 from bimstitch_api.routers.capture_links import router as capture_links_router
 from bimstitch_api.routers.capture_public import router as capture_public_router
 from bimstitch_api.routers.certificates import router as certificates_router
@@ -97,6 +98,7 @@ from bimstitch_api.routers.projects import router as projects_router
 from bimstitch_api.routers.public import router as public_router
 from bimstitch_api.routers.reports import router as reports_router
 from bimstitch_api.routers.risks import router as risks_router
+from bimstitch_api.routers.storeys import router as storeys_router
 from bimstitch_api.routers.ws_notifications import router as ws_notifications_router
 from bimstitch_api.storage import get_attachments_bucket, get_storage
 
@@ -286,6 +288,8 @@ def create_app() -> FastAPI:
     app.include_router(me_profile_router)
     app.include_router(projects_router)
     app.include_router(models_router)
+    app.include_router(storeys_router)
+    app.include_router(aligned_sheets_router)
     app.include_router(project_files_router)
     app.include_router(project_viewer_router)
     app.include_router(jobs_internal_router)

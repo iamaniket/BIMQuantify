@@ -215,6 +215,14 @@ nl_messages: Catalog = {
     "errors.SOURCE_NOT_RESTORABLE": "Alleen een gereede, volledig verwerkte versie kan worden hersteld.",
     "errors.VERSION_ALREADY_HEAD": "Die versie is al de huidige versie.",
 
+    # --- verdiepingen / uitgelijnde tekeningen (PDF<->3D) ---
+    "errors.STOREY_NOT_FOUND": "Die verdieping kon niet worden gevonden.",
+    "errors.ALIGNED_SHEET_NOT_FOUND": "Die uitgelijnde tekening kon niet worden gevonden.",
+    "errors.ALIGNED_SHEET_PDF_MODEL_INVALID": "Kies een PDF-model om uit te lijnen.",
+    "errors.ALIGNED_SHEET_STOREY_MODEL_MISMATCH": "Die verdieping hoort niet bij het gekozen model.",
+    "errors.ALIGNED_SHEET_DEGENERATE_POINTS": "Kies aan beide kanten twee verschillende punten om de tekening uit te lijnen.",
+    "errors.ALIGNED_SHEET_DUPLICATE": "Deze tekeningpagina is al uitgelijnd op die verdieping.",
+
     # --- bestanden / uploads / opslag ---
     "errors.FILE_NOT_FOUND": "Dat bestand kon niet worden gevonden.",
     "errors.PROJECT_FILE_NOT_FOUND": "Dat projectbestand kon niet worden gevonden.",

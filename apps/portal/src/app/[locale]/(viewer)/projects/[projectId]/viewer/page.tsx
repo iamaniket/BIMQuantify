@@ -42,6 +42,8 @@ import { useBcfMarkup2d } from '@/features/viewer/bcf/useBcfMarkup2d';
 import { bcfKeys } from '@/features/viewer/bcf/queryKeys';
 import { MarkupToolbar } from '@/components/shared/viewer/2d/MarkupToolbar';
 import { ContextMenu } from '@/features/viewer/3d/ContextMenu';
+import { useModels } from '@/features/models/useModels';
+import { useProjectPermissions } from '@/features/permissions/useProjectPermissions';
 import { type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/3d/explorer/ModelExplorer';
 import { useExplorerModels } from '@/features/viewer/3d/explorer/useExplorerModels';
@@ -438,6 +440,15 @@ export default function ViewerPage(): JSX.Element {
   const isIfc = format === 'ifc';
   // Split / 2D modes (and the view switcher) require a floor-plan artifact.
   const hasFloorPlans = Boolean(isIfc && scope.planFloorPlansUrl);
+
+  // "Align" (PDF↔model calibration) is offered to editors when the project has
+  // at least one PDF model to pin onto the active IFC model.
+  const perms = useProjectPermissions(projectId);
+  const projectModels = useModels(projectId);
+  const hasPdfModel = (projectModels.data ?? []).some(
+    (m) => m.primary_file_type === 'pdf',
+  );
+  const canCalibrate = isIfc && hasPdfModel && !perms.isLoading && perms.can('model', 'update');
 
   // Finding-pin layer visibility (persisted) drives the side-rail Findings
   // count pill; re-asserted onto the entity-marker plugin on mount/change.
@@ -852,6 +863,8 @@ export default function ViewerPage(): JSX.Element {
         onRequestFloorPlanFindings={handleFloorPlanFindings}
         onFpHandle={setFpHandle}
         onFpActiveElevationChange={setFpElevation}
+        planApiModelId={scope.planModelId}
+        onViewModeChange={setViewMode}
       />
     );
   }
@@ -1031,6 +1044,7 @@ export default function ViewerPage(): JSX.Element {
               floorPlansUrl={scope.planFloorPlansUrl}
               planMetadata={planMetadata}
               viewerReady={viewerReady}
+              canCalibrate={canCalibrate}
               {...(scope.planViewerModelId ? { planModelId: scope.planViewerModelId } : {})}
             />
           </div>

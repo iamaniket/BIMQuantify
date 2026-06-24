@@ -1,6 +1,6 @@
 'use client';
 
-import { Blueprint, Box, SquareSplitHorizontal } from '@bimstitch/ui/icons';
+import { Blueprint, Box, Crosshair, SquareSplitHorizontal } from '@bimstitch/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
@@ -9,8 +9,10 @@ import type { JSX } from 'react';
  *   - `3d`    — 3D model only (floor-plan minimap as a corner overlay).
  *   - `split` — 3D + the 2D floor plan side by side (stacked on mobile).
  *   - `2d`    — the 2D floor plan fills the viewport.
+ *   - `calibration` — split layout (3D + a chosen PDF) for aligning a PDF sheet
+ *     to a model storey; only offered to editors when a PDF model exists.
  */
-export type ViewMode = '3d' | 'split' | '2d';
+export type ViewMode = '3d' | 'split' | '2d' | 'calibration';
 
 type Props = {
   value: ViewMode;
@@ -22,6 +24,7 @@ const ICONS: Record<ViewMode, typeof Box> = {
   '3d': Box,
   split: SquareSplitHorizontal,
   '2d': Blueprint,
+  calibration: Crosshair,
 };
 
 /**

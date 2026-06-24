@@ -112,6 +112,22 @@ class ProjectViewerManifestResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class StoreyCallbackItem(BaseModel):
+    """One IfcBuildingStorey the extractor pulled from the spatial tree.
+
+    The worker sends camelCase keys (``expressID``/``globalId``); aliases map
+    them onto snake_case fields. ``global_id`` is the idempotency key for the
+    per-model storey upsert in the callback handler.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    express_id: int = Field(alias="expressID")
+    global_id: str | None = Field(default=None, alias="globalId")
+    name: str | None = None
+    elevation: float | None = None
+
+
 class ExtractionCallbackRequest(BaseModel):
     file_id: UUID
     # `organization_id` is the schema-per-tenant routing key — the worker
@@ -144,3 +160,6 @@ class ExtractionCallbackRequest(BaseModel):
     # On `failed`: whether retrying could plausibly succeed, plus a classifier tag.
     retriable: bool = False
     error_kind: str | None = None
+    # IfcBuildingStorey list (IFC extraction only). Absent for PDF/DXF jobs and
+    # pre-storey extractor versions; the handler upserts these onto the model.
+    storeys: list[StoreyCallbackItem] | None = None

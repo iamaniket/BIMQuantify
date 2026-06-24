@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
@@ -8,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { latestReadyFile, useProjectModels } from '@/features/projects/queries';
 import { humanize } from '@/lib/format';
@@ -19,6 +21,7 @@ export default function ProjectModelsScreen() {
   const { tokens } = useAuth();
   const params = useLocalSearchParams<{ projectId: string; name?: string }>();
   const projectId = params.projectId;
+  const insets = useSafeAreaInsets();
   const { data, isLoading, isError, refetch, isRefetching } = useProjectModels(projectId ?? '');
 
   if (tokens === null) {
@@ -85,6 +88,27 @@ export default function ProjectModelsScreen() {
           }}
         />
       )}
+
+      {/* Add a snag without opening the model. Pins-from-viewer add anchored
+          findings; this entry point creates an unanchored one (all link/anchor
+          fields null — the create form and API both allow it). */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Add snag"
+        style={({ pressed }) => [
+          styles.fab,
+          { bottom: Math.max(insets.bottom, 16) + 16 },
+          pressed && styles.fabPressed,
+        ]}
+        onPress={() => {
+          router.push({
+            pathname: '/projects/[projectId]/findings/create',
+            params: { projectId },
+          });
+        }}
+      >
+        <Ionicons name="add" size={28} color={colors.onPrimary} />
+      </Pressable>
     </View>
   );
 }
@@ -112,4 +136,20 @@ const styles = StyleSheet.create({
   rowTitle: { fontSize: 17, fontWeight: '600', color: colors.text },
   rowSub: { fontSize: 14, color: colors.textMuted, marginTop: 2 },
   chevron: { fontSize: 26, color: colors.textMuted, fontWeight: '300' },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  fabPressed: { opacity: 0.85 },
 });

@@ -247,6 +247,14 @@ en_messages: Catalog = {
     "errors.SOURCE_NOT_RESTORABLE": "Only a ready, fully-processed version can be restored.",
     "errors.VERSION_ALREADY_HEAD": "That version is already the current one.",
 
+    # --- storeys / aligned sheets (PDF<->3D alignment) ---
+    "errors.STOREY_NOT_FOUND": "That storey could not be found.",
+    "errors.ALIGNED_SHEET_NOT_FOUND": "That aligned drawing could not be found.",
+    "errors.ALIGNED_SHEET_PDF_MODEL_INVALID": "Choose a PDF model to align.",
+    "errors.ALIGNED_SHEET_STOREY_MODEL_MISMATCH": "That storey doesn't belong to the selected model.",
+    "errors.ALIGNED_SHEET_DEGENERATE_POINTS": "Pick two distinct points on each side to align the drawing.",
+    "errors.ALIGNED_SHEET_DUPLICATE": "This drawing page is already aligned to that floor.",
+
     # --- files / uploads / storage ---
     "errors.FILE_NOT_FOUND": "That file could not be found.",
     "errors.PROJECT_FILE_NOT_FOUND": "That project file could not be found.",

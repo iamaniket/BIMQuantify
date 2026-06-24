@@ -3490,7 +3490,32 @@
       "plan": "2D",
       "modelTooltip": "3D-model",
       "splitTooltip": "Gesplitst — 3D en plattegrond",
-      "planTooltip": "2D-plattegrond"
+      "planTooltip": "2D-plattegrond",
+      "calibrate": "Uitlijnen",
+      "calibrateTooltip": "Lijn een PDF-tekening uit op het model"
+    },
+    "aligned": {
+      "pickPdfModel": "PDF-tekening",
+      "pickPage": "Pagina {n}",
+      "pickStorey": "Bouwlaag",
+      "pickPdf": "Klik hetzelfde punt op de PDF",
+      "pickModel": "Klik het overeenkomende punt op het model",
+      "start": "Uitlijnen starten",
+      "cancel": "Annuleren",
+      "step": {
+        "pdf1": "Kies punt 1 op de PDF",
+        "model1": "Kies punt 1 op het model",
+        "pdf2": "Kies punt 2 op de PDF",
+        "model2": "Kies punt 2 op het model",
+        "solving": "Uitlijning berekenen…",
+        "done": "Tekening uitgelijnd"
+      },
+      "error": {
+        "MINIMAP_NOT_CALIBRATED": "De plattegrond is nog niet gereed voor uitlijning.",
+        "generic": "Uitlijnen mislukt. Probeer het opnieuw."
+      },
+      "noStoreys": "Dit model heeft nog geen bouwlagen. Her-extraheer het model om uitlijnen mogelijk te maken.",
+      "noPdfModels": "Geen PDF-model gevonden. Upload eerst een PDF als eigen model."
     },
     "explorer": {
       "filter": "Filter…",

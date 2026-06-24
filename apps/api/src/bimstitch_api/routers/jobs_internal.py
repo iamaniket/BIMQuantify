@@ -26,6 +26,7 @@ from bimstitch_api.db import get_async_session
 from bimstitch_api.email.transport import get_email_transport
 from bimstitch_api.i18n import coerce_locale, t
 from bimstitch_api.jobs import require_worker_secret
+from bimstitch_api.models.aligned_sheets import AlignedSheet
 from bimstitch_api.models.job import _JOB_TERMINAL, Job, JobStatus
 from bimstitch_api.models.notification import NotificationEventType
 from bimstitch_api.models.organization import Organization
@@ -36,13 +37,18 @@ from bimstitch_api.models.project_file import (
     ProjectFileStatus,
 )
 from bimstitch_api.models.report import _REPORT_TERMINAL, Report, ReportStatus, ReportType
+from bimstitch_api.models.storeys import Storey
 from bimstitch_api.notifications.service import (
     create_notification,
     publish_notification,
     upsert_job_notification,
 )
 from bimstitch_api.schemas.attachment import AttachmentCallbackRequest, AttachmentRead
-from bimstitch_api.schemas.project_file import ExtractionCallbackRequest, ProjectFileRead
+from bimstitch_api.schemas.project_file import (
+    ExtractionCallbackRequest,
+    ProjectFileRead,
+    StoreyCallbackItem,
+)
 from bimstitch_api.schemas.report import ReportCallbackRequest, ReportResponse
 from bimstitch_api.storage import StorageBackend, get_storage
 from bimstitch_api.tenancy import schema_name_for
@@ -75,14 +81,10 @@ async def _set_tenant_schema(session: AsyncSession, organization_id: UUID) -> st
     schema = schema_name_for(organization_id)
     # Sanity-check the schema name maps to an existing org row.
     exists = (
-        await session.execute(
-            select(Organization.id).where(Organization.id == organization_id)
-        )
+        await session.execute(select(Organization.id).where(Organization.id == organization_id))
     ).scalar_one_or_none()
     if exists is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="ORG_NOT_FOUND"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ORG_NOT_FOUND")
     # SET LOCAL — without LOCAL, the modified search_path persists on the
     # underlying connection and leaks into the next request that pulls that
     # connection from the pool, which corrupts enum casts on public tables
@@ -170,6 +172,8 @@ async def extraction_callback(
                     row.extraction_finished_at = payload.finished_at
                 if payload.extractor_version is not None:
                     row.extractor_version = payload.extractor_version
+                # Sync the model's storeys (IFC only; absent for other jobs).
+                await _upsert_storeys(session, row, payload.storeys)
         else:  # failed
             row.extraction_status = ExtractionStatus.failed
             row.extraction_error = payload.error
@@ -331,6 +335,85 @@ async def _emit_notification(
     await publish_notification(notification, organization_id=payload.organization_id)
 
 
+async def _upsert_storeys(
+    session: AsyncSession,
+    file_row: ProjectFile,
+    storeys: list[StoreyCallbackItem] | None,
+) -> None:
+    """Idempotently sync a model's storeys from an IFC extraction callback.
+
+    Keyed by ``(model_id, ifc_guid)``: existing rows are updated, new ones
+    inserted, and storeys no longer present are soft-deleted — UNLESS an active
+    aligned sheet still references them, so a re-extraction never orphans a
+    calibrated sheet. ``ordering`` is assigned ascending by elevation.
+
+    Runs inside the callback's tenant-scoped transaction (search_path already
+    set by ``_set_tenant_schema``); no explicit commit. Guid-less storeys are
+    inserted but not matched on re-extraction — IFC mandates a GlobalId on
+    IfcBuildingStorey, so that is a degenerate-input edge case.
+    """
+    if not storeys or file_row.model_id is None:
+        return
+    model_id = file_row.model_id
+    existing = list(
+        (
+            await session.execute(
+                select(Storey).where(Storey.model_id == model_id, Storey.deleted_at.is_(None))
+            )
+        )
+        .scalars()
+        .all()
+    )
+    by_guid = {s.ifc_guid: s for s in existing if s.ifc_guid is not None}
+
+    ordered = sorted(
+        storeys,
+        key=lambda s: (s.elevation is None, s.elevation if s.elevation is not None else 0.0),
+    )
+    seen_guids: set[str] = set()
+    for idx, item in enumerate(ordered):
+        guid = item.global_id
+        match = by_guid.get(guid) if guid is not None else None
+        if match is not None:
+            match.name = item.name
+            match.elevation_m = item.elevation
+            match.express_id = item.express_id
+            match.ordering = idx
+        else:
+            session.add(
+                Storey(
+                    model_id=model_id,
+                    name=item.name,
+                    elevation_m=item.elevation,
+                    ifc_guid=guid,
+                    express_id=item.express_id,
+                    ordering=idx,
+                )
+            )
+        if guid is not None:
+            seen_guids.add(guid)
+
+    vanished = [s for s in existing if s.ifc_guid is not None and s.ifc_guid not in seen_guids]
+    if not vanished:
+        return
+    vanished_ids = [s.id for s in vanished]
+    referenced = set(
+        (
+            await session.execute(
+                select(AlignedSheet.storey_id).where(
+                    AlignedSheet.storey_id.in_(vanished_ids),
+                    AlignedSheet.deleted_at.is_(None),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for storey in vanished:
+        if storey.id not in referenced:
+            storey.soft_delete()
+
+
 async def _load_file(session: AsyncSession, file_id: UUID) -> ProjectFile:
     row = (
         await session.execute(
@@ -344,9 +427,7 @@ async def _load_file(session: AsyncSession, file_id: UUID) -> ProjectFile:
 
 async def _load_job_optional(session: AsyncSession, job_id: UUID) -> Job | None:
     return (
-        await session.execute(
-            select(Job).where(Job.id == job_id).with_for_update()
-        )
+        await session.execute(select(Job).where(Job.id == job_id).with_for_update())
     ).scalar_one_or_none()
 
 
@@ -374,9 +455,7 @@ async def report_callback(
             )
         ).scalar_one_or_none()
         if report is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="REPORT_NOT_FOUND"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="REPORT_NOT_FOUND")
 
         if report.status in _REPORT_TERMINAL:
             return report  # idempotent no-op
@@ -450,9 +529,7 @@ async def report_callback(
         # and the outer callback's transaction has already closed).
         schema = schema_name_for(payload.organization_id)
         async with session.begin():
-            await session.execute(
-                text(f'SET LOCAL search_path TO "{schema}", public')
-            )
+            await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
             notification = await upsert_job_notification(
                 session,
                 event_type=event_type,
