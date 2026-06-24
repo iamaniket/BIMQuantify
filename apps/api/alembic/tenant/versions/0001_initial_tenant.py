@@ -45,6 +45,19 @@ unified `project_files` table, distinguished by `role = 'attachment'`. The
 per-role dedup and version-group indexes are declared on the `ProjectFile`
 model, so create_all emits them — nothing attachment-specific is needed here.
 
+A still-later squash folded in the former 0002–0006 deltas:
+  - 0002 project_files.annotation_state (JSONB image-markup document)
+  - 0003 models.head_file_id (restore-version-as-head pointer)
+  - 0004 the `buildingtype` enum's Bbl gebruiksfuncties (assembly, cell,
+    healthcare, industrial, office, accommodation, education, sport, retail,
+    non_building) on top of the original dwelling/commercial/other
+  - 0005 reporttype.snag_list + jobtype.snag_list_report (per-recipient snag-list PDF)
+  - 0006 findings.idempotency_key + project_files.idempotency_key, each with a
+    creator/uploader-scoped partial-unique index (offline-replay dedup)
+All of these — columns, the full enum value sets, and the two idempotency
+partial-unique indexes — are declared on the live ORM models, so create_all
+emits them. Folding them in meant only deleting the redundant delta revisions.
+
 Runs against the schema named in BIMSTITCH_TENANT_SCHEMA. FKs to master tables
 (users) are emitted as `public.users(id)` so they resolve regardless of
 search_path — audit_log's user_id / impersonator_user_id rely on this.

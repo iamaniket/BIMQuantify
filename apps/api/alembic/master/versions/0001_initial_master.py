@@ -8,6 +8,12 @@ per-org schemas managed by the tenant chain. The former 0002 (users.locale) and
 0003 (blog_posts) deltas were folded in here; blog tags are normalized into the
 `blog_post_tags` table (no JSONB).
 
+A later squash folded in the former 0002 (organizations.active_storage_limit_gb)
+and 0003 (users.tokens_valid_after, the per-user token epoch / sign-out-everywhere
+column) deltas. Because the upgrade is driven by `create_all` over the live
+models, those columns are emitted automatically — there was nothing to add here
+beyond deleting the now-redundant delta revisions.
+
 Revision ID: 0001_master
 Revises:
 Create Date: 2026-06-02
