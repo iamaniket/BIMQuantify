@@ -212,9 +212,9 @@ export function useSheetCalibration(
           await createSheet.mutateAsync({
             projectId,
             input: {
-              model_id: modelId,
+              document_id: modelId,
               level_id: levelId,
-              pdf_model_id: pdfModelId,
+              pdf_document_id: pdfModelId,
               page_index: pageIndex,
             },
           })

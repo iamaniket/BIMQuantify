@@ -43,7 +43,7 @@ export default function ReportDetailPage(): JSX.Element {
   const modelId = useMemo(() => {
     if (modelIdFromQuery) return modelIdFromQuery;
     const match = reportsQuery.data?.find((r) => r.file_id === fileId);
-    return match?.model_id;
+    return match?.document_id;
   }, [modelIdFromQuery, reportsQuery.data, fileId]);
 
   const summaryQuery = useComplianceSummary(projectId, fileId, modelId);
@@ -130,7 +130,7 @@ export default function ReportDetailPage(): JSX.Element {
               </Badge>
               {reportMeta !== undefined && (
                 <span className="text-body3 font-semibold">
-                  {reportMeta.model_name} · {reportMeta.file_name} (v
+                  {reportMeta.document_name} · {reportMeta.file_name} (v
                   {String(reportMeta.file_version).padStart(2, '0')})
                 </span>
               )}

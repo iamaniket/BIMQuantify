@@ -169,8 +169,8 @@ export function useComplianceLatest(
     queryKey: ['projects', projectId, 'compliance', 'latest', fileId ?? '', framework] as const,
     queryFn: (accessToken) => {
       if (!fileId || !modelId) throw new Error('Missing fileId or modelId');
-      const path = `/projects/${projectId}/models/${modelId}/files/${fileId}/compliance/latest?framework=${framework}`;
-      // This variant uses framework param so it has its own query key
+      // This variant has its own query key (keyed by framework); the request
+      // itself reuses getComplianceLatest.
       return getComplianceLatest(accessToken, projectId, modelId, fileId);
     },
     enabled: projectId.length > 0 && !!fileId && !!modelId,

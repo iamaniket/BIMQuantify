@@ -7,7 +7,7 @@ export async function listStoreys(
   modelId: string,
 ): Promise<StoreyList> {
   return apiClient.get<StoreyList>(
-    `/projects/${projectId}/models/${modelId}/storeys`,
+    `/projects/${projectId}/documents/${modelId}/storeys`,
     StoreyListSchema,
     accessToken,
   );

@@ -33,7 +33,6 @@ import {
 } from '@/components/shared/viewer/shared/_toolbarPrimitives';
 import { useAlignedSheets } from '@/features/aligned-sheets/hooks';
 import { useSheetCalibration } from '@/features/aligned-sheets/useSheetCalibration';
-import { useProjectLevels } from '@/features/levels/hooks';
 import { documentsWithVersionsKey } from '@/features/documents/queryKeys';
 import { useStoreys } from '@/features/storeys/useStoreys';
 import { useCalibrationEntryCamera } from '@/features/viewer/2d/useCalibrationEntryCamera';
@@ -63,6 +62,11 @@ type Props = {
   /** Leave calibration mode (e.g. to '2d' so the aligned sheet shows). */
   onExit: () => void;
 };
+
+/** Storey display label, falling back to "Level N" for an unnamed storey. */
+function storeyLabel(s: { name: string | null; ordering: number | null }): string {
+  return s.name ?? `Level ${(s.ordering ?? 0) + 1}`;
+}
 
 /** Resolve a model's head ProjectFile id (restore pointer, else newest ready). */
 function headFileId(model: DocumentWithVersions): string | null {
@@ -101,15 +105,15 @@ export function CalibrationPane({
     [documentsQuery.data],
   );
 
-  // Levels are the alignment target (the shared spine). Storeys of the 3D model
-  // are still needed to isolate the matching floor in the 3D pane for picking.
-  const levelsQuery = useProjectLevels(projectId);
-  const levels = useMemo(() => levelsQuery.data ?? [], [levelsQuery.data]);
+  // The dropdown is driven by the PLAN model's own storeys (each is a real 3D
+  // floor that isolates cleanly), NOT by project-wide levels — a project-wide
+  // level can belong to a different model and would isolate nothing. The shared
+  // `level_id` (the aligned-sheet write target) is derived from the chosen storey.
   const storeysQuery = useStoreys(projectId, planApiModelId ?? '');
   const storeys = useMemo(() => storeysQuery.data ?? [], [storeysQuery.data]);
 
   const [selectedPdfModelId, setSelectedPdfModelId] = useState<string | null>(null);
-  const [selectedLevelId, setSelectedLevelId] = useState<string | null>(null);
+  const [selectedStoreyId, setSelectedStoreyId] = useState<string | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [docHandle, setDocHandle] = useState<DocumentViewerHandle | null>(null);
@@ -121,10 +125,13 @@ export function CalibrationPane({
     }
   }, [pdfDocuments, selectedPdfModelId]);
   useEffect(() => {
-    if (selectedLevelId === null && levels.length > 0) {
-      setSelectedLevelId(levels[0]!.id);
+    if (selectedStoreyId === null && storeys.length > 0) {
+      // Prefer the first reconciled storey (so Start is enabled immediately),
+      // falling back to the first storey if none carry a level yet.
+      const firstReconciled = storeys.find((s) => s.level_id !== null);
+      setSelectedStoreyId((firstReconciled ?? storeys[0]!).id);
     }
-  }, [levels, selectedLevelId]);
+  }, [storeys, selectedStoreyId]);
 
   // Plan axes (for minimap calibration) + element→storey membership (for 3D
   // isolation). Both come from the 3D model's floor-plan artifact + metadata —
@@ -133,11 +140,15 @@ export function CalibrationPane({
   const levelFallback = useCallback((n: number) => String(n), []);
   const { planAxisX, planAxisY } = useFloorPlanData(floorPlansUrl, metadata, levelFallback);
   const storeyMembership = useMemo(() => buildStoreyMembership(metadata), [metadata]);
-  // The 3D model's storey that reconciles onto the selected level (for isolation).
+  // The selected plan-model storey (drives 3D isolation via its express_id).
   const selectedStorey = useMemo(
-    () => storeys.find((s) => s.level_id === selectedLevelId) ?? null,
-    [storeys, selectedLevelId],
+    () => storeys.find((s) => s.id === selectedStoreyId) ?? null,
+    [storeys, selectedStoreyId],
   );
+  // The shared project Level the chosen storey reconciles onto — the alignment
+  // target written to the aligned sheet. Null for an unreconciled storey, which
+  // disables Start (the sheet write requires a level id).
+  const selectedLevelId = selectedStorey?.level_id ?? null;
 
   // Orient the 3D pane to a top-down orthographic view to match the flat 2D PDF
   // (restores the prior projection + nav mode when leaving calibration).
@@ -199,7 +210,7 @@ export function CalibrationPane({
       (alignedSheetsQuery.data ?? []).find(
         (s) =>
           s.level_id === selectedLevelId &&
-          s.pdf_model_id === selectedPdfModelId &&
+          s.pdf_document_id === selectedPdfModelId &&
           s.page_index === pageIndex,
       ) ?? null,
     [alignedSheetsQuery.data, selectedLevelId, selectedPdfModelId, pageIndex],
@@ -268,8 +279,7 @@ export function CalibrationPane({
     [numPages],
   );
 
-  const levelLabel =
-    levels.find((l) => l.id === selectedLevelId)?.name ?? t('aligned.pickLevel');
+  const levelLabel = selectedStorey ? storeyLabel(selectedStorey) : t('aligned.pickLevel');
   const modelLabel = selectedModel?.name ?? t('aligned.pickPdfModel');
 
   return (
@@ -295,9 +305,9 @@ export function CalibrationPane({
           </Dropdown>
           <ToolbarDivider />
           <Dropdown label={levelLabel} disabled={active}>
-            {levels.map((l) => (
-              <DropdownMenuItem key={l.id} onSelect={() => { setSelectedLevelId(l.id); }}>
-                {l.name}
+            {storeys.map((s) => (
+              <DropdownMenuItem key={s.id} onSelect={() => { setSelectedStoreyId(s.id); }}>
+                {storeyLabel(s)}
               </DropdownMenuItem>
             ))}
           </Dropdown>
@@ -335,7 +345,7 @@ export function CalibrationPane({
       )}
 
       {/* Missing prerequisites hints */}
-      {levels.length === 0 && !levelsQuery.isLoading && (
+      {storeys.length === 0 && !storeysQuery.isLoading && (
         <div className="absolute inset-x-6 top-28 z-10 rounded-md border border-border bg-surface-low p-3 text-center text-caption text-foreground-secondary">
           {t('aligned.noLevels')}
         </div>

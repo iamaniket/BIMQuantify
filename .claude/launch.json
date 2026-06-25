@@ -9,6 +9,13 @@
       "autoPort": true
     },
     {
+      "name": "portal-3001",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "portal", "exec", "next", "dev", "--turbopack", "--port", "3001"],
+      "port": 3001,
+      "autoPort": false
+    },
+    {
       "name": "web",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "web", "exec", "next", "dev", "--turbopack"],

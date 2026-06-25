@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 export const StoreySchema = z.object({
   id: z.string().uuid(),
-  model_id: z.string().uuid(),
+  // The 3D document this storey belongs to (renamed from model_id).
+  document_id: z.string().uuid(),
   // The shared project Level this storey reconciles onto (null until reconciled).
   level_id: z.string().uuid().nullable(),
   name: z.string().nullable(),

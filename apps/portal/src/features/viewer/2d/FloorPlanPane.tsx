@@ -209,7 +209,7 @@ export function FloorPlanPane({
 
   const bundleQuery = useViewerBundle(
     projectId,
-    activeSheet?.pdf_model_id ?? '',
+    activeSheet?.pdf_document_id ?? '',
     activeSheet?.calibrated_pdf_file_id ?? '',
   );
   const fileUrl = bundleQuery.data?.file_url ?? null;
@@ -217,7 +217,7 @@ export function FloorPlanPane({
   // Re-arm the PDF "ready" gate when the rendered sheet/page changes.
   useEffect(() => {
     setDocReady(false);
-  }, [activeSheet?.pdf_model_id, activeSheet?.calibrated_pdf_file_id, activeSheet?.page_index]);
+  }, [activeSheet?.pdf_document_id, activeSheet?.calibrated_pdf_file_id, activeSheet?.page_index]);
 
   // Surface exactly the active 2D handle so the inspector's "pin on plan" arms on
   // the right surface (the PDF sheet in pdfMode, the generated plan otherwise).
@@ -493,7 +493,7 @@ export function FloorPlanPane({
       {pdfMode ? (
         fileUrl !== null ? (
           <DocumentViewer
-            key={`${activeSheet?.pdf_model_id ?? ''}:${activeSheet?.calibrated_pdf_file_id ?? ''}:${activeSheet?.page_index ?? 0}`}
+            key={`${activeSheet?.pdf_document_id ?? ''}:${activeSheet?.calibrated_pdf_file_id ?? ''}:${activeSheet?.page_index ?? 0}`}
             ref={setDocHandle}
             fileUrl={fileUrl}
             currentPage={(activeSheet?.page_index ?? 0) + 1}
