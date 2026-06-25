@@ -22,7 +22,6 @@ import type {
   DocumentActiveTool,
   DocumentRotation,
   DocumentViewerHandle,
-  FloorPlanViewerHandle,
   MarkupTool,
   ViewerHandle,
 } from '@bimdossier/viewer';
@@ -169,9 +168,9 @@ export default function ViewerPage(): JSX.Element {
   // Floor-plan handle + active storey elevation, surfaced from the plan pane so
   // the inspector's "update pin" can pick on the plan (2D mode) and lift the
   // picked point to a 3D world anchor at the right floor. The handle is a
-  // FloorPlanViewer (generated plan) OR a DocumentViewer (aligned PDF sheet);
+  // DocumentViewer in either the generated-plan OR aligned-PDF-sheet source;
   // both emit `interaction:resolved {kind:'page'}`, and the converter dispatches.
-  const [fpHandle, setFpHandle] = useState<FloorPlanViewerHandle | DocumentViewerHandle | null>(null);
+  const [fpHandle, setFpHandle] = useState<DocumentViewerHandle | null>(null);
   const [fpElevation, setFpElevation] = useState<number | null>(null);
   const [mobileBannerDismissed, setMobileBannerDismissed] = useState(() => {
     if (typeof window === 'undefined') return true;
@@ -731,7 +730,7 @@ export default function ViewerPage(): JSX.Element {
   // via the minimap. Aligned PDF sheet: the sheet transform is active on the
   // minimap, so `minimap.planToWorld` accepts the normalized PDF page point
   // directly (it inverts through the transform). Dispatch on which surface the
-  // handle is — only the FloorPlanViewer exposes `floorplan.planPointAtNorm`.
+  // handle is — only the floor-plan source exposes `floorplan.planPointAtNorm`.
   const convertFloorPlanPoint = useCallback(
     async (norm: { x: number; y: number }): Promise<{ x: number; y: number; z: number } | null> => {
       const vh = viewerHandleRef.current;

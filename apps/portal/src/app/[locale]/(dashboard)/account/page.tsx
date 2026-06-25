@@ -86,7 +86,7 @@ function AccountHero({
           <img
             src={avatarUrl}
             alt={userName}
-            className="h-[112px] w-[160px] rounded-[10px] object-cover shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]"
+            className="h-[112px] w-[160px] rounded-[10px] object-cover shadow-hero-thumbnail"
           />
         ) : (
           <HeroImage>

@@ -9,16 +9,15 @@
  * `DocumentViewer` too, which is correct for the portal but would drag pdfjs
  * into the embed.
  *
- * `FloorPlanViewer` + `decodeFloorPlans` are the world-space 2D floor-plan
- * engine; they are pdfjs-free at runtime (the only pdfjs references under
- * `floorplan-core/` + `plugins/2d/` are comments/tests), so they belong here
- * for the embed's 2D/Split views.
+ * `decodeFloorPlans` is the pdfjs-free floor-plan artifact decoder — kept here so
+ * a future native/mobile 2D viewer can decode BIMFPLN2 plans without pulling
+ * pdfjs. (The web's 2D viewer is `DocumentViewer`, exported only from the main
+ * barrel because it pulls pdfjs.)
  *
  * Types are erased at build time, so the embed can keep importing them from the
  * main barrel with `import type` — only the runtime value must come from here.
  */
 export { IfcViewer } from './IfcViewer.js';
-export { FloorPlanViewer } from './FloorPlanViewer.js';
 export { decodeFloorPlans } from './plugins/3d/shared/floorplan-codec.js';
 
 // Raycast helper for custom plugins that need to hit-test the loaded models

@@ -180,15 +180,9 @@ export { documentPickPlugin } from './plugins/2d/document-pick/index.js';
 export { documentCameraPosePlugin } from './plugins/2d/camera-pose/index.js';
 export type { DocumentCameraPose } from './plugins/2d/camera-pose/index.js';
 
-// Floor-plan 2D viewer — reuses the world-space 2D engine to render a decoded
-// BIMFPLN2 plan (sibling to the PDF `DocumentViewer`).
-export { FloorPlanViewer } from './FloorPlanViewer.js';
-export type {
-  FloorPlanViewerProps,
-  FloorPlanViewerHandle,
-  FloorPlanActiveTool,
-} from './FloorPlanViewer.js';
-export { FloorPlanEngine } from './floorplan-core/FloorPlanEngine.js';
+// Floor-plan rendering is handled by `DocumentViewer` (pass the `floorPlan`
+// prop); the standalone `FloorPlanViewer` + `FloorPlanEngine` were removed. The
+// `floorplan` plugin draws the decoded BIMFPLN2 line work in the shared 2D scene.
 export { floorPlanPlugin } from './plugins/2d/floorplan/index.js';
 export type {
   FloorPlanPluginAPI,

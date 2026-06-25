@@ -56,6 +56,9 @@ export const ProjectFileSchema = z.object({
   content_type: z.string(),
   content_sha256: z.union([z.string(), z.null()]),
   ifc_project_guid: z.union([z.string(), z.null()]),
+  // Page count for PDF files (stamped during metadata extraction); null for
+  // IFC/other files and PDFs extracted before the field existed.
+  page_count: z.number().int().nullable().optional(),
   file_type: FileTypeEnum,
   ifc_schema: z.union([IfcSchemaEnum, z.null()]),
   status: ProjectFileStatusEnum,

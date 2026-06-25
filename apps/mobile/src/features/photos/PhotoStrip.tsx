@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 
+import { useT } from '@/i18n';
 import { colors, radii } from '@/theme';
 
 import type { CaptureSource } from './capture';
@@ -22,11 +23,12 @@ type Props = {
 
 /** Horizontal strip of photo thumbnails + an add button (camera / library). */
 export function PhotoStrip({ photos, onAdd, onRemove }: Props) {
+  const { t } = useT();
   const promptAdd = (): void => {
-    Alert.alert('Add photo', undefined, [
-      { text: 'Take photo', onPress: () => { onAdd('camera'); } },
-      { text: 'Choose from library', onPress: () => { onAdd('library'); } },
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('photos.addTitle'), undefined, [
+      { text: t('photos.takePhoto'), onPress: () => { onAdd('camera'); } },
+      { text: t('photos.chooseLibrary'), onPress: () => { onAdd('library'); } },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -51,7 +53,7 @@ export function PhotoStrip({ photos, onAdd, onRemove }: Props) {
           ) : null}
           {p.status === 'queued' ? (
             <View style={styles.queuedBadge}>
-              <Text style={styles.queuedText}>Queued</Text>
+              <Text style={styles.queuedText}>{t('photos.queued')}</Text>
             </View>
           ) : null}
           <Pressable style={styles.removeBtn} onPress={() => { onRemove(p.localId); }} hitSlop={8}>
@@ -61,7 +63,7 @@ export function PhotoStrip({ photos, onAdd, onRemove }: Props) {
       ))}
       <Pressable style={styles.addBtn} onPress={promptAdd}>
         <Text style={styles.addPlus}>＋</Text>
-        <Text style={styles.addLabel}>Photo</Text>
+        <Text style={styles.addLabel}>{t('photos.add')}</Text>
       </Pressable>
     </ScrollView>
   );

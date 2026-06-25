@@ -5,8 +5,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   unionBbox,
   type DecodedFloorPlans,
+  type DocumentViewerHandle,
   type EntityMarker2DData,
-  type FloorPlanViewerHandle,
   type ViewerHandle,
 } from '@bimdossier/viewer';
 
@@ -18,7 +18,7 @@ import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 import { elevationBand } from './elevationBand';
 
 interface FloorPlanFindingMarkersOptions {
-  fpHandle: FloorPlanViewerHandle | null;
+  fpHandle: DocumentViewerHandle | null;
   viewerHandle: ViewerHandle | null;
   viewerReady: boolean;
   projectId: string;

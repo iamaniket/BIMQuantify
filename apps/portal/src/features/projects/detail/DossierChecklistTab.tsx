@@ -37,7 +37,7 @@ const SOURCE_ICONS: Record<DossierRequirementResult['sourceKind'], typeof Check>
   attachment_slot: FileText,
   certificate_type: ShieldCheck,
   derived: SlidersHorizontal,
-  model: Box,
+  document: Box,
 };
 
 const OFFICE_ACCEPT = '.pdf,.docx,.xlsx,.pptx,.txt';
@@ -281,7 +281,7 @@ function DossierRow({
       {/* Drawings is model-backed: a button only when no model exists yet —
           it hands off to the Models tab to create one and upload files. Once
           any model is present the row just reflects met/processing state. */}
-      {req.sourceKind === 'model' && !req.fulfilled && !hasAnyModel && (
+      {req.sourceKind === 'document' && !req.fulfilled && !hasAnyModel && (
         <Button
           variant="primary"
           size="md"

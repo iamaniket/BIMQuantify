@@ -12,6 +12,7 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { I18nProvider } from '@/i18n';
 import { AuthProvider } from '@/providers/AuthProvider';
 import { OfflineProvider } from '@/providers/OfflineProvider';
 import { QueryProvider } from '@/providers/QueryProvider';
@@ -46,8 +47,10 @@ export default function RootLayout() {
         <QueryProvider>
           <AuthProvider>
             <OfflineProvider>
-              <Stack screenOptions={{ headerShown: false }} />
-              <StatusBar style="auto" />
+              <I18nProvider>
+                <Stack screenOptions={{ headerShown: false }} />
+                <StatusBar style="auto" />
+              </I18nProvider>
             </OfflineProvider>
           </AuthProvider>
         </QueryProvider>

@@ -6,7 +6,7 @@ import { useCallback, useId, type JSX } from 'react';
 
 import { Button, FormField, Input, Select, Textarea } from '@bimdossier/ui';
 
-import type { DocumentViewerHandle, FloorPlanViewerHandle, ViewerHandle } from '@bimdossier/viewer';
+import type { DocumentViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import { allowedMoveTargets } from '@/features/findings/board/kanbanTransitions';
 import type { ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
@@ -33,7 +33,7 @@ type Props = {
   /** Current viewport layout — routes IFC picks to the floor-plan in 2D mode. */
   viewMode?: ViewMode | undefined;
   /** Active 2D pick surface (generated floor plan OR aligned PDF) for picking in 2D mode. */
-  floorPlanHandle?: FloorPlanViewerHandle | DocumentViewerHandle | null | undefined;
+  floorPlanHandle?: DocumentViewerHandle | null | undefined;
   /** Convert a normalized plan point to a 3D world anchor. */
   convertFloorPlanPoint?: ConvertFloorPlanPoint | undefined;
 };

@@ -16,6 +16,7 @@ import {
   View,
 } from 'react-native';
 
+import { useT } from '@/i18n';
 import { colors, fonts, radii } from '@/theme';
 
 const FIELD_HEIGHT = 52;
@@ -78,6 +79,7 @@ export function LoginForm({
   onRequestAccess,
   titleSize = 28,
 }: LoginFormProps) {
+  const { t } = useT();
   const [focused, setFocused] = useState<'email' | 'password' | null>(null);
   const [remember, setRemember] = useState(true);
 
@@ -95,7 +97,7 @@ export function LoginForm({
             marginBottom: 8,
           }}
         >
-          Sign in
+          {t('login.form.eyebrow')}
         </Text>
         <Text
           style={{
@@ -106,15 +108,15 @@ export function LoginForm({
             color: colors.text,
           }}
         >
-          Welcome back.
+          {t('login.form.title')}
         </Text>
         <Text style={{ fontSize: 13.5, color: colors.textMuted, marginTop: 9, lineHeight: 20 }}>
-          Sign in to continue. New here?{' '}
+          {t('login.form.newHere')}
           <Text
             onPress={onRequestAccess}
             style={{ color: colors.primary, fontWeight: '600' }}
           >
-            Request access →
+            {t('login.form.requestAccess')}
           </Text>
         </Text>
       </View>
@@ -122,12 +124,12 @@ export function LoginForm({
       {/* Fields */}
       <View style={{ gap: 16 }}>
         <View>
-          <FieldLabel>Work email</FieldLabel>
+          <FieldLabel>{t('login.form.emailLabel')}</FieldLabel>
           <View style={[styles.inputRow, focused === 'email' && styles.inputRowFocused]}>
             <Ionicons name="mail-outline" size={18} color={colors.textMuted} />
             <TextInput
               style={styles.input}
-              placeholder="you@company.nl"
+              placeholder={t('login.form.emailPlaceholder')}
               placeholderTextColor={colors.placeholder}
               autoCapitalize="none"
               autoCorrect={false}
@@ -148,12 +150,12 @@ export function LoginForm({
             action={
               <Pressable onPress={onForgot} hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}>
                 <Text style={{ fontSize: 11.5, color: colors.primary, fontWeight: '600' }}>
-                  Forgot?
+                  {t('login.form.forgot')}
                 </Text>
               </Pressable>
             }
           >
-            Password
+            {t('login.form.passwordLabel')}
           </FieldLabel>
           <View style={[styles.inputRow, focused === 'password' && styles.inputRowFocused]}>
             <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} />
@@ -203,7 +205,7 @@ export function LoginForm({
             {remember ? <Ionicons name="checkmark" size={13} color={colors.onPrimary} /> : null}
           </View>
           <Text style={{ fontSize: 13.5, color: colors.textSecondary }}>
-            Keep me signed in on this device
+            {t('login.form.rememberMe')}
           </Text>
         </Pressable>
 
@@ -224,7 +226,7 @@ export function LoginForm({
             <ActivityIndicator color={colors.onPrimary} />
           ) : (
             <>
-              <Text style={styles.buttonText}>Sign in</Text>
+              <Text style={styles.buttonText}>{t('login.form.submit')}</Text>
               <Ionicons name="arrow-forward" size={18} color={colors.onPrimary} />
             </>
           )}

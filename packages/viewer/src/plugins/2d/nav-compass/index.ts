@@ -13,17 +13,38 @@ const NAME = 'nav-compass' as const;
 interface NavCompassPluginOptions {
   size?: number;
   locale?: NavCompassLocale;
+  /**
+   * Static true-north mode (degrees clockwise from up). When set, the dial is a
+   * non-interactive true-north indicator — it shows the building's north rather
+   * than page rotation, and the plugin has no `rotate` dependency. Used by the
+   * floor plan (which never rotates). When omitted, the dial is the interactive
+   * PDF page-rotation control as before.
+   */
+  northDeg?: number;
 }
 
 export function navCompassPlugin(options: NavCompassPluginOptions = {}): DocumentPlugin {
   let widget: NavCompassWidget | null = null;
   let unsubRotation: (() => void) | null = null;
+  const isStatic = options.northDeg !== undefined;
 
   return {
     name: NAME,
-    dependencies: ['rotate'],
+    // A static north dial drives no rotation, so it doesn't need the rotate plugin
+    // (which the floor plan never mounts). The PDF dial still owns rotate.to.
+    dependencies: isStatic ? [] : ['rotate'],
 
     install(ctx: DocumentContext): void {
+      if (options.northDeg !== undefined) {
+        widget = new NavCompassWidget({
+          size: options.size ?? 140,
+          locale: options.locale ?? 'nl',
+          northDeg: options.northDeg,
+        });
+        ctx.viewportOverlay.appendChild(widget.element);
+        return;
+      }
+
       widget = new NavCompassWidget({
         size: options.size ?? 140,
         locale: options.locale ?? 'nl',

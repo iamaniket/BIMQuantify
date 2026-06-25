@@ -5,7 +5,7 @@ import type React from 'react';
 import { type JSX } from 'react';
 
 import { Skeleton } from '@bimdossier/ui';
-import type { DocumentViewerHandle, FloorPlanViewerHandle, ViewerHandle } from '@bimdossier/viewer';
+import type { DocumentViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import { FloorPlanPane } from '@/features/viewer/2d/FloorPlanPane';
 import { type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
@@ -51,7 +51,7 @@ export interface IfcViewerCanvasProps {
   onFindingClick: (finding: Finding) => void;
   onRequestFloorPlanFindings: (view: 'findings') => void;
   /** Surface the active 2D handle (floor-plan OR aligned-sheet PDF) up so the Findings panel can pin on it (2D). */
-  onFpHandle?: ((handle: FloorPlanViewerHandle | DocumentViewerHandle | null) => void) | undefined;
+  onFpHandle?: ((handle: DocumentViewerHandle | null) => void) | undefined;
   /** Report the active storey elevation for the plan-pick → world conversion. */
   onFpActiveElevationChange?: ((elevation: number | null) => void) | undefined;
   /** The plan model's API UUID (owns storeys) — for the calibration pane + sheet substitution. */

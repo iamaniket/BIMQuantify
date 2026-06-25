@@ -26,6 +26,8 @@ import {
   type DocumentTool,
   type SearchHighlightState,
 } from './documentTypes.js';
+import type { DecodedFloorPlans, FloorPlanLevel } from '../plugins/3d/shared/floorplan-codec.js';
+import { unionBbox, type PlanBbox } from '../plugins/3d/shared/floorplanBbox.js';
 
 // Configure the pdf.js worker once at module load — same setup the old
 // monolithic DocumentViewer used.
@@ -84,6 +86,16 @@ export class DocumentEngine {
   private loadToken = 0;
   private renderToken = 0;
 
+  // Floor-plan (vector) source. When set, this engine renders a decoded
+  // BIMFPLN2 plan instead of a PDF: pages are storey levels, the page box is the
+  // STABLE union extent across all levels, and renderActive() emits a synthetic
+  // page:rendered (the floor-plan plugin draws the line work off it) rather than
+  // running the pdf.js raster path. One engine + one DocumentViewer serve both
+  // PDFs and floor plans (the standalone FloorPlanEngine was removed).
+  private floorPlanMode = false;
+  private floorPlanLevels: FloorPlanLevel[] = [];
+  private floorPlanUnionBox: PlanBbox | null = null;
+
   constructor(private readonly options: DocumentEngineOptions = {}) {}
 
   /** Wire the DOM nodes and register built-in + user plugins. */
@@ -133,6 +145,7 @@ export class DocumentEngine {
   // ---- Document lifecycle ----
 
   async load(fileUrl: string): Promise<void> {
+    this.floorPlanMode = false;
     await this.unloadDoc();
     const token = ++this.loadToken;
     try {
@@ -186,10 +199,57 @@ export class DocumentEngine {
     this.pageDims = null;
   }
 
+  /**
+   * Load a decoded floor plan as a vector "document": pages are storey levels,
+   * the page box is the STABLE union extent across all levels, and there is no
+   * raster (renderActive emits a synthetic page:rendered). The floor-plan plugin
+   * draws the active level's line work off that event. Synchronous (no
+   * network/pdf.js). MUST be called after `mount` so plugins exist to receive
+   * the events.
+   */
+  loadFloorPlan(data: DecodedFloorPlans): void {
+    this.floorPlanMode = true;
+    this.floorPlanLevels = data.levels;
+    this.floorPlanUnionBox = unionBbox(data.levels);
+    this.textContentCache.clear();
+    if (this.floorPlanUnionBox === null) {
+      // No geometry — nothing to render.
+      this.numPages = 0;
+      this.unscaledViewport = null;
+      this.pageDims = null;
+      this.events.emit('doc:loaded', { numPages: 0 });
+      return;
+    }
+    // The page box == unscaled page box (scale lives in the camera, not a
+    // raster). Both report the stable union extent so fit-page math works.
+    this.unscaledViewport = {
+      width: this.floorPlanUnionBox.maxX - this.floorPlanUnionBox.minX,
+      height: this.floorPlanUnionBox.maxY - this.floorPlanUnionBox.minY,
+    };
+    this.pageDims = this.unscaledViewport;
+    this.numPages = this.floorPlanLevels.length;
+    this.currentPage = Math.min(Math.max(1, this.currentPage), this.floorPlanLevels.length);
+    this.events.emit('doc:loaded', { numPages: this.floorPlanLevels.length });
+    this.emitRendered();
+  }
+
+  /** Synthetic page:rendered for the active level (floor-plan mode — no raster). */
+  private emitRendered(): void {
+    if (this.unscaledViewport === null) return;
+    this.events.emit('page:rendered', {
+      pageNumber: this.currentPage,
+      dims: this.unscaledViewport,
+      scale: this.scale,
+      rotation: this.rotation,
+    });
+  }
+
   // ---- State setters (idempotent; render + emit) ----
 
   setCurrentPage(pageNumber: number): void {
-    const max = this.doc?.numPages ?? Number.MAX_SAFE_INTEGER;
+    const max = this.floorPlanMode
+      ? (this.numPages || 1)
+      : (this.doc?.numPages ?? Number.MAX_SAFE_INTEGER);
     const safe = Math.min(Math.max(1, pageNumber), max);
     if (safe === this.currentPage) return;
     this.currentPage = safe;
@@ -202,10 +262,13 @@ export class DocumentEngine {
     if (next === this.scale) return;
     this.scale = next;
     this.events.emit('scale:change', { scale: next });
+    // Floor-plan mode: zoom lives in the camera, there is no raster to re-render.
+    if (this.floorPlanMode) return;
     void this.renderActive();
   }
 
   setRotation(rotation: DocumentRotation): void {
+    if (this.floorPlanMode) return; // plans are locked at rotation 0
     if (rotation === this.rotation) return;
     this.rotation = rotation;
     this.events.emit('rotation:change', { rotation });
@@ -226,6 +289,13 @@ export class DocumentEngine {
   // ---- Rendering (ported verbatim from the old DocumentViewer effect) ----
 
   private async renderActive(): Promise<void> {
+    // Floor-plan (vector) mode: no pdf.js raster. Re-emit the synthetic
+    // page:rendered the floor-plan plugin redraws off, then bail. Dims are the
+    // stable union box, so the camera frame doesn't jump on a level switch.
+    if (this.floorPlanMode) {
+      this.emitRendered();
+      return;
+    }
     const doc = this.doc;
     const canvas = this.canvas;
     const textLayerDiv = this.textLayerEl;
@@ -355,6 +425,9 @@ export class DocumentEngine {
       this.pluginManager = null;
     }
     await this.unloadDoc();
+    this.floorPlanMode = false;
+    this.floorPlanLevels = [];
+    this.floorPlanUnionBox = null;
     this.container = null;
     this.canvas = null;
     this.textLayerEl = null;

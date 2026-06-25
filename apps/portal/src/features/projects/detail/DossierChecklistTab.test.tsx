@@ -83,8 +83,8 @@ const TEMPLATE: JurisdictionDossierRequirement[] = [
     category: 'documents',
     label: 'Drawings',
     required: true,
-    source_kind: 'model',
-    source_value: 'models',
+    source_kind: 'document',
+    source_value: 'documents',
   },
   {
     code: 'structural-calculations',
@@ -159,22 +159,22 @@ describe('DossierChecklistTab', () => {
       isLoading: false,
     });
     renderTab();
-    expect(screen.getByText('1 document provided')).toBeInTheDocument();
+    expect(screen.getByText('1 proof provided')).toBeInTheDocument();
   });
 
   it('marks the drawings row fulfilled from a viewable model (no attachment)', () => {
     mockUseModelsWithVersions.mockReturnValue({ data: [VIEWABLE_MODEL] });
     renderTab();
     // Drawings is met by the processed model — no "Add model" CTA on the row.
-    expect(screen.queryByRole('button', { name: 'Add model' })).not.toBeInTheDocument();
-    expect(screen.getByText('1 document provided')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add document' })).not.toBeInTheDocument();
+    expect(screen.getByText('1 proof provided')).toBeInTheDocument();
   });
 
   it('shows Add model on the drawings row and navigates to Models when no model exists', () => {
     const onNavigate = vi.fn();
     renderTab(onNavigate);
 
-    const addModel = screen.getByRole('button', { name: 'Add model' });
+    const addModel = screen.getByRole('button', { name: 'Add document' });
     expect(addModel).toHaveAttribute('data-variant', 'primary');
     fireEvent.click(addModel);
     expect(onNavigate).toHaveBeenCalledTimes(1);
@@ -184,7 +184,7 @@ describe('DossierChecklistTab', () => {
     mockUseModelsWithVersions.mockReturnValue({ data: [PROCESSING_MODEL] });
     renderTab();
     // A model is present, so no button — but it isn't viewable yet, so missing.
-    expect(screen.queryByRole('button', { name: 'Add model' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add document' })).not.toBeInTheDocument();
     expect(screen.getAllByText('Missing').length).toBeGreaterThanOrEqual(1);
   });
 
@@ -205,7 +205,7 @@ describe('DossierChecklistTab', () => {
     renderTab();
 
     // The only attachment-slot row (structural calculations) carries the Link CTA.
-    fireEvent.click(screen.getAllByTitle('Link an existing document')[0]!);
+    fireEvent.click(screen.getAllByTitle('Link an existing proof')[0]!);
 
     // Dialog opens and lists the untagged document.
     expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -222,6 +222,6 @@ describe('DossierChecklistTab', () => {
 
     expect(screen.getByRole('button', { name: 'Upload' })).toHaveAttribute('data-variant', 'primary');
     expect(screen.getByRole('button', { name: 'Upload certificate' })).toHaveAttribute('data-variant', 'primary');
-    expect(screen.getByRole('button', { name: 'Add model' })).toHaveAttribute('data-variant', 'primary');
+    expect(screen.getByRole('button', { name: 'Add document' })).toHaveAttribute('data-variant', 'primary');
   });
 });

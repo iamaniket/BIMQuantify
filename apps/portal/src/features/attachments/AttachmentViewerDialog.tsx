@@ -341,7 +341,7 @@ export function AttachmentViewerDialog({
   metaGroups.push({ title: t('viewerGroupOrigin'), rows: originRows });
 
   const annotatePreview = editor.ready ? (
-    <div className="h-full w-full bg-[#101316]">{editor.canvas}</div>
+    <div className="h-full w-full bg-[var(--viewer-canvas-bg)]">{editor.canvas}</div>
   ) : (
     <div className="flex h-full items-center justify-center">
       {editor.failed ? (

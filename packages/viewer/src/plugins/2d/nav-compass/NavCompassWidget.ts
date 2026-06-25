@@ -54,10 +54,18 @@ const LABELS: Record<NavCompassLocale, NavCompassLabels> = {
 export interface NavCompassWidgetOptions {
   size: number;
   locale: NavCompassLocale;
-  /** Cardinal click + drag-release commit. */
-  onRotateTo: (rotation: DocumentRotation) => void;
-  /** Center home button → reset to 0°. */
-  onHome: () => void;
+  /** Cardinal click + drag-release commit. Omit for a static north compass. */
+  onRotateTo?: (rotation: DocumentRotation) => void;
+  /** Center home button → reset to 0°. Omit for a static north compass. */
+  onHome?: () => void;
+  /**
+   * Static true-north mode: when set, the widget is non-interactive and the
+   * whole rose (North pointer + cardinals) is oriented so N points at this
+   * bearing (degrees clockwise from up). Used by the floor plan, which never
+   * rotates — so the dial shows the building's true north rather than page
+   * rotation. The center readout shows the bearing.
+   */
+  northDeg?: number;
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -93,10 +101,14 @@ export class NavCompassWidget {
 
   private readonly svg: SVGSVGElement;
   private readonly dial: SVGGElement;
+  private cardinalsGroup: SVGGElement | null = null;
   private readonly readout: SVGTextElement;
   private readonly cardinalText = new Map<Cardinal, SVGTextElement>();
 
   private readonly cleanups: Array<() => void> = [];
+
+  /** Static true-north mode (non-interactive; the rose points at a fixed bearing). */
+  private readonly isStatic: boolean;
 
   private rotation: DocumentRotation = 0;
 
@@ -116,6 +128,7 @@ export class NavCompassWidget {
     this.size = options.size;
     this.cx = options.size / 2;
     this.cy = options.size / 2;
+    this.isStatic = options.northDeg !== undefined;
 
     this.element = document.createElement('div');
     this.element.dataset.navCompass = 'true';
@@ -127,19 +140,25 @@ export class NavCompassWidget {
     this.buildFace();
     this.dial = this.buildDial();
     this.svg.appendChild(this.dial);
-    this.buildCardinals();
+    this.cardinalsGroup = this.buildCardinals();
     this.readout = this.buildReadout();
     this.svg.appendChild(this.readout);
 
-    this.element.appendChild(this.buildHomeButton());
-
-    this.attachRingHandlers();
-    this.applyRotation(0);
+    if (this.isStatic) {
+      // Non-interactive true-north dial: no ring drag / home button, cursor
+      // stays default, and the rose is oriented to the bearing once.
+      this.svg.style.cursor = 'default';
+      this.applyRotation(options.northDeg ?? 0);
+    } else {
+      this.element.appendChild(this.buildHomeButton());
+      this.attachRingHandlers();
+      this.applyRotation(0);
+    }
   }
 
   /** Reflect the engine's rotation. No-ops mid-drag so the echo can't fight the preview. */
   syncTo(rotation: DocumentRotation): void {
-    if (this.disposed || this.ringDragging) return;
+    if (this.disposed || this.ringDragging || this.isStatic) return;
     this.rotation = rotation;
     this.applyRotation(rotation);
   }
@@ -218,7 +237,7 @@ export class NavCompassWidget {
     return g;
   }
 
-  private buildCardinals(): void {
+  private buildCardinals(): SVGGElement {
     const g = svgEl('g', {});
     const r = this.size * 0.38;
     const positions: { c: Cardinal; x: number; y: number }[] = [
@@ -230,10 +249,10 @@ export class NavCompassWidget {
     for (const p of positions) {
       const node = svgEl('g', {});
       node.dataset.cardinal = p.c;
-      node.style.cursor = 'pointer';
 
       const hit = svgEl('circle', { cx: p.x, cy: p.y, r: this.size * 0.1, fill: 'transparent' });
-      hit.style.pointerEvents = 'all';
+      // Static mode is non-interactive — the cardinals must not eat pointer events.
+      hit.style.pointerEvents = this.isStatic ? 'none' : 'all';
 
       const text = svgEl('text', {
         x: p.x,
@@ -253,6 +272,9 @@ export class NavCompassWidget {
       g.appendChild(node);
       this.cardinalText.set(p.c, text);
 
+      if (this.isStatic) continue; // no snap/hover wiring on a static dial
+
+      node.style.cursor = 'pointer';
       const onDown = (ev: PointerEvent): void => ev.stopPropagation();
       const onEnter = (): void => {
         if (rotationToCardinal(this.rotation) !== p.c) text.setAttribute('fill', HOVER);
@@ -264,7 +286,7 @@ export class NavCompassWidget {
           this.dragMoved = false;
           return;
         }
-        this.options.onRotateTo(cardinalToRotation(p.c));
+        this.options.onRotateTo?.(cardinalToRotation(p.c));
       };
       node.addEventListener('pointerdown', onDown);
       node.addEventListener('pointerenter', onEnter);
@@ -278,6 +300,7 @@ export class NavCompassWidget {
       });
     }
     this.svg.appendChild(g);
+    return g;
   }
 
   private buildReadout(): SVGTextElement {
@@ -330,7 +353,7 @@ export class NavCompassWidget {
     };
     const onClick = (ev: MouseEvent): void => {
       ev.stopPropagation();
-      this.options.onHome();
+      this.options.onHome?.();
     };
     btn.addEventListener('pointerenter', onEnter);
     btn.addEventListener('pointerleave', onLeave);
@@ -346,7 +369,19 @@ export class NavCompassWidget {
   // ─── rotation rendering ──────────────────────────────────────────
 
   private applyRotation(deg: number): void {
-    this.dial.setAttribute('transform', `rotate(${String(deg)} ${String(this.cx)} ${String(this.cy)})`);
+    const transform = `rotate(${String(deg)} ${String(this.cx)} ${String(this.cy)})`;
+    this.dial.setAttribute('transform', transform);
+    if (this.isStatic) {
+      // True-north dial: the whole rose (pointer + cardinals) turns to the
+      // bearing; the upright readout shows it. North is emphasized.
+      this.cardinalsGroup?.setAttribute('transform', transform);
+      const norm = (((Math.round(deg) % 360) + 360) % 360);
+      this.readout.textContent = `${String(norm)}°`;
+      for (const c of ['N', 'E', 'S', 'W'] as Cardinal[]) {
+        this.cardinalText.get(c)?.setAttribute('fill', c === 'N' ? ACCENT : TEXT_COLOR);
+      }
+      return;
+    }
     const snap = snapToQuarter(deg);
     this.readout.textContent = rotationLabel(snap);
     const active = rotationToCardinal(snap);
@@ -405,7 +440,7 @@ export class NavCompassWidget {
       const snapped = snapToQuarter(this.previewDeg);
       this.rotation = snapped; // optimistic; the rotation:change echo reconciles
       this.applyRotation(snapped);
-      this.options.onRotateTo(snapped);
+      this.options.onRotateTo?.(snapped);
     };
     this.svg.addEventListener('pointerdown', onDown);
     this.svg.addEventListener('pointermove', onMove);

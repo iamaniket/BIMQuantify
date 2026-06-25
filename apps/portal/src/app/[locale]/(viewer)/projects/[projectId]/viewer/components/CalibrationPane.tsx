@@ -35,7 +35,6 @@ import { useAlignedSheets } from '@/features/aligned-sheets/hooks';
 import { useSheetCalibration } from '@/features/aligned-sheets/useSheetCalibration';
 import { documentsWithVersionsKey } from '@/features/documents/queryKeys';
 import { useStoreys } from '@/features/storeys/useStoreys';
-import { useCalibrationEntryCamera } from '@/features/viewer/2d/useCalibrationEntryCamera';
 import { useFloorPlanData } from '@/features/viewer/2d/useFloorPlanData';
 import { buildStoreyMembership } from '@/features/viewer/3d/minimap/storeyMembership';
 import { useViewerBundle } from '@/features/viewer/shared/useViewerBundle';
@@ -150,9 +149,10 @@ export function CalibrationPane({
   // disables Start (the sheet write requires a level id).
   const selectedLevelId = selectedStorey?.level_id ?? null;
 
-  // Orient the 3D pane to a top-down orthographic view to match the flat 2D PDF
-  // (restores the prior projection + nav mode when leaving calibration).
-  useCalibrationEntryCamera({ viewerHandle, viewerReady });
+  // Note: entering calibration intentionally leaves the 3D camera as-is (no
+  // forced top-down orthographic view). Model picks are projected through
+  // `minimap.projectPoint` as exact 3D world points, so the alignment math is
+  // independent of camera orientation.
 
   // Calibrate the minimap here too — in calibration mode neither the Split pane
   // nor the minimap pop-out is mounted, so without this `minimap.projectPoint`

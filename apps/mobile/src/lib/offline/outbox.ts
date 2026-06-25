@@ -118,6 +118,13 @@ export async function resetFailedToPending(): Promise<void> {
   );
 }
 
+/** Drop conflicted entries — the server version already won (the cache was
+ * overwritten with server state when the conflict was detected). */
+export async function clearConflicted(): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("DELETE FROM outbox WHERE status = 'conflicted'");
+}
+
 // --- sync_meta: small durable key/value used for the temp-photo-id → real
 // attachment-id map (so a create can resolve its photos across sync passes). ---
 

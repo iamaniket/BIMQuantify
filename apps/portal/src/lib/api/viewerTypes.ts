@@ -43,6 +43,13 @@ export type ModelMetadata = {
     max: [number, number, number];
   } | null;
   totalElements: number;
+  /**
+   * Building true north, radians clockwise from plan-up, projected into the
+   * floor-plan axes by the processor. Drives the static north compass on the 2D
+   * plan. Absent for non-IFC files and models extracted before this field
+   * existed (re-extraction populates it).
+   */
+  trueNorth?: number;
 };
 
 export type PropertyValue = string | number | boolean | null;

@@ -16,6 +16,7 @@ import type {
 
 import { Ionicons } from '@expo/vector-icons';
 
+import { useT } from '@/i18n';
 import {
   hostMessageToInjectedJs,
   parseClientMessage,
@@ -32,14 +33,15 @@ import { useAuth } from '@/providers/AuthProvider';
 import { colors } from '@/theme';
 
 /**
- * Phase C: the embedded 3D viewer. A react-native-webview hosts the
- * apps/viewer-embed bundle; native fetches the (token-gated) viewer bundle and
- * pushes the presigned URLs down the bridge, so the WebView stays stateless and
- * tokenless. Pin taps and placed points come back up as bridge messages —
- * wired to the (Phase D) finding flows where the TODOs are.
+ * The embedded 3D viewer. A react-native-webview hosts the apps/viewer-embed
+ * bundle; native fetches the (token-gated) viewer bundle and pushes the presigned
+ * URLs down the bridge, so the WebView stays stateless and tokenless. Pin taps
+ * open the finding detail; placed points open the create form pre-anchored (see
+ * onMessage).
  */
 export default function ViewerScreen() {
   const router = useRouter();
+  const { t } = useT();
   const { tokens } = useAuth();
   const { projectId, modelId, fileId } = useLocalSearchParams<{
     projectId: string;
@@ -184,7 +186,7 @@ export default function ViewerScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: 'Viewer',
+          title: t('viewer.title'),
           headerStyle: { backgroundColor: colors.primary },
           headerTintColor: colors.onPrimary,
           headerTitleStyle: { fontWeight: '700' },
@@ -214,11 +216,8 @@ export default function ViewerScreen() {
 
       {embedSource === null ? (
         <View style={styles.centered}>
-          <Text style={styles.title}>Viewer not configured</Text>
-          <Text style={styles.muted}>
-            Set EXPO_PUBLIC_VIEWER_EMBED_URL to a served build of apps/viewer-embed
-            to load the 3D model here.
-          </Text>
+          <Text style={styles.title}>{t('viewer.notConfigured')}</Text>
+          <Text style={styles.muted}>{t('viewer.notConfiguredBody')}</Text>
         </View>
       ) : (
         <>
@@ -242,41 +241,39 @@ export default function ViewerScreen() {
 
           {webCrashed ? (
             <View style={styles.overlay}>
-              <Text style={styles.title}>Renderer crashed</Text>
-              <Text style={styles.muted}>
-                The 3D viewer ran out of memory or was terminated by the OS.
-              </Text>
+              <Text style={styles.title}>{t('viewer.rendererCrashed')}</Text>
+              <Text style={styles.muted}>{t('viewer.rendererCrashedBody')}</Text>
               <TouchableOpacity style={styles.reloadBtn} onPress={handleReload}>
-                <Text style={styles.reloadText}>Tap to reload</Text>
+                <Text style={styles.reloadText}>{t('viewer.tapReload')}</Text>
               </TouchableOpacity>
             </View>
           ) : bundleError ? (
             <View style={styles.overlay}>
-              <Text style={styles.title}>Couldn't load the model</Text>
+              <Text style={styles.title}>{t('viewer.loadFailed')}</Text>
               <Text style={styles.muted}>
                 {online
-                  ? (bundleQuery.error?.message ?? 'Please try again.')
-                  : 'Save this model for offline use while you have a connection.'}
+                  ? (bundleQuery.error?.message ?? t('viewer.loadFailedOnline'))
+                  : t('viewer.loadFailedOffline')}
               </Text>
             </View>
           ) : effectiveBundle === null && !bundleQuery.isLoading ? (
             <View style={styles.overlay}>
-              <Text style={styles.title}>Not viewable</Text>
-              <Text style={styles.muted}>This file has no 3D model to display.</Text>
+              <Text style={styles.title}>{t('viewer.notViewable')}</Text>
+              <Text style={styles.muted}>{t('viewer.notViewableBody')}</Text>
             </View>
           ) : viewerError !== null ? (
             <View style={styles.overlay}>
-              <Text style={styles.title}>Viewer error</Text>
+              <Text style={styles.title}>{t('viewer.error')}</Text>
               <Text style={styles.muted}>{viewerError}</Text>
               <TouchableOpacity style={styles.reloadBtn} onPress={handleReload}>
-                <Text style={styles.reloadText}>Tap to retry</Text>
+                <Text style={styles.reloadText}>{t('viewer.tapRetry')}</Text>
               </TouchableOpacity>
             </View>
           ) : showLoading ? (
             <View style={styles.overlay} pointerEvents="none">
               <ActivityIndicator color={colors.primary} />
               <Text style={styles.muted}>
-                {bundleQuery.isLoading ? 'Loading model…' : 'Rendering…'}
+                {bundleQuery.isLoading ? t('viewer.loadingModel') : t('viewer.rendering')}
               </Text>
             </View>
           ) : null}
@@ -300,19 +297,20 @@ function PinToggle({
   onPin: () => void;
   onUnpin: () => void;
 }) {
+  const { t } = useT();
   if (busy) {
     return <ActivityIndicator color={colors.onPrimary} size="small" style={styles.pinBtn} />;
   }
   if (pinned) {
     return (
-      <TouchableOpacity style={styles.pinBtn} onPress={onUnpin} accessibilityLabel="Remove offline download">
+      <TouchableOpacity style={styles.pinBtn} onPress={onUnpin} accessibilityLabel={t('viewer.removeOffline')}>
         <Ionicons name="checkmark-circle" size={22} color={colors.onPrimary} />
       </TouchableOpacity>
     );
   }
   if (!canPin) return null;
   return (
-    <TouchableOpacity style={styles.pinBtn} onPress={onPin} accessibilityLabel="Save for offline">
+    <TouchableOpacity style={styles.pinBtn} onPress={onPin} accessibilityLabel={t('viewer.saveOffline')}>
       <Ionicons name="cloud-download-outline" size={22} color={colors.onPrimary} />
     </TouchableOpacity>
   );

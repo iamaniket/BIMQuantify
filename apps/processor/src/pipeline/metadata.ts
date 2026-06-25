@@ -93,6 +93,13 @@ export type Metadata = {
     max: [number, number, number];
   } | null;
   totalElements: number;
+  /**
+   * Building true north as a bearing in the floor-plan frame: radians CLOCKWISE
+   * from plan-up (+planAxisY). Projected from IfcGeometricRepresentationContext
+   * .TrueNorth by `extractTrueNorth`. Absent when the model declares no TrueNorth
+   * or the plan isn't in the world XY plane. Drives the 2D plan's north compass.
+   */
+  trueNorth?: number;
 };
 
 export async function buildMetadata(

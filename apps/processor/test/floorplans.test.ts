@@ -1,12 +1,13 @@
 import { gzipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
-import { IFCBUILDINGSTOREY, IFCSPACE } from 'web-ifc';
+import { IFCBUILDINGSTOREY, IFCGEOMETRICREPRESENTATIONCONTEXT, IFCSPACE } from 'web-ifc';
 
 import {
   buildFloorPlans,
   type DecodedFloorPlans,
   decodeFloorPlans,
   encodeFloorPlans,
+  extractTrueNorth,
   type FloorPlanElement,
   metresPerUnit,
   resolveUpAxis,
@@ -383,6 +384,54 @@ describe('resolveUpAxis', () => {
       upAxis: 2,
       method: 'histogram',
     });
+  });
+});
+
+describe('extractTrueNorth', () => {
+  // Mock an IfcAPI exposing only the geometric-representation contexts the
+  // function reads (GetLineIDsWithType + GetLine, flatten=true).
+  const makeContextApi = (
+    contexts: { TrueNorth: { DirectionRatios: unknown[] } | null }[],
+  ): never =>
+    ({
+      GetLineIDsWithType: (_m: number, code: number) =>
+        code === IFCGEOMETRICREPRESENTATIONCONTEXT
+          ? vec(contexts.map((_, i) => i + 1))
+          : vec<number>([]),
+      GetLine: (_m: number, id: number) => contexts[id - 1],
+    }) as never;
+
+  it('returns 0 (north up) when TrueNorth points world +Y on a Z-up plan', () => {
+    const api = makeContextApi([{ TrueNorth: { DirectionRatios: [0, 1] } }]);
+    expect(extractTrueNorth(api, 0, 0, 1)).toBeCloseTo(0, 6);
+  });
+
+  it('maps TrueNorth +X to +90° (east is clockwise from up)', () => {
+    const api = makeContextApi([{ TrueNorth: { DirectionRatios: [1, 0] } }]);
+    expect(extractTrueNorth(api, 0, 0, 1)).toBeCloseTo(Math.PI / 2, 6);
+  });
+
+  it('handles a 45° north and {value}-wrapped ratios', () => {
+    const api = makeContextApi([{ TrueNorth: { DirectionRatios: [{ value: 1 }, { value: 1 }] } }]);
+    expect(extractTrueNorth(api, 0, 0, 1)).toBeCloseTo(Math.PI / 4, 6);
+  });
+
+  it('returns null when no context declares a TrueNorth', () => {
+    const api = makeContextApi([{ TrueNorth: null }, { TrueNorth: null }]);
+    expect(extractTrueNorth(api, 0, 0, 1)).toBeNull();
+  });
+
+  it('uses the first context that declares a TrueNorth', () => {
+    const api = makeContextApi([
+      { TrueNorth: null },
+      { TrueNorth: { DirectionRatios: [1, 0] } },
+    ]);
+    expect(extractTrueNorth(api, 0, 0, 1)).toBeCloseTo(Math.PI / 2, 6);
+  });
+
+  it('returns null on a non-XY plan (Y-up: planAxisY = 2)', () => {
+    const api = makeContextApi([{ TrueNorth: { DirectionRatios: [1, 0] } }]);
+    expect(extractTrueNorth(api, 0, 0, 2)).toBeNull();
   });
 });
 

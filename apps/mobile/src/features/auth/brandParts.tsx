@@ -25,6 +25,7 @@ import Svg, {
   Stop,
 } from 'react-native-svg';
 
+import { useT } from '@/i18n';
 import { GridTexture } from '@/components/GridTexture';
 import { brand, colors, fonts } from '@/theme';
 
@@ -210,8 +211,12 @@ export function WkbPill({ fontSize = 9, text }: { fontSize?: number; text: strin
 }
 
 // ── Hero headline (Fraunces, italic accent words) ──────────────────────────
+// The localized string wraps accent words in *asterisks*; we split on them so the
+// italic-blue treatment lands on the right words in any language's word order.
 export function Headline({ fontSize, lineHeight = 1.04 }: { fontSize: number; lineHeight?: number }) {
+  const { t } = useT();
   const accent = { fontFamily: fonts.displayItalic, color: brand.accentBlue };
+  const segments = t('login.hero.headline').split(/\*(.+?)\*/);
   return (
     <Text
       style={{
@@ -222,18 +227,21 @@ export function Headline({ fontSize, lineHeight = 1.04 }: { fontSize: number; li
         letterSpacing: -fontSize * 0.02,
       }}
     >
-      Stitch your <Text style={accent}>models</Text>, <Text style={accent}>issues</Text> and{' '}
-      <Text style={accent}>dossier</Text> into one Quality Assurance in Construction Act (Wkb)
-      record.
+      {segments.map((seg, i) => (
+        // Odd indices are the captured (accented) words; even indices are plain.
+        <Text key={i} style={i % 2 === 1 ? accent : undefined}>
+          {seg}
+        </Text>
+      ))}
     </Text>
   );
 }
 
 export function SubCopy({ fontSize = 12.5, maxWidth }: { fontSize?: number; maxWidth?: number }) {
+  const { t } = useT();
   return (
     <Text style={{ fontSize, color: 'rgba(255,255,255,0.74)', lineHeight: fontSize * 1.55, maxWidth }}>
-      Federated IFC review, automated Bouwbesluit checks and a delivery-ready consumentendossier —
-      for builders working under the Quality Assurance in Construction Act (Wkb).
+      {t('login.hero.subcopy')}
     </Text>
   );
 }
@@ -299,14 +307,16 @@ export function KpiStrip({ items, scale = 1 }: { items: readonly Kpi[]; scale?: 
   );
 }
 
-// ── Form-sheet status row ("● All systems normal" / "dev · local") ──────────
+// ── Form-sheet status row ("● {status} · dev · local") ──────────────────────
+// `label` is required: the caller resolves it from t('login.statusRow.*'), so no
+// English string is ever hardcoded here (bilingual rule).
 export function StatusRow({
   statusColor = colors.success,
-  label = 'All systems normal',
+  label,
   tail = 'dev · local',
 }: {
   statusColor?: string;
-  label?: string;
+  label: string;
   tail?: string;
 }) {
   return (
@@ -321,11 +331,11 @@ export function StatusRow({
 }
 
 // ── Legal footer (links open the web portal) ────────────────────────────────
-const LEGAL_LINKS: ReadonlyArray<{ path: string; label: string }> = [
-  { path: '/legal/privacy', label: 'Privacy policy' },
-  { path: '/legal/terms', label: 'Terms of service' },
-  { path: '/legal/dpa', label: 'DPA' },
-];
+const LEGAL_LINKS = [
+  { path: '/legal/privacy', key: 'login.footer.privacy' },
+  { path: '/legal/terms', key: 'login.footer.terms' },
+  { path: '/legal/dpa', key: 'login.footer.dpa' },
+] as const;
 
 export function FooterLinks({
   stacked = false,
@@ -338,6 +348,7 @@ export function FooterLinks({
   wkb?: string;
   webBaseUrl: string;
 }) {
+  const { t } = useT();
   return (
     <View
       style={{
@@ -359,7 +370,7 @@ export function FooterLinks({
               void Linking.openURL(`${webBaseUrl}${l.path}`);
             }}
           >
-            <Text style={{ fontSize: 11.5, color: colors.textSecondary }}>{l.label}</Text>
+            <Text style={{ fontSize: 11.5, color: colors.textSecondary }}>{t(l.key)}</Text>
           </Pressable>
         ))}
       </View>

@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { AppState } from 'react-native';
 
-import { listActive, resetFailedToPending } from '@/lib/offline/outbox';
+import { clearConflicted, listActive, resetFailedToPending } from '@/lib/offline/outbox';
 import { syncEngine, type SyncState } from '@/lib/offline/sync';
 import type { OutboxEntry } from '@/lib/offline/types';
 import { useAuth } from '@/providers/AuthProvider';
@@ -20,13 +20,15 @@ type OfflineValue = {
   /** Every not-yet-synced outbox entry, for badges and the status chip. */
   pending: OutboxEntry[];
   syncState: SyncState;
-  counts: { pending: number; failed: number };
+  counts: { pending: number; failed: number; conflicted: number };
   /** Reload the pending snapshot from the DB. */
   refresh: () => Promise<void>;
   /** Kick a sync pass now (no-op if offline / already syncing). */
   syncNow: () => void;
   /** Re-arm failed entries and sync. */
   retryFailed: () => Promise<void>;
+  /** Drop conflicted entries (server already won). */
+  clearConflicts: () => Promise<void>;
 };
 
 const OfflineContext = createContext<OfflineValue | null>(null);
@@ -61,6 +63,11 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     syncEngine.run().catch(() => undefined);
   }, [refresh]);
 
+  const clearConflicts = useCallback(async (): Promise<void> => {
+    await clearConflicted();
+    await refresh();
+  }, [refresh]);
+
   useEffect(() => {
     syncEngine.configure(
       () => tokenRef.current,
@@ -87,14 +94,15 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const counts = useMemo(
     () => ({
       pending: pending.filter((e) => e.status === 'pending' || e.status === 'syncing').length,
-      failed: pending.filter((e) => e.status === 'failed' || e.status === 'conflicted').length,
+      failed: pending.filter((e) => e.status === 'failed').length,
+      conflicted: pending.filter((e) => e.status === 'conflicted').length,
     }),
     [pending],
   );
 
   const value = useMemo<OfflineValue>(
-    () => ({ pending, syncState, counts, refresh, syncNow, retryFailed }),
-    [pending, syncState, counts, refresh, syncNow, retryFailed],
+    () => ({ pending, syncState, counts, refresh, syncNow, retryFailed, clearConflicts }),
+    [pending, syncState, counts, refresh, syncNow, retryFailed, clearConflicts],
   );
 
   return <OfflineContext.Provider value={value}>{children}</OfflineContext.Provider>;

@@ -1,13 +1,15 @@
 import type { CapturedPhoto } from '@/features/photos/capture';
-import type { FindingCreateInput } from '@/lib/api/schemas/findings';
+import type { FindingCreateInput, FindingUpdateInput } from '@/lib/api/schemas/findings';
 
-// Outbox model. v1 exercises `create_finding` + `upload_photo`; update/delete
-// are reserved so the schema + engine extend without a migration.
+// Outbox model. v1 exercises `create_finding` + `update_finding` + `upload_photo`;
+// `delete_finding` is reserved so the schema + engine extend without a migration.
 export type OutboxKind = 'create_finding' | 'update_finding' | 'delete_finding' | 'upload_photo';
 
 export type OutboxStatus = 'pending' | 'syncing' | 'failed' | 'conflicted' | 'succeeded';
 
 export type CreateFindingPayload = { input: FindingCreateInput };
+
+export type UpdateFindingPayload = { findingId: string; input: FindingUpdateInput };
 
 export type UploadPhotoPayload = { photo: CapturedPhoto };
 

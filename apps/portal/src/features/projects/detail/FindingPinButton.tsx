@@ -8,7 +8,6 @@ import { Button } from '@bimdossier/ui';
 
 import type {
   DocumentViewerHandle,
-  FloorPlanViewerHandle,
   ViewerHandle,
 } from '@bimdossier/viewer';
 
@@ -49,7 +48,7 @@ type Props = {
   /** Current viewport layout — routes IFC picks to the floor-plan in 2D mode. */
   viewMode?: ViewMode | undefined;
   /** Active 2D pick surface (generated floor plan OR aligned PDF) — used for the pick in `2d` view mode. */
-  floorPlanHandle?: FloorPlanViewerHandle | DocumentViewerHandle | null | undefined;
+  floorPlanHandle?: DocumentViewerHandle | null | undefined;
   /** Convert a normalized plan point (from the 2D pick) to a 3D world anchor. */
   convertFloorPlanPoint?: ConvertFloorPlanPoint | undefined;
   disabled?: boolean | undefined;

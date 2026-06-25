@@ -1,36 +1,48 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useT } from '@/i18n';
 import { useOffline } from '@/providers/OfflineProvider';
 
 /** Floating pill (bottom-right, above the offline banner) summarising sync work:
- * "N pending" / "Syncing N" / "N failed — retry". Hidden when there's nothing. */
+ * "N conflicts" / "N failed — retry" / "Syncing N" / "N pending". Hidden when
+ * there's nothing to show. */
 export function SyncStatusChip() {
-  const { syncState, counts, syncNow, retryFailed } = useOffline();
+  const { t } = useT();
+  const { syncState, counts, syncNow, retryFailed, clearConflicts } = useOffline();
   const insets = useSafeAreaInsets();
 
+  const hasConflicts = counts.conflicted > 0;
   const hasFailed = counts.failed > 0;
   const busy = syncState === 'syncing';
-  if (!hasFailed && counts.pending === 0 && !busy) return null;
+  if (!hasConflicts && !hasFailed && counts.pending === 0 && !busy) return null;
 
-  const label = hasFailed
-    ? `${String(counts.failed)} failed — retry`
-    : busy
-      ? `Syncing ${String(counts.pending)}`
-      : `${String(counts.pending)} pending`;
+  const tone = hasConflicts || hasFailed ? styles.alert : null;
+  const label = hasConflicts
+    ? t('offline.conflicts', { count: counts.conflicted })
+    : hasFailed
+      ? t('offline.failed', { count: counts.failed })
+      : busy
+        ? t('offline.syncing', { count: counts.pending })
+        : t('offline.pending', { count: counts.pending });
+
+  const onPress = (): void => {
+    if (hasConflicts) {
+      Alert.alert(t('offline.conflictTitle'), t('offline.conflictBody'), [
+        { text: t('common.close'), onPress: () => { void clearConflicts(); } },
+      ]);
+    } else if (hasFailed) {
+      void retryFailed();
+    } else {
+      syncNow();
+    }
+  };
 
   return (
-    <Pressable
-      onPress={() => {
-        if (hasFailed) {
-          void retryFailed();
-        } else {
-          syncNow();
-        }
-      }}
-      style={[styles.chip, hasFailed ? styles.failed : null, { bottom: insets.bottom + 56 }]}
-    >
-      {busy && !hasFailed ? <ActivityIndicator size="small" color="#ffffff" /> : null}
+    <Pressable onPress={onPress} style={[styles.chip, tone, { bottom: insets.bottom + 56 }]}>
+      {busy && !hasConflicts && !hasFailed ? (
+        <ActivityIndicator size="small" color="#ffffff" />
+      ) : null}
       <Text style={styles.text}>{label}</Text>
     </Pressable>
   );
@@ -48,6 +60,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: '#334155',
   },
-  failed: { backgroundColor: '#b91c1c' },
+  alert: { backgroundColor: '#b91c1c' },
   text: { color: '#ffffff', fontSize: 12, fontWeight: '700' },
 });

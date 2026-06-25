@@ -25,7 +25,12 @@ import { SingleThreadedFragmentsModel } from '@thatopen/fragments';
 
 import { logger } from '../log.js';
 import { detectContentKind, shouldGenerateFloorPlan } from './classify.js';
-import { encodeFloorPlans, scanModelGeometry, sliceFloorPlans } from './floorplans.js';
+import {
+  encodeFloorPlans,
+  extractTrueNorth,
+  scanModelGeometry,
+  sliceFloorPlans,
+} from './floorplans.js';
 import { generateFragments } from './fragments.js';
 import { closeModel, getIfcApi, openModel } from './ifc.js';
 import { buildMetadata, extractStoreys } from './metadata.js';
@@ -220,6 +225,10 @@ async function runWalk(port: MessagePort, bytes: Uint8Array): Promise<void> {
       logger,
     );
     metadata.bbox = scan.bbox;
+    // True north for the 2D plan's compass — projected into the same plan axes
+    // the slice uses. Cheap (a couple of context lines); null leaves it off.
+    const trueNorth = extractTrueNorth(ifcApi, opened.modelID, scan.planAxisX, scan.planAxisY);
+    if (trueNorth !== null) metadata.trueNorth = trueNorth;
     let floorPlansBytes: Uint8Array | null = null;
     if (shouldGenerateFloorPlan(detectedKind)) {
       try {

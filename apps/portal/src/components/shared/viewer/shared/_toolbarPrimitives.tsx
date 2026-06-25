@@ -73,7 +73,9 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 function buttonClassName(disabled: boolean | undefined, isActive: boolean): string {
   if (disabled) return 'cursor-not-allowed text-foreground/20';
   if (isActive) return 'bg-primary text-primary-foreground shadow-sm';
-  return 'text-foreground/55 hover:bg-foreground/[0.06] hover:text-foreground/90 active:scale-[0.94]';
+  // Inactive buttons use the solid foreground color (black in light, white in
+  // dark) with a faint hover surface.
+  return 'text-foreground hover:bg-foreground/[0.06] active:scale-[0.94]';
 }
 
 function ToolButtonInner(

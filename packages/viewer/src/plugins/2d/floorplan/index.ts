@@ -3,7 +3,7 @@
  * in the shared 2D scene, so the whole 2D annotation stack (camera / measure /
  * entity-marker) runs over a storey plan exactly as it does over a PDF page.
  *
- * World space here is the `FloorPlanEngine`'s synthetic page box: the UNION
+ * World space here is the engine's synthetic floor-plan page box: the UNION
  * extent across all levels, origin at the union min. A plan point `(px,py)`
  * maps to world `(px − minX, py − minY)`; Y is already plan-up == world Y-up,
  * so there is no Y flip (unlike the canvas minimap). Switching level only
@@ -547,7 +547,8 @@ export function floorPlanPlugin(
         api.pulseAt(a.planX, a.planY);
       }, { title: 'Pulse a ring at a plan point' });
 
-      // Bound to click:left by the FloorPlanViewer's mouse-bindings overrides.
+      // Bound to click:left by the DocumentViewer's mouse-bindings overrides
+      // (floor-plan source).
       context.commands.register<{ containerX: number; containerY: number }>('floorplan.pick', (a) => {
         if (!sceneApi || !ctx) return;
         const world = sceneApi.screenToWorld(a.containerX, a.containerY);

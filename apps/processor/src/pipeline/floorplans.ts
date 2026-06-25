@@ -57,7 +57,12 @@
  */
 
 import { gunzipSync, gzipSync } from 'fflate';
-import { IFCBUILDINGSTOREY, IFCSPACE, type IfcAPI } from 'web-ifc';
+import {
+  IFCBUILDINGSTOREY,
+  IFCGEOMETRICREPRESENTATIONCONTEXT,
+  IFCSPACE,
+  type IfcAPI,
+} from 'web-ifc';
 
 import { logger, type Logger } from '../log.js';
 import { numberValue } from './attributes.js';
@@ -556,6 +561,57 @@ export function scanModelGeometry(
   );
 
   return { bbox, planAxisX: hX, planAxisY: hY, upAxis, storeys, spaceIds };
+}
+
+/**
+ * Read the building's true north from `IfcGeometricRepresentationContext.TrueNorth`
+ * and express it as a bearing in the floor-plan frame: radians CLOCKWISE from
+ * plan-up (+planAxisY). Returns null when the model declares no TrueNorth, when
+ * the direction is degenerate, or when the plan isn't drawn in the world XY plane
+ * (non-standard up-axis) — the viewer then shows no north compass.
+ *
+ * TrueNorth is a 2D `IfcDirection` in the context's XY plane (the world
+ * horizontal plane for a standard Z-up model). The walk worker reads native,
+ * un-converted geometry, so TrueNorth shares the frame the plan segments are
+ * sliced in. We treat it as a horizontal 3-vector [x, y, 0], project onto the
+ * plan's two horizontal world axes, and take `atan2(x, y)` — the same convention
+ * the 2D scene uses (plan +Y is screen-up, no flip), so the angle feeds the
+ * compass dial directly.
+ */
+export function extractTrueNorth(
+  api: IfcAPI,
+  modelID: number,
+  planAxisX: number,
+  planAxisY: number,
+): number | null {
+  // TrueNorth lives in the world XY plane; only meaningful when the plan's two
+  // axes are exactly world X/Y (standard Z-up). Otherwise we can't map it.
+  if (planAxisX > 1 || planAxisY > 1) return null;
+
+  const ids = api.GetLineIDsWithType(modelID, IFCGEOMETRICREPRESENTATIONCONTEXT);
+  for (let i = 0; i < ids.size(); i += 1) {
+    let ctx: Record<string, unknown>;
+    try {
+      ctx = api.GetLine(modelID, ids.get(i), true) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+    const tn = ctx['TrueNorth'];
+    if (tn === null || typeof tn !== 'object') continue;
+    const ratios = (tn as Record<string, unknown>)['DirectionRatios'];
+    if (!Array.isArray(ratios) || ratios.length < 2) continue;
+    const wx = numberValue(ratios[0]);
+    const wy = numberValue(ratios[1]);
+    if (wx === null || wy === null) continue;
+    // TrueNorth is horizontal, so its world up-component is 0.
+    const world = [wx, wy, 0];
+    const px = world[planAxisX] ?? 0;
+    const py = world[planAxisY] ?? 0;
+    if (px === 0 && py === 0) continue; // degenerate direction
+    // Bearing clockwise from plan-up (+planAxisY): (0,1) → 0, (1,0) → +90°.
+    return Math.atan2(px, py);
+  }
+  return null;
 }
 
 /**

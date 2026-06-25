@@ -1276,6 +1276,23 @@
           "remove": "Remove",
           "versionHistory": "Version history · {count} versions",
           "verCount": "{count} ver",
+          "linked": {
+            "sectionPages": "Linked pages",
+            "sectionDrawings": "Linked drawings",
+            "drawingsCount": "{count, plural, =1 {1 drawing} other {# drawings}}",
+            "levelPlus": "{level} +{count}",
+            "pageLabel": "Page {n}",
+            "notLinked": "Not linked",
+            "unlinkedMore": "{count, plural, =1 {1 more page not linked} other {# more pages not linked}}",
+            "unknownLevel": "Unknown level",
+            "unknownModel": "Unknown model",
+            "unknownDrawing": "Unknown drawing",
+            "state": {
+              "calibrated": "Calibrated",
+              "uncalibrated": "Not calibrated",
+              "stale": "Stale"
+            }
+          },
           "removeTitle": "Remove document?",
           "removeBody": "This permanently deletes “{name}” and all its file versions. This cannot be undone.",
           "removeConfirm": "Remove",

@@ -1,7 +1,8 @@
 'use client';
 
 import {
-  Blueprint, Box, Eye, FileDashed, RotateCcw, ShieldCheck, Upload, Trash2,
+  AlertTriangle, Blueprint, Box, Check, Eye, FileDashed, Layers, LinkIcon,
+  RotateCcw, ShieldCheck, Upload, Trash2,
 } from '@bimdossier/ui/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -39,6 +40,10 @@ import { formatFileSize } from '@/lib/formatting/files';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { RowActionPill } from '@/components/shared/resource/RowActionPill';
+
+import {
+  escalateState, type LinkState, type ModelDrawingLink, type PdfPageLink,
+} from './documentLinks';
 
 function formatRelativeTime(iso: string, t: ReturnType<typeof useTranslations>): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -86,6 +91,12 @@ type Props = {
   onSelectToggle?: () => void;
   /** Level-assignment control rendered in the expanded action bar (2D documents). */
   levelControl?: JSX.Element | undefined;
+  /** Aligned-page links for a PDF document (reciprocal chip + per-page tree). */
+  pdfLinks?: PdfPageLink[] | undefined;
+  /** Drawings aligned to this 3D model (reciprocal chip + per-storey tree). */
+  modelLinks?: ModelDrawingLink[] | undefined;
+  /** Total page count of the latest PDF version (drives the unlinked-page list). */
+  pageCount?: number | null;
 };
 
 export function DocumentsTableRow({
@@ -97,6 +108,9 @@ export function DocumentsTableRow({
   selected = false,
   onSelectToggle,
   levelControl,
+  pdfLinks,
+  modelLinks,
+  pageCount = null,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.documents.row');
   const tFiles = useTranslations('projectDetail.tabs.documents.files');
@@ -343,6 +357,8 @@ export function DocumentsTableRow({
                 <FileTypePill fileType={latestFile.file_type} schema={latestFile.ifc_schema} />
               )
             )}
+            {pdfLinks !== undefined && pdfLinks.length > 0 && <PdfLinkChip links={pdfLinks} />}
+            {modelLinks !== undefined && modelLinks.length > 0 && <ModelLinkChip links={modelLinks} />}
           </div>
           <div className="mt-0.5 flex items-center gap-1.5 overflow-hidden font-sans text-[11px] leading-tight text-foreground-tertiary tabular-nums">
             {latestFile !== undefined ? (
@@ -395,6 +411,13 @@ export function DocumentsTableRow({
               />
             )}
           </div>
+
+          {pdfLinks !== undefined && pdfLinks.length > 0 && (
+            <LinkedPagesSection links={pdfLinks} pageCount={pageCount} />
+          )}
+          {modelLinks !== undefined && modelLinks.length > 0 && (
+            <LinkedDrawingsSection links={modelLinks} />
+          )}
 
           {files.length === 0 && (
             <FileDropZone
@@ -494,5 +517,179 @@ export function DocumentsTableRow({
         errorMessage={restoreMutation.error instanceof ApiError ? restoreMutation.error.detail : null}
       />
     </>
+  );
+}
+
+/* ── PDF ↔ storey ↔ 3D-model relationship UI ───────────────────────── */
+
+const LINKED_NS = 'projectDetail.tabs.documents.row.linked';
+
+/** Calibration state → Badge variant (success / neutral / warning). */
+const STATE_BADGE: Record<LinkState, 'success' | 'warning' | 'default'> = {
+  calibrated: 'success',
+  uncalibrated: 'default',
+  stale: 'warning',
+};
+
+/** Leading state glyph: check (calibrated), warning (stale), link (uncalibrated). */
+function StateIcon({ state }: { state: LinkState }): JSX.Element {
+  if (state === 'calibrated') return <Check className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />;
+  if (state === 'stale') return <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warning" aria-hidden />;
+  return <LinkIcon className="h-3.5 w-3.5 shrink-0 text-foreground-tertiary" aria-hidden />;
+}
+
+/** Trailing state label, tinted to its tone. */
+function StateLabel({ state }: { state: LinkState }): JSX.Element {
+  const t = useTranslations(LINKED_NS);
+  const label = state === 'calibrated'
+    ? t('state.calibrated')
+    : state === 'stale' ? t('state.stale') : t('state.uncalibrated');
+  const tone = state === 'calibrated'
+    ? 'text-success'
+    : state === 'stale' ? 'text-warning' : 'text-foreground-tertiary';
+  return <span className={`ml-auto shrink-0 pl-2 text-caption font-medium ${tone}`}>{label}</span>;
+}
+
+/** Collapsed-row chip on a PDF: "{model} · {level}" or "{level} +N" when multi-level. */
+function PdfLinkChip({ links }: { links: PdfPageLink[] }): JSX.Element {
+  const t = useTranslations(LINKED_NS);
+  const first = links[0]!;
+  const distinctLevels = new Set(links.map((l) => l.levelId)).size;
+  const state = escalateState(links.map((l) => l.state));
+  const label = distinctLevels <= 1
+    ? `${first.modelName} · ${first.levelName}`
+    : t('levelPlus', { level: first.levelName, count: distinctLevels - 1 });
+  return (
+    <Badge
+      size="sm"
+      variant={STATE_BADGE[state]}
+      icon={LinkIcon}
+      title={label}
+      className="max-w-[16rem] shrink-0"
+    >
+      <span className="min-w-0 truncate">{label}</span>
+    </Badge>
+  );
+}
+
+/** Collapsed-row chip on a 3D model: "{N} drawings". */
+function ModelLinkChip({ links }: { links: ModelDrawingLink[] }): JSX.Element {
+  const t = useTranslations(LINKED_NS);
+  const count = new Set(links.map((l) => l.drawingId)).size;
+  const state = escalateState(links.map((l) => l.state));
+  return (
+    <Badge size="sm" variant={STATE_BADGE[state]} icon={LinkIcon} className="shrink-0">
+      {t('drawingsCount', { count })}
+    </Badge>
+  );
+}
+
+/** One linked page line in the PDF's expanded "Linked pages" tree. */
+function PageLinkRow({ link }: { link: PdfPageLink }): JSX.Element {
+  const t = useTranslations(LINKED_NS);
+  return (
+    <li className="flex items-center gap-1.5 text-body3 leading-tight">
+      <StateIcon state={link.state} />
+      <span className="shrink-0 tabular-nums text-foreground-tertiary">{t('pageLabel', { n: link.pageNumber })}</span>
+      <span className="shrink-0 text-foreground-tertiary">→</span>
+      <span className="truncate font-medium text-foreground">{link.levelName}</span>
+      <span className="shrink-0 text-foreground-tertiary">·</span>
+      <span className="truncate text-foreground-secondary">{link.modelName}</span>
+      <StateLabel state={link.state} />
+    </li>
+  );
+}
+
+/** One muted "not linked" page line (only shown when the page count is small). */
+function UnlinkedPageRow({ page }: { page: number }): JSX.Element {
+  const t = useTranslations(LINKED_NS);
+  return (
+    <li className="flex items-center gap-1.5 text-body3 leading-tight text-foreground-tertiary">
+      <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <span className="shrink-0 tabular-nums">{t('pageLabel', { n: page })}</span>
+      <span className="shrink-0">→</span>
+      <span className="italic">{t('notLinked')}</span>
+    </li>
+  );
+}
+
+// Enumerate every page (linked + muted unlinked) only for small PDFs; larger
+// ones list just the linked pages plus a "+N more not linked" summary.
+const ENUMERATE_PAGE_LIMIT = 12;
+
+/** Expanded "Linked pages" tree for a PDF document. */
+function LinkedPagesSection({ links, pageCount }: { links: PdfPageLink[]; pageCount: number | null }): JSX.Element {
+  const t = useTranslations(LINKED_NS);
+  const byPage = new Map(links.map((l) => [l.pageNumber, l] as const));
+  const maxLinked = links.reduce((m, l) => Math.max(m, l.pageNumber), 0);
+  const total = Math.max(pageCount ?? 0, maxLinked);
+
+  const rows: JSX.Element[] = [];
+  if (total <= ENUMERATE_PAGE_LIMIT) {
+    for (let n = 1; n <= total; n += 1) {
+      const link = byPage.get(n);
+      rows.push(link !== undefined ? <PageLinkRow key={n} link={link} /> : <UnlinkedPageRow key={n} page={n} />);
+    }
+  } else {
+    for (const l of links) rows.push(<PageLinkRow key={l.pageNumber} link={l} />);
+    const unlinked = total - byPage.size;
+    if (unlinked > 0) {
+      rows.push(
+        <li key="more" className="text-body3 italic text-foreground-tertiary">
+          {t('unlinkedMore', { count: unlinked })}
+        </li>,
+      );
+    }
+  }
+
+  return (
+    <div className="mb-3">
+      <Eyebrow as="div" tone="tertiary" className="mb-1.5 text-primary text-[7px]">
+        {t('sectionPages')}
+      </Eyebrow>
+      <ul className="flex flex-col gap-1">{rows}</ul>
+    </div>
+  );
+}
+
+/** Expanded "Linked drawings" tree for a 3D model, grouped by level/storey. */
+function LinkedDrawingsSection({ links }: { links: ModelDrawingLink[] }): JSX.Element {
+  const t = useTranslations(LINKED_NS);
+  const groups: { levelId: string; levelName: string; items: ModelDrawingLink[] }[] = [];
+  for (const l of links) {
+    let group = groups.find((g) => g.levelId === l.levelId);
+    if (group === undefined) {
+      group = { levelId: l.levelId, levelName: l.levelName, items: [] };
+      groups.push(group);
+    }
+    group.items.push(l);
+  }
+  return (
+    <div className="mb-3">
+      <Eyebrow as="div" tone="tertiary" className="mb-1.5 text-primary text-[7px]">
+        {t('sectionDrawings')}
+      </Eyebrow>
+      <ul className="flex flex-col gap-2">
+        {groups.map((group) => (
+          <li key={group.levelId} className="flex flex-col gap-1">
+            <div className="flex items-center gap-1.5 text-caption font-semibold uppercase tracking-wide text-foreground-secondary">
+              <Layers className="h-3 w-3 text-foreground-tertiary" aria-hidden />
+              {group.levelName}
+            </div>
+            <ul className="flex flex-col gap-1 pl-4">
+              {group.items.map((item) => (
+                <li key={`${item.drawingId}-${item.pageNumber}`} className="flex items-center gap-1.5 text-body3 leading-tight">
+                  <StateIcon state={item.state} />
+                  <span className="truncate font-medium text-foreground">{item.drawingName}</span>
+                  <span className="shrink-0 text-foreground-tertiary">·</span>
+                  <span className="shrink-0 tabular-nums text-foreground-tertiary">{t('pageLabel', { n: item.pageNumber })}</span>
+                  <StateLabel state={item.state} />
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

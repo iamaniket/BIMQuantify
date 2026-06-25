@@ -2,9 +2,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as Crypto from 'expo-crypto';
 
 import { ApiError } from '@/lib/api/client';
-import { getFinding, listFindings, createFinding } from '@/lib/api/findings';
+import { getFinding, listFindings, createFinding, updateFinding } from '@/lib/api/findings';
 import { tokenManager } from '@/lib/api/tokenManager';
-import type { Finding, FindingCreateInput } from '@/lib/api/schemas/findings';
+import type { Finding, FindingCreateInput, FindingUpdateInput } from '@/lib/api/schemas/findings';
 import { useOfflineItemQuery, useOfflineListQuery } from '@/lib/query/useOfflineQuery';
 import { putOne } from '@/lib/offline/cache';
 import { getNetworkStatus } from '@/lib/offline/networkStatus';
@@ -82,6 +82,77 @@ export function useCreateFindingMutation(projectId: string) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'findings'] });
+    },
+  });
+}
+
+type UpdateVars = { finding: Finding; input: FindingUpdateInput };
+
+/** Apply only the fields actually present in the patch onto the cached row, so an
+ * offline edit shows immediately without clobbering untouched fields. */
+function mergeFinding(finding: Finding, input: FindingUpdateInput): Finding {
+  const patched: Finding = { ...finding };
+  for (const [key, value] of Object.entries(input)) {
+    if (value !== undefined) {
+      (patched as Record<string, unknown>)[key] = value;
+    }
+  }
+  patched.updated_at = new Date().toISOString();
+  return patched;
+}
+
+/**
+ * Update a finding (status transition + resolution evidence), offline-capable.
+ * Online: PATCH directly so the server gates (illegal transition / missing
+ * evidence / inspector-only verify) surface as errors. Offline (or if evidence
+ * photos are still queued): enqueue an `update_finding` and patch the cache
+ * optimistically. The sync engine replays it; a transition that's no longer
+ * legal on replay is parked as a conflict (server wins).
+ */
+export function useUpdateFindingMutation(projectId: string) {
+  const { tokens } = useAuth();
+  const offline = useOffline();
+  const queryClient = useQueryClient();
+  return useMutation<Finding, Error, UpdateVars>({
+    networkMode: 'always',
+    mutationFn: async ({ finding, input }) => {
+      const token = tokens?.access_token ?? null;
+      const hasQueuedEvidence = (input.resolution_evidence_ids ?? []).some((id) =>
+        id.startsWith('temp-photo-'),
+      );
+      if (getNetworkStatus() && token !== null && !hasQueuedEvidence) {
+        try {
+          return await updateFinding(token, projectId, finding.id, input);
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 401) {
+            const fresh = await tokenManager.refresh();
+            return await updateFinding(fresh, projectId, finding.id, input);
+          }
+          // A real HTTP error (422 illegal transition / missing evidence, 403
+          // verify-not-inspector) surfaces to the caller; only a connectivity
+          // failure falls through to the offline queue.
+          if (error instanceof ApiError) throw error;
+        }
+      }
+      const tempId = `temp-update-${Crypto.randomUUID()}`;
+      await enqueue({
+        tempId,
+        idempotencyKey: Crypto.randomUUID(),
+        kind: 'update_finding',
+        scope: projectId,
+        payload: { findingId: finding.id, input },
+        baseUpdatedAt: finding.updated_at,
+      });
+      const optimistic = mergeFinding(finding, input);
+      await putOne('finding', projectId, optimistic);
+      await offline.refresh();
+      return optimistic;
+    },
+    onSuccess: (updated) => {
+      void queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'findings'] });
+      void queryClient.invalidateQueries({
+        queryKey: ['projects', projectId, 'findings', updated.id],
+      });
     },
   });
 }

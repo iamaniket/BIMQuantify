@@ -1,16 +1,18 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useT } from '@/i18n';
 import { useNetworkStatus } from '@/lib/offline/networkStatus';
 
 /** A thin bar pinned to the bottom of the authenticated area while offline. */
 export function OfflineBanner() {
+  const { t } = useT();
   const online = useNetworkStatus();
   const insets = useSafeAreaInsets();
   if (online) return null;
   return (
     <View style={[styles.bar, { paddingBottom: insets.bottom + 8 }]} pointerEvents="none">
-      <Text style={styles.text}>Offline — showing saved data. Changes sync when you reconnect.</Text>
+      <Text style={styles.text}>{t('offline.banner')}</Text>
     </View>
   );
 }

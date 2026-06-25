@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { View } from 'react-native';
 
+import { useT } from '@/i18n';
 import { HeaderMenuButton } from '@/components/HeaderMenuButton';
 import { OfflineBanner } from '@/components/offline/OfflineBanner';
 import { SyncStatusChip } from '@/components/offline/SyncStatusChip';
@@ -9,6 +10,7 @@ import { colors } from '@/theme';
 /** Stack inside the drawer — primary app-bar across the authenticated screens.
  * Wrapped so the offline banner overlays every authenticated screen. */
 export default function AppStackLayout() {
+  const { t } = useT();
   return (
     <View style={{ flex: 1 }}>
       <Stack
@@ -25,7 +27,7 @@ export default function AppStackLayout() {
         {/* Settings is reached from the drawer, so it keeps the hamburger to reopen it. */}
         <Stack.Screen
           name="settings"
-          options={{ title: 'Settings', headerLeft: () => <HeaderMenuButton /> }}
+          options={{ title: t('settings.title'), headerLeft: () => <HeaderMenuButton /> }}
         />
       </Stack>
       <SyncStatusChip />

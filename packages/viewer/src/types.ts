@@ -38,9 +38,9 @@ export type ViewerBundle = {
   modelId?: string;
   /**
    * Precomputed floor-plan artifact (`.floorplans.bin`) for the 2D / Split
-   * views. `IfcViewer` ignores it — it's consumed by the embed host
-   * (apps/viewer-embed) which fetches + `decodeFloorPlans`-decodes it to drive
-   * `FloorPlanViewer`. Absent when the model has no generated floor plans.
+   * views. `IfcViewer` ignores it — it's fetched + `decodeFloorPlans`-decoded by
+   * the host and fed to the 2D viewer (`DocumentViewer`'s `floorPlan` prop on
+   * web). Absent when the model has no generated floor plans.
    */
   floorPlansUrl?: string;
 };

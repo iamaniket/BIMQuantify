@@ -34,7 +34,7 @@ const DossierRequirementTemplateSchema = z.object({
     'attachment_slot',
     'certificate_type',
     'derived',
-    'model',
+    'document',
   ]),
   source_value: z.string(),
 });

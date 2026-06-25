@@ -174,7 +174,7 @@ export function MarketingBrandPanel(): JSX.Element {
             >
               <NetherlandsMap
                 responsiveHeight="100%"
-                fill="var(--color-primary-light, #e5ecf6)"
+                fill="var(--primary-light)"
                 markers={markers}
                 animatePulse
                 ariaLabel={t('mapAria')}

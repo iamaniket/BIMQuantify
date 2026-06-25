@@ -25,6 +25,7 @@ if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
 }
 
+import { useT } from '@/i18n';
 import { brand, colors } from '@/theme';
 
 import {
@@ -41,8 +42,6 @@ import {
 } from './brandParts';
 import { LoginForm, type LoginFormProps } from './LoginForm';
 
-const TABLET_SUBTEXT = 'Quality Assurance in Construction Act (Wkb)-compliant BIM platform';
-const TABLET_PILL = 'Quality Assurance in Construction Act (Wkb) 2026.1 Ready';
 const NL_ASPECT = 1 / NL_ASPECT_RATIO;
 
 export interface LoginLayoutProps {
@@ -89,6 +88,7 @@ export function MobileLogin({
   webBaseUrl,
   insets,
 }: LoginLayoutProps) {
+  const { t } = useT();
   const [keyboardUp, setKeyboardUp] = useState(false);
 
   useEffect(() => {
@@ -135,9 +135,9 @@ export function MobileLogin({
             <NlMap width={330} color="#bcd1ee" seam="rgba(255,255,255,0.20)" seamWidth={0.7} />
           </View>
           <View>
-            <Brand markSize={34} nameSize={17} subSize={8} subText="Wkb-compliant BIM platform" />
+            <Brand markSize={34} nameSize={17} subSize={8} subText={t('login.hero.subtext')} />
             <View style={{ marginTop: 22 }}>
-              <WkbPill fontSize={9} text="Wkb 2026.1 · Live in NL" />
+              <WkbPill fontSize={9} text={t('login.hero.pillMobile', { version: wkb })} />
             </View>
             <View style={{ marginTop: 16 }}>
               <Headline fontSize={29} lineHeight={1.06} />
@@ -188,6 +188,7 @@ export function TabletPortraitLogin({
   webBaseUrl,
   insets,
 }: LoginLayoutProps) {
+  const { t } = useT();
   const { height } = useWindowDimensions();
   const heroHeight = Math.round(height * 0.5);
   const mapWidth = 300;
@@ -209,9 +210,9 @@ export function TabletPortraitLogin({
           <NlMap width={mapWidth} color="#d2e0f3" seam="rgba(28,58,107,0.20)" seamWidth={0.7} markers={markers} />
         </View>
         <View style={{ flex: 1, paddingBottom: 26 }}>
-          <Brand markSize={36} nameSize={19} subSize={8.5} subText={TABLET_SUBTEXT} />
+          <Brand markSize={36} nameSize={19} subSize={8.5} subText={t('login.hero.subtextTablet')} />
           <View style={{ marginTop: 26 }}>
-            <WkbPill fontSize={9.5} text={TABLET_PILL} />
+            <WkbPill fontSize={9.5} text={t('login.hero.pillTablet', { version: wkb })} />
           </View>
           <View style={{ marginTop: 20, maxWidth: 440 }}>
             <Headline fontSize={40} lineHeight={1.05} />
@@ -261,6 +262,7 @@ export function TabletLandscapeLogin({
   webBaseUrl,
   insets,
 }: LoginLayoutProps) {
+  const { t } = useT();
   const { height } = useWindowDimensions();
   const mapWidth = Math.round(height * 0.6);
 
@@ -285,9 +287,9 @@ export function TabletLandscapeLogin({
         >
           <NlMap width={mapWidth} color="#d4e1f2" seam="rgba(28,58,107,0.20)" seamWidth={0.7} markers={markers} />
         </View>
-        <Brand markSize={36} nameSize={19} subSize={8.5} subText={TABLET_SUBTEXT} />
+        <Brand markSize={36} nameSize={19} subSize={8.5} subText={t('login.hero.subtextTablet')} />
         <View style={{ marginTop: 26 }}>
-          <WkbPill fontSize={9.5} text={TABLET_PILL} />
+          <WkbPill fontSize={9.5} text={t('login.hero.pillTablet', { version: wkb })} />
         </View>
         <View style={{ marginTop: 18, maxWidth: 420 }}>
           <Headline fontSize={42} lineHeight={1.03} />

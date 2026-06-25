@@ -23,6 +23,10 @@ export const ProjectSchema = z.object({
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
   lifecycle_state: z.string().optional(),
+  // The caller's project role (ProjectRead.my_role). Plain string + nullable so a
+  // new server role can't blank the project; gates the inspector-only Verify
+  // action on findings. inspector === kwaliteitsborger; contractor === aannemer.
+  my_role: z.union([z.string(), z.null()]).optional(),
 });
 
 export type Project = z.infer<typeof ProjectSchema>;

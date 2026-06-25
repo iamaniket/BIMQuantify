@@ -12,6 +12,7 @@ import {
 
 import { ResourceList, TabToolbar } from '@/components/shared/resource';
 import type { Document, Level, ModelDisciplineValue, ProjectFile } from '@/lib/api/schemas';
+import { useAlignedSheets } from '@/features/aligned-sheets/hooks';
 import { useProjectLevels } from '@/features/levels/hooks';
 import { LevelAssignSelect } from '@/features/levels/LevelAssignSelect';
 import { NewDocumentDialog } from '@/features/documents/NewDocumentDialog';
@@ -21,6 +22,7 @@ import { setViewerTarget, type ViewerTarget } from '@/features/viewer/shared/vie
 import { useRouter } from '@/i18n/navigation';
 
 import { DocumentsTableRow } from './DocumentsTableRow';
+import { linkState, type ModelDrawingLink, type PdfPageLink } from './documentLinks';
 
 type Props = {
   projectId: string;
@@ -50,6 +52,18 @@ function isUnknownDocument(m: Document): boolean {
   return m.primary_file_type == null;
 }
 
+/** Bucket items by a string key, preserving insertion order within each bucket. */
+function groupBy<T>(items: readonly T[], key: (item: T) => string): Map<string, T[]> {
+  const map = new Map<string, T[]>();
+  for (const item of items) {
+    const k = key(item);
+    const bucket = map.get(k);
+    if (bucket !== undefined) bucket.push(item);
+    else map.set(k, [item]);
+  }
+  return map;
+}
+
 export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
   const [newDocumentOpen, setNewDocumentOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -74,9 +88,76 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
   const levelsQuery = useProjectLevels(projectId);
   const levels = useMemo(() => levelsQuery.data ?? [], [levelsQuery.data]);
 
+  // Aligned sheets carry the real per-page PDF↔storey↔3D-model link (the list's
+  // level grouping otherwise only reflects the manual `level_id` tag). Fetched
+  // once and indexed both ways so PDF rows and 3D-model rows show reciprocal
+  // chips, and so an aligned PDF surfaces under its storey's level header.
+  const sheetsQuery = useAlignedSheets(projectId);
+  const sheets = useMemo(() => sheetsQuery.data ?? [], [sheetsQuery.data]);
+  const tLinked = useTranslations('projectDetail.tabs.documents.row.linked');
+
+  const sheetsByPdf = useMemo(() => groupBy(sheets, (s) => s.pdf_document_id), [sheets]);
+  const sheetsByModel = useMemo(() => groupBy(sheets, (s) => s.document_id), [sheets]);
+  const levelById = useMemo(() => new Map(levels.map((l) => [l.id, l] as const)), [levels]);
+  const levelOrder = useMemo(() => new Map(levels.map((l, i) => [l.id, i] as const)), [levels]);
+  const docNameById = useMemo(
+    () => new Map(documents.map((d) => [d.id, d.name] as const)),
+    [documents],
+  );
+
   const latestFileOf = (documentId: string): ProjectFile | undefined => {
     const files = filesMap.get(documentId);
     return files !== undefined && files.length > 0 ? files[0] : undefined;
+  };
+
+  // Resolve a PDF's aligned pages into name-ready view-models for its row.
+  const buildPdfLinks = (pdfId: string): PdfPageLink[] | undefined => {
+    const arr = sheetsByPdf.get(pdfId);
+    if (arr === undefined || arr.length === 0) return undefined;
+    return arr
+      .map((s) => ({
+        pageNumber: s.page_number,
+        levelId: s.level_id,
+        levelName: levelById.get(s.level_id)?.name ?? tLinked('unknownLevel'),
+        modelName: docNameById.get(s.document_id) ?? tLinked('unknownModel'),
+        state: linkState(s),
+      }))
+      .sort((a, b) => a.pageNumber - b.pageNumber);
+  };
+
+  // Resolve the drawings aligned to a 3D model, ordered by level then page.
+  const buildModelLinks = (modelId: string): ModelDrawingLink[] | undefined => {
+    const arr = sheetsByModel.get(modelId);
+    if (arr === undefined || arr.length === 0) return undefined;
+    return arr
+      .map((s) => ({
+        drawingId: s.pdf_document_id,
+        drawingName: docNameById.get(s.pdf_document_id) ?? tLinked('unknownDrawing'),
+        pageNumber: s.page_number,
+        levelId: s.level_id,
+        levelName: levelById.get(s.level_id)?.name ?? tLinked('unknownLevel'),
+        state: linkState(s),
+      }))
+      .sort((a, b) => {
+        const lo = (levelOrder.get(a.levelId) ?? 0) - (levelOrder.get(b.levelId) ?? 0);
+        return lo !== 0 ? lo : a.pageNumber - b.pageNumber;
+      });
+  };
+
+  // A 2D drawing's levels = its aligned-page levels (the real link) unioned with
+  // its manual `level_id` tag. The row is placed once, under the earliest (by
+  // display order) of those; a multi-level PDF shows a "+N" chip on the row.
+  const primaryLevelId = (doc: Document): string | null => {
+    const ids = new Set<string>();
+    for (const s of sheetsByPdf.get(doc.id) ?? []) {
+      if (levelOrder.has(s.level_id)) ids.add(s.level_id);
+    }
+    if (doc.level_id != null && levelOrder.has(doc.level_id)) ids.add(doc.level_id);
+    let best: string | null = null;
+    for (const id of ids) {
+      if (best === null || levelOrder.get(id)! < levelOrder.get(best)!) best = id;
+    }
+    return best;
   };
 
   // Only IFC documents with a ready extraction can join a federated 3D scene.
@@ -159,28 +240,34 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
     return true;
   });
 
-  const renderRow = (m: Document): JSX.Element => (
-    <DocumentsTableRow
-      key={m.id}
-      projectId={projectId}
-      document={m}
-      prefetchedFiles={filesMap.get(m.id)}
-      isOpen={expandedId === m.id}
-      onToggle={() => { setExpandedId(expandedId === m.id ? null : m.id); }}
-      selected={selectedDocumentIds.has(m.id)}
-      onSelectToggle={() => { toggleSelected(m.id); }}
-      levelControl={
-        is2dDocument(m) ? (
-          <LevelAssignSelect
-            projectId={projectId}
-            documentId={m.id}
-            levelId={m.level_id ?? null}
-            levels={levels}
-          />
-        ) : undefined
-      }
-    />
-  );
+  const renderRow = (m: Document): JSX.Element => {
+    const is2d = is2dDocument(m);
+    return (
+      <DocumentsTableRow
+        key={m.id}
+        projectId={projectId}
+        document={m}
+        prefetchedFiles={filesMap.get(m.id)}
+        isOpen={expandedId === m.id}
+        onToggle={() => { setExpandedId(expandedId === m.id ? null : m.id); }}
+        selected={selectedDocumentIds.has(m.id)}
+        onSelectToggle={() => { toggleSelected(m.id); }}
+        pdfLinks={is2d ? buildPdfLinks(m.id) : undefined}
+        modelLinks={!is2d && !isUnknownDocument(m) ? buildModelLinks(m.id) : undefined}
+        pageCount={is2d ? (latestFileOf(m.id)?.page_count ?? null) : null}
+        levelControl={
+          is2d ? (
+            <LevelAssignSelect
+              projectId={projectId}
+              documentId={m.id}
+              levelId={m.level_id ?? null}
+              levels={levels}
+            />
+          ) : undefined
+        }
+      />
+    );
+  };
 
   // Group: 3D (IFC) models first, then 2D drawings under their level, then an
   // "Unassigned" bucket, then an "Unknown" bucket for documents with no file
@@ -200,10 +287,11 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
     const byLevel = new Map<string, Document[]>();
     const unassigned: Document[] = [];
     for (const m of twoD) {
-      if (m.level_id == null) { unassigned.push(m); continue; }
-      const bucket = byLevel.get(m.level_id) ?? [];
+      const primary = primaryLevelId(m);
+      if (primary == null) { unassigned.push(m); continue; }
+      const bucket = byLevel.get(primary) ?? [];
       bucket.push(m);
-      byLevel.set(m.level_id, bucket);
+      byLevel.set(primary, bucket);
     }
 
     const sections: ReactNode[] = [];

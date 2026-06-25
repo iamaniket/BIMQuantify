@@ -1276,6 +1276,23 @@
           "remove": "Verwijderen",
           "versionHistory": "Versiegeschiedenis · {count} versies",
           "verCount": "{count} ver",
+          "linked": {
+            "sectionPages": "Gekoppelde pagina's",
+            "sectionDrawings": "Gekoppelde tekeningen",
+            "drawingsCount": "{count, plural, =1 {1 tekening} other {# tekeningen}}",
+            "levelPlus": "{level} +{count}",
+            "pageLabel": "Pagina {n}",
+            "notLinked": "Niet gekoppeld",
+            "unlinkedMore": "{count, plural, =1 {Nog 1 pagina niet gekoppeld} other {Nog # pagina's niet gekoppeld}}",
+            "unknownLevel": "Onbekende verdieping",
+            "unknownModel": "Onbekend model",
+            "unknownDrawing": "Onbekende tekening",
+            "state": {
+              "calibrated": "Gekalibreerd",
+              "uncalibrated": "Niet gekalibreerd",
+              "stale": "Verouderd"
+            }
+          },
           "removeTitle": "Document verwijderen?",
           "removeBody": "Hiermee worden “{name}” en alle bestandsversies definitief verwijderd. Dit kan niet ongedaan worden gemaakt.",
           "removeConfirm": "Verwijderen",

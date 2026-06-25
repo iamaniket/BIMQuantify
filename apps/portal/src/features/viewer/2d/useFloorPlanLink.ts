@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 
-import type { FloorPlanViewerHandle, ViewerHandle } from '@bimdossier/viewer';
+import type { DocumentViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import { buildStoreyMembership } from '@/features/viewer/3d/minimap/storeyMembership';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
@@ -11,7 +11,7 @@ import type { SheetTransform } from './sheetTransform';
 import type { FloorPlanDisplayLevel } from './useFloorPlanData';
 
 interface FloorPlanLinkOptions {
-  fpHandle: FloorPlanViewerHandle | null;
+  fpHandle: DocumentViewerHandle | null;
   viewerHandle: ViewerHandle | null;
   viewerReady: boolean;
   levels: FloorPlanDisplayLevel[];

@@ -15,13 +15,12 @@ import {
   useState,
   type ReactElement,
 } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 import type {
+  DocumentActiveTool,
   DocumentEvents,
   DocumentViewerHandle,
-  FloorPlanActiveTool,
-  FloorPlanViewerHandle,
   ViewerHandle,
 } from '@bimdossier/viewer';
 
@@ -56,11 +55,10 @@ import { useFloorPlanFindingMarkers } from './useFloorPlanFindingMarkers';
 import { useFloorPlanLink } from './useFloorPlanLink';
 import { useSplitEntryCamera } from './useSplitEntryCamera';
 
-const FloorPlanViewer = dynamic(
-  () => import('@bimdossier/viewer').then((m) => m.FloorPlanViewer),
-  { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
-);
-
+// One viewer for both 2D surfaces: the generated plan renders through the
+// `floorPlan` source, the calibrated sheet through `fileUrl` (PDF). See
+// [[2d-viewer-threejs-unification]] — the floor-plan engine was folded into
+// DocumentEngine so both share one handle + plugin stack.
 const DocumentViewer = dynamic(
   () => import('@bimdossier/viewer').then((m) => m.DocumentViewer),
   { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
@@ -81,7 +79,7 @@ type Props = {
   /** Open the Findings side-panel view (e.g. from the right-click "Add finding"). */
   onRequestFindings: (view: 'findings') => void;
   /** Surface the active 2D handle (floor-plan OR aligned-sheet PDF) so the Findings panel can pin on it (2D). */
-  onFpHandle?: ((handle: FloorPlanViewerHandle | DocumentViewerHandle | null) => void) | undefined;
+  onFpHandle?: ((handle: DocumentViewerHandle | null) => void) | undefined;
   /** Report the active storey elevation so a plan pick lifts to the right floor. */
   onActiveElevationChange?: ((elevation: number | null) => void) | undefined;
 };
@@ -92,7 +90,7 @@ type Props = {
  * toggle. Replaces the canvas-only `MinimapView variant="full"`.
  *
  * When the active storey has a *calibrated* aligned sheet, this pane substitutes
- * a `DocumentViewer` (the PDF) for the generated `FloorPlanViewer`, pushes the
+ * a `DocumentViewer` (the PDF) for the generated plan source, pushes the
  * sheet transform onto the minimap (via `useFloorPlanLink` → `minimap.calibrate`),
  * and projects the model's findings onto the PDF. A toolbar toggle flips back to
  * the generated plan; BIMFPLN2 remains the fallback when no sheet exists.
@@ -113,6 +111,8 @@ export function FloorPlanPane({
 }: Props): ReactElement | null {
   const t = useTranslations('viewer.floorplan');
   const tb = useTranslations('viewer.toolbar');
+  const locale = useLocale();
+  const compassLocale = locale === 'nl' ? 'nl' : 'en';
   const levelFallback = useCallback((n: number) => t('levelFallback', { n }), [t]);
   const {
     data,
@@ -124,15 +124,15 @@ export function FloorPlanPane({
 
   const [activeLevel, setActiveLevel] = useState(0);
   const [isolate, setIsolate] = useState(true);
-  const [activeTool, setActiveTool] = useState<FloorPlanActiveTool>('select');
-  const [fpHandle, setFpHandle] = useState<FloorPlanViewerHandle | null>(null);
+  const [activeTool, setActiveTool] = useState<DocumentActiveTool>('select');
+  const [fpHandle, setFpHandle] = useState<DocumentViewerHandle | null>(null);
   const [docHandle, setDocHandle] = useState<DocumentViewerHandle | null>(null);
   const [planRendered, setPlanRendered] = useState(false);
   const [docReady, setDocReady] = useState(false);
   /** User override: prefer the generated plan even when a sheet is available. */
   const [showGenerated, setShowGenerated] = useState(false);
 
-  const handleFpRef = useCallback((h: FloorPlanViewerHandle | null) => {
+  const handleFpRef = useCallback((h: DocumentViewerHandle | null) => {
     setFpHandle(h);
     if (process.env.NODE_ENV === 'development') {
       Object.defineProperty(window, '__fp', {
@@ -282,6 +282,27 @@ export function FloorPlanPane({
       const elevation = levels[safeLevel]?.elevation ?? 0;
       void handle.commands
         .execute('minimap.navigateTo', { planX: ev.x, planY: ev.y, elevation })
+        .catch(() => undefined);
+    });
+  }, [docHandle, handle, pdfMode, levels, safeLevel]);
+
+  // Drag the aligned-PDF "you are here" marker → place + aim the 3D camera. The
+  // PDF counterpart to the floor plan's `floorplan:cameraPose` bridge
+  // (useFloorPlanLink). With the sheet transform active, `minimap.placeCamera`
+  // accepts the normalized PDF page point directly, same as `document:pick`.
+  useEffect(() => {
+    if (!docHandle || !handle || !pdfMode) return undefined;
+    return docHandle.events.on('document:cameraPose', (ev) => {
+      const elevation = levels[safeLevel]?.elevation ?? 0;
+      void handle.commands
+        .execute('minimap.placeCamera', {
+          planX: ev.hereX,
+          planY: ev.hereY,
+          lookX: ev.lookX,
+          lookY: ev.lookY,
+          elevation, // fallback only
+          lockHeight: true, // pan horizontally; keep current 3D camera height
+        })
         .catch(() => undefined);
     });
   }, [docHandle, handle, pdfMode, levels, safeLevel]);
@@ -509,15 +530,17 @@ export function FloorPlanPane({
           <Skeleton className="absolute inset-0" />
         )
       ) : (
-        <FloorPlanViewer
+        <DocumentViewer
           ref={handleFpRef}
-          data={data}
+          floorPlan={data}
           roomNames={roomNames}
-          activeLevel={safeLevel}
-          activeTool={activeTool}
           colors={colors}
+          {...(metadata?.trueNorth !== undefined ? { trueNorth: metadata.trueNorth } : {})}
+          navCompass={{ locale: compassLocale }}
+          currentPage={safeLevel + 1}
+          activeTool={activeTool}
           className="absolute inset-0"
-          onLevelRendered={() => {
+          onPageRendered={() => {
             if (!planRendered) setPlanRendered(true);
           }}
         />
