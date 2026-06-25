@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.conftest import VALID_IFC_HEADER, _auth, _create_model, _create_project
+from tests.conftest import VALID_IFC_HEADER, _auth, _create_document, _create_project
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
@@ -648,7 +648,7 @@ async def test_file_deadline_creates_audit_record(
     """Filing a deadline creates an audit log entry with action 'deadline.filed'."""
     from sqlalchemy import select, text
 
-    from bimstitch_api.models.audit_log import AuditLog
+    from bimdossier_api.models.audit_log import AuditLog
 
     token = org_user["access_token"]
     project = await _create_project_with_dates(client, token, name="Audit Test")
@@ -663,7 +663,7 @@ async def test_file_deadline_creates_audit_record(
     async with session_maker() as session:
         from uuid import UUID
 
-        from bimstitch_api.tenancy import schema_name_for
+        from bimdossier_api.tenancy import schema_name_for
 
         org_id = UUID(org_user["organization_id"])
         schema = schema_name_for(org_id)
@@ -753,7 +753,7 @@ async def test_readiness_drawings_requires_viewable_model(
     client, fake = fake_storage_client
     token = org_user["access_token"]
 
-    project = await _create_project_with_dates(client, token, name="Drawings Model")
+    project = await _create_project_with_dates(client, token, name="Drawings Document")
     deadlines = await _list_deadlines(client, token, project["id"])
     dl = next(d for d in deadlines if d["deadline_type"] == "construction_notification")
 
@@ -767,10 +767,10 @@ async def test_readiness_drawings_requires_viewable_model(
 
     # 2) A model whose IFC was just completed (extraction still queued) is not
     #    yet viewable → drawings stays missing.
-    model = await _create_model(client, token, project["id"], name="m-drawings")
+    model = await _create_document(client, token, project["id"], name="m-drawings")
     init = (
         await client.post(
-            f"/projects/{project['id']}/models/{model['id']}/files/initiate",
+            f"/projects/{project['id']}/documents/{model['id']}/files/initiate",
             json={
                 "filename": "drawings.ifc",
                 "size_bytes": len(VALID_IFC_HEADER),
@@ -782,7 +782,7 @@ async def test_readiness_drawings_requires_viewable_model(
     ).json()
     fake.objects[init["storage_key"]] = VALID_IFC_HEADER
     complete = await client.post(
-        f"/projects/{project['id']}/models/{model['id']}/files/{init['file_id']}/complete",
+        f"/projects/{project['id']}/documents/{model['id']}/files/{init['file_id']}/complete",
         headers=_auth(token),
     )
     assert complete.status_code == 200, complete.text

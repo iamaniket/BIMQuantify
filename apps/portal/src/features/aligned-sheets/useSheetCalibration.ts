@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 
-import type { DocumentViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import type { DocumentViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import { ApiError } from '@/lib/api/client';
 
@@ -42,10 +42,10 @@ type Point2 = [number, number];
 
 export type UseSheetCalibrationArgs = {
   projectId: string;
-  /** The 3D model (owns storeys + world coords). */
+  /** The 3D model (supplies world coords to calibrate against). */
   modelId: string;
-  /** Storey of the 3D model the sheet pins to. */
-  storeyId: string;
+  /** The project Level the sheet pins to. */
+  levelId: string;
   /** The PDF model whose page is aligned. */
   pdfModelId: string;
   pageIndex: number;
@@ -131,7 +131,7 @@ export function useSheetCalibration(
   const {
     projectId,
     modelId,
-    storeyId,
+    levelId,
     pdfModelId,
     pageIndex,
     pdfFileId,
@@ -213,7 +213,7 @@ export function useSheetCalibration(
             projectId,
             input: {
               model_id: modelId,
-              storey_id: storeyId,
+              level_id: levelId,
               pdf_model_id: pdfModelId,
               page_index: pageIndex,
             },
@@ -248,7 +248,7 @@ export function useSheetCalibration(
     calibrate,
     projectId,
     modelId,
-    storeyId,
+    levelId,
     pdfModelId,
     pageIndex,
     pdfFileId,

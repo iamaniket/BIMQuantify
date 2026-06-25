@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Inbox } from '@bimstitch/ui/icons';
+import { Download, Inbox } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -9,7 +9,7 @@ import {
   Badge,
   Button,
   Select,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { HeroImage } from '@/components/shared/layout/HeroImage';

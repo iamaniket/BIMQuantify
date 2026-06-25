@@ -1,7 +1,7 @@
 import type { JSX, ReactNode } from 'react';
 
-import { HeroGrid } from '@bimstitch/brand';
-import { cn } from '@bimstitch/ui';
+import { HeroGrid } from '@bimdossier/brand';
+import { cn } from '@bimdossier/ui';
 
 type HeroSize = 'splash' | 'page';
 

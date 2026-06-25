@@ -1,10 +1,10 @@
 'use client';
 
-import { Sun } from '@bimstitch/ui/icons';
+import { Sun } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState, type JSX } from 'react';
 
-const HC_KEY = 'bimstitch.highContrast';
+const HC_KEY = 'bimdossier.highContrast';
 
 export function HighContrastToggle(): JSX.Element {
   const t = useTranslations('inspection.accessibility');

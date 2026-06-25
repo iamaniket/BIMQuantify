@@ -12,12 +12,12 @@ import datetime as dt
 
 import pytest
 
-from bimstitch_api.deadlines.working_days import (
+from bimdossier_api.deadlines.working_days import (
     add_working_days,
     compute_due_date,
     subtract_working_days,
 )
-from bimstitch_api.jurisdictions import DeadlineRule
+from bimdossier_api.jurisdictions import DeadlineRule
 
 
 # ---------------------------------------------------------------------------

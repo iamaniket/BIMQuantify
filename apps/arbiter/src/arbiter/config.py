@@ -10,8 +10,8 @@ class Settings(BaseSettings):
 
     s3_endpoint_url: str = Field(default="http://localhost:9000", alias="S3_ENDPOINT_URL")
     s3_region: str = Field(default="us-east-1", alias="S3_REGION")
-    s3_access_key_id: str = Field(default="bimstitch", alias="S3_ACCESS_KEY_ID")
-    s3_secret_access_key: str = Field(default="bimstitch-secret", alias="S3_SECRET_ACCESS_KEY")
+    s3_access_key_id: str = Field(default="bimdossier", alias="S3_ACCESS_KEY_ID")
+    s3_secret_access_key: str = Field(default="bimdossier-secret", alias="S3_SECRET_ACCESS_KEY")
     s3_bucket_ifc: str = Field(default="ifc-files", alias="S3_BUCKET_IFC")
 
     host: str = Field(default="0.0.0.0", alias="ARBITER_HOST")

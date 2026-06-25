@@ -2,7 +2,7 @@
 
 import type { JSX } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 type Props = {
   usedGb: number;

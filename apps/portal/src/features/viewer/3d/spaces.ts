@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 
-import type { ViewerHandle } from '@bimstitch/viewer';
+import type { ViewerHandle } from '@bimdossier/viewer';
 
 /**
  * Drives the visibility plugin's IfcSpace exception from the spaces toggle.

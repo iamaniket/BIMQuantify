@@ -6,7 +6,7 @@
  * dependencies tight makes the worker image leaner.
  *
  * The compliance JSON shape is the API's `ComplianceCheckResponse` (see
- * `apps/api/src/bimstitch_api/schemas/compliance.py`). Labels come from a
+ * `apps/api/src/bimdossier_api/schemas/compliance.py`). Labels come from a
  * per-jurisdiction module under `jurisdictions/<country>/labels.ts` — NL
  * is the default. Adding a second jurisdiction = sibling folder + a
  * registry entry below.

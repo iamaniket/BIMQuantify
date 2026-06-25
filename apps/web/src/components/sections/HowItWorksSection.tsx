@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight, Bell, FileUp, MapPin, Search } from '@bimstitch/ui/icons';
+import { ArrowRight, Bell, FileUp, MapPin, Search } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX, ReactNode } from 'react';
 

@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { type JSX } from 'react';
 
-import { Select } from '@bimstitch/ui';
+import { Select } from '@bimdossier/ui';
 
 import { REPORT_TEMPLATE_TYPES } from '@/lib/api/schemas/reportTemplates';
 

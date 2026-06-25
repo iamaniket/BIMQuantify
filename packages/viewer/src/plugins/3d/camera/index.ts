@@ -253,6 +253,42 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
         { title: 'Get camera pose' },
       );
 
+      // Current projection mode of the OrthoPerspective rig. Used by callers that
+      // switch to orthographic temporarily (e.g. calibration's top-down plan view)
+      // so they can restore the prior mode on exit.
+      commands.register(
+        'camera.getProjection',
+        () => ctx.obcCamera.projection.current,
+        { title: 'Get camera projection' },
+      );
+
+      // Switch the camera projection (perspective ↔ orthographic). Orthographic is
+      // a true flat plan — used by calibration so the 3D pane matches the 2D PDF.
+      // Switching swaps the active three camera instance, so we must re-bind the
+      // fragments LOD/culling to it (otherwise streaming targets the stale camera
+      // → holes), and re-assert maxDistance (OrbitMode reverts it to 300 on switch).
+      commands.register(
+        'camera.setProjection',
+        async (args) => {
+          const a = args as { mode?: 'Orthographic' | 'Perspective' } | undefined;
+          const mode = a?.mode;
+          if (mode !== 'Orthographic' && mode !== 'Perspective') return;
+          if (ctx.obcCamera.projection.current === mode) return;
+          await ctx.obcCamera.projection.set(mode);
+          for (const model of ctx.models().values()) {
+            (model as FRAGS.FragmentsModel).useCamera(ctx.camera);
+          }
+          ctx.cameraControls.maxDistance = Infinity;
+          // OBC keeps the ortho frustum aspect via a size-delta; a switch that
+          // coincides with the calibration pane resize desyncs it from the
+          // canvas (horizontal squeeze). Re-derive it absolutely as the last
+          // write (no-op when switching to Perspective).
+          ctx.syncOrthoAspect();
+          ctx.requestRender();
+        },
+        { title: 'Set camera projection' },
+      );
+
       // Model world-space AABB, used by the minimap to calibrate the IFC↔viewer
       // transform (the model is recentered on load, so a fixed offset won't do).
       commands.register(

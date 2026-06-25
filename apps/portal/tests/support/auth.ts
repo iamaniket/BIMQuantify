@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 
 import { E2E_ENV } from './env';
 
-const STORAGE_KEY = 'bimstitch.tokens';
+const STORAGE_KEY = 'bimdossier.tokens';
 
 // In-process token cache: persists across serial tests in the same worker.
 // Keyed by email — avoids repeated login API calls within one test run.

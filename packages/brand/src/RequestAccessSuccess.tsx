@@ -1,4 +1,4 @@
-import { Check } from '@bimstitch/ui/icons';
+import { Check } from '@bimdossier/ui/icons';
 import type { JSX } from 'react';
 
 export interface RequestAccessSuccessProps {

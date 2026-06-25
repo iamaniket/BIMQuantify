@@ -1,13 +1,13 @@
 'use client';
 
-import { AlertTriangle, Loader2, Plus, Search } from '@bimstitch/ui/icons';
+import { AlertTriangle, Loader2, Plus, Search } from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 
-import { Badge, Button, Input, SplitButton, type SplitButtonItem } from '@bimstitch/ui';
-import { DetailCard, DetailCardBody, DetailCardRow } from '@bimstitch/ui';
+import { Badge, Button, Input, SplitButton, type SplitButtonItem } from '@bimdossier/ui';
+import { DetailCard, DetailCardBody, DetailCardRow } from '@bimdossier/ui';
 
-import type { DocumentViewerHandle, FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import type { DocumentViewerHandle, FloorPlanViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import type { ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import type { ConvertFloorPlanPoint } from '@/features/projects/detail/FindingPinButton';
@@ -26,7 +26,7 @@ import {
 import type { FindingTemplate, LinkedFileTypeValue } from '@/lib/api/schemas';
 import { formatDate } from '@/lib/formatting/dates';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { consumePendingElementPoint } from './pendingElementPoint';
 import { consumePendingPdfContextPoint } from './pendingPdfContextPoint';
@@ -74,8 +74,8 @@ type EntityFindingsBodyProps = {
   resolvePickedGlobalId?: ((item: { modelId: string; localId: number } | null) => string | null) | undefined;
   /** Current viewport layout — routes IFC picks to the floor-plan in 2D mode. */
   viewMode?: ViewMode | undefined;
-  /** Floor-plan handle (2D plan surface) for picking in 2D mode. */
-  floorPlanHandle?: FloorPlanViewerHandle | null | undefined;
+  /** Active 2D pick surface (generated floor plan OR aligned PDF) for picking in 2D mode. */
+  floorPlanHandle?: FloorPlanViewerHandle | DocumentViewerHandle | null | undefined;
   /** Convert a normalized plan point to a 3D world anchor. */
   convertFloorPlanPoint?: ConvertFloorPlanPoint | undefined;
   onNavigateToPage?: ((page: number) => void) | undefined;

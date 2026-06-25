@@ -12,7 +12,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import type { Column } from './PageTable';
 import type { SortState } from '@/lib/query/useTableQuery';

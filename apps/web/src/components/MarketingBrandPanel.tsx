@@ -5,8 +5,8 @@ import {
   HeroGrid,
   KpiStrip,
   LegalFooter,
-} from '@bimstitch/brand';
-import { NetherlandsMap, NL_ASPECT_RATIO_CSS, type MapMarker } from '@bimstitch/map';
+} from '@bimdossier/brand';
+import { NetherlandsMap, NL_ASPECT_RATIO_CSS, type MapMarker } from '@bimdossier/map';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
@@ -96,12 +96,12 @@ export function MarketingBrandPanel(): JSX.Element {
       <HeroGrid opacity={0.1} stroke="#ffffff" step={36} />
 
       <div className="relative flex items-center gap-3">
-        <BrandMark size={38} />
+        <BrandMark size={42} plate />
         <div>
-          <div className="font-display text-[18px] font-semibold leading-tight tracking-tight text-white">
+          <div className="font-display text-[20px] font-semibold leading-tight tracking-tight text-white">
             {t('brand')}
           </div>
-          <div className="mt-0.5 text-[10.5px] font-semibold uppercase tracking-[0.10em] text-white/60">
+          <div className="mt-0.5 text-[11.5px] font-semibold uppercase tracking-[0.10em] text-white/60">
             {t('eyebrow')}
           </div>
         </div>

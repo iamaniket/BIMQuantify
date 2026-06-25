@@ -3,7 +3,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import type { JSX } from 'react';
 
-import { supportedLocales } from '@bimstitch/i18n';
+import { supportedLocales } from '@bimdossier/i18n';
 
 import { FeatureBody } from '@/components/features/FeatureBody';
 import { FeatureFaq } from '@/components/features/FeatureFaq';

@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ViewerEvents, ViewerHandle } from '@bimstitch/viewer';
+import type { ViewerEvents, ViewerHandle } from '@bimdossier/viewer';
 
 import { toEntityKey, useViewerEntityStore } from '@/stores/viewerEntityStore';
 

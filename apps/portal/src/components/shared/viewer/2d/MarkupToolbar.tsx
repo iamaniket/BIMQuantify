@@ -1,10 +1,10 @@
 'use client';
 
-import { ArrowRight, Pencil, Square, StickyNote, UploadCloud } from '@bimstitch/ui/icons';
+import { ArrowRight, Pencil, Square, StickyNote, UploadCloud } from '@bimdossier/ui/icons';
 import { useEffect, useState, type JSX } from 'react';
 
-import { cn, type AppIcon } from '@bimstitch/ui';
-import type { DocumentViewerHandle, MarkupTool } from '@bimstitch/viewer';
+import { cn, type AppIcon } from '@bimdossier/ui';
+import type { DocumentViewerHandle, MarkupTool } from '@bimdossier/viewer';
 
 const TOOLS: { tool: MarkupTool; icon: AppIcon; labelKey: string }[] = [
   { tool: 'rect', icon: Square, labelKey: 'rectangle' },

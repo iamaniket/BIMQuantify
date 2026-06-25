@@ -1,11 +1,11 @@
 'use client';
 
-import { FileBadge, Link2, Search } from '@bimstitch/ui/icons';
+import { FileBadge, Link2, Search } from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { formatDate } from '@/lib/formatting/dates';
 
@@ -22,11 +22,11 @@ import {
   DialogTitle,
   Input,
   Skeleton,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import type { OrgCertificate } from '@/lib/api/schemas';
 import { getCertificateExpiryState, type CertificateExpiryState } from '@/features/certificates/expiry';
-import type { BadgeVariant } from '@bimstitch/ui';
+import type { BadgeVariant } from '@bimdossier/ui';
 
 import { useOrgCertificates } from './useOrgCertificates';
 import { useLinkFromLibrary } from './useLinkFromLibrary';

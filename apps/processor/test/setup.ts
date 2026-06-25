@@ -5,6 +5,6 @@
  * override PROCESSOR_SHARED_SECRET as needed; `??=` only fills the gaps.
  */
 process.env.NODE_ENV ??= 'test';
-process.env.S3_ACCESS_KEY_ID ??= 'bimstitch';
-process.env.S3_SECRET_ACCESS_KEY ??= 'bimstitch-secret';
+process.env.S3_ACCESS_KEY_ID ??= 'bimdossier';
+process.env.S3_SECRET_ACCESS_KEY ??= 'bimdossier-secret';
 process.env.PROCESSOR_SHARED_SECRET ??= 'dev-shared-secret-change-me';

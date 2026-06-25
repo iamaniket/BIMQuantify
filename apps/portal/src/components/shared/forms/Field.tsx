@@ -1,11 +1,11 @@
 'use client';
 
-import { FormField } from '@bimstitch/ui';
+import { FormField } from '@bimdossier/ui';
 import { useId, type JSX, type ReactNode } from 'react';
 import type { FieldError, FieldErrors, FieldValues, Path, UseFormReturn } from 'react-hook-form';
 
 /**
- * Portal-flavoured wrapper over `@bimstitch/ui`'s `FormField`. Reads the
+ * Portal-flavoured wrapper over `@bimdossier/ui`'s `FormField`. Reads the
  * field-level error message off the RHF form, generates a stable `id` for
  * `htmlFor` wiring, and applies the dialog-style label (non-uppercase, plain
  * Label component). Pass the control as `children` — wire `register` or

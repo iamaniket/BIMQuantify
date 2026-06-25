@@ -413,7 +413,7 @@ async def test_partial_unique_index_blocks_two_active_plans(
     two rows in (draft | published) for the same project."""
     from sqlalchemy.exc import IntegrityError
 
-    from bimstitch_api.models.borgingsplan import Borgingsplan, BorgingsplanStatus
+    from bimdossier_api.models.borgingsplan import Borgingsplan, BorgingsplanStatus
 
     project = await _create_project(client, org_user["access_token"])
     await client.post(
@@ -740,10 +740,10 @@ async def test_cascade_on_project_delete(
 ) -> None:
     from sqlalchemy import select
 
-    from bimstitch_api.models.borgingsmoment import Borgingsmoment
-    from bimstitch_api.models.borgingsplan import Borgingsplan
-    from bimstitch_api.models.checklist_item import ChecklistItem
-    from bimstitch_api.models.project import Project
+    from bimdossier_api.models.borgingsmoment import Borgingsmoment
+    from bimdossier_api.models.borgingsplan import Borgingsplan
+    from bimdossier_api.models.checklist_item import ChecklistItem
+    from bimdossier_api.models.project import Project
 
     project = await _create_project(client, org_user["access_token"])
     await client.post(

@@ -1,7 +1,7 @@
 'use client';
 
-import { Label } from '@bimstitch/ui';
-import { ImagePlus, Pencil, X } from '@bimstitch/ui/icons';
+import { Label } from '@bimdossier/ui';
+import { ImagePlus, Pencil, X } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';

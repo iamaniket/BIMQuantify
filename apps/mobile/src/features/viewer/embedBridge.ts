@@ -61,7 +61,7 @@ export type ClientMessage =
  */
 export function hostMessageToInjectedJs(msg: HostMessage): string {
   const payload = JSON.stringify(msg);
-  return `window.__bimstitchViewerReceive && window.__bimstitchViewerReceive(${JSON.stringify(
+  return `window.__bimdossierViewerReceive && window.__bimdossierViewerReceive(${JSON.stringify(
     payload,
   )}); true;`;
 }

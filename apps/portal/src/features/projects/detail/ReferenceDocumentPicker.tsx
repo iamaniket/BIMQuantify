@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, Plus, X } from '@bimstitch/ui/icons';
+import { FileText, Plus, X } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
@@ -14,7 +14,7 @@ import {
   DialogTitle,
   Label,
   Skeleton,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { useAttachments } from '@/features/attachments/useAttachments';
 import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';

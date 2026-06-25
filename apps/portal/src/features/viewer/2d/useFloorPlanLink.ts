@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 
-import type { FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import type { FloorPlanViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import { buildStoreyMembership } from '@/features/viewer/3d/minimap/storeyMembership';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 
+import type { SheetTransform } from './sheetTransform';
 import type { FloorPlanDisplayLevel } from './useFloorPlanData';
 
 interface FloorPlanLinkOptions {
@@ -21,6 +22,13 @@ interface FloorPlanLinkOptions {
   /** IFC horizontal axis indices for the plan (for calibration in Split/2D). */
   planAxisX: number;
   planAxisY: number;
+  /**
+   * The active aligned-sheet transform (PDF substitution) or null for the
+   * generated plan. Passed straight into `minimap.calibrate` so the transform is
+   * installed atomically with calibration — a separate `setSheetTransform` call
+   * would be clobbered by calibrate (which resets it). Reset to null on teardown.
+   */
+  sheetTransform?: SheetTransform | null;
 }
 
 /** A world-space centroid command result. */
@@ -42,19 +50,26 @@ type CameraPose = { position: { x: number; y: number; z: number }; target: { x: 
  */
 export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
   const { fpHandle, viewerHandle, viewerReady, levels, activeLevel, isolate, metadata, planAxisX, planAxisY } = opts;
+  const sheetTransform = opts.sheetTransform ?? null;
 
   const storeyMembership = useMemo(() => buildStoreyMembership(metadata), [metadata]);
 
   // Ensure the minimap is calibrated in Split/2D too — the 3D minimap pop-out
   // (which calibrates only while open) isn't mounted here, and its calibration
   // may not have completed before this pane mounted. Idempotent; safe to recall.
+  // The aligned-sheet transform (if any) rides along so `projectPoint`/markers
+  // operate in PDF page space without a clobber race. Cleared on teardown so a
+  // leftover transform can't poison the 3D minimap after leaving 2D.
   const ifcBbox = metadata?.bbox;
   useEffect(() => {
-    if (!viewerHandle || !viewerReady || !ifcBbox) return;
+    if (!viewerHandle || !viewerReady || !ifcBbox) return undefined;
     void viewerHandle.commands
-      .execute('minimap.calibrate', { ifcBbox, planAxisX, planAxisY })
+      .execute('minimap.calibrate', { ifcBbox, planAxisX, planAxisY, sheetTransform })
       .catch(() => undefined);
-  }, [viewerHandle, viewerReady, ifcBbox, planAxisX, planAxisY]);
+    return () => {
+      void viewerHandle.commands.execute('minimap.setSheetTransform', null).catch(() => undefined);
+    };
+  }, [viewerHandle, viewerReady, ifcBbox, planAxisX, planAxisY, sheetTransform]);
 
   // Suppress the 3D→2D bounce caused by our own programmatic selection.
   const lastSelectedSpaceRef = useRef<number | null>(null);

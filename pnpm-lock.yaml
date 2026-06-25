@@ -38,10 +38,10 @@ importers:
 
   apps/mobile:
     dependencies:
-      '@bimstitch/design-tokens':
+      '@bimdossier/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
-      '@bimstitch/map':
+      '@bimdossier/map':
         specifier: workspace:*
         version: link:../../packages/map
       '@expo-google-fonts/fraunces':
@@ -159,25 +159,25 @@ importers:
 
   apps/portal:
     dependencies:
-      '@bimstitch/annotation':
+      '@bimdossier/annotation':
         specifier: workspace:*
         version: link:../../packages/annotation
-      '@bimstitch/brand':
+      '@bimdossier/brand':
         specifier: workspace:*
         version: link:../../packages/brand
-      '@bimstitch/design-tokens':
+      '@bimdossier/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
-      '@bimstitch/i18n':
+      '@bimdossier/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@bimstitch/map':
+      '@bimdossier/map':
         specifier: workspace:*
         version: link:../../packages/map
-      '@bimstitch/ui':
+      '@bimdossier/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@bimstitch/viewer':
+      '@bimdossier/viewer':
         specifier: workspace:*
         version: link:../../packages/viewer
       '@dnd-kit/core':
@@ -265,10 +265,10 @@ importers:
         specifier: ^5.0.12
         version: 5.0.12(@types/react@19.2.14)(immer@11.1.4)(react@19.2.5)(use-sync-external-store@1.6.0(react@19.2.5))
     devDependencies:
-      '@bimstitch/tailwind-config':
+      '@bimdossier/tailwind-config':
         specifier: workspace:*
         version: link:../../packages/tailwind-config
-      '@bimstitch/tsconfig':
+      '@bimdossier/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@eslint/eslintrc':
@@ -440,7 +440,7 @@ importers:
 
   apps/viewer-embed:
     dependencies:
-      '@bimstitch/viewer':
+      '@bimdossier/viewer':
         specifier: workspace:*
         version: link:../../packages/viewer
       react:
@@ -480,22 +480,22 @@ importers:
 
   apps/web:
     dependencies:
-      '@bimstitch/brand':
+      '@bimdossier/brand':
         specifier: workspace:*
         version: link:../../packages/brand
-      '@bimstitch/design-tokens':
+      '@bimdossier/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
-      '@bimstitch/i18n':
+      '@bimdossier/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@bimstitch/map':
+      '@bimdossier/map':
         specifier: workspace:*
         version: link:../../packages/map
-      '@bimstitch/ui':
+      '@bimdossier/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@bimstitch/viewer':
+      '@bimdossier/viewer':
         specifier: workspace:*
         version: link:../../packages/viewer
       '@thatopen/fragments':
@@ -535,10 +535,10 @@ importers:
         specifier: 0.0.77
         version: 0.0.77
     devDependencies:
-      '@bimstitch/tailwind-config':
+      '@bimdossier/tailwind-config':
         specifier: workspace:*
         version: link:../../packages/tailwind-config
-      '@bimstitch/tsconfig':
+      '@bimdossier/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@eslint/eslintrc':
@@ -613,7 +613,7 @@ importers:
 
   packages/annotation:
     devDependencies:
-      '@bimstitch/tsconfig':
+      '@bimdossier/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/react':
@@ -643,11 +643,11 @@ importers:
 
   packages/brand:
     dependencies:
-      '@bimstitch/ui':
+      '@bimdossier/ui':
         specifier: workspace:*
         version: link:../ui
     devDependencies:
-      '@bimstitch/tsconfig':
+      '@bimdossier/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/react':
@@ -671,7 +671,7 @@ importers:
 
   packages/design-tokens:
     devDependencies:
-      '@bimstitch/tsconfig':
+      '@bimdossier/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       rimraf:
@@ -683,7 +683,7 @@ importers:
 
   packages/i18n:
     devDependencies:
-      '@bimstitch/tsconfig':
+      '@bimdossier/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       rimraf:
@@ -698,7 +698,7 @@ importers:
 
   packages/map:
     devDependencies:
-      '@bimstitch/tsconfig':
+      '@bimdossier/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/react':
@@ -734,7 +734,7 @@ importers:
         specifier: ^2.5.5
         version: 2.6.1
     devDependencies:
-      '@bimstitch/tsconfig':
+      '@bimdossier/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@dnd-kit/core':
@@ -776,7 +776,7 @@ importers:
 
   packages/viewer:
     dependencies:
-      '@bimstitch/annotation':
+      '@bimdossier/annotation':
         specifier: workspace:*
         version: link:../annotation
       '@thatopen/components':
@@ -795,7 +795,7 @@ importers:
         specifier: 0.0.77
         version: 0.0.77
     devDependencies:
-      '@bimstitch/tsconfig':
+      '@bimdossier/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/react':
@@ -12260,7 +12260,9 @@ snapshots:
       metro-runtime: 0.84.4
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@react-native/normalize-colors@0.85.3': {}
 

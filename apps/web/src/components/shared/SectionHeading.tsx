@@ -1,4 +1,4 @@
-import { Eyebrow, cn } from '@bimstitch/ui';
+import { Eyebrow, cn } from '@bimdossier/ui';
 import type { JSX } from 'react';
 
 type SectionHeadingProps = {

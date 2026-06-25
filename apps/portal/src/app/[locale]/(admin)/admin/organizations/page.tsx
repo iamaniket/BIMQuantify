@@ -2,10 +2,10 @@
 
 import {
   Activity, BookOpen, Building2, ChevronRight, Download, Inbox, LayoutGrid, Plus, Table2, Users,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
@@ -15,7 +15,7 @@ import {
   Select,
   Skeleton,
   TabsContent,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { HeroImage } from '@/components/shared/layout/HeroImage';

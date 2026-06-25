@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 const SIZE_CLASSES = {
   sm: 'h-6 w-6 text-[9px]',

@@ -10,15 +10,15 @@ import zipfile
 from datetime import datetime, timezone
 
 
-from bimstitch_api.bcf.generator import generate_bcf_archive, generate_single_topic_archive
-from bimstitch_api.bcf.json_utils import (
+from bimdossier_api.bcf.generator import generate_bcf_archive, generate_single_topic_archive
+from bimdossier_api.bcf.json_utils import (
     parse_topic_json,
     parse_viewpoint_json,
     serialize_topic_json,
     serialize_viewpoint_json,
 )
-from bimstitch_api.bcf.parser import parse_bcf_archive
-from bimstitch_api.bcf.types import (
+from bimdossier_api.bcf.parser import parse_bcf_archive
+from bimdossier_api.bcf.types import (
     BcfComponents,
     ClippingPlane,
     ParsedBcf,
@@ -28,7 +28,7 @@ from bimstitch_api.bcf.types import (
     ParsedViewpoint,
     Vec3,
 )
-from bimstitch_api.bcf.xml_utils import (
+from bimdossier_api.bcf.xml_utils import (
     parse_markup_xml,
     parse_viewpoint_xml,
     serialize_markup_xml,

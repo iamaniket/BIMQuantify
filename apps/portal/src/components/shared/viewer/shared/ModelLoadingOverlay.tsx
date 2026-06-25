@@ -1,6 +1,6 @@
 'use client';
 
-import { Progress } from '@bimstitch/ui';
+import { Progress } from '@bimdossier/ui';
 import type { JSX } from 'react';
 
 /* ── Building geometry (viewBox 240 × 180) ─────────────────────────────── */

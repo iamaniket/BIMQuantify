@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, LinkIcon } from '@bimstitch/ui/icons';
+import { Copy, LinkIcon } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -17,7 +17,7 @@ import {
   Input,
   Label,
   Select,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { useCreateCaptureLink } from './useCreateCaptureLink';
 

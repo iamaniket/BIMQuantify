@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   Spinner,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 import { useTranslations } from 'next-intl';
 import { type JSX } from 'react';
 

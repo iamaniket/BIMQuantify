@@ -33,7 +33,7 @@ type FindingEntityKind = 'element' | 'model' | 'file' | 'unlinked';
 
 export function findingEntityKind(f: Finding): FindingEntityKind {
   if (f.linked_element_global_id !== null) return 'element';
-  if (f.linked_model_id !== null) return 'model';
+  if (f.linked_document_id !== null) return 'model';
   if (f.linked_file_id !== null) return 'file';
   return 'unlinked';
 }

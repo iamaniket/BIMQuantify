@@ -17,11 +17,11 @@ from httpx import AsyncClient
 from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimstitch_api.auth.tokens import ALGORITHM, REFRESH_AUDIENCE, decode_token_full
-from bimstitch_api.config import get_settings
-from bimstitch_api.models.organization import Organization, OrganizationStatus
-from bimstitch_api.models.user import User
-from bimstitch_api.tenancy import schema_name_for
+from bimdossier_api.auth.tokens import ALGORITHM, REFRESH_AUDIENCE, decode_token_full
+from bimdossier_api.config import get_settings
+from bimdossier_api.models.organization import Organization, OrganizationStatus
+from bimdossier_api.models.user import User
+from bimdossier_api.tenancy import schema_name_for
 from tests.conftest import _audit_rows
 
 PASSWORD = "correct-horse-battery"

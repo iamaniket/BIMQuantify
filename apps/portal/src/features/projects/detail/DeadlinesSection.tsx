@@ -1,10 +1,10 @@
 'use client';
 
-import { CalendarDays, ChevronDown, ChevronRight, Clock } from '@bimstitch/ui/icons';
+import { CalendarDays, ChevronDown, ChevronRight, Clock } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { Skeleton } from '@bimstitch/ui';
+import { Skeleton } from '@bimdossier/ui';
 
 import { Link } from '@/i18n/navigation';
 

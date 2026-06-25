@@ -1,11 +1,11 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { ChevronDown } from '@bimstitch/ui/icons';
+import { ChevronDown } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { Eyebrow, Tooltip, TooltipContent, TooltipTrigger } from '@bimstitch/ui';
+import { Eyebrow, Tooltip, TooltipContent, TooltipTrigger } from '@bimdossier/ui';
 
 import { useAuth } from '@/providers/AuthProvider';
 

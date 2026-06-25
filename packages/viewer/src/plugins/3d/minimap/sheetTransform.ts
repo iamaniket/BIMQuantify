@@ -10,7 +10,7 @@
  *   world     → viewerToPlan → planToPdf            → PDF      (you-are-here / pins)
  *
  * The transform itself is solved server-side (`/aligned-sheets/{id}/calibrate`,
- * mirroring `bimstitch_api.alignment.similarity`) and stored as
+ * mirroring `bimdossier_api.alignment.similarity`) and stored as
  * `{ scale, rotation_rad, offset_x, offset_y }`; map those onto `SheetTransform`.
  */
 

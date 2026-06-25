@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 _TEST_DB_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://bim:bim@localhost:5434/bimstitch_test",
+    "postgresql+asyncpg://bim:bim@localhost:5434/bimdossier_test",
 )
 os.environ["DATABASE_URL"] = _TEST_DB_URL
 os.environ.setdefault("JWT_SECRET", "test-secret")
@@ -32,8 +32,8 @@ os.environ.setdefault("SMTP_PORT", "1025")
 # These credential fields have no code default (fail-closed in prod), so the test
 # process must supply them like the dev .env / docker-compose do. FakeStorage
 # overrides real S3 calls, so the values only need to exist, not be valid.
-os.environ.setdefault("S3_ACCESS_KEY_ID", "bimstitch")
-os.environ.setdefault("S3_SECRET_ACCESS_KEY", "bimstitch-secret")
+os.environ.setdefault("S3_ACCESS_KEY_ID", "bimdossier")
+os.environ.setdefault("S3_SECRET_ACCESS_KEY", "bimdossier-secret")
 
 _TEST_REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6380/1")
 os.environ["REDIS_URL"] = _TEST_REDIS_URL
@@ -58,9 +58,7 @@ async def _ensure_test_db() -> None:
 
     conn = await asyncpg.connect(maintenance_url)
     try:
-        exists = await conn.fetchval(
-            "SELECT 1 FROM pg_database WHERE datname = $1", db_name
-        )
+        exists = await conn.fetchval("SELECT 1 FROM pg_database WHERE datname = $1", db_name)
         if not exists:
             await conn.execute(f'CREATE DATABASE "{db_name}"')
     finally:
@@ -77,13 +75,13 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
     # a previous test's schema/enums are gone.
     from sqlalchemy.pool import NullPool
 
-    from bimstitch_api._rls_sql import (
+    from bimdossier_api._rls_sql import (
         create_app_role_statements,
         disable_rls_statements,
         enable_rls_statements,
     )
-    from bimstitch_api.db import Base
-    from bimstitch_api.models import (  # noqa: F401
+    from bimdossier_api.db import Base
+    from bimdossier_api.models import (  # noqa: F401
         AccessRequest,
         AuditLog,
         BlogPost,
@@ -94,7 +92,7 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         ChecklistItemResult,
         Deadline,
         Job,
-        Model,
+        Document,
         Notification,
         NotificationUserState,
         Organization,
@@ -115,8 +113,7 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         # / public.organizations, so dropping the master tables first would
         # fail with a dependent-objects error.
         rows = await conn.exec_driver_sql(
-            "SELECT schema_name FROM information_schema.schemata "
-            "WHERE schema_name LIKE 'org_%'"
+            "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'org_%'"
         )
         for (schema,) in rows.fetchall():
             await conn.exec_driver_sql(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
@@ -192,8 +189,7 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
 
     async with eng.begin() as conn:
         rows = await conn.exec_driver_sql(
-            "SELECT schema_name FROM information_schema.schemata "
-            "WHERE schema_name LIKE 'org_%'"
+            "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'org_%'"
         )
         for (schema,) in rows.fetchall():
             await conn.exec_driver_sql(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
@@ -265,9 +261,16 @@ async def _clean_tables(
 
     # Skip cleanup for tests that never touched the DB.
     _db_fixture_names = {
-        "client", "org_user", "other_org_user", "same_org_user",
-        "same_org_non_admin_user", "same_org_admin_user", "superuser_in_org",
-        "session", "fake_storage_client", "rate_limited_client",
+        "client",
+        "org_user",
+        "other_org_user",
+        "same_org_user",
+        "same_org_non_admin_user",
+        "same_org_admin_user",
+        "superuser_in_org",
+        "session",
+        "fake_storage_client",
+        "rate_limited_client",
     }
     if not _db_fixture_names.intersection(request.fixturenames):
         return
@@ -288,16 +291,14 @@ async def _clean_tables(
                     )
                 ).all()
                 for (schema,) in rows:
-                    await session.execute(
-                        text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
-                    )
+                    await session.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
 
                 await session.execute(
                     text(
                         "TRUNCATE TABLE checklist_item_results, checklist_items, "
                         "borgingsmomenten, borgingsplans, deadlines, "
                         "capture_links, blog_posts, "
-                        "risks, access_requests, reports, jobs, project_files, models, "
+                        "risks, access_requests, reports, jobs, project_files, documents, "
                         "project_members, projects, notification_user_state, "
                         "notifications, audit_log, certificates, org_certificates, "
                         "organization_members, users, "
@@ -338,9 +339,16 @@ async def _platform_org(
     leak across tests, then materialise a fresh platform org + schema.
     """
     _db_fixture_names = {
-        "client", "org_user", "other_org_user", "same_org_user",
-        "same_org_non_admin_user", "same_org_admin_user", "superuser_in_org",
-        "session", "fake_storage_client", "rate_limited_client",
+        "client",
+        "org_user",
+        "other_org_user",
+        "same_org_user",
+        "same_org_non_admin_user",
+        "same_org_admin_user",
+        "superuser_in_org",
+        "session",
+        "fake_storage_client",
+        "rate_limited_client",
     }
     if not _db_fixture_names.intersection(request.fixturenames):
         return
@@ -348,8 +356,8 @@ async def _platform_org(
     import uuid
     from datetime import datetime, timezone
 
-    from bimstitch_api import tenancy
-    from bimstitch_api.models.organization import Organization, OrganizationStatus
+    from bimdossier_api import tenancy
+    from bimdossier_api.models.organization import Organization, OrganizationStatus
 
     tenancy._platform_schema = None
     platform_id = uuid.UUID(_PLATFORM_ORG_ID_HEX)
@@ -378,9 +386,16 @@ async def _flush_redis(
     yield
     # Skip for pure-logic tests that never touch Redis.
     _db_fixture_names = {
-        "client", "org_user", "other_org_user", "same_org_user",
-        "same_org_non_admin_user", "same_org_admin_user", "superuser_in_org",
-        "session", "fake_storage_client", "rate_limited_client",
+        "client",
+        "org_user",
+        "other_org_user",
+        "same_org_user",
+        "same_org_non_admin_user",
+        "same_org_admin_user",
+        "superuser_in_org",
+        "session",
+        "fake_storage_client",
+        "rate_limited_client",
     }
     if not _db_fixture_names.intersection(request.fixturenames):
         return
@@ -398,9 +413,9 @@ def _stub_job_dispatcher() -> Generator[list[dict[str, object]], None, None]:
     still use the old `extraction_calls` field-flattened shape, a few
     convenience keys (file_id, project_id, storage_key) are also copied up.
     """
-    from bimstitch_api.config import Settings
-    from bimstitch_api.jobs import reset_job_dispatcher, set_job_dispatcher
-    from bimstitch_api.models.job import Job
+    from bimdossier_api.config import Settings
+    from bimdossier_api.jobs import reset_job_dispatcher, set_job_dispatcher
+    from bimdossier_api.models.job import Job
 
     calls: list[dict[str, object]] = []
 
@@ -450,8 +465,8 @@ def _stub_job_canceller() -> Generator[list[dict[str, object]], None, None]:
     that need a different outcome (e.g. ``already_running``) set their own
     canceller via ``set_job_canceller`` after pulling this fixture.
     """
-    from bimstitch_api.config import Settings
-    from bimstitch_api.jobs import reset_job_canceller, set_job_canceller
+    from bimdossier_api.config import Settings
+    from bimdossier_api.jobs import reset_job_canceller, set_job_canceller
 
     calls: list[dict[str, object]] = []
 
@@ -482,11 +497,11 @@ def _stub_action_dispatcher() -> Generator[list[dict[str, object]], None, None]:
     path (send_email, etc.). Tests that need to assert dispatch was called
     pull the ``action_dispatch_calls`` fixture.
     """
-    from bimstitch_api.actions.dispatcher import (
+    from bimdossier_api.actions.dispatcher import (
         reset_action_dispatcher,
         set_action_dispatcher,
     )
-    from bimstitch_api.config import Settings
+    from bimdossier_api.config import Settings
 
     calls: list[dict[str, object]] = []
 
@@ -554,24 +569,32 @@ class FakeStorage:
     def presign_ttl(self) -> int:
         return self.presign_ttl_value
 
-    async def presigned_put_url(self, key: str, content_type: str, content_length: int, *, bucket: str | None = None) -> str:
+    async def presigned_put_url(
+        self, key: str, content_type: str, content_length: int, *, bucket: str | None = None
+    ) -> str:
         self.last_put_url = f"http://fake-storage/{key}?put"
         return self.last_put_url
 
-    async def presigned_get_url(self, key: str, filename: str, *, disposition: str = "attachment", bucket: str | None = None) -> str:
+    async def presigned_get_url(
+        self, key: str, filename: str, *, disposition: str = "attachment", bucket: str | None = None
+    ) -> str:
         return f"http://fake-storage/{key}?download={filename}&disposition={disposition}"
 
-    async def put_object(self, key: str, content_type: str, data: bytes, *, bucket: str | None = None) -> None:
+    async def put_object(
+        self, key: str, content_type: str, data: bytes, *, bucket: str | None = None
+    ) -> None:
         self.objects[key] = data
 
     async def head_object(self, key: str, *, bucket: str | None = None) -> dict[str, object]:
-        from bimstitch_api.storage.minio import ObjectNotFoundError
+        from bimdossier_api.storage.minio import ObjectNotFoundError
 
         if key not in self.objects:
             raise ObjectNotFoundError(key)
         return {"ContentLength": len(self.objects[key])}
 
-    async def get_object_range(self, key: str, start: int, end: int, *, bucket: str | None = None) -> bytes:
+    async def get_object_range(
+        self, key: str, start: int, end: int, *, bucket: str | None = None
+    ) -> bytes:
         return self.objects[key][start : end + 1]
 
     async def delete_object(self, key: str, *, bucket: str | None = None) -> None:
@@ -579,8 +602,10 @@ class FakeStorage:
             del self.objects[key]
         self.deleted.append(key)
 
-    async def copy_object(self, source_key: str, dest_key: str, *, bucket: str | None = None) -> None:
-        from bimstitch_api.storage.minio import ObjectNotFoundError
+    async def copy_object(
+        self, source_key: str, dest_key: str, *, bucket: str | None = None
+    ) -> None:
+        from bimdossier_api.storage.minio import ObjectNotFoundError
 
         if source_key not in self.objects:
             raise ObjectNotFoundError(source_key)
@@ -599,22 +624,22 @@ async def fake_storage_client(
     """Like the `client` fixture but with `get_storage` overridden to FakeStorage.
 
     Returns the (client, fake_storage) tuple so tests can assert on storage calls."""
-    from bimstitch_api import db as db_module
-    from bimstitch_api.auth.ratelimit import (
+    from bimdossier_api import db as db_module
+    from bimdossier_api.auth.ratelimit import (
         COMPLIANCE_CHECK_LIMITER,
         REPORT_GEN_LIMITER,
         UPLOAD_INITIATE_LIMITER,
     )
-    from bimstitch_api.auth.refresh import REFRESH_RATE_LIMITER
-    from bimstitch_api.auth.routes import (
+    from bimdossier_api.auth.refresh import REFRESH_RATE_LIMITER
+    from bimdossier_api.auth.routes import (
         FORGOT_RATE_LIMITER,
         LOGIN_RATE_LIMITER,
         REGISTER_RATE_LIMITER,
     )
-    from bimstitch_api.cache import client as cache_module
-    from bimstitch_api.main import create_app
-    from bimstitch_api.routers.access_requests import ACCESS_REQUEST_RATE_LIMITER
-    from bimstitch_api.storage import get_storage
+    from bimdossier_api.cache import client as cache_module
+    from bimdossier_api.main import create_app
+    from bimdossier_api.routers.access_requests import ACCESS_REQUEST_RATE_LIMITER
+    from bimdossier_api.storage import get_storage
 
     db_module._engine = engine
     db_module._session_maker = session_maker
@@ -659,7 +684,7 @@ async def _create_project(client: AsyncClient, token: str, name: str = "P1") -> 
     return resp.json()
 
 
-async def _create_model(
+async def _create_document(
     client: AsyncClient,
     token: str,
     project_id: str,
@@ -670,7 +695,7 @@ async def _create_model(
     body: dict[str, object] = {"name": name, "discipline": discipline}
     if status is not None:
         body["status"] = status
-    resp = await client.post(f"/projects/{project_id}/models", json=body, headers=_auth(token))
+    resp = await client.post(f"/projects/{project_id}/documents", json=body, headers=_auth(token))
     assert resp.status_code == 201, resp.text
     return resp.json()
 
@@ -688,18 +713,22 @@ async def _create_attachment_row(project_id: str) -> str:
     """
     from uuid import uuid4
 
-    from bimstitch_api.db import get_session_maker
+    from bimdossier_api.db import get_session_maker
 
     att_id = str(uuid4())
     async with get_session_maker()() as s, s.begin():
         candidates = (
-            await s.execute(
-                text(
-                    "SELECT schema_name FROM information_schema.schemata "
-                    "WHERE schema_name = 'public' OR schema_name LIKE 'org\\_%' ESCAPE '\\'"
+            (
+                await s.execute(
+                    text(
+                        "SELECT schema_name FROM information_schema.schemata "
+                        "WHERE schema_name = 'public' OR schema_name LIKE 'org\\_%' ESCAPE '\\'"
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         target = "public"
         for cand in candidates:
             hit = (
@@ -727,13 +756,17 @@ async def _create_attachment_row(project_id: str) -> str:
 async def _schema_for_project(session: AsyncSession, project_id: str) -> str:
     """Find which schema (public or an ``org_*`` tenant schema) holds the project."""
     candidates = (
-        await session.execute(
-            text(
-                "SELECT schema_name FROM information_schema.schemata "
-                "WHERE schema_name = 'public' OR schema_name LIKE 'org\\_%' ESCAPE '\\'"
+        (
+            await session.execute(
+                text(
+                    "SELECT schema_name FROM information_schema.schemata "
+                    "WHERE schema_name = 'public' OR schema_name LIKE 'org\\_%' ESCAPE '\\'"
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     for cand in candidates:
         hit = (
             await session.execute(
@@ -748,7 +781,7 @@ async def _schema_for_project(session: AsyncSession, project_id: str) -> str:
 
 async def _create_storey_row(
     project_id: str,
-    model_id: str,
+    document_id: str,
     *,
     name: str | None = None,
     elevation: float | None = None,
@@ -760,7 +793,7 @@ async def _create_storey_row(
     populated from extraction). Returns the storey id."""
     from uuid import uuid4
 
-    from bimstitch_api.db import get_session_maker
+    from bimdossier_api.db import get_session_maker
 
     sid = str(uuid4())
     async with get_session_maker()() as s, s.begin():
@@ -768,12 +801,12 @@ async def _create_storey_row(
         await s.execute(
             text(
                 f'INSERT INTO "{target}".storeys '
-                "(id, model_id, name, elevation_m, ifc_guid, express_id, ordering) "
+                "(id, document_id, name, elevation_m, ifc_guid, express_id, ordering) "
                 "VALUES (:id, :mid, :name, :elev, :guid, :eid, :ord)"
             ),
             {
                 "id": sid,
-                "mid": model_id,
+                "mid": document_id,
                 "name": name,
                 "elev": elevation,
                 "guid": ifc_guid,
@@ -784,17 +817,84 @@ async def _create_storey_row(
     return sid
 
 
-async def _set_model_primary_file_type(project_id: str, model_id: str, file_type: str) -> None:
+async def _set_document_primary_file_type(project_id: str, document_id: str, file_type: str) -> None:
     """Stamp a model's ``primary_file_type`` directly (the upload flow normally
     sets it on first file). Lets a test mint a 'PDF model' without a real upload."""
-    from bimstitch_api.db import get_session_maker
+    from bimdossier_api.db import get_session_maker
 
     async with get_session_maker()() as s, s.begin():
         target = await _schema_for_project(s, project_id)
         await s.execute(
-            text(f'UPDATE "{target}".models SET primary_file_type = :ft WHERE id = :mid'),
-            {"ft": file_type, "mid": model_id},
+            text(f'UPDATE "{target}".documents SET primary_file_type = :ft WHERE id = :mid'),
+            {"ft": file_type, "mid": document_id},
         )
+
+
+async def _create_pdf_file_row(
+    project_id: str,
+    document_id: str,
+    *,
+    uploaded_by: str | None = None,
+    version_number: int = 1,
+    status: str = "ready",
+    extraction_status: str = "queued",
+) -> str:
+    """Insert a ``model_source`` PDF ``project_files`` row directly (no upload
+    flow). Returns the file id — usable as an extraction-callback target or a
+    calibration version pin. Pass ``uploaded_by`` when the row will be serialized
+    via ``ProjectFileRead`` (its ``uploaded_by_user_id`` is non-nullable), e.g.
+    when it's an extraction-callback target. Enum columns are SQL literals
+    (asyncpg rejects a plain-str param for an enum column)."""
+    from uuid import uuid4
+
+    from bimdossier_api.db import get_session_maker
+
+    fid = str(uuid4())
+    async with get_session_maker()() as s, s.begin():
+        target = await _schema_for_project(s, project_id)
+        await s.execute(
+            text(
+                f'INSERT INTO "{target}".project_files '
+                "(id, project_id, role, status, storage_key, original_filename, "
+                " size_bytes, content_type, version_number, file_type, document_id, "
+                " extraction_status, uploaded_by_user_id) "
+                f"VALUES (:id, :pid, 'model_source', '{status}', :sk, 'drawing.pdf', "
+                f"100, 'application/pdf', :vn, 'pdf', :mid, '{extraction_status}', :uid)"
+            ),
+            {
+                "id": fid,
+                "pid": project_id,
+                "sk": f"documents/{document_id}/{fid}.pdf",
+                "vn": version_number,
+                "mid": document_id,
+                "uid": uploaded_by,
+            },
+        )
+    return fid
+
+
+async def _pdf_page_numbers(project_id: str, pdf_document_id: str) -> list[int]:
+    """Active ``pdf_pages`` page_numbers for a model, ascending (pages have no
+    read API — they're materialized at extraction / on alignment)."""
+    from bimdossier_api.db import get_session_maker
+
+    async with get_session_maker()() as s, s.begin():
+        target = await _schema_for_project(s, project_id)
+        rows = (
+            (
+                await s.execute(
+                    text(
+                        f'SELECT page_number FROM "{target}".pdf_pages '
+                        "WHERE pdf_document_id = :mid AND deleted_at IS NULL "
+                        "ORDER BY page_number"
+                    ),
+                    {"mid": pdf_document_id},
+                )
+            )
+            .scalars()
+            .all()
+        )
+    return [int(n) for n in rows]
 
 
 async def _add_member(
@@ -840,18 +940,22 @@ async def _audit_rows(
     newest first. Optional `resource_id` / `user_id` narrow the match."""
     from sqlalchemy import select
 
-    from bimstitch_api.models.audit_log import AuditLog
+    from bimdossier_api.models.audit_log import AuditLog
 
     rows: list = []
     async with session_maker() as s:
         schemas = (
-            await s.execute(
-                text(
-                    "SELECT schema_name FROM information_schema.schemata "
-                    "WHERE schema_name = 'public' OR schema_name LIKE 'org\\_%' ESCAPE '\\'"
+            (
+                await s.execute(
+                    text(
+                        "SELECT schema_name FROM information_schema.schemata "
+                        "WHERE schema_name = 'public' OR schema_name LIKE 'org\\_%' ESCAPE '\\'"
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         for schema in schemas:
             stmt = select(AuditLog).where(AuditLog.action == action)
             if resource_id is not None:
@@ -859,11 +963,15 @@ async def _audit_rows(
             if user_id is not None:
                 stmt = stmt.where(AuditLog.user_id == user_id)
             found = (
-                await s.execute(
-                    stmt,
-                    execution_options={"schema_translate_map": {None: schema}},
+                (
+                    await s.execute(
+                        stmt,
+                        execution_options={"schema_translate_map": {None: schema}},
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             rows.extend(found)
     rows.sort(key=lambda r: r.created_at, reverse=True)
     return rows
@@ -880,7 +988,7 @@ async def _latest_audit(
 
 @pytest.fixture
 def email_transport() -> Generator[object, None, None]:
-    from bimstitch_api.email.transport import (
+    from bimdossier_api.email.transport import (
         InMemoryEmailTransport,
         get_email_transport,
         set_email_transport,
@@ -901,21 +1009,21 @@ async def client(
     session_maker: async_sessionmaker[AsyncSession],
     redis_client: Redis,
 ) -> AsyncGenerator[AsyncClient, None]:
-    from bimstitch_api import db as db_module
-    from bimstitch_api.auth.ratelimit import (
+    from bimdossier_api import db as db_module
+    from bimdossier_api.auth.ratelimit import (
         COMPLIANCE_CHECK_LIMITER,
         REPORT_GEN_LIMITER,
         UPLOAD_INITIATE_LIMITER,
     )
-    from bimstitch_api.auth.refresh import REFRESH_RATE_LIMITER
-    from bimstitch_api.auth.routes import (
+    from bimdossier_api.auth.refresh import REFRESH_RATE_LIMITER
+    from bimdossier_api.auth.routes import (
         FORGOT_RATE_LIMITER,
         LOGIN_RATE_LIMITER,
         REGISTER_RATE_LIMITER,
     )
-    from bimstitch_api.cache import client as cache_module
-    from bimstitch_api.main import create_app
-    from bimstitch_api.routers.access_requests import ACCESS_REQUEST_RATE_LIMITER
+    from bimdossier_api.cache import client as cache_module
+    from bimdossier_api.main import create_app
+    from bimdossier_api.routers.access_requests import ACCESS_REQUEST_RATE_LIMITER
 
     db_module._engine = engine
     db_module._session_maker = session_maker
@@ -949,9 +1057,9 @@ async def rate_limited_client(
     """Same as `client` but with rate limiting active. Use for rate-limit tests."""
     from fastapi_limiter import FastAPILimiter
 
-    from bimstitch_api import db as db_module
-    from bimstitch_api.cache import client as cache_module
-    from bimstitch_api.main import create_app
+    from bimdossier_api import db as db_module
+    from bimdossier_api.cache import client as cache_module
+    from bimdossier_api.main import create_app
 
     db_module._engine = engine
     db_module._session_maker = session_maker
@@ -991,7 +1099,7 @@ async def make_test_user(
     """
     from fastapi_users.password import PasswordHelper
 
-    from bimstitch_api.models.user import User
+    from bimdossier_api.models.user import User
 
     async with session_maker() as session:
         user = User(
@@ -1026,7 +1134,7 @@ def _capture_tenant_ddl() -> list[str]:
     from sqlalchemy import create_mock_engine
     from sqlalchemy.dialects import postgresql
 
-    from bimstitch_api.db import Base, is_tenant_table
+    from bimdossier_api.db import Base, is_tenant_table
 
     tenant_tables = [t for t in Base.metadata.tables.values() if is_tenant_table(t)]
     # Temporarily stamp every tenant table with the placeholder schema so
@@ -1055,15 +1163,11 @@ def _capture_tenant_ddl() -> list[str]:
     # public via search_path. Trying to re-create them per schema raises
     # DuplicateObjectError. Keeping them in public is also the only thing
     # that prevents the cross-schema enum-cast bug.
-    _cached_tenant_ddl = [
-        s for s in statements if not s.upper().startswith("CREATE TYPE")
-    ]
+    _cached_tenant_ddl = [s for s in statements if not s.upper().startswith("CREATE TYPE")]
     return _cached_tenant_ddl
 
 
-async def _provision_tenant_schema(
-    engine: AsyncEngine, schema: str
-) -> None:
+async def _provision_tenant_schema(engine: AsyncEngine, schema: str) -> None:
     """Materialise a real per-tenant Postgres schema for a test org.
 
     Replays the cached tenant DDL (compiled once at session start with a
@@ -1092,22 +1196,17 @@ async def _provision_tenant_schema(
             "organizationmemberstatus",
             "organizationstatus",
         ):
-            await conn.exec_driver_sql(
-                f'DROP TYPE IF EXISTS "{schema}".{master_enum} CASCADE'
-            )
+            await conn.exec_driver_sql(f'DROP TYPE IF EXISTS "{schema}".{master_enum} CASCADE')
         # Partial unique index the metadata can't express via __table_args__.
         await conn.exec_driver_sql(
-            f'CREATE UNIQUE INDEX IF NOT EXISTS ux_borgingsplans_one_active '
+            f"CREATE UNIQUE INDEX IF NOT EXISTS ux_borgingsplans_one_active "
             f'ON "{schema}".borgingsplans(project_id) '
             f"WHERE status IN ('draft', 'published')"
         )
         # Grants for bim_app on everything in the new schema.
+        await conn.exec_driver_sql(f'GRANT USAGE, CREATE ON SCHEMA "{schema}" TO bim_app')
         await conn.exec_driver_sql(
-            f'GRANT USAGE, CREATE ON SCHEMA "{schema}" TO bim_app'
-        )
-        await conn.exec_driver_sql(
-            f'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES '
-            f'IN SCHEMA "{schema}" TO bim_app'
+            f'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "{schema}" TO bim_app'
         )
         await conn.exec_driver_sql(
             f'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "{schema}" TO bim_app'
@@ -1142,13 +1241,13 @@ async def _provision_user_in_org(
     from fastapi_users.password import PasswordHelper
     from sqlalchemy import select
 
-    from bimstitch_api.models.organization import Organization, OrganizationStatus
-    from bimstitch_api.models.organization_member import (
+    from bimdossier_api.models.organization import Organization, OrganizationStatus
+    from bimdossier_api.models.organization_member import (
         OrganizationMember,
         OrganizationMemberStatus,
     )
-    from bimstitch_api.models.user import User
-    from bimstitch_api.tenancy import schema_name_for
+    from bimdossier_api.models.user import User
+    from bimdossier_api.tenancy import schema_name_for
 
     schema_to_create: str | None = None
     async with session_maker() as session:

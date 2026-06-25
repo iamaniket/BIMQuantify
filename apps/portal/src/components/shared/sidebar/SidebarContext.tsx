@@ -26,7 +26,7 @@ type SidebarState = {
 
 const SidebarContext = createContext<SidebarState | null>(null);
 
-const STORAGE_KEY = 'bimstitch.sidebar-collapsed';
+const STORAGE_KEY = 'bimdossier.sidebar-collapsed';
 
 type ProviderProps = {
   children: ReactNode;

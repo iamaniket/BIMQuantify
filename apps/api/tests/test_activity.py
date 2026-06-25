@@ -10,7 +10,7 @@ import pytest
 from tests.conftest import (
     _auth,
     _create_attachment_row,
-    _create_model,
+    _create_document,
     _create_project,
     _new_hash,
 )
@@ -41,7 +41,7 @@ async def test_activity_returns_entries(
     org_user: dict[str, str],
 ) -> None:
     project = await _create_project(client, org_user["access_token"])
-    await _create_model(client, org_user["access_token"], project["id"])
+    await _create_document(client, org_user["access_token"], project["id"])
 
     resp = await client.get(
         _activity_url(project["id"]),
@@ -59,7 +59,7 @@ async def test_activity_since_filters_old_entries(
 ) -> None:
     """A `since` far in the future should return no entries."""
     project = await _create_project(client, org_user["access_token"])
-    await _create_model(client, org_user["access_token"], project["id"])
+    await _create_document(client, org_user["access_token"], project["id"])
 
     future = (datetime.now(tz=timezone.utc) + timedelta(hours=1)).isoformat()
     resp = await client.get(
@@ -77,7 +77,7 @@ async def test_activity_since_includes_recent(
 ) -> None:
     """A `since` in the recent past should include entries just created."""
     project = await _create_project(client, org_user["access_token"])
-    await _create_model(client, org_user["access_token"], project["id"])
+    await _create_document(client, org_user["access_token"], project["id"])
 
     past = (datetime.now(tz=timezone.utc) - timedelta(minutes=5)).isoformat()
     resp = await client.get(
@@ -94,7 +94,7 @@ async def test_activity_category_filter(
     org_user: dict[str, str],
 ) -> None:
     project = await _create_project(client, org_user["access_token"])
-    await _create_model(client, org_user["access_token"], project["id"])
+    await _create_document(client, org_user["access_token"], project["id"])
 
     resp = await client.get(
         _activity_url(project["id"], category="change"),
@@ -113,7 +113,7 @@ async def test_activity_pagination(
     project = await _create_project(client, org_user["access_token"])
     # Create multiple models to generate multiple entries.
     for i in range(3):
-        await _create_model(
+        await _create_document(
             client, org_user["access_token"], project["id"], name=f"M{i}"
         )
 
@@ -137,7 +137,7 @@ async def test_activity_limit_bounds(
 ) -> None:
     """Page size is clamped to 20-100 at the query layer."""
     project = await _create_project(client, org_user["access_token"])
-    await _create_model(client, org_user["access_token"], project["id"])
+    await _create_document(client, org_user["access_token"], project["id"])
 
     too_small = await client.get(
         _activity_url(project["id"], limit=19),
@@ -168,7 +168,7 @@ async def test_activity_sort_by_created_at(
     """order_dir flips the created_at ordering; default is newest-first."""
     project = await _create_project(client, org_user["access_token"])
     for i in range(3):
-        await _create_model(
+        await _create_document(
             client, org_user["access_token"], project["id"], name=f"M{i}"
         )
 
@@ -204,7 +204,7 @@ async def test_activity_sort_by_action(
 ) -> None:
     """`action` is a whitelisted sort key (the 'type' dimension)."""
     project = await _create_project(client, org_user["access_token"])
-    await _create_model(client, org_user["access_token"], project["id"])
+    await _create_document(client, org_user["access_token"], project["id"])
 
     resp = await client.get(
         _activity_url(project["id"], order_by="action", order_dir="asc"),
@@ -220,7 +220,7 @@ async def test_activity_sort_by_resource_type(
 ) -> None:
     """`resource_type` is a whitelisted sort key (the 'resource' column)."""
     project = await _create_project(client, org_user["access_token"])
-    await _create_model(client, org_user["access_token"], project["id"])
+    await _create_document(client, org_user["access_token"], project["id"])
 
     resp = await client.get(
         _activity_url(project["id"], order_by="resource_type", order_dir="asc"),
@@ -236,7 +236,7 @@ async def test_activity_sort_invalid_key(
 ) -> None:
     """An order_by outside the whitelist 422s rather than silently falling back."""
     project = await _create_project(client, org_user["access_token"])
-    await _create_model(client, org_user["access_token"], project["id"])
+    await _create_document(client, org_user["access_token"], project["id"])
 
     resp = await client.get(
         _activity_url(project["id"], order_by="actor_name"),
@@ -246,7 +246,7 @@ async def test_activity_sort_invalid_key(
 
 
 @pytest.mark.asyncio
-async def test_activity_search_matches_model_name(
+async def test_activity_search_matches_document_name(
     client: AsyncClient,
     org_user: dict[str, str],
 ) -> None:
@@ -255,7 +255,7 @@ async def test_activity_search_matches_model_name(
     a zero total."""
     token = org_user["access_token"]
     project = await _create_project(client, token)
-    await _create_model(client, token, project["id"], name="Zoekbaarhuis")
+    await _create_document(client, token, project["id"], name="Zoekbaarhuis")
 
     hit = await client.get(_activity_url(project["id"], q="zoekbaar"), headers=_auth(token))
     assert hit.status_code == 200
@@ -361,7 +361,7 @@ async def test_activity_create_category_filter(
     every row tagged "create"."""
     token = org_user["access_token"]
     project = await _create_project(client, token)
-    await _create_model(client, token, project["id"])
+    await _create_document(client, token, project["id"])
 
     resp = await client.get(
         _activity_url(project["id"], category="create"),
@@ -477,7 +477,7 @@ async def test_timeline_buckets_sum_to_list_total(
     token = org_user["access_token"]
     project = await _create_project(client, token)
     for i in range(3):
-        await _create_model(client, token, project["id"], name=f"M{i}")
+        await _create_document(client, token, project["id"], name=f"M{i}")
 
     resp = await client.get(_timeline_url(project["id"]), headers=_auth(token))
     assert resp.status_code == 200, resp.text
@@ -501,7 +501,7 @@ async def test_timeline_buckets_carry_category_and_resource_breakdowns(
     'now', so they collapse into one week bucket."""
     token = org_user["access_token"]
     project = await _create_project(client, token)
-    await _create_model(client, token, project["id"], name="Arch")
+    await _create_document(client, token, project["id"], name="Arch")
 
     created = await client.post(
         f"/projects/{project['id']}/findings",
@@ -547,7 +547,7 @@ async def test_timeline_day_and_week_agree_on_total(
     token = org_user["access_token"]
     project = await _create_project(client, token)
     for i in range(3):
-        await _create_model(client, token, project["id"], name=f"M{i}")
+        await _create_document(client, token, project["id"], name=f"M{i}")
 
     day = await client.get(_timeline_url(project["id"], bucket="day"), headers=_auth(token))
     week = await client.get(_timeline_url(project["id"], bucket="week"), headers=_auth(token))
@@ -568,7 +568,7 @@ async def test_timeline_category_filter_matches_list(
     returns (shared `_apply_category_filter`)."""
     token = org_user["access_token"]
     project = await _create_project(client, token)
-    await _create_model(client, token, project["id"])
+    await _create_document(client, token, project["id"])
 
     timeline = await client.get(
         _timeline_url(project["id"], category="create"), headers=_auth(token)
@@ -634,7 +634,7 @@ async def test_timeline_returns_only_nonempty_buckets(
     bucket — never a run of zero rows for the preceding days."""
     token = org_user["access_token"]
     project = await _create_project(client, token)
-    await _create_model(client, token, project["id"])
+    await _create_document(client, token, project["id"])
 
     resp = await client.get(_timeline_url(project["id"], bucket="day"), headers=_auth(token))
     assert resp.status_code == 200
@@ -651,7 +651,7 @@ async def test_timeline_since_future_is_empty(
     """A `since` far in the future returns no buckets."""
     token = org_user["access_token"]
     project = await _create_project(client, token)
-    await _create_model(client, token, project["id"])
+    await _create_document(client, token, project["id"])
 
     future = (datetime.now(tz=timezone.utc) + timedelta(hours=1)).isoformat()
     resp = await client.get(
@@ -670,7 +670,7 @@ async def test_timeline_requires_membership(
     """A verified user from a different org can't read the timeline — the
     project doesn't exist in their tenant schema, so it's a 404."""
     project = await _create_project(client, org_user["access_token"])
-    await _create_model(client, org_user["access_token"], project["id"])
+    await _create_document(client, org_user["access_token"], project["id"])
 
     resp = await client.get(
         _timeline_url(project["id"]),

@@ -1,11 +1,11 @@
 'use client';
 
-import { ArrowRight, Lock } from '@bimstitch/ui/icons';
+import { ArrowRight, Lock } from '@bimdossier/ui/icons';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useId, useState, type FormEvent, type JSX } from 'react';
 
-import { Button, FormField, Input } from '@bimstitch/ui';
+import { Button, FormField, Input } from '@bimdossier/ui';
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { AuthFormIntro } from '@/features/auth/AuthFormIntro';

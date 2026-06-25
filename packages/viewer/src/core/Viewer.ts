@@ -800,6 +800,7 @@ export class Viewer {
       getPrecomputedOutline: (modelId: string) =>
         this.precomputedOutlines.get(modelId),
       requestRender: () => this.markActive(),
+      syncOrthoAspect: () => this.syncOrthoAspect(),
       setCullingMode: (mode: CullingMode) => this.setCullingMode(mode),
       getCullingMode: () => this.cullingMode,
       setActiveLook: (look: MaterialLook) => this.setActiveLook(look),
@@ -946,7 +947,11 @@ export class Viewer {
       this.events.on(name, () => this.markActive());
     }
     // A canvas resize needs a repaint too (MANUAL won't redraw on its own).
+    // Re-sync the ortho frustum aspect first (no-op in perspective) so divider
+    // drags / window resizes while in calibration's orthographic split don't
+    // leave the model squeezed.
     world.renderer!.onResize.add(() => {
+      this.syncOrthoAspect();
       this.markActive();
     });
 
@@ -1867,6 +1872,48 @@ export class Viewer {
   /** The current whole-model material look. */
   getActiveLook(): MaterialLook {
     return this.activeLook;
+  }
+
+  /**
+   * Re-derive the orthographic camera's frustum aspect from the live canvas
+   * size, overwriting it absolutely.
+   *
+   * ThatOpen's OrthoPerspectiveCamera keeps the ortho frustum in sync with the
+   * viewport via a size-DELTA multiply (`setOrthoPerspCameraAspect`, seeded off
+   * a `previousSize`) — `SimpleCamera.updateAspect` no-ops for orthographic
+   * cameras, so there is no absolute "recompute aspect from current pixels"
+   * path. When a projection switch and a container resize land in the same tick
+   * — exactly what entering calibration's top-down split does (the 3D pane drops
+   * to ~half width as we switch to ortho) — a trailing delta scales the frustum's
+   * left/right without matching top/bottom, desyncing the frustum aspect from the
+   * canvas → the model renders horizontally squeezed. Set the frustum directly
+   * from the real canvas aspect, then re-seed OBC's delta tracker so its own
+   * ResizeObserver computes a factor of 1 (no-op) next tick instead of re-skewing
+   * what we just corrected. No-op unless the active camera is orthographic
+   * (OBC recomputes perspective aspect absolutely already). Idempotent.
+   */
+  private syncOrthoAspect(): void {
+    const cam = this.world?.camera;
+    const renderer = this.world?.renderer;
+    if (!cam || !renderer) return;
+    const ortho = cam.three;
+    if (!(ortho instanceof THREE.OrthographicCamera)) return;
+    const { x: w, y: h } = renderer.getSize();
+    if (w <= 0 || h <= 0) return;
+    const aspect = w / h;
+    // Preserve the vertical world-extent; only the horizontal half-width tracks
+    // the aspect (correct for the width-only changes calibration produces, and
+    // `camera.view.top` reframes zoom afterward regardless).
+    const halfH = ortho.top;
+    ortho.left = -halfH * aspect;
+    ortho.right = halfH * aspect;
+    ortho.bottom = -halfH;
+    ortho.updateProjectionMatrix();
+    // Re-seed OBC's private size-delta tracker to the size we just corrected for,
+    // so its camera ResizeObserver no-ops instead of re-applying a stale delta.
+    const tracker = cam as unknown as { previousSize: THREE.Vector2 | null };
+    if (tracker.previousSize) tracker.previousSize.set(w, h);
+    else tracker.previousSize = new THREE.Vector2(w, h);
   }
 
   /**

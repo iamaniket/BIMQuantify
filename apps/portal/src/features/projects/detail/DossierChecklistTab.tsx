@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Box, Check, ChevronDown, ChevronRight, FileText, Link2, Plus, ShieldCheck, SlidersHorizontal, Upload } from '@bimstitch/ui/icons';
+import { AlertTriangle, Box, Check, ChevronDown, ChevronRight, FileText, Link2, Plus, ShieldCheck, SlidersHorizontal, Upload } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
   Skeleton,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import type { CertificateTypeValue, DossierSlotValue } from '@/lib/api/schemas';
 import { useUnslottedDocuments } from '@/features/attachments/useAttachments';

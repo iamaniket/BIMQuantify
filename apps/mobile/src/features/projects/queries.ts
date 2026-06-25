@@ -1,8 +1,8 @@
-import { listModelsWithVersions } from '@/lib/api/models';
+import { listDocumentsWithVersions } from '@/lib/api/documents';
 import { listProjects } from '@/lib/api/projects';
 import { useOfflineListQuery } from '@/lib/query/useOfflineQuery';
+import type { DocumentWithVersions } from '@/lib/api/schemas/documents';
 import type { ProjectFile } from '@/lib/api/schemas/files';
-import type { ModelWithVersions } from '@/lib/api/schemas/models';
 import type { Project } from '@/lib/api/schemas/projects';
 
 export function useProjects() {
@@ -14,21 +14,21 @@ export function useProjects() {
   );
 }
 
-export function useProjectModels(projectId: string) {
-  return useOfflineListQuery<ModelWithVersions>(
-    ['projects', projectId, 'models'],
-    'model',
+export function useProjectDocuments(projectId: string) {
+  return useOfflineListQuery<DocumentWithVersions>(
+    ['projects', projectId, 'documents'],
+    'document',
     projectId,
-    (token) => listModelsWithVersions(token, projectId),
+    (token) => listDocumentsWithVersions(token, projectId),
     { enabled: projectId.length > 0 },
   );
 }
 
-/** Latest ready file for a model (highest version_number with status 'ready'),
+/** Latest ready file for a document (highest version_number with status 'ready'),
  * or null if none is viewable yet. */
-export function latestReadyFile(model: ModelWithVersions): ProjectFile | null {
+export function latestReadyFile(document: DocumentWithVersions): ProjectFile | null {
   return (
-    model.versions
+    document.versions
       .filter((v) => v.status === 'ready')
       .sort((a, b) => b.version_number - a.version_number)[0] ?? null
   );

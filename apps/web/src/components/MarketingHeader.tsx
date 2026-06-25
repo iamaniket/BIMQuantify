@@ -1,7 +1,7 @@
 'use client';
 
-import { BrandMark } from '@bimstitch/brand';
-import { ThemeToggle } from '@bimstitch/ui';
+import { BrandMark } from '@bimdossier/brand';
+import { ThemeToggle } from '@bimdossier/ui';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
@@ -22,6 +22,7 @@ export function MarketingHeader(): JSX.Element {
 
   const navItems: NavItem[] = [
     { label: t('features'), href: '/#features' },
+    { label: t('faq'), href: '/#faq' },
     { label: t('blog'), href: '/blog', activeMatch: '/blog' },
     { label: t('requestAccess'), href: '/request-access', activeMatch: '/request-access' },
   ];
@@ -30,8 +31,8 @@ export function MarketingHeader(): JSX.Element {
     <header className="sticky top-0 z-40 border-b border-border bg-background">
       <div className="mx-auto flex w-full max-w-8xl items-center justify-between gap-4 px-6 py-3">
         <Link href="/" className="flex items-center gap-2 text-primary">
-          <BrandMark size={28} />
-          <span className="text-title3 font-semibold">{t('brand')}</span>
+          <BrandMark size={31} />
+          <span className="text-title2 font-semibold">{t('brand')}</span>
         </Link>
 
         <nav className="hidden items-center gap-6 md:flex">

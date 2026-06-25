@@ -14,7 +14,7 @@ type UpdateVars = {
     description?: string | null;
     dossier_slot?: DossierSlotValue | null;
     linked_element_global_id?: string | null;
-    linked_model_id?: string | null;
+    linked_document_id?: string | null;
     linked_file_type?: LinkedFileTypeValue | null;
     anchor_x?: number | null;
     anchor_y?: number | null;

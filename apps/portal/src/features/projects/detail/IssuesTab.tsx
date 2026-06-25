@@ -1,10 +1,10 @@
 'use client';
 
-import { Download, Search } from '@bimstitch/ui/icons';
+import { Download, Search } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, useMemo, type JSX } from 'react';
 
-import { Badge, Button, Input } from '@bimstitch/ui';
+import { Badge, Button, Input } from '@bimdossier/ui';
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 

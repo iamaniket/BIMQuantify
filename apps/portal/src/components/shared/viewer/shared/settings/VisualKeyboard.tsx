@@ -4,7 +4,7 @@ import { type CSSProperties, type JSX } from 'react';
 
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import {
   CATEGORY_STYLES,

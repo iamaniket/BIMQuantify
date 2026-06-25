@@ -1,10 +1,10 @@
 'use client';
 
-import { CalendarDays, LayoutGrid } from '@bimstitch/ui/icons';
+import { CalendarDays, LayoutGrid } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { TabsContent } from '@bimstitch/ui';
+import { TabsContent } from '@bimdossier/ui';
 
 import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
 import { CalendarHero } from '@/features/calendar/CalendarHero';

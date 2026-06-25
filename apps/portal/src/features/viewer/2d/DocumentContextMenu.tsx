@@ -1,6 +1,6 @@
 'use client';
 
-import { Flag, FrameCorners } from '@bimstitch/ui/icons';
+import { Flag, FrameCorners } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   forwardRef,
@@ -13,7 +13,7 @@ import {
   type JSX,
 } from 'react';
 
-import type { DocumentEvents, DocumentViewerHandle } from '@bimstitch/viewer';
+import type { DocumentEvents, DocumentViewerHandle } from '@bimdossier/viewer';
 
 import { prettyKey } from '@/components/shared/viewer/shared/settings/prettyKey';
 import type { DocumentShortcutMap } from '@/lib/documentSettings';

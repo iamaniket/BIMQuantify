@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Copy the runtime assets @bimstitch/viewer needs into apps/viewer-embed/public/:
+ * Copy the runtime assets @bimdossier/viewer needs into apps/viewer-embed/public/:
  *   - web-ifc.wasm + web-ifc-mt.wasm   → public/web-ifc/
  *   - @thatopen/fragments worker.mjs   → public/fragments/worker.mjs
  *

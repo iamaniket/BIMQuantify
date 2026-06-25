@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 
-import type { CullingMode, ViewerHandle } from '@bimstitch/viewer';
+import type { CullingMode, ViewerHandle } from '@bimdossier/viewer';
 
 /**
  * Drives the viewer's native frustum-culling policy from the settings control.

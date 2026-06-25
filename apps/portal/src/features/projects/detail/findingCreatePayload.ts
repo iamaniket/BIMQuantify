@@ -102,7 +102,7 @@ export function buildFindingCreatePayload(
       description: values.description.trim(),
       severity: values.severity,
       bbl_article_ref: isBlank(bblValue) ? null : bblValue.trim(),
-      linked_model_id: link.linkedModelId === undefined ? null : link.linkedModelId,
+      linked_document_id: link.linkedModelId === undefined ? null : link.linkedModelId,
       linked_file_id: link.linkedFileId === undefined ? null : link.linkedFileId,
       linked_element_global_id:
         link.linkedElementGlobalId === undefined ? null : link.linkedElementGlobalId,

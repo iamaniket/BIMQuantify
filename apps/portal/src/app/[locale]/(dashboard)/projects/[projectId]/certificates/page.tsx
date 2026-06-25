@@ -1,12 +1,12 @@
 'use client';
 
-import { LayoutGrid, Library, Table2, Upload } from '@bimstitch/ui/icons';
+import { LayoutGrid, Library, Table2, Upload } from '@bimdossier/ui/icons';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
-import { Badge, Select, Skeleton, SplitButton, TabsContent } from '@bimstitch/ui';
+import { Badge, Select, Skeleton, SplitButton, TabsContent } from '@bimdossier/ui';
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';

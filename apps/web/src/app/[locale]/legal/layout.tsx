@@ -1,7 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import type { JSX, ReactNode } from 'react';
 
-import { AuthShell } from '@bimstitch/brand';
+import { AuthShell } from '@bimdossier/brand';
 
 import { MarketingBrandPanel } from '@/components/MarketingBrandPanel';
 import { Link } from '@/i18n/navigation';

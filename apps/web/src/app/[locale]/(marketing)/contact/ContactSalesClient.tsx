@@ -3,8 +3,8 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Button } from '@bimstitch/ui';
-import { ArrowRight, CalendarClock, Mail } from '@bimstitch/ui/icons';
+import { Button } from '@bimdossier/ui';
+import { ArrowRight, CalendarClock, Mail } from '@bimdossier/ui/icons';
 
 import { HeroPill } from '@/components/sections/HeroPill';
 import { HeroShell } from '@/components/sections/HeroShell';

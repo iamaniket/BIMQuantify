@@ -1,11 +1,11 @@
 'use client';
 
-import { Box, Glasses, Moon, Sparkles, Sun, type AppIcon } from '@bimstitch/ui/icons';
+import { Box, Glasses, Moon, Sparkles, Sun, type AppIcon } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef, type JSX } from 'react';
 
-import { cn } from '@bimstitch/ui';
-import type { DisplayMode, ViewerHandle } from '@bimstitch/viewer';
+import { cn } from '@bimdossier/ui';
+import type { DisplayMode, ViewerHandle } from '@bimdossier/viewer';
 
 import { ToolbarGroup } from '@/components/shared/viewer/shared/_toolbarPrimitives';
 

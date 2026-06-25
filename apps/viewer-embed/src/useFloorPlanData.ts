@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 
 // Runtime value from the no-pdfjs entry; the type is erased so it's free from
 // the barrel.
-import { decodeFloorPlans } from '@bimstitch/viewer/viewer-3d';
-import type { DecodedFloorPlans } from '@bimstitch/viewer';
+import { decodeFloorPlans } from '@bimdossier/viewer/viewer-3d';
+import type { DecodedFloorPlans } from '@bimdossier/viewer';
 
 /** One storey for the level picker (display name + isolation key). */
 export type FloorPlanLevelInfo = {

@@ -8,7 +8,7 @@ list. No DB/Redis fixtures, so these run in the fast pure-logic lane.
 import pytest
 from pydantic import ValidationError
 
-from bimstitch_api.config import Settings, get_settings, validate_production_config
+from bimdossier_api.config import Settings, get_settings, validate_production_config
 
 _SECURE_OVERRIDES = {
     "s3_access_key_id": "AKIAREALKEY",
@@ -19,8 +19,8 @@ _SECURE_OVERRIDES = {
 }
 
 _INSECURE_OVERRIDES = {
-    "s3_access_key_id": "bimstitch",
-    "s3_secret_access_key": "bimstitch-secret",
+    "s3_access_key_id": "bimdossier",
+    "s3_secret_access_key": "bimdossier-secret",
     "processor_shared_secret": "dev-shared-secret-change-me",
     "cors_origins": "*",
     "jwt_secret": "short",

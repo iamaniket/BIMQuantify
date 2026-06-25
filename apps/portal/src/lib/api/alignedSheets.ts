@@ -11,14 +11,14 @@ import {
 
 export type AlignedSheetFilters = {
   modelId?: string;
-  storeyId?: string;
+  levelId?: string;
   pdfModelId?: string;
 };
 
 function buildQuery(filters: AlignedSheetFilters): string {
   const params = new URLSearchParams();
   if (filters.modelId !== undefined) params.set('model_id', filters.modelId);
-  if (filters.storeyId !== undefined) params.set('storey_id', filters.storeyId);
+  if (filters.levelId !== undefined) params.set('level_id', filters.levelId);
   if (filters.pdfModelId !== undefined) params.set('pdf_model_id', filters.pdfModelId);
   const qs = params.toString();
   return qs.length > 0 ? `?${qs}` : '';

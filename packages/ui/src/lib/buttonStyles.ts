@@ -7,7 +7,7 @@
  * apart (they did: the variant block was previously copy-pasted into both).
  *
  * The raised-control shadows come from named design tokens (`shadow-control*`
- * in `@bimstitch/tailwind-config`) rather than inline `rgba()` literals.
+ * in `@bimdossier/tailwind-config`) rather than inline `rgba()` literals.
  */
 
 export type ButtonVariant = 'primary' | 'border' | 'secondary' | 'ghost' | 'destructive';

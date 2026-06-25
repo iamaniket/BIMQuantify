@@ -13,8 +13,8 @@ import React, {
   type JSX,
 } from 'react';
 
-import { Skeleton } from '@bimstitch/ui';
-import { X } from '@bimstitch/ui/icons';
+import { Skeleton } from '@bimdossier/ui';
+import { X } from '@bimdossier/ui/icons';
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import type {
@@ -25,7 +25,7 @@ import type {
   FloorPlanViewerHandle,
   MarkupTool,
   ViewerHandle,
-} from '@bimstitch/viewer';
+} from '@bimdossier/viewer';
 
 import { useAppHeader } from '@/components/shared/header/AppHeaderContext';
 import { DocumentToolbar } from '@/components/shared/viewer/2d/DocumentToolbar';
@@ -42,7 +42,7 @@ import { useBcfMarkup2d } from '@/features/viewer/bcf/useBcfMarkup2d';
 import { bcfKeys } from '@/features/viewer/bcf/queryKeys';
 import { MarkupToolbar } from '@/components/shared/viewer/2d/MarkupToolbar';
 import { ContextMenu } from '@/features/viewer/3d/ContextMenu';
-import { useModels } from '@/features/models/useModels';
+import { useDocuments } from '@/features/documents/useDocuments';
 import { useProjectPermissions } from '@/features/permissions/useProjectPermissions';
 import { type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/3d/explorer/ModelExplorer';
@@ -99,7 +99,7 @@ import { ViewerLoadingOverlay } from './components/ViewerLoadingOverlay';
 import { ViewerMobileBanner } from './components/ViewerMobileBanner';
 
 const DocumentViewer = dynamic(
-  () => import('@bimstitch/viewer').then((m) => m.DocumentViewer),
+  () => import('@bimdossier/viewer').then((m) => m.DocumentViewer),
   { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
 );
 
@@ -168,12 +168,14 @@ export default function ViewerPage(): JSX.Element {
   const [documentHandle, setDocumentHandle] = useState<DocumentViewerHandle | null>(null);
   // Floor-plan handle + active storey elevation, surfaced from the plan pane so
   // the inspector's "update pin" can pick on the plan (2D mode) and lift the
-  // picked point to a 3D world anchor at the right floor.
-  const [fpHandle, setFpHandle] = useState<FloorPlanViewerHandle | null>(null);
+  // picked point to a 3D world anchor at the right floor. The handle is a
+  // FloorPlanViewer (generated plan) OR a DocumentViewer (aligned PDF sheet);
+  // both emit `interaction:resolved {kind:'page'}`, and the converter dispatches.
+  const [fpHandle, setFpHandle] = useState<FloorPlanViewerHandle | DocumentViewerHandle | null>(null);
   const [fpElevation, setFpElevation] = useState<number | null>(null);
   const [mobileBannerDismissed, setMobileBannerDismissed] = useState(() => {
     if (typeof window === 'undefined') return true;
-    return sessionStorage.getItem('bimstitch.viewerMobileBanner') === 'dismissed';
+    return sessionStorage.getItem('bimdossier.viewerMobileBanner') === 'dismissed';
   });
   // Marker / deep-link click → expand that finding's row in the inspector
   // (replacing the old floating detail modal). `nonce` re-fires on repeat clicks.
@@ -203,7 +205,7 @@ export default function ViewerPage(): JSX.Element {
   const pdfInitializedRef = useRef<string | null>(null);
 
   // ── Draggable split divider ───────────────────────────────────────────────
-  const SPLIT_RATIO_KEY = 'bimstitch.splitRatio';
+  const SPLIT_RATIO_KEY = 'bimdossier.splitRatio';
   const SPLIT_MIN = 0.2;
   const SPLIT_MAX = 0.8;
   const isMobile = useIsMobile();
@@ -444,11 +446,11 @@ export default function ViewerPage(): JSX.Element {
   // "Align" (PDF↔model calibration) is offered to editors when the project has
   // at least one PDF model to pin onto the active IFC model.
   const perms = useProjectPermissions(projectId);
-  const projectModels = useModels(projectId);
+  const projectModels = useDocuments(projectId);
   const hasPdfModel = (projectModels.data ?? []).some(
     (m) => m.primary_file_type === 'pdf',
   );
-  const canCalibrate = isIfc && hasPdfModel && !perms.isLoading && perms.can('model', 'update');
+  const canCalibrate = isIfc && hasPdfModel && !perms.isLoading && perms.can('document', 'update');
 
   // Finding-pin layer visibility (persisted) drives the side-rail Findings
   // count pill; re-asserted onto the entity-marker plugin on mount/change.
@@ -596,8 +598,8 @@ export default function ViewerPage(): JSX.Element {
   useEffect(() => {
     if (clickedFinding) {
       // Federated: focus the finding's model so the inspector scopes to it.
-      if (scope.mode === 'multi' && clickedFinding.linked_model_id !== null) {
-        scope.setActiveByModelId(clickedFinding.linked_model_id);
+      if (scope.mode === 'multi' && clickedFinding.linked_document_id !== null) {
+        scope.setActiveByModelId(clickedFinding.linked_document_id);
       }
       openFindingInPanel(clickedFinding);
       clearClicked();
@@ -724,24 +726,33 @@ export default function ViewerPage(): JSX.Element {
     setFindingsRequest((prev) => ({ view, nonce: (prev?.nonce ?? 0) + 1, surface: 'floorplan' }));
   }, []);
 
-  // Lift a normalized plan point (from a 2D guided pick) to a 3D world anchor:
-  // plan-point via the floor-plan engine, then world via the minimap calibration
-  // at the active storey elevation. Mirrors FloorPlanPane.handleAddFinding.
+  // Lift a normalized plan point (from a 2D guided pick) to a 3D world anchor.
+  // Generated plan: resolve the plan point via the floor-plan engine, then world
+  // via the minimap. Aligned PDF sheet: the sheet transform is active on the
+  // minimap, so `minimap.planToWorld` accepts the normalized PDF page point
+  // directly (it inverts through the transform). Dispatch on which surface the
+  // handle is — only the FloorPlanViewer exposes `floorplan.planPointAtNorm`.
   const convertFloorPlanPoint = useCallback(
     async (norm: { x: number; y: number }): Promise<{ x: number; y: number; z: number } | null> => {
       const vh = viewerHandleRef.current;
       if (!fpHandle || !vh) return null;
-      const plan = await fpHandle.commands
-        .execute<{ planX: number; planY: number } | null>('floorplan.planPointAtNorm', {
-          nx: norm.x,
-          ny: norm.y,
-        })
-        .catch(() => null);
-      if (!plan) return null;
+      let planX = norm.x;
+      let planY = norm.y;
+      if (fpHandle.commands.has('floorplan.planPointAtNorm')) {
+        const plan = await fpHandle.commands
+          .execute<{ planX: number; planY: number } | null>('floorplan.planPointAtNorm', {
+            nx: norm.x,
+            ny: norm.y,
+          })
+          .catch(() => null);
+        if (!plan) return null;
+        planX = plan.planX;
+        planY = plan.planY;
+      }
       const world = await vh.commands
         .execute<{ x: number; y: number; z: number } | null>('minimap.planToWorld', {
-          planX: plan.planX,
-          planY: plan.planY,
+          planX,
+          planY,
           elevation: fpElevation ?? 0,
         })
         .catch(() => null);
@@ -874,7 +885,7 @@ export default function ViewerPage(): JSX.Element {
       {!mobileBannerDismissed && (
         <ViewerMobileBanner
           onDismiss={() => {
-            sessionStorage.setItem('bimstitch.viewerMobileBanner', 'dismissed');
+            sessionStorage.setItem('bimdossier.viewerMobileBanner', 'dismissed');
             setMobileBannerDismissed(true);
           }}
         />

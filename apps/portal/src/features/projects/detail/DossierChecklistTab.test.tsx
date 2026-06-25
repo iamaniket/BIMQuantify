@@ -5,7 +5,7 @@ import { IntlWrapper } from '@/__tests__/intl-wrapper';
 import type { JurisdictionDossierRequirement } from '@/lib/api/jurisdictions';
 
 // --- UI primitives (passthroughs that forward the props we assert on) ---
-vi.mock('@bimstitch/ui', () => ({
+vi.mock('@bimdossier/ui', () => ({
   Button: ({
     children,
     onClick,
@@ -63,8 +63,8 @@ vi.mock('@/features/attachments/useUpdateAttachment', () => ({
 vi.mock('@/features/certificates/useCertificates', () => ({
   useCertificates: () => mockUseCertificates(),
 }));
-vi.mock('@/features/models/useModelsWithVersions', () => ({
-  useModelsWithVersions: () => mockUseModelsWithVersions(),
+vi.mock('@/features/documents/useDocumentsWithVersions', () => ({
+  useDocumentsWithVersions: () => mockUseModelsWithVersions(),
 }));
 vi.mock('@/features/findings/useFindings', () => ({ useFindings: () => mockUseFindings() }));
 vi.mock('./deadlines/useDeadlines', () => ({ useDeadlines: () => mockUseDeadlines() }));

@@ -1,16 +1,16 @@
 'use client';
 
-import { MapPin, X } from '@bimstitch/ui/icons';
+import { MapPin, X } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 
-import { Button } from '@bimstitch/ui';
+import { Button } from '@bimdossier/ui';
 
 import type {
   DocumentViewerHandle,
   FloorPlanViewerHandle,
   ViewerHandle,
-} from '@bimstitch/viewer';
+} from '@bimdossier/viewer';
 
 import type { ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import type { LinkedFileTypeValue } from '@/lib/api/schemas';
@@ -22,7 +22,7 @@ export type AnchorState = {
   anchor_y?: number | null | undefined;
   anchor_z?: number | null | undefined;
   anchor_page?: number | null | undefined;
-  linked_model_id?: string | null | undefined;
+  linked_document_id?: string | null | undefined;
   linked_file_id?: string | null | undefined;
   linkedElementGlobalId?: string | null | undefined;
 };
@@ -48,8 +48,8 @@ type Props = {
   resolvePickedGlobalId?: ((item: PickedItem) => string | null) | undefined;
   /** Current viewport layout — routes IFC picks to the floor-plan in 2D mode. */
   viewMode?: ViewMode | undefined;
-  /** Floor-plan handle (2D plan surface) — used for the pick in `2d` view mode. */
-  floorPlanHandle?: FloorPlanViewerHandle | null | undefined;
+  /** Active 2D pick surface (generated floor plan OR aligned PDF) — used for the pick in `2d` view mode. */
+  floorPlanHandle?: FloorPlanViewerHandle | DocumentViewerHandle | null | undefined;
   /** Convert a normalized plan point (from the 2D pick) to a 3D world anchor. */
   convertFloorPlanPoint?: ConvertFloorPlanPoint | undefined;
   disabled?: boolean | undefined;
@@ -182,7 +182,7 @@ export function FindingPinButton({
       const next: AnchorState = { ...anchor3d(evt.point) };
       if (linkFileId != null) {
         next.linked_file_id = linkFileId;
-        if (linkModelId != null) next.linked_model_id = linkModelId;
+        if (linkModelId != null) next.linked_document_id = linkModelId;
       }
       const gid = resolvePickedGlobalId?.(evt.item) ?? null;
       if (gid != null) next.linkedElementGlobalId = gid;
@@ -219,7 +219,7 @@ export function FindingPinButton({
         const next: AnchorState = { ...anchor3d(world) };
         if (linkFileId != null) {
           next.linked_file_id = linkFileId;
-          if (linkModelId != null) next.linked_model_id = linkModelId;
+          if (linkModelId != null) next.linked_document_id = linkModelId;
         }
         onAnchorChange(next);
       });

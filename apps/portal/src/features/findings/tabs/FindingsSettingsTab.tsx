@@ -2,7 +2,7 @@
 
 import {
   ArrowRight, FileText, Info, Users,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

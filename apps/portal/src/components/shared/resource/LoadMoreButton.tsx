@@ -3,7 +3,7 @@
 import type { JSX } from 'react';
 import { useTranslations } from 'next-intl';
 
-import { Button, Spinner } from '@bimstitch/ui';
+import { Button, Spinner } from '@bimdossier/ui';
 
 type Props = {
   hasNextPage: boolean;

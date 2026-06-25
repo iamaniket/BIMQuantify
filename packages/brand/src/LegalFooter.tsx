@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 export interface LegalFooterLink {
   href: string;
@@ -24,7 +24,9 @@ const DEFAULT_LINKS: readonly LegalFooterLink[] = [
 
 export function LegalFooter({
   year = new Date().getFullYear(),
-  company = 'BimDossier B.V.',
+  // Plain product name until the holding/parent entity is registered; callers
+  // can pass the registered entity (e.g. "BimDossier B.V.") once it exists.
+  company = 'BimDossier',
   tail = 'Wet kwaliteitsborging voor het bouwen (Wkb) 2026.1',
   tone = 'on-light',
   links = DEFAULT_LINKS,

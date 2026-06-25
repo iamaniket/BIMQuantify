@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { ArrowRight, type AppIcon } from '@bimstitch/ui/icons';
+import { ArrowRight, type AppIcon } from '@bimdossier/ui/icons';
 
 import { useFeatureContent } from '@/components/features/useFeatureContent';
 import { BlueprintTexture } from '@/components/shared/BlueprintTexture';

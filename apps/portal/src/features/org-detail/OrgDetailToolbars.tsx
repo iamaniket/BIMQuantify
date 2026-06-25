@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Plus, Search } from '@bimstitch/ui/icons';
+import { Download, Plus, Search } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
@@ -8,7 +8,7 @@ import {
   Button,
   Input,
   Select,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 // ---------------------------------------------------------------------------
 // Toolbars

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from bimstitch_api.models._mixins import SoftDeleteMixin
+from bimdossier_api.models._mixins import SoftDeleteMixin
 
 
 # Override conftest's autouse DB/Redis fixtures — pure-unit test.

@@ -17,7 +17,7 @@ vi.mock('../src/config.js', () => ({
     EMAIL_TRANSPORT: 'smtp',
     SMTP_HOST: 'localhost',
     SMTP_PORT: 1025,
-    SMTP_FROM: 'no-reply@bimstitch.dev',
+    SMTP_FROM: 'no-reply@bimdossier.dev',
     POSTMARK_SERVER_TOKEN: undefined,
   }),
   QUEUE_NAME: 'jobs',
@@ -53,11 +53,11 @@ describe('renderEmailHtml', () => {
     const html = renderEmailHtml({
       subject: 'Test',
       body: 'Body text',
-      action_url: 'https://app.bimstitch.com/projects/abc',
+      action_url: 'https://app.bimdossier.com/projects/abc',
       action_label: 'View project',
     });
 
-    expect(html).toContain('https://app.bimstitch.com/projects/abc');
+    expect(html).toContain('https://app.bimdossier.com/projects/abc');
     expect(html).toContain('View project');
   });
 

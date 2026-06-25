@@ -1,11 +1,11 @@
 'use client';
 
-import { Pause, Pencil, Play, Trash2 } from '@bimstitch/ui/icons';
+import { Pause, Pencil, Play, Trash2 } from '@bimdossier/ui/icons';
 import { useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { use, useCallback, useMemo, useState, type JSX } from 'react';
 
-import { Button, ConfirmDialog, Skeleton } from '@bimstitch/ui';
+import { Button, ConfirmDialog, Skeleton } from '@bimdossier/ui';
 
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { useOrgAuditLog } from '@/features/admin/audit/useAuditLog';

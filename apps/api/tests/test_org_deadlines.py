@@ -45,7 +45,7 @@ async def _create_project_with_dates(
 
 
 def _org_schema(org_user: dict[str, str]) -> str:
-    from bimstitch_api.tenancy import schema_name_for
+    from bimdossier_api.tenancy import schema_name_for
 
     return schema_name_for(UUID(org_user["organization_id"]))
 
@@ -58,7 +58,7 @@ async def _set_deadline_due_date(
     new_due_date: dt.date,
 ) -> None:
     """Force a deadline's due_date directly in the tenant schema."""
-    from bimstitch_api.models.deadline import Deadline
+    from bimdossier_api.models.deadline import Deadline
 
     async with session_maker() as session:
         await session.execute(text(f'SET LOCAL search_path = "{org_schema}", public'))

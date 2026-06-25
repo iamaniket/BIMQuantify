@@ -39,7 +39,7 @@ export type DossierFinding = {
   resolution_note?: string | null;
   // Anchored BIM element identity + location (the "snap" GUID/location).
   linked_element_global_id?: string | null;
-  linked_model_id?: string | null;
+  linked_document_id?: string | null;
   linked_file_type?: string | null;
   anchor_page?: number | null;
   anchor_x?: number | null;

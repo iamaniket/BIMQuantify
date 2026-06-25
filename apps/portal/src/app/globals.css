@@ -1,4 +1,4 @@
-@import '@bimstitch/design-tokens/tokens.css';
+@import '@bimdossier/design-tokens/tokens.css';
 
 /* Brand identity tokens. Owned by the design-tokens package conceptually,
    declared here until they migrate into the shared token bundle. */
@@ -111,12 +111,16 @@
   }
 }
 
-/* PDF text layer — invisible text for selection + search highlights */
+/* PDF text layer — invisible text backing the search highlights. Inert by
+   design: this is a navigation surface, so a drag pans the camera instead of
+   selecting text (see the tools plugin in @bimdossier/viewer). */
 .bq-text-layer {
   position: absolute;
   inset: 0;
   overflow: hidden;
   line-height: 1;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .bq-text-layer span,
 .bq-text-layer br {
@@ -124,9 +128,6 @@
   position: absolute;
   white-space: pre;
   transform-origin: 0% 0%;
-}
-.bq-text-layer ::selection {
-  background: rgba(0, 100, 255, 0.3);
 }
 .bq-text-layer mark.bq-highlight {
   color: transparent;

@@ -1,9 +1,9 @@
 'use client';
 
-import { Camera, FileAudio, FileText, FileVideo, Image, Pencil } from '@bimstitch/ui/icons';
+import { Camera, FileAudio, FileText, FileVideo, Image, Pencil } from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 import {
   useCallback,
   useEffect,
@@ -13,7 +13,7 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 
-import { Button, Spinner } from '@bimstitch/ui';
+import { Button, Spinner } from '@bimdossier/ui';
 
 import {
   DocumentViewerDialog,

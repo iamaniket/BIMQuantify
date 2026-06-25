@@ -32,7 +32,7 @@ highest-leverage refactor (it also resolves #7 below).
 ## HIGH
 
 ### 1. [API] Authorization + audit boilerplate is copy-pasted across 38 endpoints
-`apps/api/src/bimstitch_api/routers/attachments.py:139-152` (representative), repeated in
+`apps/api/src/bimdossier_api/routers/attachments.py:139-152` (representative), repeated in
 `borgingsplan.py`, `bcf.py`, `certificates.py`, `finding.py`, `risks.py`, `capture_links.py`, …
 
 The identical block — only `Resource.X` / `Action.Y` differ — appears at **38 call sites**
@@ -60,7 +60,7 @@ root cause as #7 — do them together.)_
 `apps/processor/src/` — `git grep -li 'sentry|captureException'` returns **0**.
 
 Both other services wire Sentry (`apps/portal/sentry.{client,edge,server}.config.ts`,
-`apps/api/src/bimstitch_api/observability.py`), but the BullMQ worker that runs IFC extraction,
+`apps/api/src/bimdossier_api/observability.py`), but the BullMQ worker that runs IFC extraction,
 PDF metadata, and Puppeteer report jobs reports nothing — errors land only in pino stdout. A
 worker OOM/crash between callbacks is invisible to whatever monitors the other two services.
 Telling detail: `apps/api/.../jobs/reconcile.py` (the stuck-job sweeper) exists precisely to
@@ -97,20 +97,20 @@ the production bundle. These are **13 of the 13** non-test `console.log/warn` in
 rushed/under-tested-file smell. **Fix:** delete them (or gate behind a debug flag).
 
 ### 6. [API] Pagination params hand-copied across 25 endpoints with inconsistent caps
-`apps/api/src/bimstitch_api/routers/*.py` — `limit: int = Query(...)` appears **25×** with
+`apps/api/src/bimdossier_api/routers/*.py` — `limit: int = Query(...)` appears **25×** with
 **inconsistent `le` caps**: `le=50` ×1, `le=100` ×2, `le=200` ×11, `le=500` ×10, `le=1000` ×1.
 No shared `Pagination` dependency. Beyond duplication, the divergent caps are a latent
 abuse-surface and a "which cap applies here?" cognitive tax. **Fix:** a shared
 `Pagination = Depends(...)` with one default/cap policy; opt specific routers out explicitly.
 
 ### 7. [API] Tenant authz primitives are private functions in a 1 224-line leaf router, imported by 20 routers
-`apps/api/src/bimstitch_api/routers/projects.py:176-332` defines `_load_project_or_404`,
+`apps/api/src/bimdossier_api/routers/projects.py:176-332` defines `_load_project_or_404`,
 `_get_membership`, `_require_membership`, `_is_org_admin`, `_require_project_read_access`,
 `_require_project_write_access`, `_require_project_writable` — then **20** sibling routers do
-`from bimstitch_api.routers.projects import (_…)` (`git grep -l` = 20). A leaf route file is the
+`from bimdossier_api.routers.projects import (_…)` (`git grep -l` = 20). A leaf route file is the
 de-facto security library, the `_`-prefix lies about a contract that's reused everywhere, and
 refactoring `projects.py` fans out invisibly to every resource (plus import-cycle risk).
-**Fix:** extract to a dedicated public `bimstitch_api/access.py` (or `routers/_deps.py`) with
+**Fix:** extract to a dedicated public `bimdossier_api/access.py` (or `routers/_deps.py`) with
 non-underscore names + `Depends` wrappers — the natural home for the #1 factory and for
 unit-testing the access matrix in one place.
 
@@ -125,7 +125,7 @@ document each (reason + removal condition), exact-pin the patched dep so a misma
 and track an upgrade-past-it task.
 
 ### 9. [API] `type: ignore` cluster at the Arbiter/MCP compliance seam
-`apps/api/src/bimstitch_api/compliance/__init__.py:32-108` holds **6 of the API's 15**
+`apps/api/src/bimdossier_api/compliance/__init__.py:32-108` holds **6 of the API's 15**
 `type: ignore` (`no-any-return`), because the Arbiter MCP response is handled as raw JSON. This
 untyped boundary feeds the **core compliance-check feature**, so shape drift surfaces at runtime
 instead of at the seam. **Fix:** define a Pydantic/`TypedDict` model for the MCP payload and parse
@@ -136,7 +136,7 @@ into it; the suppressions disappear and drift becomes a typed error.
 ~80 unmigrated JSX-text hardcodes and a deliberate "keep visible, don't block ship" decision. So
 the bilingual hard rule is **advisory** in the UI layer (where the strings overwhelmingly live)
 until the backlog is burned down. This is _acknowledged_ debt, listed so it stays tracked.
-**Fix:** migrate the ~80 through `useTranslations()` / `@bimstitch/i18n`, then graduate the rule
+**Fix:** migrate the ~80 through `useTranslations()` / `@bimdossier/i18n`, then graduate the rule
 to `'error'` so new violations block CI.
 
 ---

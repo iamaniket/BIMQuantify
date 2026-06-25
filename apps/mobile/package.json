@@ -12,8 +12,8 @@
     "eas-build-post-install": "pnpm --filter=viewer-embed build"
   },
   "dependencies": {
-    "@bimstitch/design-tokens": "workspace:*",
-    "@bimstitch/map": "workspace:*",
+    "@bimdossier/design-tokens": "workspace:*",
+    "@bimdossier/map": "workspace:*",
     "@expo-google-fonts/fraunces": "^0.4.1",
     "@expo/vector-icons": "^15.1.1",
     "@react-native-community/netinfo": "12.0.1",

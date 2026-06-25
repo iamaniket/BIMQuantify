@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from 'next-intl';
 import { useMemo, type JSX, type ReactNode } from 'react';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { TrendArea } from '@/components/shared/charts/TrendArea';
 import { listProjectActivityTimeline } from '@/lib/api/activity';

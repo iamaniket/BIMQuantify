@@ -1,10 +1,10 @@
 'use client';
 
-import { Camera, Clock, X } from '@bimstitch/ui/icons';
+import { Camera, Clock, X } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useRef, type JSX, type ReactNode } from 'react';
 
-import { Badge } from '@bimstitch/ui';
+import { Badge } from '@bimdossier/ui';
 
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import type { AuditEntry, MemberRead } from '@/lib/api/schemas';

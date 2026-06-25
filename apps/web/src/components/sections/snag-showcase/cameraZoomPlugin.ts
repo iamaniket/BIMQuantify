@@ -1,4 +1,4 @@
-import type { Plugin, ViewerContext } from '@bimstitch/viewer';
+import type { Plugin, ViewerContext } from '@bimdossier/viewer';
 
 export type CameraZoomOptions = {
   /**

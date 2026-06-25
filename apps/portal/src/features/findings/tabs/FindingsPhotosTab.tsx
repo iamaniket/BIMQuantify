@@ -1,10 +1,10 @@
 'use client';
 
-import { Image as ImageIcon } from '@bimstitch/ui/icons';
+import { Image as ImageIcon } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useMemo, useState, type JSX } from 'react';
 
-import { Badge } from '@bimstitch/ui';
+import { Badge } from '@bimdossier/ui';
 
 import { useAttachmentViewUrl } from '@/features/attachments/useAttachmentViewUrl';
 import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';

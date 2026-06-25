@@ -14,8 +14,8 @@ from __future__ import annotations
 from sqlalchemy import inspect
 
 # Importing the package registers the whole mapper registry so the relationship
-# string targets (Project, Finding, Model, ...) resolve during introspection.
-from bimstitch_api.models import BcfComment, BcfTopic, BcfViewpoint
+# string targets (Project, Finding, Document, ...) resolve during introspection.
+from bimdossier_api.models import BcfComment, BcfTopic, BcfViewpoint
 
 
 def _lazy_by_key(model: type) -> dict[str, object]:
@@ -44,7 +44,7 @@ def test_bcf_foreign_keys_are_indexed() -> None:
     assert {
         "project_id",
         "linked_finding_id",
-        "linked_model_id",
+        "linked_document_id",
         "linked_file_id",
         "created_by_user_id",
     } <= _indexed_columns(BcfTopic)

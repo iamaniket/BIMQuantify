@@ -2,7 +2,7 @@ import * as SQLite from 'expo-sqlite';
 
 import { SCHEMA_STATEMENTS, SCHEMA_VERSION } from './schema';
 
-const DB_NAME = 'bimstitch_offline.db';
+const DB_NAME = 'bimdossier_offline.db';
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 

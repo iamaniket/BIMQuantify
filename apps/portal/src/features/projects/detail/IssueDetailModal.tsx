@@ -1,6 +1,6 @@
 'use client';
 
-import { MapPin, UserCog, CheckCircle2 } from '@bimstitch/ui/icons';
+import { MapPin, UserCog, CheckCircle2 } from '@bimdossier/ui/icons';
 import type { JSX } from 'react';
 
 import {
@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogBody,
   DialogFooter,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import type { ComplianceIssue } from '@/features/compliance/types';
 import { issueChipColors } from '@/lib/formatting/disciplineColors';

@@ -4,7 +4,7 @@
  * (the package is i18n-agnostic, mirroring the PDF viewer's MarkupToolbar).
  *
  * Chrome uses Tailwind/design-token classes; the host app must include this
- * package's `src` in its Tailwind `content` globs (as it does for `@bimstitch/ui`).
+ * package's `src` in its Tailwind `content` globs (as it does for `@bimdossier/ui`).
  */
 
 import type { JSX } from 'react';

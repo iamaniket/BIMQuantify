@@ -1,5 +1,5 @@
 {
-  "extends": "@bimstitch/tsconfig/base.json",
+  "extends": "@bimdossier/tsconfig/base.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",

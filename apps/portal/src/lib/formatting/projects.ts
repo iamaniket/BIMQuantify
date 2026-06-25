@@ -3,7 +3,7 @@ import type {
   ProjectLifecycleStateValue,
   ProjectPhaseValue,
 } from '@/lib/api/schemas';
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 import { formatDate } from '@/lib/formatting/dates';
 
 // Tailwind classes for the colored dot + badge per phase.

@@ -1,7 +1,7 @@
 import { setRequestLocale } from 'next-intl/server';
 import type { JSX } from 'react';
 
-import { getLegalContent, type Locale } from '@bimstitch/i18n';
+import { getLegalContent, type Locale } from '@bimdossier/i18n';
 
 import { LegalArticle } from '../LegalArticle';
 

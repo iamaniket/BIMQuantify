@@ -5,8 +5,8 @@ import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 
 import {
   AppDialog, Select, Tabs, TabsContent, TabsList, TabsTrigger,
-} from '@bimstitch/ui';
-import type { CameraFlyPluginOptions, CullingMode, ShadowMode, ViewerHandle, ZoomOptions } from '@bimstitch/viewer';
+} from '@bimdossier/ui';
+import type { CameraFlyPluginOptions, CullingMode, ShadowMode, ViewerHandle, ZoomOptions } from '@bimdossier/viewer';
 
 import {
   DEFAULT_VIEWER_SETTINGS,

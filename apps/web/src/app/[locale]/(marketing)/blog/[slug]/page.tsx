@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { compileMDX } from 'next-mdx-remote/rsc';
 import type { JSX } from 'react';
 
-import { supportedLocales, type Locale } from '@bimstitch/i18n';
+import { supportedLocales, type Locale } from '@bimdossier/i18n';
 
 import { BlogPostCoverImage } from '@/components/blog/BlogPostCoverImage';
 import { BlogPostHero } from '@/components/blog/BlogPostHero';

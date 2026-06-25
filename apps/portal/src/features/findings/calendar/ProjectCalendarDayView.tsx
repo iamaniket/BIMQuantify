@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import type { JSX, ReactNode } from 'react';
 
 import { fullDayHeading } from '@/components/shared/calendar/monthGrid';
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { type CalendarEvent } from './calendarEvents';
 import { DroppableDay } from './dnd/calendarDnd';

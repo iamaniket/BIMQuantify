@@ -15,9 +15,9 @@ import {
   Select,
   Textarea,
   type AppIcon,
-} from '@bimstitch/ui';
-import { ArrowRight, Check, Pencil, Square, StickyNote, UploadCloud } from '@bimstitch/ui/icons';
-import type { MarkupTool } from '@bimstitch/viewer';
+} from '@bimdossier/ui';
+import { ArrowRight, Check, Pencil, Square, StickyNote, UploadCloud } from '@bimdossier/ui/icons';
+import type { MarkupTool } from '@bimdossier/viewer';
 
 import { uploadSnapshot } from '@/lib/api/bcf';
 import { tokenManager } from '@/lib/auth/tokenManager';
@@ -117,7 +117,7 @@ export function BcfCreateForm({
           // viewer can list it under the right model. linked_file_id also falls
           // back to the viewpoint's on the backend, but set it here for the 3D
           // path (whose controller does not stamp the viewpoint).
-          ...(modelId !== undefined ? { linked_model_id: modelId } : {}),
+          ...(modelId !== undefined ? { linked_document_id: modelId } : {}),
           ...(fileId !== undefined ? { linked_file_id: fileId } : {}),
           ...(dimension !== undefined ? { is_2d: dimension === '2d' } : {}),
           viewpoint: viewpointPayload,

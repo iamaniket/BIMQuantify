@@ -2,11 +2,11 @@
 
 import {
   Activity, Boxes, CalendarClock, LayoutGrid, Sparkles,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import { useMemo, type JSX } from 'react';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { ChartBarRow } from '@/components/shared/charts/ChartBarRow';
 import { ChartSection } from '@/components/shared/charts/ChartSection';

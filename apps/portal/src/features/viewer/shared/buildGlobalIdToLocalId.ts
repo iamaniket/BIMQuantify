@@ -1,4 +1,4 @@
-import type { ItemId } from '@bimstitch/viewer';
+import type { ItemId } from '@bimdossier/viewer';
 
 import type { ModelMetadata, SpatialNode } from '@/lib/api/viewerTypes';
 

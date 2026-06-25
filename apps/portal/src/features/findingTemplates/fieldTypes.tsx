@@ -2,7 +2,7 @@
 
 import type { JSX } from 'react';
 
-import { Input, Select, Switch, Textarea } from '@bimstitch/ui';
+import { Input, Select, Switch, Textarea } from '@bimdossier/ui';
 
 import type { FieldDef, FindingFieldTypeValue } from '@/lib/api/schemas';
 

@@ -58,7 +58,16 @@ All of these — columns, the full enum value sets, and the two idempotency
 partial-unique indexes — are declared on the live ORM models, so create_all
 emits them. Folding them in meant only deleting the redundant delta revisions.
 
-Runs against the schema named in BIMSTITCH_TENANT_SCHEMA. FKs to master tables
+A further squash folded in the PDF<->3D alignment chain (former tenant 0002 +
+0003): the `storeys` and `aligned_sheets` tables; the project-owned `levels`
+spine with `level_id` on `models` / `storeys` / `aligned_sheets`; and the
+model-owned `pdf_pages` table. `aligned_sheets` references a logical page via
+`page_id` (the former 0-indexed `page_index` column is gone); the same change
+added `findings.anchor_page_id` and `project_files.page_count`. All are declared
+on the live ORM models, so create_all emits them — folding in meant deleting the
+redundant 0002/0003 revisions.
+
+Runs against the schema named in BIMDOSSIER_TENANT_SCHEMA. FKs to master tables
 (users) are emitted as `public.users(id)` so they resolve regardless of
 search_path — audit_log's user_id / impersonator_user_id rely on this.
 
@@ -83,20 +92,21 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def _schema() -> str:
-    schema = os.environ.get("BIMSTITCH_TENANT_SCHEMA")
+    schema = os.environ.get("BIMDOSSIER_TENANT_SCHEMA")
     if not schema:
-        raise RuntimeError("BIMSTITCH_TENANT_SCHEMA is required for tenant migrations")
+        raise RuntimeError("BIMDOSSIER_TENANT_SCHEMA is required for tenant migrations")
     return schema
 
 
 def upgrade() -> None:
-    from bimstitch_api.db import Base, is_tenant_table
+    from bimdossier_api.db import Base, is_tenant_table
 
     # Importing the models package registers every tenant model with
     # Base.metadata (its __init__ imports all of them, incl. the BCF and
     # org-certificate tables). The explicit names below are documentation.
-    from bimstitch_api.models import (  # noqa: F401
+    from bimdossier_api.models import (  # noqa: F401
         AccessRequest,
+        AlignedSheet,
         AuditLog,
         BcfComment,
         BcfTopic,
@@ -115,18 +125,21 @@ def upgrade() -> None:
         Finding,
         FindingAttachment,
         Job,
-        Model,
+        Level,
+        Document,
         Notification,
         NotificationUserState,
         OrgCertificate,
         OrgCertificateTag,
         Organization,
         OrganizationMember,
+        PdfPage,
         Project,
         ProjectFile,
         ProjectMember,
         Report,
         Risk,
+        Storey,
         User,
     )
 
@@ -137,7 +150,7 @@ def upgrade() -> None:
     schema = _schema()
     bind.execute(
         text(
-            f'CREATE UNIQUE INDEX IF NOT EXISTS ux_borgingsplans_one_active '
+            f"CREATE UNIQUE INDEX IF NOT EXISTS ux_borgingsplans_one_active "
             f'ON "{schema}".borgingsplans(project_id) '
             f"WHERE status IN ('draft', 'published')"
         )
@@ -186,9 +199,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    from bimstitch_api.db import Base, is_tenant_table
-    from bimstitch_api.models import (  # noqa: F401
+    from bimdossier_api.db import Base, is_tenant_table
+    from bimdossier_api.models import (  # noqa: F401
         AccessRequest,
+        AlignedSheet,
         AuditLog,
         BcfComment,
         BcfTopic,
@@ -207,18 +221,21 @@ def downgrade() -> None:
         Finding,
         FindingAttachment,
         Job,
-        Model,
+        Level,
+        Document,
         Notification,
         NotificationUserState,
         OrgCertificate,
         OrgCertificateTag,
         Organization,
         OrganizationMember,
+        PdfPage,
         Project,
         ProjectFile,
         ProjectMember,
         Report,
         Risk,
+        Storey,
         User,
     )
 
@@ -249,8 +266,8 @@ def downgrade() -> None:
         "ifcschema",
         "jobstatus",
         "jobtype",
-        "modeldiscipline",
-        "modelstatus",
+        "documentdiscipline",
+        "documentstatus",
         "notificationeventtype",
         "projectfilerole",
         "projectfilestatus",

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 
-import type { DocumentViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import type { DocumentViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 /**
  * Drives the finding-pin layer's global visibility from a persisted setting,

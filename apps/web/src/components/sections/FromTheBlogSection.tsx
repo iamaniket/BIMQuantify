@@ -1,8 +1,8 @@
-import { Eyebrow } from '@bimstitch/ui';
+import { Eyebrow } from '@bimdossier/ui';
 import { getTranslations } from 'next-intl/server';
 import type { JSX } from 'react';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { BlogPostCard } from '@/components/blog/BlogPostCard';
 import { Link } from '@/i18n/navigation';

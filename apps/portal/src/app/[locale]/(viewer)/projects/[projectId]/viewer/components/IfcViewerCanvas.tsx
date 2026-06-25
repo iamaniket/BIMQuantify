@@ -4,8 +4,8 @@ import dynamic from 'next/dynamic';
 import type React from 'react';
 import { type JSX } from 'react';
 
-import { Skeleton } from '@bimstitch/ui';
-import type { FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import { Skeleton } from '@bimdossier/ui';
+import type { DocumentViewerHandle, FloorPlanViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import { FloorPlanPane } from '@/features/viewer/2d/FloorPlanPane';
 import { type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
@@ -17,7 +17,7 @@ import type { ViewerSettings } from '@/lib/viewerSettings';
 import type { ViewerScope } from '@/features/viewer/shared/useViewerScope';
 
 const IfcViewer = dynamic(
-  () => import('@bimstitch/viewer').then((m) => m.IfcViewer),
+  () => import('@bimdossier/viewer').then((m) => m.IfcViewer),
   { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
 );
 
@@ -50,8 +50,8 @@ export interface IfcViewerCanvasProps {
   fileId: string;
   onFindingClick: (finding: Finding) => void;
   onRequestFloorPlanFindings: (view: 'findings') => void;
-  /** Surface the floor-plan handle up so the Findings panel can pin on the plan (2D). */
-  onFpHandle?: ((handle: FloorPlanViewerHandle | null) => void) | undefined;
+  /** Surface the active 2D handle (floor-plan OR aligned-sheet PDF) up so the Findings panel can pin on it (2D). */
+  onFpHandle?: ((handle: FloorPlanViewerHandle | DocumentViewerHandle | null) => void) | undefined;
   /** Report the active storey elevation for the plan-pick → world conversion. */
   onFpActiveElevationChange?: ((elevation: number | null) => void) | undefined;
   /** The plan model's API UUID (owns storeys) — for the calibration pane + sheet substitution. */
@@ -229,6 +229,7 @@ export function IfcViewerCanvas({
             metadata={planMetadata}
             projectId={projectId}
             fileId={scope.planFileId ?? fileId}
+            planModelId={planApiModelId}
             viewMode={viewMode}
             onFindingClick={onFindingClick}
             onRequestFindings={onRequestFloorPlanFindings}

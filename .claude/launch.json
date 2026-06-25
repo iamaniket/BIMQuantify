@@ -23,7 +23,7 @@
         "apps/api",
         "run",
         "uvicorn",
-        "bimstitch_api.main:app",
+        "bimdossier_api.main:app",
         "--reload",
         "--port",
         "8000"

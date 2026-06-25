@@ -1,4 +1,4 @@
-import type { Plugin, ViewerContext, Vec3 } from '@bimstitch/viewer';
+import type { Plugin, ViewerContext, Vec3 } from '@bimdossier/viewer';
 
 /** A placed snag: its anchor in the model's LOCAL frame + which model it's on. */
 export type SnagAnchor = { id: string; position: Vec3; modelId: string };

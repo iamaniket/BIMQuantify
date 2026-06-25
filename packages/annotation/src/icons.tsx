@@ -1,6 +1,6 @@
 /**
  * Tiny dependency-free SVG icons for the annotation toolbar. Kept inside the
- * package (rather than importing `@bimstitch/ui`) so `@bimstitch/annotation`
+ * package (rather than importing `@bimdossier/ui`) so `@bimdossier/annotation`
  * stays standalone — loadable in the portal, the viewer-embed WebView, and any
  * future host without dragging in the UI kit's peer dependencies.
  *

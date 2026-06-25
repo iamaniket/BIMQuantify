@@ -14,9 +14,10 @@ export type AlignedSheetControlPoints = z.infer<typeof AlignedSheetControlPoints
 export const AlignedSheetSchema = z.object({
   id: z.string().uuid(),
   project_id: z.string().uuid(),
-  // The 3D model (owns storeys + world coords).
+  // The 3D model (supplies world coords to calibrate against).
   model_id: z.string().uuid(),
-  storey_id: z.string().uuid(),
+  // The project Level (shared 2D/3D spine) this sheet pins to.
+  level_id: z.string().uuid(),
   // The PDF model (primary_file_type = 'pdf') whose page is aligned.
   pdf_model_id: z.string().uuid(),
   calibrated_pdf_file_id: z.string().uuid().nullable(),
@@ -41,7 +42,7 @@ export type AlignedSheetList = z.infer<typeof AlignedSheetListSchema>;
 
 export const AlignedSheetCreateSchema = z.object({
   model_id: z.string().uuid(),
-  storey_id: z.string().uuid(),
+  level_id: z.string().uuid(),
   pdf_model_id: z.string().uuid(),
   page_index: z.number().int().min(0).optional(),
 });
@@ -49,7 +50,7 @@ export const AlignedSheetCreateSchema = z.object({
 export type AlignedSheetCreateInput = z.infer<typeof AlignedSheetCreateSchema>;
 
 export const AlignedSheetUpdateSchema = z.object({
-  storey_id: z.string().uuid().optional(),
+  level_id: z.string().uuid().optional(),
   page_index: z.number().int().min(0).optional(),
 });
 

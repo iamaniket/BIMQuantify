@@ -3,13 +3,14 @@ import * as FileSystem from 'expo-file-system/legacy';
 import type { EmbedViewerBundle } from '@/lib/api/viewerBundle';
 import { getDb } from '@/lib/offline/db';
 
-// "Pin for offline": download a model's viewer-bundle artifacts to app storage
-// and record a local manifest, so the model opens with no signal. Android-first
-// — the WebView already sets allowFileAccessFromFileURLs, so the embed can fetch
-// the file:// paths we hand it. (iOS has no in-app embed bundle yet; that, and
-// the IndexedDB-prime alternative for large frags, are the device-spike items.)
+// "Pin for offline": download a document's viewer-bundle artifacts to app
+// storage and record a local manifest, so the document opens with no signal.
+// Android-first — the WebView already sets allowFileAccessFromFileURLs, so the
+// embed can fetch the file:// paths we hand it. (iOS has no in-app embed bundle
+// yet; that, and the IndexedDB-prime alternative for large frags, are the
+// device-spike items.)
 
-const MODELS_DIR = `${FileSystem.documentDirectory ?? ''}offline/models/`;
+const DOCUMENTS_DIR = `${FileSystem.documentDirectory ?? ''}offline/documents/`;
 
 async function ensureDir(dir: string): Promise<void> {
   const info = await FileSystem.getInfoAsync(dir);
@@ -26,16 +27,16 @@ async function downloadTo(url: string, dest: string): Promise<number> {
 
 /**
  * Download every artifact of `bundle` (presigned URLs, fetched while online) to
- * `offline/models/<fileId>/` and persist a local file:// manifest. Returns the
- * local bundle the viewer hands the embed when offline.
+ * `offline/documents/<fileId>/` and persist a local file:// manifest. Returns
+ * the local bundle the viewer hands the embed when offline.
  */
 export async function pinModel(
   projectId: string,
-  modelId: string,
+  documentId: string,
   fileId: string,
   bundle: EmbedViewerBundle,
 ): Promise<EmbedViewerBundle> {
-  const dir = `${MODELS_DIR}${fileId}/`;
+  const dir = `${DOCUMENTS_DIR}${fileId}/`;
   await ensureDir(dir);
 
   const fragDest = `${dir}fragments.frag`;
@@ -66,15 +67,15 @@ export async function pinModel(
 
   const db = await getDb();
   await db.runAsync(
-    `INSERT INTO pinned_models (file_id, project_id, model_id, cache_key, manifest, size_bytes, pinned_at)
+    `INSERT INTO pinned_models (file_id, project_id, document_id, cache_key, manifest, size_bytes, pinned_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(file_id) DO UPDATE SET
-       project_id = excluded.project_id, model_id = excluded.model_id,
+       project_id = excluded.project_id, document_id = excluded.document_id,
        cache_key = excluded.cache_key, manifest = excluded.manifest,
        size_bytes = excluded.size_bytes, pinned_at = excluded.pinned_at`,
     fileId,
     projectId,
-    modelId,
+    documentId,
     bundle.cacheKey ?? null,
     JSON.stringify(local),
     total,
@@ -105,7 +106,7 @@ export async function unpinModel(fileId: string): Promise<void> {
   const db = await getDb();
   await db.runAsync('DELETE FROM pinned_models WHERE file_id = ?', fileId);
   try {
-    await FileSystem.deleteAsync(`${MODELS_DIR}${fileId}/`, { idempotent: true });
+    await FileSystem.deleteAsync(`${DOCUMENTS_DIR}${fileId}/`, { idempotent: true });
   } catch {
     // Best-effort cleanup — the row is gone either way.
   }

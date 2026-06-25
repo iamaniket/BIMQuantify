@@ -65,7 +65,7 @@ async def _seed_org_and_user(
         email=email or f"u-{uuid4().hex[:6]}@example.com",
     )
     org_id = UUID(info["organization_id"])
-    from bimstitch_api.tenancy import schema_name_for
+    from bimdossier_api.tenancy import schema_name_for
 
     return schema_name_for(org_id), UUID(info["id"])
 

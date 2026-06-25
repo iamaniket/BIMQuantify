@@ -8,7 +8,7 @@ import {
   useAnnotationHistory,
   type AnnotationToolbarLabels,
   type ToolbarTool,
-} from '@bimstitch/annotation';
+} from '@bimdossier/annotation';
 import { useTranslations } from 'next-intl';
 import {
   createElement,

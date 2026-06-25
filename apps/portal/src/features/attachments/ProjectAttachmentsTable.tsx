@@ -1,11 +1,11 @@
 'use client';
 
-import { Camera, Download, Eye, FileAudio, FileText, FileVideo, Image, Trash2 } from '@bimstitch/ui/icons';
+import { Camera, Download, Eye, FileAudio, FileText, FileVideo, Image, Trash2 } from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import type { ComponentType, JSX } from 'react';
 
-import { Badge } from '@bimstitch/ui';
-import type { Locale } from '@bimstitch/i18n';
+import { Badge } from '@bimdossier/ui';
+import type { Locale } from '@bimdossier/i18n';
 
 import { DataTable } from '@/components/shared/DataTable';
 import type { Column } from '@/components/shared/PageTable';

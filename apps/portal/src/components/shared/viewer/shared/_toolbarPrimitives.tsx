@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 // Pure-presentational primitives shared by Toolbar (IFC) and
 // DocumentToolbar (PDF). No logic, no refs to runtime state — only Tailwind

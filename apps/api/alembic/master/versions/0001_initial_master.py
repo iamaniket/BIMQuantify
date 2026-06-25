@@ -33,14 +33,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    from bimstitch_api._rls_sql import (
+    from bimdossier_api._rls_sql import (
         create_app_role_statements,
         enable_rls_statements,
     )
-    from bimstitch_api.db import Base, is_master_table
+    from bimdossier_api.db import Base, is_master_table
     # Import every model so they register with Base.metadata, then filter
     # down to the master-side tables only.
-    from bimstitch_api.models import (  # noqa: F401
+    from bimdossier_api.models import (  # noqa: F401
         AccessRequest,
         AuditLog,
         BlogPost,
@@ -89,9 +89,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    from bimstitch_api._rls_sql import disable_rls_statements
-    from bimstitch_api.db import Base, is_master_table
-    from bimstitch_api.models import (  # noqa: F401
+    from bimdossier_api._rls_sql import disable_rls_statements
+    from bimdossier_api.db import Base, is_master_table
+    from bimdossier_api.models import (  # noqa: F401
         AccessRequest,
         AuditLog,
         BlogPost,

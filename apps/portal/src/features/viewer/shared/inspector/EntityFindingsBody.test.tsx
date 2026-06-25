@@ -64,7 +64,7 @@ function makeFinding(overrides: Partial<Finding> = {}): Finding {
     created_by_user_id: 'u9',
     source_checklist_item_id: null,
     borgingsmoment_id: null,
-    linked_model_id: null,
+    linked_document_id: null,
     linked_file_id: null,
     linked_element_global_id: null,
     linked_file_type: null,

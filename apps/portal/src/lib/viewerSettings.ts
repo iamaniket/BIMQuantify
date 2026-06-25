@@ -11,9 +11,9 @@ import type {
   ShadowMode,
   ShortcutMap,
   ZoomOptions,
-} from '@bimstitch/viewer';
+} from '@bimdossier/viewer';
 
-const STORAGE_KEY = 'bimstitch.viewerSettings.v2';
+const STORAGE_KEY = 'bimdossier.viewerSettings.v2';
 
 export type EffectsSettings = Required<EffectsOptions>;
 

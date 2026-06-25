@@ -173,6 +173,12 @@ export type {
 } from './plugins/2d/entity-marker/index.js';
 export { interaction2DPlugin } from './plugins/2d/interaction/index.js';
 export type { Interaction2DRequestArgs } from './plugins/2d/interaction/index.js';
+// Aligned-sheet 2D→3D linking: page picks + you-are-here marker (opt-in via the
+// DocumentViewer `linkPicks` prop). Exported so the `document:pick` event
+// augmentation is visible to consumers.
+export { documentPickPlugin } from './plugins/2d/document-pick/index.js';
+export { documentCameraPosePlugin } from './plugins/2d/camera-pose/index.js';
+export type { DocumentCameraPose } from './plugins/2d/camera-pose/index.js';
 
 // Floor-plan 2D viewer — reuses the world-space 2D engine to render a decoded
 // BIMFPLN2 plan (sibling to the PDF `DocumentViewer`).

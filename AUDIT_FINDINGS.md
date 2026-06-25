@@ -30,8 +30,8 @@ interrupted by a session limit and is being completed separately (see _Processor
 ## CRITICAL
 
 ### 1. [API] Seat-limit TOCTOU — concurrent invites exceed the paid cap
-`apps/api/src/bimstitch_api/admin/seats.py:41-54` (`assert_seat_available`), called from
-`apps/api/src/bimstitch_api/routers/organization_members.py:198` (`invite_member`) and
+`apps/api/src/bimdossier_api/admin/seats.py:41-54` (`assert_seat_available`), called from
+`apps/api/src/bimdossier_api/routers/organization_members.py:198` (`invite_member`) and
 `:458` (`update_member_guest`).
 
 `assert_seat_available` does an unlocked `SELECT COUNT(*)` then inserts the new member in a
@@ -45,7 +45,7 @@ row before counting, inside the same transaction as the insert — the same patt
 last-admin invariant already uses (`membership_rules.py`, `with_for_update`).
 
 ### 2. [DevOps] Inter-service shared secret falls through to a public default
-`apps/api/src/bimstitch_api/config.py:98-100` (`processor_shared_secret` default
+`apps/api/src/bimdossier_api/config.py:98-100` (`processor_shared_secret` default
 `"dev-shared-secret-change-me"`), `apps/processor/src/config.ts:16` (same default),
 `docker-compose.yml:77` (`${PROCESSOR_SHARED_SECRET:-dev-shared-secret-change-me}`).
 
@@ -58,8 +58,8 @@ secret — an attacker who knows the default can forge worker callbacks.
 are. Fail closed at startup if unset.
 
 ### 3. [DevOps] S3 credentials default to the dev MinIO root creds
-`apps/api/src/bimstitch_api/config.py:78-79` — `s3_access_key_id` defaults to
-`"bimstitch"`, `s3_secret_access_key` to `"bimstitch-secret"`.
+`apps/api/src/bimdossier_api/config.py:78-79` — `s3_access_key_id` defaults to
+`"bimdossier"`, `s3_secret_access_key` to `"bimdossier-secret"`.
 
 A prod deploy that forgets to set S3 creds silently uses the well-known dev MinIO
 credentials instead of erroring. Same fall-through-to-prod class as #2.
@@ -77,14 +77,14 @@ tenant's schema** until a manual reload. Logout in one tab likewise leaves other
 firing a dead token.
 
 **Fix:** add a `storage`-event listener that re-hydrates tokens (or forces logout/reload)
-when `bimstitch.tokens` changes in another tab.
+when `bimdossier.tokens` changes in another tab.
 
 ---
 
 ## HIGH
 
 ### 5. [API] Public capture-link `use_count` race — `max_uses` over-consumption
-`apps/api/src/bimstitch_api/routers/capture_public.py:187` (`link.use_count += 1`), gate at
+`apps/api/src/bimdossier_api/routers/capture_public.py:187` (`link.use_count += 1`), gate at
 `:71-77` (`_load_and_validate_link`).
 
 `is_exhausted` is checked against the ORM-loaded `use_count`, then `use_count += 1` is
@@ -99,7 +99,7 @@ must hold under concurrency.
 use_count < max_uses)` and treat zero-rows-affected as exhausted.
 
 ### 6. [DevOps] Rate limiting trusts client-supplied `X-Forwarded-For`
-`FastAPILimiter.init(redis)` (`apps/api/src/bimstitch_api/main.py:79`) is called with no
+`FastAPILimiter.init(redis)` (`apps/api/src/bimdossier_api/main.py:79`) is called with no
 custom `identifier`, so the library default keys the rate limit on the first
 `X-Forwarded-For` value verbatim. No `--forwarded-allow-ips` / `--proxy-headers` is set on
 uvicorn anywhere. Any client can send a random `X-Forwarded-For` per request to get a fresh
@@ -124,7 +124,7 @@ Note: the CLAUDE.md claim that "the register limiter now guards the admin invite
 
 ### 8. [DevOps] Tenant-schema migration drift has no guardrail
 Existing org schemas are upgraded only by manually running
-`uv run python -m bimstitch_api.scripts.migrate_all` after deploy. `migrations_check.py:23-29`
+`uv run python -m bimdossier_api.scripts.migrate_all` after deploy. `migrations_check.py:23-29`
 deliberately checks **only** the master chain at startup, so there is **zero** signal if
 tenant schemas are behind. Deploy code expecting a new tenant column without running
 `migrate_all` → every existing tenant 500s while new tenants work.
@@ -133,7 +133,7 @@ tenant schemas are behind. Deploy code expecting a new tenant column without run
 pending-migration health check.
 
 ### 9. [API] Processor callback's post-commit work is not crash-isolated
-`apps/api/src/bimstitch_api/routers/jobs_internal.py:207-216` and `:283-295`.
+`apps/api/src/bimdossier_api/routers/jobs_internal.py:207-216` and `:283-295`.
 
 The terminal state is committed idempotently (correct — `with_for_update` + terminal-state
 guards). But the post-commit work (emit notification, refresh re-anchoring `search_path`)
@@ -146,7 +146,7 @@ worker reads "callback failed" and retries → re-runs the same unguarded path.
 _(Whether the worker actually retries on 5xx is part of the pending Processor audit.)_
 
 ### 10. [API] `update_finding` promotion sends a hardcoded Dutch-only notification
-`apps/api/src/bimstitch_api/routers/finding.py:238-244` — `title="Nieuwe bevinding
+`apps/api/src/bimdossier_api/routers/finding.py:238-244` — `title="Nieuwe bevinding
 toegewezen"`, no locale resolution. Violates the project's hard bilingual rule; an
 EN-locale assignee gets a Dutch push. Also broadcast to the org channel rather than scoped
 to the assignee despite the "toegewezen" (assigned) wording.
@@ -192,13 +192,13 @@ or accumulate via a ref.
 ## MEDIUM
 
 ### 14. [API] Capture-link double-complete TOCTOU on `Attachment.status`
-`apps/api/src/bimstitch_api/routers/capture_public.py:236-249`. Attachment selected without
+`apps/api/src/bimdossier_api/routers/capture_public.py:236-249`. Attachment selected without
 `with_for_update`; two concurrent `complete` calls both read `pending`, both flip and
 double-write audit rows / double-HEAD storage. Lower impact (idempotent end state, unique
 `content_sha256`). **Fix:** `FOR UPDATE` or conditional UPDATE guarded on `status='pending'`.
 
 ### 15. [API] `invite_to_project` opens a second DB session while the tenant session is open
-`apps/api/src/bimstitch_api/routers/projects.py:934, 948-1072`. Endpoint takes
+`apps/api/src/bimdossier_api/routers/projects.py:934, 948-1072`. Endpoint takes
 `get_tenant_session` but does all writes on a separate `get_session_maker()` session
 committed independently — non-atomic from the client's view (a failure after `ms.commit()`,
 e.g. `request_verify` at `:1088`, leaves the invite durably committed but returns 500), and
@@ -207,20 +207,20 @@ sets/restores `search_path`). **Fix:** drop the unused tenant-session dependency
 the deliberate two-session design.
 
 ### 16. [API] Invite acceptance doesn't re-check seats
-`apps/api/src/bimstitch_api/routers/me_invitations.py:112-162`. By design pending invites
+`apps/api/src/bimdossier_api/routers/me_invitations.py:112-162`. By design pending invites
 count toward seats, but if `seat_limit` is lowered (downgrade) acceptance has no backstop —
 and combined with #1 the count itself can be wrong. **Fix:** re-check seats on accept;
 confirm the downgrade path reconciles existing pending invites.
 
 ### 17. [API] Compliance check holds the tenant transaction open across a 30s external call
-`apps/api/src/bimstitch_api/routers/compliance.py:137-162`. The DB transaction (pooled
+`apps/api/src/bimdossier_api/routers/compliance.py:137-162`. The DB transaction (pooled
 connection + `SET LOCAL ROLE`/`search_path`) is held for the full Arbiter MCP call
 (`arbiter_timeout_seconds=30`). Under concurrency this pins connections (`DB_POOL_SIZE=20`)
 to Arbiter latency → pool exhaustion when Arbiter is slow. **Fix:** run the external call,
 then open a short transaction to persist the result.
 
 ### 18. [API] `list_reports` presigns up to 200 URLs per request with no concurrency cap
-`apps/api/src/bimstitch_api/routers/reports.py:355` — `asyncio.gather` over the full page.
+`apps/api/src/bimdossier_api/routers/reports.py:355` — `asyncio.gather` over the full page.
 Cheap for local S3v4 signing, an unbounded fan-out if the signer ever does a round-trip.
 **Fix:** presign lazily, or bound the gather with a semaphore.
 
@@ -232,12 +232,12 @@ worker is exactly the stuck-job scenario the reconcile sweeper exists to clean u
 and `restart: unless-stopped` in the prod manifest.
 
 ### 20. [DevOps] `migrate_all` runs tenants sequentially with no failure isolation
-`apps/api/src/bimstitch_api/scripts/migrate_all.py:71-74`. If org #50 fails mid-run, 1-49
+`apps/api/src/bimdossier_api/scripts/migrate_all.py:71-74`. If org #50 fails mid-run, 1-49
 are committed and 50-N untouched, leaving the fleet in mixed states with no summary.
 **Fix:** collect failures and report a per-schema success/fail summary.
 
 ### 21. [DevOps] `ensure_bucket` and migration check only warn, never fail startup
-`apps/api/src/bimstitch_api/main.py:82-91`. App starts "healthy" even if storage is
+`apps/api/src/bimdossier_api/main.py:82-91`. App starts "healthy" even if storage is
 unreachable or schema is behind → passes health checks, then 500s on first upload/query.
 Intentional, but a fail-fast on `ensure_bucket` would surface misconfig at deploy time.
 
@@ -286,7 +286,7 @@ text layer.
 ## LOW / informational
 
 - **[DevOps]** Dev compose publishes every service to `0.0.0.0` (Postgres `bim:bim`, MinIO
-  `bimstitch:bimstitch-secret`) — bind to `127.0.0.1:` on shared dev boxes.
+  `bimdossier:bimdossier-secret`) — bind to `127.0.0.1:` on shared dev boxes.
 - **[DevOps]** No Playwright E2E gate in CI; `turbo.json:7` includes `.env*` in build-cache
   inputs (low risk — gitignored, no `.env` in CI).
 - **[DevOps]** Dev seed creds are weak (`Admin123!` etc.) and prefilled in portal

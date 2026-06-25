@@ -13,7 +13,7 @@ from tests.conftest import (
     _add_member,
     _auth,
     _create_attachment_row,
-    _create_model,
+    _create_document,
     _create_project,
 )
 
@@ -822,13 +822,13 @@ async def test_markup_2d_excludes_3d_viewpoints(
 
 
 # ---------------------------------------------------------------------------
-# Model + version + dimension association
+# Document + version + dimension association
 # ---------------------------------------------------------------------------
 
 
-async def _create_model_file(
+async def _create_document_file(
     project_id: str,
-    model_id: str,
+    document_id: str,
     *,
     version: int = 1,
     ifc_project_guid: str | None = None,
@@ -839,7 +839,7 @@ async def _create_model_file(
 
     from sqlalchemy import text
 
-    from bimstitch_api.db import get_session_maker
+    from bimdossier_api.db import get_session_maker
 
     fid = str(uuid4())
     async with get_session_maker()() as s, s.begin():
@@ -865,7 +865,7 @@ async def _create_model_file(
         await s.execute(
             text(
                 f'INSERT INTO "{target}".project_files '
-                "(id, project_id, role, status, file_type, model_id, ifc_project_guid, "
+                "(id, project_id, role, status, file_type, document_id, ifc_project_guid, "
                 " storage_key, original_filename, size_bytes, content_type, version_number) "
                 "VALUES (:id, :pid, 'model_source', 'ready', 'ifc', :mid, :guid, :sk, "
                 ":fn, 100, 'application/octet-stream', :ver)"
@@ -873,7 +873,7 @@ async def _create_model_file(
             {
                 "id": fid,
                 "pid": project_id,
-                "mid": model_id,
+                "mid": document_id,
                 "guid": ifc_project_guid,
                 "sk": f"models/{fid}.ifc",
                 "fn": filename,
@@ -887,17 +887,17 @@ async def test_create_topic_with_model_and_file(
     client: AsyncClient, org_user: dict[str, str]
 ) -> None:
     project = await _create_project(client, org_user["access_token"])
-    model = await _create_model(client, org_user["access_token"], project["id"])
-    file_id = await _create_model_file(project["id"], model["id"], version=2)
+    model = await _create_document(client, org_user["access_token"], project["id"])
+    file_id = await _create_document_file(project["id"], model["id"], version=2)
 
     resp = await client.post(
         f"/projects/{project['id']}/bcf-topics",
-        json=_topic(linked_model_id=model["id"], linked_file_id=file_id),
+        json=_topic(linked_document_id=model["id"], linked_file_id=file_id),
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 201, resp.text
     body = resp.json()
-    assert body["linked_model_id"] == model["id"]
+    assert body["linked_document_id"] == model["id"]
     assert body["linked_file_id"] == file_id
     assert body["is_2d"] is False
     assert body["model_version"] == 2
@@ -907,10 +907,10 @@ async def test_create_topic_with_model_and_file(
 async def test_create_topic_backfills_model_from_file(
     client: AsyncClient, org_user: dict[str, str]
 ) -> None:
-    """Passing only linked_file_id backfills linked_model_id from the file."""
+    """Passing only linked_file_id backfills linked_document_id from the file."""
     project = await _create_project(client, org_user["access_token"])
-    model = await _create_model(client, org_user["access_token"], project["id"])
-    file_id = await _create_model_file(project["id"], model["id"])
+    model = await _create_document(client, org_user["access_token"], project["id"])
+    file_id = await _create_document_file(project["id"], model["id"])
 
     resp = await client.post(
         f"/projects/{project['id']}/bcf-topics",
@@ -918,7 +918,7 @@ async def test_create_topic_backfills_model_from_file(
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 201, resp.text
-    assert resp.json()["linked_model_id"] == model["id"]
+    assert resp.json()["linked_document_id"] == model["id"]
 
 
 async def test_create_topic_derives_dimension_and_file_from_2d_viewpoint(
@@ -944,8 +944,8 @@ async def test_create_topic_linked_file_404_other_project(
 ) -> None:
     project_a = await _create_project(client, org_user["access_token"], name="A")
     project_b = await _create_project(client, org_user["access_token"], name="B")
-    model_b = await _create_model(client, org_user["access_token"], project_b["id"])
-    file_b = await _create_model_file(project_b["id"], model_b["id"])
+    model_b = await _create_document(client, org_user["access_token"], project_b["id"])
+    file_b = await _create_document_file(project_b["id"], model_b["id"])
 
     resp = await client.post(
         f"/projects/{project_a['id']}/bcf-topics",
@@ -956,39 +956,39 @@ async def test_create_topic_linked_file_404_other_project(
     assert resp.json()["detail"] == "PROJECT_FILE_NOT_FOUND"
 
 
-async def test_list_filter_by_model_id(client: AsyncClient, org_user: dict[str, str]) -> None:
+async def test_list_filter_by_document_id(client: AsyncClient, org_user: dict[str, str]) -> None:
     project = await _create_project(client, org_user["access_token"])
-    model_a = await _create_model(client, org_user["access_token"], project["id"], name="A")
-    model_b = await _create_model(client, org_user["access_token"], project["id"], name="B")
+    model_a = await _create_document(client, org_user["access_token"], project["id"], name="A")
+    model_b = await _create_document(client, org_user["access_token"], project["id"], name="B")
 
     await client.post(
         f"/projects/{project['id']}/bcf-topics",
-        json=_topic(title="On A", linked_model_id=model_a["id"]),
+        json=_topic(title="On A", linked_document_id=model_a["id"]),
         headers=_auth(org_user["access_token"]),
     )
     await client.post(
         f"/projects/{project['id']}/bcf-topics",
-        json=_topic(title="On B", linked_model_id=model_b["id"]),
+        json=_topic(title="On B", linked_document_id=model_b["id"]),
         headers=_auth(org_user["access_token"]),
     )
 
     resp = await client.get(
-        f"/projects/{project['id']}/bcf-topics?model_id={model_a['id']}",
+        f"/projects/{project['id']}/bcf-topics?document_id={model_a['id']}",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200
     items = resp.json()
     assert len(items) == 1
     assert items[0]["title"] == "On A"
-    assert items[0]["linked_model_id"] == model_a["id"]
+    assert items[0]["linked_document_id"] == model_a["id"]
 
 
 async def test_list_filter_by_file_id(client: AsyncClient, org_user: dict[str, str]) -> None:
     """file_id is the 'this version only' filter — issues across versions of one model."""
     project = await _create_project(client, org_user["access_token"])
-    model = await _create_model(client, org_user["access_token"], project["id"])
-    v1 = await _create_model_file(project["id"], model["id"], version=1, filename="v1.ifc")
-    v2 = await _create_model_file(project["id"], model["id"], version=2, filename="v2.ifc")
+    model = await _create_document(client, org_user["access_token"], project["id"])
+    v1 = await _create_document_file(project["id"], model["id"], version=1, filename="v1.ifc")
+    v2 = await _create_document_file(project["id"], model["id"], version=2, filename="v2.ifc")
 
     await client.post(
         f"/projects/{project['id']}/bcf-topics",
@@ -1001,9 +1001,9 @@ async def test_list_filter_by_file_id(client: AsyncClient, org_user: dict[str, s
         headers=_auth(org_user["access_token"]),
     )
 
-    # Model-scoped: both versions show (default viewer behaviour).
+    # Document-scoped: both versions show (default viewer behaviour).
     by_model = await client.get(
-        f"/projects/{project['id']}/bcf-topics?model_id={model['id']}",
+        f"/projects/{project['id']}/bcf-topics?document_id={model['id']}",
         headers=_auth(org_user["access_token"]),
     )
     assert len(by_model.json()) == 2
@@ -1101,13 +1101,13 @@ async def test_import_matches_header_file_to_model(
     client: AsyncClient, org_user: dict[str, str]
 ) -> None:
     """A BCF Header/File with an IfcProject GUID auto-links to the matching model."""
-    from bimstitch_api.bcf.generator import generate_bcf_archive
-    from bimstitch_api.bcf.types import ParsedBcf, ParsedFile, ParsedTopic
+    from bimdossier_api.bcf.generator import generate_bcf_archive
+    from bimdossier_api.bcf.types import ParsedBcf, ParsedFile, ParsedTopic
 
     guid = "2O2Fr$t4X7Zf8NOew3FNr2"
     project = await _create_project(client, org_user["access_token"], name="Importer")
-    model = await _create_model(client, org_user["access_token"], project["id"])
-    file_id = await _create_model_file(
+    model = await _create_document(client, org_user["access_token"], project["id"])
+    file_id = await _create_document_file(
         project["id"], model["id"], version=1, ifc_project_guid=guid, filename="tower.ifc"
     )
 
@@ -1131,5 +1131,5 @@ async def test_import_matches_header_file_to_model(
     )
     assert import_resp.status_code == 200, import_resp.text
     topic = import_resp.json()["topics"][0]
-    assert topic["linked_model_id"] == model["id"]
+    assert topic["linked_document_id"] == model["id"]
     assert topic["linked_file_id"] == file_id

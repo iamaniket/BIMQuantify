@@ -1,6 +1,6 @@
 'use client';
 
-import { CountChip, Eyebrow } from '@bimstitch/ui';
+import { CountChip, Eyebrow } from '@bimdossier/ui';
 import type { JSX } from 'react';
 
 import type { PropertySet } from '@/lib/api/viewerTypes';

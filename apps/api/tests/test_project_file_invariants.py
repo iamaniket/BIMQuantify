@@ -1,7 +1,7 @@
 """DB-level invariants of the unified ``project_files`` table.
 
 After folding ``attachments`` into ``project_files``, the table backs two roles
-(``model_source`` / ``attachment``) and the role↔model_id relationship is held
+(``model_source`` / ``attachment``) and the role↔document_id relationship is held
 by two CHECK constraints. Versioning is anchored differently per role, enforced
 by two partial unique indexes. These tests exercise the constraints directly
 against Postgres (rows inserted into the test schema), independent of the
@@ -16,14 +16,14 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from bimstitch_api.models.model import Model, ModelDiscipline
-from bimstitch_api.models.project import Project
-from bimstitch_api.models.project_file import (
+from bimdossier_api.models.document import Document, DocumentDiscipline
+from bimdossier_api.models.project import Project
+from bimdossier_api.models.project_file import (
     ProjectFile,
     ProjectFileRole,
     ProjectFileStatus,
 )
-from bimstitch_api.models.user import User
+from bimdossier_api.models.user import User
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -43,39 +43,39 @@ def _file(**kw: object) -> ProjectFile:
     return ProjectFile(**base)
 
 
-async def _seed_project_and_model(session: AsyncSession) -> tuple[Project, Model]:
+async def _seed_project_and_model(session: AsyncSession) -> tuple[Project, Document]:
     user = User(email=f"{uuid4().hex}@ex.com", hashed_password="x")
     session.add(user)
     await session.flush()
     project = Project(name="P", owner_id=user.id)
     session.add(project)
     await session.flush()
-    model = Model(project_id=project.id, name="M", discipline=ModelDiscipline.architectural)
+    model = Document(project_id=project.id, name="M", discipline=DocumentDiscipline.architectural)
     session.add(model)
     await session.flush()
     return project, model
 
 
-async def test_model_source_requires_model_id(
+async def test_model_source_requires_document_id(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     async with session_maker() as session:
         project, _ = await _seed_project_and_model(session)
         session.add(
-            _file(project_id=project.id, role=ProjectFileRole.model_source, model_id=None)
+            _file(project_id=project.id, role=ProjectFileRole.model_source, document_id=None)
         )
         with pytest.raises(IntegrityError) as exc:
             await session.flush()
     assert "ck_project_files_model_source_has_model" in str(exc.value)
 
 
-async def test_attachment_must_not_claim_model_id(
+async def test_attachment_must_not_claim_document_id(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     async with session_maker() as session:
         project, model = await _seed_project_and_model(session)
         session.add(
-            _file(project_id=project.id, role=ProjectFileRole.attachment, model_id=model.id)
+            _file(project_id=project.id, role=ProjectFileRole.attachment, document_id=model.id)
         )
         with pytest.raises(IntegrityError) as exc:
             await session.flush()
@@ -89,12 +89,12 @@ async def test_model_and_attachment_version_numbers_are_independent(
     the two roles version against different anchors, so the numbers never clash."""
     async with session_maker() as session:
         project, model = await _seed_project_and_model(session)
-        # Model versions: anchored by model_id.
+        # Document versions: anchored by document_id.
         session.add(
             _file(
                 project_id=project.id,
                 role=ProjectFileRole.model_source,
-                model_id=model.id,
+                document_id=model.id,
                 version_number=1,
             )
         )
@@ -102,7 +102,7 @@ async def test_model_and_attachment_version_numbers_are_independent(
             _file(
                 project_id=project.id,
                 role=ProjectFileRole.model_source,
-                model_id=model.id,
+                document_id=model.id,
                 version_number=2,
             )
         )
@@ -135,7 +135,7 @@ async def test_duplicate_model_version_number_rejected(
             _file(
                 project_id=project.id,
                 role=ProjectFileRole.model_source,
-                model_id=model.id,
+                document_id=model.id,
                 version_number=1,
             )
         )
@@ -144,7 +144,7 @@ async def test_duplicate_model_version_number_rejected(
             _file(
                 project_id=project.id,
                 role=ProjectFileRole.model_source,
-                model_id=model.id,
+                document_id=model.id,
                 version_number=1,
             )
         )
@@ -188,7 +188,7 @@ async def test_same_bytes_in_different_roles_both_persist(
             _file(
                 project_id=project.id,
                 role=ProjectFileRole.model_source,
-                model_id=model.id,
+                document_id=model.id,
                 content_sha256=sha,
                 status=ProjectFileStatus.ready,
             )

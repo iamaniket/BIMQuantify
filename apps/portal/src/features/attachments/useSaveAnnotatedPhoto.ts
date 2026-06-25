@@ -1,6 +1,6 @@
 'use client';
 
-import { ANNOTATION_SCHEMA_VERSION, exportAnnotatedImage, type Annotation2D } from '@bimstitch/annotation';
+import { ANNOTATION_SCHEMA_VERSION, exportAnnotatedImage, type Annotation2D } from '@bimdossier/annotation';
 import type { UseMutationResult } from '@tanstack/react-query';
 
 import { updateAttachment, uploadAttachmentEnd2End } from '@/lib/api/attachments';

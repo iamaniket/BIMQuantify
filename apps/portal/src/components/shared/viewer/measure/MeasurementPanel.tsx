@@ -1,14 +1,14 @@
 'use client';
 
-import { Box, DraftingCompass, Eraser, Eye, EyeOff, Ruler, Square, Trash2 } from '@bimstitch/ui/icons';
-import { type AppIcon } from '@bimstitch/ui';
+import { Box, DraftingCompass, Eraser, Eye, EyeOff, Ruler, Square, Trash2 } from '@bimdossier/ui/icons';
+import { type AppIcon } from '@bimdossier/ui';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useEffect, useRef, useState, type JSX, type ReactNode,
 } from 'react';
 
-import { ConfirmDialog, cn } from '@bimstitch/ui';
-import type { MeasurementController } from '@bimstitch/viewer';
+import { ConfirmDialog, cn } from '@bimdossier/ui';
+import type { MeasurementController } from '@bimdossier/viewer';
 
 import { PanelButton } from '@/components/shared/viewer/shared/PanelButton';
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';

@@ -3,13 +3,13 @@ from __future__ import annotations
 import pytest
 from fastapi import HTTPException
 
-from bimstitch_api.auth.permissions import (
+from bimdossier_api.auth.permissions import (
     Action,
     Resource,
     has_permission,
     require_permission,
 )
-from bimstitch_api.models.project_member import ProjectRole
+from bimdossier_api.models.project_member import ProjectRole
 
 
 # Override conftest's autouse DB/Redis fixtures — pure-unit test.

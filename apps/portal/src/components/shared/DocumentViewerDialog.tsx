@@ -1,7 +1,7 @@
 'use client';
 
-import { Download, FileBadge, Info } from '@bimstitch/ui/icons';
-import type { AppIcon } from '@bimstitch/ui/icons';
+import { Download, FileBadge, Info } from '@bimdossier/ui/icons';
+import type { AppIcon } from '@bimdossier/ui/icons';
 import type { JSX, ReactNode } from 'react';
 
 import {
@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
   Eyebrow,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 // ─── Metadata rail ───────────────────────────────────────────────────
 

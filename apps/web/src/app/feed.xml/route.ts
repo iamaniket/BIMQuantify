@@ -1,4 +1,4 @@
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { getAllPostsMerged } from '@/lib/blog/mdx';
 import { env } from '@/lib/env';

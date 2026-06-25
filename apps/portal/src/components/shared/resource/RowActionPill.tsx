@@ -1,6 +1,6 @@
 'use client';
 
-import { Spinner } from '@bimstitch/ui';
+import { Spinner } from '@bimdossier/ui';
 import type { JSX, ReactNode } from 'react';
 
 import { Link } from '@/i18n/navigation';

@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Button } from '@bimstitch/ui';
+import { Button } from '@bimdossier/ui';
 
 import { Link } from '@/i18n/navigation';
 

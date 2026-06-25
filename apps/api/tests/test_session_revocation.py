@@ -12,7 +12,7 @@ import re
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimstitch_api.email.transport import InMemoryEmailTransport
+from bimdossier_api.email.transport import InMemoryEmailTransport
 from tests.conftest import _TEST_PASSWORD, make_test_user
 
 

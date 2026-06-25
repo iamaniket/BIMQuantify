@@ -1,10 +1,10 @@
 'use client';
 
-import { ChevronLeft, ChevronRight } from '@bimstitch/ui/icons';
+import { ChevronLeft, ChevronRight } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 
-import { Button, Skeleton } from '@bimstitch/ui';
+import { Button, Skeleton } from '@bimdossier/ui';
 
 import { useProjectPermissions } from '@/features/permissions';
 import { useRouter } from '@/i18n/navigation';

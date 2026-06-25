@@ -1,10 +1,10 @@
 'use client';
 
-import { ChevronDown, ChevronUp, Plus, Trash2 } from '@bimstitch/ui/icons';
+import { ChevronDown, ChevronUp, Plus, Trash2 } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { type JSX } from 'react';
 
-import { Badge, IconButton, Input, Switch, Textarea } from '@bimstitch/ui';
+import { Badge, IconButton, Input, Switch, Textarea } from '@bimdossier/ui';
 
 import {
   type ContentEntry,

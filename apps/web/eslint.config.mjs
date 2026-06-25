@@ -67,13 +67,13 @@ export default tseslint.config(
   {
     // Currently 'warn' — graduate to 'error' once the existing JSX-text
     // hardcodes (~20 today) have been migrated through useTranslations
-    // or @bimstitch/i18n. The audit underestimated the count vs. what
+    // or @bimdossier/i18n. The audit underestimated the count vs. what
     // the rule actually flags; rather than half-fixing or splatting
     // eslint-disable comments, we keep the rule visible at warn level so
     // every new violation surfaces in CI output without blocking ship.
     rules: {
       'i18next/no-literal-string': ['warn', {
-        message: 'String literals in JSX must be routed through useTranslations() or @bimstitch/i18n shared catalog.',
+        message: 'String literals in JSX must be routed through useTranslations() or @bimdossier/i18n shared catalog.',
       }],
     },
   },

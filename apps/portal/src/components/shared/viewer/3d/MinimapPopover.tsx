@@ -2,7 +2,7 @@
 
 import { useEffect, type JSX } from 'react';
 
-import type { ViewerHandle } from '@bimstitch/viewer';
+import type { ViewerHandle } from '@bimdossier/viewer';
 
 import { MinimapView } from '@/features/viewer/3d/minimap/MinimapView';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';

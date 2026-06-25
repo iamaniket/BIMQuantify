@@ -3,7 +3,7 @@
  * (portal, viewer-embed, future React Native) can import the types directly.
  *
  * This is the SINGLE source of truth for the annotation shape model. The 3D/PDF
- * viewer (`@bimstitch/viewer`) re-exports {@link Annotation2D} / {@link MarkupTool}
+ * viewer (`@bimdossier/viewer`) re-exports {@link Annotation2D} / {@link MarkupTool}
  * / {@link MarkupStyle} from here so image markup and PDF markup speak one model.
  *
  * Coordinate convention for {@link Annotation2D.points}: NORMALIZED to the image

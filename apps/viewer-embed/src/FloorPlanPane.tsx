@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react';
 
 // Runtime value from the no-pdfjs entry; types are erased (free from barrel).
-import { FloorPlanViewer } from '@bimstitch/viewer/viewer-3d';
-import type { DecodedFloorPlans } from '@bimstitch/viewer';
+import { FloorPlanViewer } from '@bimdossier/viewer/viewer-3d';
+import type { DecodedFloorPlans } from '@bimdossier/viewer';
 
 import type { FloorPlanLevelInfo } from './useFloorPlanData';
 

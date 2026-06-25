@@ -9,12 +9,12 @@ import {
 
 // Value from the PDF-free 3D entry (no pdfjs in the bundle); types from the
 // barrel are erased at build time, so importing them there is free.
-import { IfcViewer } from '@bimstitch/viewer/viewer-3d';
+import { IfcViewer } from '@bimdossier/viewer/viewer-3d';
 import type {
   EntityMarkerData,
   ViewerBundle,
   ViewerHandle,
-} from '@bimstitch/viewer';
+} from '@bimdossier/viewer';
 
 import { createBridge, type Bridge, type HostMessage, type ViewMode } from './bridge';
 import { FloorPlanPane } from './FloorPlanPane';

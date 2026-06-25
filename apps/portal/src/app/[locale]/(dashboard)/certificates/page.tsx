@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutGrid, Plus, Table2 } from '@bimstitch/ui/icons';
+import { LayoutGrid, Plus, Table2 } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -11,7 +11,7 @@ import {
   Select,
   Skeleton,
   TabsContent,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { SearchInput, TableToolbar } from '@/components/shared/PageTable';
 import { TablePaginationFooter } from '@/components/shared/TablePaginationFooter';

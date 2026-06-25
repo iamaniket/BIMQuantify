@@ -1,4 +1,4 @@
-import type { Plugin, ViewerContext } from '@bimstitch/viewer';
+import type { Plugin, ViewerContext } from '@bimdossier/viewer';
 
 export type AutoRotateOptions = {
   /** Azimuth radians per second. Default 0.18 — a slow turntable. */

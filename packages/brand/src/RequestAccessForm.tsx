@@ -1,9 +1,9 @@
 'use client';
 
-import { Building2, Globe2, GraduationCap, Mail, User } from '@bimstitch/ui/icons';
+import { Building2, Globe2, GraduationCap, Mail, User } from '@bimdossier/ui/icons';
 import { useState, type ChangeEvent, type FormEvent, type JSX } from 'react';
 
-import { Button, Checkbox, FormField, Input, Select, Textarea } from '@bimstitch/ui';
+import { Button, Checkbox, FormField, Input, Select, Textarea } from '@bimdossier/ui';
 
 /** Domains the design and the API agree should be rejected as free email. */
 const FREE_DOMAINS = new Set([

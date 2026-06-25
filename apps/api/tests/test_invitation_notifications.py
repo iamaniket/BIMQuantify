@@ -13,13 +13,13 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select, text
 
-from bimstitch_api.models.notification import Notification, NotificationEventType
-from bimstitch_api.models.organization import Organization, OrganizationStatus
-from bimstitch_api.models.organization_member import (
+from bimdossier_api.models.notification import Notification, NotificationEventType
+from bimdossier_api.models.organization import Organization, OrganizationStatus
+from bimdossier_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
 )
-from bimstitch_api.tenancy import schema_name_for
+from bimdossier_api.tenancy import schema_name_for
 
 if TYPE_CHECKING:
 
@@ -148,7 +148,7 @@ async def test_accept_creates_invitation_accepted_notification(
     from fastapi_users.password import PasswordHelper
     from sqlalchemy import func
 
-    from bimstitch_api.models.user import User
+    from bimdossier_api.models.user import User
 
     org_id = org_user["organization_id"]
     password = "test-password-123"

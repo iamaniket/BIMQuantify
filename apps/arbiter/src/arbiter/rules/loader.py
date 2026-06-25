@@ -18,7 +18,7 @@ _FRAMEWORK_VALUES = {f.value for f in RegulationFramework}
 
 # Two-letter codes recognized as country directories in the rules tree.
 # Used purely for path inference — the actual list of supported jurisdictions
-# lives in `bimstitch_api.jurisdictions`.
+# lives in `bimdossier_api.jurisdictions`.
 _COUNTRY_CODES = {"nl", "de", "be", "fr", "uk"}
 
 

@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Badge, Button } from '@bimstitch/ui';
+import { Badge, Button } from '@bimdossier/ui';
 
 import { DataTable } from '@/components/shared/DataTable';
 import type { Column } from '@/components/shared/PageTable';

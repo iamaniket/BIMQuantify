@@ -1,6 +1,6 @@
 'use client';
 
-import { Eye, Flag, Glasses, Search } from '@bimstitch/ui/icons';
+import { Eye, Flag, Glasses, Search } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   forwardRef,
@@ -14,7 +14,7 @@ import {
 } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
-import type { ItemId, ViewerHandle, ViewerEvents } from '@bimstitch/viewer';
+import type { ItemId, ViewerHandle, ViewerEvents } from '@bimdossier/viewer';
 
 import { prettyKey } from '@/components/shared/viewer/shared/settings/prettyKey';
 import { useViewerEntityStore } from '@/stores/viewerEntityStore';

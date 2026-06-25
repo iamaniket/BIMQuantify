@@ -1,9 +1,9 @@
 'use client';
 
-import { Camera, Check, ChevronRight, Mail, Pencil, Shield, Trash2, UserRound, Users, X } from '@bimstitch/ui/icons';
+import { Camera, Check, ChevronRight, Mail, Pencil, Shield, Trash2, UserRound, Users, X } from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 import {
   useCallback,
   useEffect,
@@ -22,7 +22,7 @@ import {
   Eyebrow,
   Skeleton,
   TabsContent,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { HeroImage } from '@/components/shared/layout/HeroImage';
 import { HeroShell } from '@/components/shared/layout/HeroShell';

@@ -1,13 +1,13 @@
 'use client';
 
-import { FolderOpen, Search } from '@bimstitch/ui/icons';
+import { FolderOpen, Search } from '@bimdossier/ui/icons';
 import { type JSX } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 
 import {
   Card, CardBody, CardFooter, EmptyState, Skeleton,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 

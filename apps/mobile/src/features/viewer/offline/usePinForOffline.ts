@@ -14,12 +14,12 @@ export type PinForOffline = {
   unpin: () => Promise<void>;
 };
 
-/** Track and toggle a model's offline pin. `pin` is called with the live
+/** Track and toggle a document's offline pin. `pin` is called with the live
  * (presigned) bundle while online; `localBundle` is what the viewer hands the
  * embed when offline. */
 export function usePinForOffline(
   projectId: string,
-  modelId: string,
+  documentId: string,
   fileId: string,
 ): PinForOffline {
   const [pinned, setPinned] = useState(false);
@@ -45,7 +45,7 @@ export function usePinForOffline(
       if (fileId.length === 0) return;
       setBusy(true);
       try {
-        const local = await pinModel(projectId, modelId, fileId, bundle);
+        const local = await pinModel(projectId, documentId, fileId, bundle);
         setLocalBundle(local);
         setPinned(true);
       } catch (err) {
@@ -57,7 +57,7 @@ export function usePinForOffline(
         setBusy(false);
       }
     },
-    [projectId, modelId, fileId],
+    [projectId, documentId, fileId],
   );
 
   const unpin = useCallback(async (): Promise<void> => {

@@ -20,9 +20,9 @@ from uuid import UUID
 
 from sqlalchemy import delete
 
-from bimstitch_api.models.organization_member import OrganizationMember
-from bimstitch_api.models.user import User
-from bimstitch_api.routers.ws_notifications import authenticate_ws_token
+from bimdossier_api.models.organization_member import OrganizationMember
+from bimdossier_api.models.user import User
+from bimdossier_api.routers.ws_notifications import authenticate_ws_token
 
 if TYPE_CHECKING:
     from redis.asyncio import Redis

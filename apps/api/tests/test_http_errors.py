@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from bimstitch_api.i18n.http_errors import (
+from bimdossier_api.i18n.http_errors import (
     http_exception_handler,
     validation_exception_handler,
 )
@@ -122,7 +122,7 @@ def test_attach_notice_sets_localized_success_headers() -> None:
     from starlette.requests import Request
     from starlette.responses import Response
 
-    from bimstitch_api.i18n.request import attach_notice
+    from bimdossier_api.i18n.request import attach_notice
 
     req = Request({"type": "http", "headers": [(b"accept-language", b"nl")], "state": {}})
     resp = Response()

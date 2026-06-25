@@ -9,14 +9,14 @@ import {
   Layers,
   Plus,
   UserRound,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import {
   useCallback, useMemo, useState, type JSX,
 } from 'react';
 
-import type { Locale } from '@bimstitch/i18n';
-import { Badge } from '@bimstitch/ui';
+import type { Locale } from '@bimdossier/i18n';
+import { Badge } from '@bimdossier/ui';
 
 import { BarChartMini } from '@/components/shared/charts/BarChartMini';
 import { ChartBarRow } from '@/components/shared/charts/ChartBarRow';

@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, Bell, LayoutGrid, Shield, Users } from '@bimstitch/ui/icons';
+import { Activity, Bell, LayoutGrid, Shield, Users } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { type JSX } from 'react';
 
@@ -11,7 +11,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { PageShell } from '@/components/shared/layout/PageShell';
 import { PanelHeading } from '@/components/shared/PanelHeading';

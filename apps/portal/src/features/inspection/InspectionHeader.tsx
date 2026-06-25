@@ -1,10 +1,10 @@
 'use client';
 
-import { ArrowLeft } from '@bimstitch/ui/icons';
+import { ArrowLeft } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Badge } from '@bimstitch/ui';
+import { Badge } from '@bimdossier/ui';
 
 import { Link } from '@/i18n/navigation';
 import type { BorgingsmomentStatusValue } from '@/lib/api/schemas';

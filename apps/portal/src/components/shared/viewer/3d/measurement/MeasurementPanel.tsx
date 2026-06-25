@@ -1,6 +1,6 @@
 'use client';
 
-import { Crosshair, DraftingCompass, Ruler, Settings, Square } from '@bimstitch/ui/icons';
+import { Crosshair, DraftingCompass, Ruler, Settings, Square } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useEffect, useState, type JSX, type ReactNode,
@@ -8,10 +8,10 @@ import {
 
 import {
   AppDialog, DialogField, DialogSection, Select, Slider, cn,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 import type {
   Measurement, MeasurementConfig, MeasurementMode, ViewerHandle,
-} from '@bimstitch/viewer';
+} from '@bimdossier/viewer';
 
 import {
   MeasurementPanel as SharedMeasurementPanel,

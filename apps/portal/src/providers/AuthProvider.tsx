@@ -25,7 +25,7 @@ import {
   type TokenPair,
 } from '@/lib/api/schemas';
 
-const STORAGE_KEY = 'bimstitch.tokens';
+const STORAGE_KEY = 'bimdossier.tokens';
 
 type AuthState = {
   tokens: TokenPair | null;

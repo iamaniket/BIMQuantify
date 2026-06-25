@@ -6,14 +6,14 @@ accidental policy changes show up in PR diffs.
 
 from __future__ import annotations
 
-from bimstitch_api.auth.permissions import (
+from bimdossier_api.auth.permissions import (
     _MATRIX,
     Action,
     Resource,
     has_permission,
     serialize_matrix,
 )
-from bimstitch_api.models.project_member import ProjectRole
+from bimdossier_api.models.project_member import ProjectRole
 
 # ---------------------------------------------------------------------------
 # Totality: every (role, resource) pair is defined.

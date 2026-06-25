@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from httpx import AsyncClient
 
-from bimstitch_api.jobs import (
+from bimdossier_api.jobs import (
     DispatchJobError,
     set_job_dispatcher,
 )
@@ -15,7 +15,7 @@ from tests.conftest import (
     FakeStorage,
     _add_member,
     _auth,
-    _create_model,
+    _create_document,
     _create_project,
 )
 
@@ -33,12 +33,12 @@ async def _ready_file(
     name: str = "ext.ifc",
 ) -> tuple[str, str, str]:
     """Create a project + model + initiate + complete a file. Returns
-    (project_id, model_id, file_id)."""
+    (project_id, document_id, file_id)."""
     project = await _create_project(client, org_user["access_token"], name=name + "-p")
-    model = await _create_model(client, org_user["access_token"], project["id"], name=name + "-m")
+    model = await _create_document(client, org_user["access_token"], project["id"], name=name + "-m")
     init = (
         await client.post(
-            f"/projects/{project['id']}/models/{model['id']}/files/initiate",
+            f"/projects/{project['id']}/documents/{model['id']}/files/initiate",
             json={
                 "filename": name,
                 "size_bytes": len(VALID_IFC_HEADER),
@@ -50,7 +50,7 @@ async def _ready_file(
     ).json()
     fake.objects[init["storage_key"]] = VALID_IFC_HEADER
     complete = await client.post(
-        f"/projects/{project['id']}/models/{model['id']}/files/{init['file_id']}/complete",
+        f"/projects/{project['id']}/documents/{model['id']}/files/{init['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
     assert complete.status_code == 200, complete.text
@@ -62,7 +62,7 @@ async def _complete_ready_ifc(
     fake: FakeStorage,
     org_user: dict[str, str],
     project_id: str,
-    model_id: str,
+    document_id: str,
     name: str,
     sha256: str,
 ) -> str:
@@ -70,7 +70,7 @@ async def _complete_ready_ifc(
     must be unique within the project (per-role dedup index)."""
     init = (
         await client.post(
-            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            f"/projects/{project_id}/documents/{document_id}/files/initiate",
             json={
                 "filename": name,
                 "size_bytes": len(VALID_IFC_HEADER),
@@ -82,7 +82,7 @@ async def _complete_ready_ifc(
     ).json()
     fake.objects[init["storage_key"]] = VALID_IFC_HEADER
     complete = await client.post(
-        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        f"/projects/{project_id}/documents/{document_id}/files/{init['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
     assert complete.status_code == 200, complete.text
@@ -101,14 +101,14 @@ async def test_complete_dispatches_extraction_and_marks_queued(
     extraction_calls: list[dict[str, str]],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(client, fake, org_user, name="dispatch.ifc")
+    project_id, document_id, file_id = await _ready_file(client, fake, org_user, name="dispatch.ifc")
 
     assert len(extraction_calls) == 1
     assert extraction_calls[0]["file_id"] == file_id
     assert extraction_calls[0]["project_id"] == project_id
 
     listing = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files?status=all",
+        f"/projects/{project_id}/documents/{document_id}/files?status=all",
         headers=_auth(org_user["access_token"]),
     )
     [row] = listing.json()
@@ -127,10 +127,10 @@ async def test_complete_marks_failed_when_dispatch_raises(
     set_job_dispatcher(_boom)
 
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(client, fake, org_user, name="boom.ifc")
+    project_id, document_id, file_id = await _ready_file(client, fake, org_user, name="boom.ifc")
 
     listing = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files?status=all",
+        f"/projects/{project_id}/documents/{document_id}/files?status=all",
         headers=_auth(org_user["access_token"]),
     )
     [row] = listing.json()
@@ -191,7 +191,7 @@ async def test_callback_running_then_succeeded(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, _model_id, file_id = await _ready_file(client, fake, org_user, name="lifecycle.ifc")
+    project_id, _document_id, file_id = await _ready_file(client, fake, org_user, name="lifecycle.ifc")
 
     # Move to running.
     running = await client.post(
@@ -236,7 +236,7 @@ async def test_callback_is_idempotent_after_terminal(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    _project_id, _model_id, file_id = await _ready_file(client, fake, org_user, name="idem.ifc")
+    _project_id, _document_id, file_id = await _ready_file(client, fake, org_user, name="idem.ifc")
 
     first = await client.post(
         "/internal/jobs/callback",
@@ -295,7 +295,7 @@ async def test_callback_records_failure(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    _project_id, _model_id, file_id = await _ready_file(client, fake, org_user, name="fail.ifc")
+    _project_id, _document_id, file_id = await _ready_file(client, fake, org_user, name="fail.ifc")
 
     resp = await client.post(
         "/internal/jobs/callback",
@@ -330,11 +330,11 @@ async def test_retry_requeues_failed_extraction(
 
     set_job_dispatcher(_boom)
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(client, fake, org_user, name="retry.ifc")
+    project_id, document_id, file_id = await _ready_file(client, fake, org_user, name="retry.ifc")
 
     # First dispatch failed (autouse + boom dispatcher).
     listing = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files?status=all",
+        f"/projects/{project_id}/documents/{document_id}/files?status=all",
         headers=_auth(org_user["access_token"]),
     )
     assert listing.json()[0]["extraction_status"] == "failed"
@@ -357,7 +357,7 @@ async def test_retry_requeues_failed_extraction(
     set_job_dispatcher(_record)
 
     resp = await client.post(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/retry-extraction",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/retry-extraction",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200, resp.text
@@ -374,11 +374,11 @@ async def test_retry_rejects_non_failed_extraction(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(client, fake, org_user, name="ok.ifc")
+    project_id, document_id, file_id = await _ready_file(client, fake, org_user, name="ok.ifc")
 
     # extraction_status defaults to queued after complete (autouse stub).
     resp = await client.post(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/retry-extraction",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/retry-extraction",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 409
@@ -396,10 +396,10 @@ async def test_viewer_bundle_404_when_extraction_not_succeeded(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(client, fake, org_user, name="not-yet.ifc")
+    project_id, document_id, file_id = await _ready_file(client, fake, org_user, name="not-yet.ifc")
 
     resp = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/viewer-bundle",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/viewer-bundle",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 404
@@ -412,7 +412,7 @@ async def test_viewer_bundle_returns_presigned_urls_after_extraction(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(client, fake, org_user, name="viewer.ifc")
+    project_id, document_id, file_id = await _ready_file(client, fake, org_user, name="viewer.ifc")
 
     fragments_key = f"projects/{project_id}/{file_id}.frag"
     metadata_key = f"projects/{project_id}/{file_id}.metadata.json"
@@ -442,7 +442,7 @@ async def test_viewer_bundle_returns_presigned_urls_after_extraction(
     assert cb.status_code == 200
 
     resp = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/viewer-bundle",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/viewer-bundle",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200, resp.text
@@ -466,7 +466,7 @@ async def test_callback_outline_key_persists_and_job_result_carries_it(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(client, fake, org_user, name="outline.ifc")
+    project_id, document_id, file_id = await _ready_file(client, fake, org_user, name="outline.ifc")
 
     list_resp = await client.get("/jobs", headers=_auth(org_user["access_token"]))
     job_id = list_resp.json()["items"][0]["id"]
@@ -491,7 +491,7 @@ async def test_callback_outline_key_persists_and_job_result_carries_it(
     assert job.json()["result"]["outline_key"] == outline_key
 
     resp = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/viewer-bundle",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/viewer-bundle",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200, resp.text
@@ -507,7 +507,7 @@ async def test_callback_without_outline_key_leaves_outline_null(
     for old artifacts and outline-pipeline failures) and the bundle reports
     outline_url=null so the viewer falls back to client-side compute."""
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(client, fake, org_user, name="no-outline.ifc")
+    project_id, document_id, file_id = await _ready_file(client, fake, org_user, name="no-outline.ifc")
 
     list_resp = await client.get("/jobs", headers=_auth(org_user["access_token"]))
     job_id = list_resp.json()["items"][0]["id"]
@@ -530,7 +530,7 @@ async def test_callback_without_outline_key_leaves_outline_null(
     assert "outline_key" not in job.json()["result"]
 
     resp = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/viewer-bundle",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/viewer-bundle",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200, resp.text
@@ -543,7 +543,7 @@ async def test_callback_floor_plans_key_persists_and_job_result_carries_it(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(
+    project_id, document_id, file_id = await _ready_file(
         client, fake, org_user, name="floorplans.ifc"
     )
 
@@ -570,7 +570,7 @@ async def test_callback_floor_plans_key_persists_and_job_result_carries_it(
     assert job.json()["result"]["floor_plans_key"] == floor_plans_key
 
     resp = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/viewer-bundle",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/viewer-bundle",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200, resp.text
@@ -585,7 +585,7 @@ async def test_callback_without_floor_plans_key_leaves_floor_plans_null(
     """Floor plans are optional: a model with no storeys (or a generation
     failure) still succeeds, and the bundle reports floor_plans_url=null."""
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(
+    project_id, document_id, file_id = await _ready_file(
         client, fake, org_user, name="no-floorplans.ifc"
     )
 
@@ -609,7 +609,7 @@ async def test_callback_without_floor_plans_key_leaves_floor_plans_null(
     assert "floor_plans_key" not in job.json()["result"]
 
     resp = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/viewer-bundle",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/viewer-bundle",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200, resp.text
@@ -625,7 +625,7 @@ async def test_callback_detected_kind_persists_on_file(
     portal can badge the discipline and pick the architectural model as the 2D
     source in a federated view."""
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(
+    project_id, document_id, file_id = await _ready_file(
         client, fake, org_user, name="mep.ifc"
     )
 
@@ -645,7 +645,7 @@ async def test_callback_detected_kind_persists_on_file(
 
     # Re-read via the files list to confirm it durably persisted.
     files = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files",
+        f"/projects/{project_id}/documents/{document_id}/files",
         headers=_auth(org_user["access_token"]),
     )
     assert files.status_code == 200, files.text
@@ -668,10 +668,10 @@ async def test_project_viewer_bundle_lists_models_with_detected_kind(
 
     project = await _create_project(client, token, name="federated")
     project_id = project["id"]
-    arch = await _create_model(client, token, project_id, name="ARC", discipline="architectural")
-    mep = await _create_model(client, token, project_id, name="MEP", discipline="mep")
+    arch = await _create_document(client, token, project_id, name="ARC", discipline="architectural")
+    mep = await _create_document(client, token, project_id, name="MEP", discipline="mep")
     # Structural model with NO ready IFC file — must be omitted from the manifest.
-    await _create_model(client, token, project_id, name="EMPTY", discipline="structural")
+    await _create_document(client, token, project_id, name="EMPTY", discipline="structural")
 
     arch_file = await _complete_ready_ifc(
         client, fake, org_user, project_id, arch["id"], "arc.ifc", f"{1:064x}"
@@ -719,13 +719,13 @@ async def test_project_viewer_bundle_lists_models_with_detected_kind(
     assert set(by_kind) == {"architectural", "mep"}
 
     arch_entry = by_kind["architectural"]
-    assert arch_entry["model_id"] == arch["id"]
+    assert arch_entry["document_id"] == arch["id"]
     assert arch_entry["discipline"] == "architectural"
     assert arch_entry["fragments_url"] is not None
     assert arch_entry["floor_plans_url"] is not None  # arch supplies the 2D plan
 
     mep_entry = by_kind["mep"]
-    assert mep_entry["model_id"] == mep["id"]
+    assert mep_entry["document_id"] == mep["id"]
     assert mep_entry["fragments_url"] is not None
     assert mep_entry["floor_plans_url"] is None  # MEP is 3D-only
 
@@ -738,7 +738,7 @@ async def test_project_viewer_bundle_requires_read_access(
 ) -> None:
     """A user from another org cannot read a project's federated manifest."""
     client, fake = fake_storage_client
-    project_id, _model_id, _file_id = await _ready_file(client, fake, org_user, name="iso-fed.ifc")
+    project_id, _document_id, _file_id = await _ready_file(client, fake, org_user, name="iso-fed.ifc")
     resp = await client.get(
         f"/projects/{project_id}/viewer-bundle",
         headers=_auth(other_org_user["access_token"]),
@@ -753,7 +753,7 @@ async def test_viewer_bundle_cross_org_returns_404(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(client, fake, org_user, name="iso.ifc")
+    project_id, document_id, file_id = await _ready_file(client, fake, org_user, name="iso.ifc")
 
     # Mark succeeded so the only thing standing between us and a 200 is auth.
     await client.post(
@@ -768,7 +768,7 @@ async def test_viewer_bundle_cross_org_returns_404(
     )
 
     resp = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/viewer-bundle",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/viewer-bundle",
         headers=_auth(other_org_user["access_token"]),
     )
     assert resp.status_code == 404
@@ -786,7 +786,7 @@ async def test_viewer_role_can_get_viewer_bundle(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(
+    project_id, document_id, file_id = await _ready_file(
         client, fake, org_user, name="viewer-role.ifc"
     )
     await _add_member(client, org_user["access_token"], project_id, same_org_non_admin_user["id"], "viewer")
@@ -805,7 +805,7 @@ async def test_viewer_role_can_get_viewer_bundle(
     )
 
     resp = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/viewer-bundle",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/viewer-bundle",
         headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert resp.status_code == 200

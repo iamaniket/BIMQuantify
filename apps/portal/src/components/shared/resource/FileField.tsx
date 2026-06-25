@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 import type { ChangeEvent, JSX } from 'react';
 
 /**

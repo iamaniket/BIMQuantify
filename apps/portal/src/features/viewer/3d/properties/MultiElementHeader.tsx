@@ -1,6 +1,6 @@
 'use client';
 
-import { Eyebrow } from '@bimstitch/ui';
+import { Eyebrow } from '@bimdossier/ui';
 import type { JSX } from 'react';
 
 import type { TypeBreakdown } from '@/features/viewer/shared/inspector/useMultiSelectedProperties';

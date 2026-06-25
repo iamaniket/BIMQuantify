@@ -1,6 +1,6 @@
 # mobile
 
-Native iOS+Android field app (Expo SDK 56 / expo-router). Scope: **login → project list → open project → open model → view/add findings on the model**. Everything is native except the 3D model render, which is a WebView hosting the `apps/viewer-embed` bundle.
+Native iOS+Android field app (Expo SDK 56 / expo-router). Scope: **login → project list → open project → open document → view/add findings on the document**. Everything is native except the 3D model render, which is a WebView hosting the `apps/viewer-embed` bundle.
 
 ## Dev
 

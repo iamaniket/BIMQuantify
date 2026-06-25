@@ -1,8 +1,8 @@
 /**
- * `@bimstitch/annotation` — a renderer-agnostic, dependency-free image/PDF
+ * `@bimdossier/annotation` — a renderer-agnostic, dependency-free image/PDF
  * annotation model plus a lightweight SVG editor for the web (portal + the
  * viewer-embed WebView). The data model converges with the 3D/PDF viewer's
- * markup (`@bimstitch/viewer` re-exports the shared types from here).
+ * markup (`@bimdossier/viewer` re-exports the shared types from here).
  */
 
 // ── Model ──────────────────────────────────────────────────────────────

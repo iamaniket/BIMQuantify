@@ -1,6 +1,6 @@
 import { defineRouting } from 'next-intl/routing';
 
-import { defaultLocale, supportedLocales } from '@bimstitch/i18n';
+import { defaultLocale, supportedLocales } from '@bimdossier/i18n';
 
 export const routing = defineRouting({
   locales: [...supportedLocales],

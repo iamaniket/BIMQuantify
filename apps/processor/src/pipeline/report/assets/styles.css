@@ -1,5 +1,5 @@
 /* PDF print styles — A4, Dutch typography. Hand-written; mirrors
- * @bimstitch/design-tokens (color names + spacing scale) without pulling in
+ * @bimdossier/design-tokens (color names + spacing scale) without pulling in
  * the Tailwind toolchain. Print-only — no responsive, no dark mode. */
 
 @page {

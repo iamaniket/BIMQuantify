@@ -1,5 +1,5 @@
 {
-  "name": "@bimstitch/brand",
+  "name": "@bimdossier/brand",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -21,14 +21,14 @@
     "clean": "rimraf dist .turbo"
   },
   "dependencies": {
-    "@bimstitch/ui": "workspace:*"
+    "@bimdossier/ui": "workspace:*"
   },
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@bimstitch/tsconfig": "workspace:*",
+    "@bimdossier/tsconfig": "workspace:*",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
     "react": "^19.0.0",

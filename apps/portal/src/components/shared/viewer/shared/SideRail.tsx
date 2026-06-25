@@ -1,11 +1,11 @@
 'use client';
 
-import { Flag, Info, ListTree, Ruler, Scan } from '@bimstitch/ui/icons';
-import { type AppIcon } from '@bimstitch/ui';
+import { Flag, Info, ListTree, Ruler, Scan } from '@bimdossier/ui/icons';
+import { type AppIcon } from '@bimdossier/ui';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 import type { ViewerFormat } from '@/components/shared/viewer/shared/viewerMode';
 

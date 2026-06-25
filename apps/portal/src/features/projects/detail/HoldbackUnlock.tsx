@@ -1,7 +1,7 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Eyebrow, Progress } from '@bimstitch/ui';
+import { Eyebrow, Progress } from '@bimdossier/ui';
 
 type Props = {
   holdbackAmount: string;

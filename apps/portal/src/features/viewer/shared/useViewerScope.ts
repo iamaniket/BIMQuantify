@@ -5,12 +5,12 @@ import {
   useCallback, useEffect, useMemo, useState,
 } from 'react';
 
-import type { ViewerBundle } from '@bimstitch/viewer';
+import type { ViewerBundle } from '@bimdossier/viewer';
 
 import { federatedModelId } from '@/features/viewer/3d/federation/federatedModelId';
 import { ApiError } from '@/lib/api/client';
 import { getProjectViewerBundle, getViewerBundle } from '@/lib/api/projectFiles';
-import type { ProjectViewerModelEntry, ViewerBundleResponse } from '@/lib/api/schemas';
+import type { ProjectViewerDocumentEntry, ViewerBundleResponse } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { viewerKeys } from './queryKeys';
@@ -70,7 +70,7 @@ export type ViewerScope = {
   planModelId: string | null;
 
   // Multi-model only.
-  entries: ProjectViewerModelEntry[];
+  entries: ProjectViewerDocumentEntry[];
   /** Set the active model from a selected element's viewer model id. */
   setActiveByViewerModelId: (viewerModelId: string) => void;
   /** Set the active model from an API model UUID (layer-panel row click). */
@@ -108,7 +108,7 @@ function singlePrimaryBundle(
 }
 
 /** IFC `ViewerBundle` (load input) for a manifest entry. */
-function entryToBundle(entry: ProjectViewerModelEntry): ViewerBundle {
+function entryToBundle(entry: ProjectViewerDocumentEntry): ViewerBundle {
   const out: ViewerBundle = {
     fragmentsUrl: entry.fragments_url!,
     modelId: federatedModelId(entry.file_id),
@@ -122,7 +122,7 @@ function entryToBundle(entry: ProjectViewerModelEntry): ViewerBundle {
 
 /** Synthesize the panel-facing bundle for a manifest entry (always IFC). */
 function entryToBundleResponse(
-  entry: ProjectViewerModelEntry,
+  entry: ProjectViewerDocumentEntry,
   expiresIn: number,
 ): ViewerBundleResponse {
   return {
@@ -169,7 +169,7 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
   });
 
   // ── Multi-model entry set (filtered to the explicit subset for kind 'models') ──
-  const entries = useMemo<ProjectViewerModelEntry[]>(() => {
+  const entries = useMemo<ProjectViewerDocumentEntry[]>(() => {
     if (isSingle) return [];
     const all = manifestQuery.data?.models ?? [];
     if (target.kind === 'models') {

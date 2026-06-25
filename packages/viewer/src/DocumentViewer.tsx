@@ -24,7 +24,9 @@ import type {
 } from './pdf-core/documentTypes.js';
 import type { CameraControlsConfig } from './plugins/2d/camera/index.js';
 import { cameraPlugin } from './plugins/2d/camera/index.js';
+import { documentCameraPosePlugin } from './plugins/2d/camera-pose/index.js';
 import { contextMenuPlugin } from './plugins/2d/context-menu/index.js';
+import { documentPickPlugin } from './plugins/2d/document-pick/index.js';
 import { entityMarker2DPlugin } from './plugins/2d/entity-marker/index.js';
 import { interaction2DPlugin } from './plugins/2d/interaction/index.js';
 import { measurePlugin } from './plugins/2d/measure/index.js';
@@ -106,6 +108,15 @@ export type DocumentViewerProps = {
   navCompass?: { enabled?: boolean; locale?: 'en' | 'nl' };
   /** Camera mouse-button → action mapping. Driven by the portal settings. */
   controls?: CameraControlsConfig;
+  /**
+   * Enable 2D→3D linking: left-click emits `document:pick` and the
+   * `document.setCameraPose` command renders a you-are-here marker. Off by
+   * default so plain document consumers (preview dialogs, calibration, PDF
+   * findings) are unaffected. Used by the aligned-sheet 2D viewer pane.
+   */
+  linkPicks?: boolean;
+  /** You-are-here marker color when `linkPicks` is on (theme-resolved by the host). */
+  linkColor?: string;
   onProgress?: (loaded: number, total: number) => void;
   onLoaded?: (info: DocumentLoadedInfo) => void;
   onError?: (err: Error) => void;
@@ -127,6 +138,8 @@ function DocumentViewerInner(
     renderOverlay,
     navCompass,
     controls,
+    linkPicks,
+    linkColor,
     onProgress,
     onLoaded,
     onError,
@@ -156,6 +169,8 @@ function DocumentViewerInner(
   const searchHighlightRef = useRef<SearchHighlight | null>(searchHighlight ?? null);
   const navCompassRef = useRef(navCompass);
   const controlsRef = useRef(controls);
+  const linkPicksRef = useRef(linkPicks);
+  const linkColorRef = useRef(linkColor);
   const onProgressRef = useRef(onProgress);
   const onLoadedRef = useRef(onLoaded);
   const onErrorRef = useRef(onError);
@@ -171,6 +186,8 @@ function DocumentViewerInner(
     searchHighlightRef.current = searchHighlight ?? null;
     navCompassRef.current = navCompass;
     controlsRef.current = controls;
+    linkPicksRef.current = linkPicks;
+    linkColorRef.current = linkColor;
     onProgressRef.current = onProgress;
     onLoadedRef.current = onLoaded;
     onErrorRef.current = onError;
@@ -195,7 +212,10 @@ function DocumentViewerInner(
       scenePlugin(),
       cameraPlugin(controlsRef.current ? { controls: controlsRef.current } : {}),
       pdfUnderlayPlugin(),
-      mouseBindings2DPlugin(),
+      // `linkPicks` routes a plain left-click to `document.pick` (2D→3D fly).
+      mouseBindings2DPlugin(
+        linkPicksRef.current ? { overrides: { 'click:left': 'document.pick' } } : {},
+      ),
       rotatePlugin(),
       searchPlugin(),
       measurePlugin(),
@@ -205,6 +225,13 @@ function DocumentViewerInner(
       interaction2DPlugin(),
       contextMenuPlugin(),
     ];
+    if (linkPicksRef.current) {
+      // 2D→3D linking surface: page-pick events + the you-are-here marker.
+      plugins.push(
+        documentPickPlugin(),
+        documentCameraPosePlugin(linkColorRef.current ? { color: linkColorRef.current } : {}),
+      );
+    }
     if (navCompassRef.current?.enabled !== false) {
       plugins.push(navCompassPlugin({ locale: navCompassRef.current?.locale ?? 'nl' }));
     }

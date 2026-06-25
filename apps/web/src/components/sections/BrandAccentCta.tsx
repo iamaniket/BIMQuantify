@@ -1,4 +1,4 @@
-import { Button } from '@bimstitch/ui';
+import { Button } from '@bimdossier/ui';
 import type { JSX, ReactNode } from 'react';
 
 import { Link } from '@/i18n/navigation';

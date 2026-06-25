@@ -1,8 +1,10 @@
 /**
  * PDF tools plugin. Owns the active pointer tool (select/pan/zoom/line) and the
- * presentation that follows from it: the container cursor, page-canvas and
- * text-layer pointer-events, and text selection. Other plugins (e.g. pan) ask
- * it to refresh the cursor after a transient override.
+ * presentation that follows from it: the container cursor and the page-canvas
+ * pointer-events. Text selection is disabled in this viewer — the PDF text layer
+ * is kept inert (no pointer events, not selectable) so a drag pans the camera
+ * instead of selecting text. Other plugins (e.g. pan) ask it to refresh the
+ * cursor after a transient override.
  */
 
 import type {
@@ -30,9 +32,15 @@ export function toolsPlugin(): DocumentPlugin & ToolsPluginAPI {
     if (!ctx) return;
     const tool = ctx.getTool();
     ctx.container.style.cursor = cursorForTool(tool);
-    ctx.container.style.userSelect = tool === 'pan' ? 'none' : 'auto';
+    // The 2D viewer is a navigation surface, not a text-reading one: never let a
+    // drag select the PDF text layer — it fights camera panning (most visibly in
+    // Split view, where the only nav is a mouse-drag). Keep the text layer inert;
+    // search still highlights via its own DOM spans, which need neither pointer
+    // events nor selection.
+    ctx.container.style.userSelect = 'none';
     ctx.canvas.style.pointerEvents = tool === 'pan' ? 'none' : 'auto';
-    ctx.textLayer.style.pointerEvents = tool === 'select' ? 'auto' : 'none';
+    ctx.textLayer.style.pointerEvents = 'none';
+    ctx.textLayer.style.userSelect = 'none';
   }
 
   return {

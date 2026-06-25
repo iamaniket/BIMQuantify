@@ -1,13 +1,13 @@
 // Shared theme for the mobile app. React Native can't consume the CSS-variable
 // pipeline the portal uses, so we read the design tokens' plain JS objects
-// (`@bimstitch/design-tokens`) and flatten the subset the app needs into a single
+// (`@bimdossier/design-tokens`) and flatten the subset the app needs into a single
 // `colors` source of truth. Light theme only for now; dark can be added by
 // swapping `lightTheme` for a theme-aware lookup later.
 //
 // Key-casing note (see packages/design-tokens/src/themes/light.ts): brand groups
 // expose their base value as `DEFAULT` (primary.DEFAULT, success.DEFAULT, …),
 // while neutral groups use lowercase `default` (foreground.default, border.default).
-import { lightTheme as t } from '@bimstitch/design-tokens';
+import { lightTheme as t } from '@bimdossier/design-tokens';
 
 export const colors = {
   primary: t.primary.DEFAULT, // #2c5697

@@ -10,11 +10,11 @@ import {
   RotateCcw,
   RotateCw,
   type AppIcon,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 
-import type { ViewerHandle } from '@bimstitch/viewer';
+import type { ViewerHandle } from '@bimdossier/viewer';
 
 import { ToolbarGroup, ToolButton } from '@/components/shared/viewer/shared/_toolbarPrimitives';
 

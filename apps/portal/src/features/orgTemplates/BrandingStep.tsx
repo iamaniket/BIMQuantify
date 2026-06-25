@@ -1,10 +1,10 @@
 'use client';
 
-import { Upload } from '@bimstitch/ui/icons';
+import { Upload } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { type Dispatch, type RefObject, type SetStateAction, type JSX } from 'react';
 
-import { Badge, Button, Input, Label, Spinner } from '@bimstitch/ui';
+import { Badge, Button, Input, Label, Spinner } from '@bimdossier/ui';
 
 type BrandingStepProps = {
   accent: string;

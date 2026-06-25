@@ -59,7 +59,7 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   `CREATE TABLE IF NOT EXISTS pinned_models (
      file_id TEXT PRIMARY KEY,
      project_id TEXT NOT NULL,
-     model_id TEXT NOT NULL,
+     document_id TEXT NOT NULL,
      cache_key TEXT,
      manifest TEXT NOT NULL,
      size_bytes INTEGER NOT NULL DEFAULT 0,

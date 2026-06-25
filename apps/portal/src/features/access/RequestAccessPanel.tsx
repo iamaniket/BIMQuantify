@@ -5,7 +5,7 @@ import {
   RequestAccessSuccess,
   composeAccessRequestNotes,
   type RequestAccessValues,
-} from '@bimstitch/brand';
+} from '@bimdossier/brand';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 

@@ -16,9 +16,9 @@ from sqlalchemy import func, select
 
 from fastapi_users.db import SQLAlchemyUserDatabase
 
-from bimstitch_api.auth.manager import UserManager
-from bimstitch_api.db import get_session_maker
-from bimstitch_api.models.user import User
+from bimdossier_api.auth.manager import UserManager
+from bimdossier_api.db import get_session_maker
+from bimdossier_api.models.user import User
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("resend")

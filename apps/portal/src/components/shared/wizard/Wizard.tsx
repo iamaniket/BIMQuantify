@@ -1,7 +1,7 @@
 'use client';
 
-import { Button, cn } from '@bimstitch/ui';
-import { Check } from '@bimstitch/ui/icons';
+import { Button, cn } from '@bimdossier/ui';
+import { Check } from '@bimdossier/ui/icons';
 import { type JSX, type ReactNode, type KeyboardEvent } from 'react';
 
 export type WizardStep = {

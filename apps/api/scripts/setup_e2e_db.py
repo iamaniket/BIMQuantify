@@ -1,6 +1,6 @@
 """Create (or reset) the E2E test database.
 
-Drops and recreates `bimstitch_e2e`, runs alembic master migrations, then
+Drops and recreates `bimdossier_e2e`, runs alembic master migrations, then
 seeds test data.  Called from Playwright's global-setup before starting the
 API server.
 
@@ -19,13 +19,13 @@ from urllib.parse import urlparse, urlunparse
 
 import asyncpg
 
-E2E_DB_NAME = "bimstitch_e2e"
+E2E_DB_NAME = "bimdossier_e2e"
 
 
 def _base_url() -> str:
     return os.environ.get(
         "DATABASE_URL",
-        "postgresql+asyncpg://bim:bim@localhost:5434/bimstitch",
+        "postgresql+asyncpg://bim:bim@localhost:5434/bimdossier",
     )
 
 
@@ -122,7 +122,7 @@ def _run_seed() -> None:
 
     print("  Seeding E2E database...")
     result = subprocess.run(
-        [sys.executable, "-m", "bimstitch_api.seed"],
+        [sys.executable, "-m", "bimdossier_api.seed"],
         env=env,
         capture_output=True,
         text=True,

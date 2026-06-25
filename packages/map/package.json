@@ -1,5 +1,5 @@
 {
-  "name": "@bimstitch/map",
+  "name": "@bimdossier/map",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -24,7 +24,7 @@
     "react": "^19.0.0"
   },
   "devDependencies": {
-    "@bimstitch/tsconfig": "workspace:*",
+    "@bimdossier/tsconfig": "workspace:*",
     "@types/react": "^19.0.1",
     "react": "^19.0.0",
     "rimraf": "^5.0.10",

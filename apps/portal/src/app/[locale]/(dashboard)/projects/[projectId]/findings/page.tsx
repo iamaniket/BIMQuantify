@@ -7,14 +7,14 @@ import {
   LayoutGrid,
   MapPin,
   Settings,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   useEffect, useMemo, useState, type JSX,
 } from 'react';
 
-import { Badge, Skeleton, TabsContent } from '@bimstitch/ui';
+import { Badge, Skeleton, TabsContent } from '@bimdossier/ui';
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';

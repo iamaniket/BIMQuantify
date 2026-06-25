@@ -8,11 +8,11 @@
     "scheme": "mobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.bimstitch.mobile",
+      "bundleIdentifier": "com.bimdossier.mobile",
       "supportsTablet": true
     },
     "android": {
-      "package": "com.bimstitch.mobile",
+      "package": "com.bimdossier.mobile",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
@@ -44,14 +44,14 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "BIMstitch needs photo access so you can attach images to snags.",
-          "cameraPermission": "BIMstitch needs camera access so you can photograph snags."
+          "photosPermission": "BimDossier needs photo access so you can attach images to snags.",
+          "cameraPermission": "BimDossier needs camera access so you can photograph snags."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "BIMstitch can tag snag photos with the location where they were taken."
+          "locationWhenInUsePermission": "BimDossier can tag snag photos with the location where they were taken."
         }
       ]
     ],

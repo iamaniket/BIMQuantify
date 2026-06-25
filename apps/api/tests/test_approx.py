@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from bimstitch_api.approx import approx_count_floor
+from bimdossier_api.approx import approx_count_floor
 
 
 @pytest.mark.parametrize(

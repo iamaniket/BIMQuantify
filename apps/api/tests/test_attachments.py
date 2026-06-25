@@ -17,7 +17,7 @@ from tests.conftest import (
     FakeStorage,
     _add_member,
     _auth,
-    _create_model,
+    _create_document,
     _create_project,
     _latest_audit,
     _new_hash,
@@ -49,14 +49,14 @@ async def _create_ready_file(
     fake: FakeStorage,
     token: str,
     project_id: str,
-    model_id: str,
+    document_id: str,
 ) -> str:
     global _file_counter
     _file_counter += 1
     content = VALID_IFC_HEADER + f"\n{_file_counter}".encode()
     sha = hashlib.sha256(content).hexdigest()
     init_resp = await client.post(
-        f"/projects/{project_id}/models/{model_id}/files/initiate",
+        f"/projects/{project_id}/documents/{document_id}/files/initiate",
         json={
             "filename": f"test-att-{_file_counter}.ifc",
             "size_bytes": len(content),
@@ -69,7 +69,7 @@ async def _create_ready_file(
     init = init_resp.json()
     fake.objects[init["storage_key"]] = content
     complete = await client.post(
-        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        f"/projects/{project_id}/documents/{document_id}/files/{init['file_id']}/complete",
         headers=_auth(token),
     )
     assert complete.status_code == 200, complete.text
@@ -333,7 +333,7 @@ async def test_list_excludes_model_source_files(
     client, fake = fake_storage_client
     token = org_user["access_token"]
     project = await _create_project(client, token)
-    model = await _create_model(client, token, project["id"])
+    model = await _create_document(client, token, project["id"])
     # A model-source file (role=model_source) — must be invisible to /attachments.
     await _create_ready_file(client, fake, token, project["id"], model["id"])
     # One genuine attachment.

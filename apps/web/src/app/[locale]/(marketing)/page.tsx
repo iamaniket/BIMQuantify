@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import type { JSX } from 'react';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { CtaSection } from '@/components/sections/CtaSection';
 import { FeaturesSection } from '@/components/sections/FeaturesSection';
@@ -13,6 +13,7 @@ import { HowItWorksSection } from '@/components/sections/HowItWorksSection';
 import { RoadmapSection } from '@/components/sections/RoadmapSection';
 import { SnagShowcaseSection } from '@/components/sections/SnagShowcaseSection';
 import { TrustBandSection } from '@/components/sections/TrustBandSection';
+import { UseCasesSection } from '@/components/sections/UseCasesSection';
 
 // Refresh at most once per minute so the "From the blog" strip picks up newly
 // published API posts without a redeploy (mirrors /blog).
@@ -52,6 +53,7 @@ export default async function WelcomePage({ params }: Props): Promise<JSX.Elemen
     <main>
       <HeroSection />
       <SnagShowcaseSection />
+      <UseCasesSection />
       <HowItWorksSection />
       <FeaturesSection />
       <TrustBandSection />

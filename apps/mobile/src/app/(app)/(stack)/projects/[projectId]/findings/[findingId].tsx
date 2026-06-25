@@ -101,7 +101,7 @@ export default function FindingDetailScreen() {
           ) : null}
 
           {/* Navigate to viewer if pinned on IFC model */}
-          {finding.linked_file_type === 'ifc' && finding.linked_model_id && finding.linked_file_id ? (
+          {finding.linked_file_type === 'ifc' && finding.linked_document_id && finding.linked_file_id ? (
             <Pressable
               style={styles.viewBtn}
               onPress={() => {
@@ -109,7 +109,7 @@ export default function FindingDetailScreen() {
                   pathname: '/viewer/[projectId]/[modelId]/[fileId]',
                   params: {
                     projectId,
-                    modelId: finding.linked_model_id!,
+                    modelId: finding.linked_document_id!,
                     fileId: finding.linked_file_id!,
                   },
                 });

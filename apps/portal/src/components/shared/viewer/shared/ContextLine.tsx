@@ -2,7 +2,7 @@
 
 import type { JSX, ReactNode } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 type ContextLineProps = {
   /** Short, emphasised tag (e.g. an IFC schema or format code). */

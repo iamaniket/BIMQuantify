@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import type { ItemId, ViewerHandle } from '@bimstitch/viewer';
+import type { ItemId, ViewerHandle } from '@bimdossier/viewer';
 
 import { useFileFindings } from '@/features/findings/useFindings';
 import type { Finding } from '@/lib/api/schemas';

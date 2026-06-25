@@ -3,13 +3,13 @@
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
-import { Pagination } from '@bimstitch/ui';
+import { Pagination } from '@bimdossier/ui';
 
 import type { TablePagination } from '@/lib/query/useTableQuery';
 
 /**
  * The shared, pinned pagination footer. Maps the `common.pagination` i18n
- * catalog onto the pure `@bimstitch/ui` `Pagination` and the `TablePagination`
+ * catalog onto the pure `@bimdossier/ui` `Pagination` and the `TablePagination`
  * hook result, so every migrated table renders an identical footer with one
  * line of JSX. Render it as a `shrink-0` sibling below `DataTable`.
  */

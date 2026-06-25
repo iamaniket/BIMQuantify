@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useMemo, type JSX } from 'react';
 
-import { Button, Eyebrow } from '@bimstitch/ui';
+import { Button, Eyebrow } from '@bimdossier/ui';
 
 import { prettyKey } from './prettyKey';
 import { CATEGORY_STYLES, CATEGORY_LABEL_KEYS } from './shortcutCategories';

@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-import { defaultLocale, supportedLocales } from '@bimstitch/i18n';
+import { defaultLocale, supportedLocales } from '@bimdossier/i18n';
 
 import { FEATURE_SLUGS } from '@/components/features/featureContent';
 import { getAllPostsMerged } from '@/lib/blog/mdx';

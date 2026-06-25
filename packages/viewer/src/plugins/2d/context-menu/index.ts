@@ -9,6 +9,7 @@
 
 import type { DocumentContext, DocumentPlugin } from '../../../pdf-core/documentTypes.js';
 import type { SceneAPI } from '../scene/index.js';
+import { screenToPagePoint } from '../shared/screenToPage.js';
 
 const NAME = 'context-menu' as const;
 
@@ -31,17 +32,7 @@ export function contextMenuPlugin(): DocumentPlugin {
     if (!ctx) return null;
     const sceneApi = ctx.plugins.get<SceneAPI>('scene');
     if (!sceneApi) return null;
-    const unscaled = ctx.getUnscaledViewport();
-    if (!unscaled) return null;
-    // screenToWorld returns PDF-point world space (Y-up, origin at bottom-left).
-    const world = sceneApi.screenToWorld(containerX, containerY);
-    // Normalize to 0..1 with top-left origin (Y flipped).
-    const nx = world.x / unscaled.width;
-    const ny = 1 - (world.y / unscaled.height);
-    // Clamp — if outside page bounds, still valid (user may have clicked margin).
-    const x = Math.max(0, Math.min(1, nx));
-    const y = Math.max(0, Math.min(1, ny));
-    return { x, y };
+    return screenToPagePoint(ctx, sceneApi, containerX, containerY);
   }
 
   function onMouseDown(ev: MouseEvent): void {

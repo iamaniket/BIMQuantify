@@ -24,7 +24,7 @@ export const legalNlContent: LegalContent = {
       },
       {
         title: 'Jouw rechten',
-        body: 'Je hebt recht op inzage, correctie, beperking van de verwerking, dataportabiliteit en (binnen de grenzen van de wettelijke bewaarplicht) verwijdering. Verzoeken kun je richten aan privacy@bimstitch.example. Klachten kun je ook indienen bij de Autoriteit Persoonsgegevens.',
+        body: 'Je hebt recht op inzage, correctie, beperking van de verwerking, dataportabiliteit en (binnen de grenzen van de wettelijke bewaarplicht) verwijdering. Verzoeken kun je richten aan info@bimdossier.nl. Klachten kun je ook indienen bij de Autoriteit Persoonsgegevens.',
       },
       {
         title: 'Hosting en sub-verwerkers',
@@ -78,11 +78,11 @@ export const legalNlContent: LegalContent = {
       },
       {
         title: 'Beveiligingsmaatregelen',
-        body: 'Wij hanteren passende technische en organisatorische maatregelen, waaronder encryptie tijdens transport en opslag, toegangsbeheer op basis van least privilege, audit logging en periodieke back-ups in een afzonderlijke EU-regio.',
+        body: 'Wij hanteren passende technische en organisatorische maatregelen, waaronder encryptie tijdens transport en opslag, toegangsbeheer op basis van least privilege, audit logging en regelmatige back-ups.',
       },
       {
         title: 'Datalekken',
-        body: 'Bij een vermoeden van een datalek informeren wij de verantwoordelijke binnen 24 uur na ontdekking, met de tot dan toe bekende informatie en een initiële inschatting van impact en mitigerende maatregelen.',
+        body: 'Bij een vermoeden van een datalek informeren wij de verantwoordelijke zonder onnodige vertraging na ontdekking, met de tot dan toe bekende informatie en een initiële inschatting van impact en mitigerende maatregelen.',
       },
       {
         title: 'Rechten van betrokkenen',

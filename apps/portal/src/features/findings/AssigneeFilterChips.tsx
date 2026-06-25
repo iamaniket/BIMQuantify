@@ -1,10 +1,10 @@
 'use client';
 
-import { User } from '@bimstitch/ui/icons';
+import { User } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import type { ProjectMember } from '@/lib/api/schemas';

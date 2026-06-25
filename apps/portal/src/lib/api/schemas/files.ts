@@ -47,7 +47,7 @@ export type ExtractionStatusValue = z.infer<typeof ExtractionStatusEnum>;
 export const ProjectFileSchema = z.object({
   id: z.string().uuid(),
   role: ProjectFileRoleEnum,
-  model_id: z.string().uuid(),
+  document_id: z.string().uuid(),
   project_id: z.string().uuid(),
   version_number: z.number().int().positive(),
   uploaded_by_user_id: z.string().uuid(),
@@ -115,9 +115,9 @@ export const ViewerBundleResponseSchema = z.object({
 
 export type ViewerBundleResponse = z.infer<typeof ViewerBundleResponseSchema>;
 
-// One model in a project's federated viewer manifest: the latest ready IFC
-// file for a model plus its presigned artifact URLs and discipline metadata.
-export const ProjectViewerModelEntrySchema = z.object({
+// One document in a project's federated viewer manifest: the latest ready IFC
+// file for a document plus its presigned artifact URLs and discipline metadata.
+export const ProjectViewerDocumentEntrySchema = z.object({
   file_id: z.string().uuid(),
   model_id: z.string().uuid(),
   model_name: z.string(),
@@ -131,11 +131,11 @@ export const ProjectViewerModelEntrySchema = z.object({
   floor_plans_url: z.union([z.string().url(), z.null()]),
 });
 
-export type ProjectViewerModelEntry = z.infer<typeof ProjectViewerModelEntrySchema>;
+export type ProjectViewerDocumentEntry = z.infer<typeof ProjectViewerDocumentEntrySchema>;
 
 export const ProjectViewerManifestResponseSchema = z.object({
   expires_in: z.number().int().positive(),
-  models: z.array(ProjectViewerModelEntrySchema),
+  models: z.array(ProjectViewerDocumentEntrySchema),
 });
 
 export type ProjectViewerManifestResponse = z.infer<typeof ProjectViewerManifestResponseSchema>;

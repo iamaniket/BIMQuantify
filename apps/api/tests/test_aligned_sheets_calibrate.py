@@ -8,30 +8,32 @@ from httpx import AsyncClient
 
 from tests.conftest import (
     _auth,
-    _create_model,
+    _create_document,
     _create_project,
-    _create_storey_row,
-    _set_model_primary_file_type,
+    _set_document_primary_file_type,
 )
 
 
 async def _create_sheet(client: AsyncClient, token: str, project: dict) -> str:
-    model3d = await _create_model(
+    model3d = await _create_document(
         client, token, project["id"], name="Arch", discipline="architectural"
     )
-    storey_id = await _create_storey_row(
-        project["id"], model3d["id"], name="Level 1", elevation=0.0, ordering=0
+    level = await client.post(
+        f"/projects/{project['id']}/levels",
+        json={"name": "Level 1", "elevation_m": 0.0},
+        headers=_auth(token),
     )
-    pdf_model = await _create_model(
+    assert level.status_code == 201, level.text
+    pdf_model = await _create_document(
         client, token, project["id"], name="Drawings", discipline="other"
     )
-    await _set_model_primary_file_type(project["id"], pdf_model["id"], "pdf")
+    await _set_document_primary_file_type(project["id"], pdf_model["id"], "pdf")
     resp = await client.post(
         f"/projects/{project['id']}/aligned-sheets",
         json={
-            "model_id": model3d["id"],
-            "storey_id": storey_id,
-            "pdf_model_id": pdf_model["id"],
+            "document_id": model3d["id"],
+            "level_id": level.json()["id"],
+            "pdf_document_id": pdf_model["id"],
             "page_index": 0,
         },
         headers=_auth(token),

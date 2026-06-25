@@ -13,8 +13,8 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@bimstitch/ui';
-import { Mail, Plus, Trash2, Users } from '@bimstitch/ui/icons';
+} from '@bimdossier/ui';
+import { Mail, Plus, Trash2, Users } from '@bimdossier/ui/icons';
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { useSelectableOrgMembers } from '@/features/admin/members/useSelectableOrgMembers';

@@ -2,7 +2,7 @@
 
 import {
   Download, Eye, Flag, Plus, Search, Trash2, Upload,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useEffect, useMemo, useRef, useState, type JSX,
@@ -14,7 +14,7 @@ import {
   ConfirmDialog,
   DetailCard, DetailCardBody, DetailCardFooter, DetailCardRow,
   Select, SplitButton, type SplitButtonItem,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
 import { PanelToolbar } from '@/components/shared/viewer/shared/PanelToolbar';

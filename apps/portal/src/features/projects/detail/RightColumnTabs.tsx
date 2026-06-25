@@ -3,10 +3,10 @@
 import { useTranslations } from 'next-intl';
 import { useState, type ComponentType, type JSX } from 'react';
 
-import { Badge, Button, Eyebrow, Tabs, TabsList, TabsTrigger } from '@bimstitch/ui';
-import { ClipboardCheck, FileBadge, FileText, Paperclip } from '@bimstitch/ui/icons';
+import { Badge, Button, Eyebrow, Tabs, TabsList, TabsTrigger } from '@bimdossier/ui';
+import { ClipboardCheck, FileBadge, FileText, Paperclip } from '@bimdossier/ui/icons';
 
-import type { Model } from '@/lib/api/schemas';
+import type { Document } from '@/lib/api/schemas';
 import { Link } from '@/i18n/navigation';
 import { useAttachments } from '@/features/attachments/useAttachments';
 import { useCertificates } from '@/features/certificates/useCertificates';
@@ -16,22 +16,22 @@ import { totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import { DeadlinesSection } from './DeadlinesSection';
 import { DossierChecklistTab } from './DossierChecklistTab';
-import { ModelsTab } from './ModelsTab';
+import { DocumentsTab } from './DocumentsTab';
 import { useDossierCompleteness } from './useDossierCompleteness';
 
 type Props = {
   projectId: string;
   projectCountry: string;
-  models: Model[];
+  documents: Document[];
 };
 
 export function RightColumnTabs({
   projectId,
   projectCountry,
-  models,
+  documents,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs');
-  const [topTab, setTopTab] = useState('models');
+  const [topTab, setTopTab] = useState('documents');
   const attachmentCount = totalFromPages(useAttachments(projectId).data);
   const certificateCount = totalFromPages(useCertificates(projectId).data);
   const findingsCount = totalFromPages(useFindings(projectId).data);
@@ -51,7 +51,7 @@ export function RightColumnTabs({
           total: dossier.total,
         });
 
-  const topSubtitleCount = topTab === 'readiness' ? 0 : models.length;
+  const topSubtitleCount = topTab === 'readiness' ? 0 : documents.length;
 
   // The lower panel's Findings / Certificates / Attachments / Reports tabs were
   // promoted to dedicated pages; what remains here is a launcher into each of them.
@@ -118,16 +118,16 @@ export function RightColumnTabs({
         <DeadlinesSection projectId={projectId} />
       </div>
 
-      {/* Lower panel — Readiness (dossier checklist) and Models */}
+      {/* Lower panel — Readiness (dossier checklist) and Documents */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
         <div className="shrink-0 overflow-x-auto px-3 pt-2">
           <div className="mb-2 flex min-w-max items-end justify-between gap-x-3">
             <Tabs value={topTab} onValueChange={setTopTab}>
               <TabsList className="inline-flex w-auto">
-                <TabsTrigger value="models">
-                  {t('models.label')}
+                <TabsTrigger value="documents">
+                  {t('documents.label')}
                   <Badge variant="default" size="md" bordered={false}>
-                    {models.length}
+                    {documents.length}
                   </Badge>
                 </TabsTrigger>
                 <TabsTrigger value="readiness">{t('readiness.label')}</TabsTrigger>
@@ -146,17 +146,17 @@ export function RightColumnTabs({
           </div>
         </div>
 
-        <div className={`min-h-0 flex-1 px-3 pb-3 pt-2 ${topTab === 'models' ? 'overflow-hidden' : 'overflow-auto'}`}>
+        <div className={`min-h-0 flex-1 px-3 pb-3 pt-2 ${topTab === 'documents' ? 'overflow-hidden' : 'overflow-auto'}`}>
           {/* `readiness` backs the Readiness tab: dossier checklist groups (deadlines moved to their own card above) */}
           {topTab === 'readiness' && (
             <DossierChecklistTab
               projectId={projectId}
               country={projectCountry}
-              onNavigateToModels={() => { setTopTab('models'); }}
+              onNavigateToModels={() => { setTopTab('documents'); }}
             />
           )}
-          {topTab === 'models' && (
-            <ModelsTab projectId={projectId} models={models} />
+          {topTab === 'documents' && (
+            <DocumentsTab projectId={projectId} documents={documents} />
           )}
         </div>
       </div>

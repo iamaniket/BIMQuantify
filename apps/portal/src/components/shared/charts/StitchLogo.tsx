@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import { BRAND_LOGO_DATA_URI } from '@bimstitch/brand';
+import { BRAND_LOGO_DATA_URI } from '@bimdossier/brand';
 
 type Props = {
   size?: number;

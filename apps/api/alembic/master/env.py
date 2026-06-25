@@ -17,11 +17,11 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from bimstitch_api.config import get_settings
-from bimstitch_api.db import Base, is_master_table
+from bimdossier_api.config import get_settings
+from bimdossier_api.db import Base, is_master_table
 # Import ALL models so the shared Base.metadata is fully populated, then
 # filter to the master-side subset via `include_object` below.
-from bimstitch_api.models import (  # noqa: F401
+from bimdossier_api.models import (  # noqa: F401
     AccessRequest,
     AuditLog,
     Borgingsmoment,

@@ -1,4 +1,4 @@
-import type { MapMarker } from '@bimstitch/map';
+import type { MapMarker } from '@bimdossier/map';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { apiClient } from '@/lib/api/client';

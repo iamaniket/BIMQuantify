@@ -70,13 +70,13 @@ export default tseslint.config(
   {
     // Currently 'warn' — graduate to 'error' once the existing JSX-text
     // hardcodes (~80 today) have been migrated through useTranslations
-    // or @bimstitch/i18n. The audit underestimated the count vs. what
+    // or @bimdossier/i18n. The audit underestimated the count vs. what
     // the rule actually flags; rather than half-fixing or splatting
     // eslint-disable comments, we keep the rule visible at warn level so
     // every new violation surfaces in CI output without blocking ship.
     rules: {
       'i18next/no-literal-string': ['warn', {
-        message: 'String literals in JSX must be routed through useTranslations() or @bimstitch/i18n shared catalog.',
+        message: 'String literals in JSX must be routed through useTranslations() or @bimdossier/i18n shared catalog.',
       }],
     },
   },
@@ -151,11 +151,11 @@ export default tseslint.config(
         forbid: [
           {
             element: 'select',
-            message: 'Raw <select> is banned. Use the shared <Select> from @bimstitch/ui so the dropdown chevron is applied automatically.',
+            message: 'Raw <select> is banned. Use the shared <Select> from @bimdossier/ui so the dropdown chevron is applied automatically.',
           },
           {
             element: 'textarea',
-            message: 'Raw <textarea> is banned. Use the shared <Textarea> from @bimstitch/ui.',
+            message: 'Raw <textarea> is banned. Use the shared <Textarea> from @bimdossier/ui.',
           },
         ],
       }],
@@ -186,7 +186,7 @@ export default tseslint.config(
     },
   },
   {
-    // The base <Select> (@bimstitch/ui) is the only sanctioned select; it
+    // The base <Select> (@bimdossier/ui) is the only sanctioned select; it
     // bakes in the dropdown chevron. Test mocks legitimately render a raw
     // <select>, so the forbid-elements guard is disabled for test files.
     // Placed last so it overrides the project-wide 'error' above.

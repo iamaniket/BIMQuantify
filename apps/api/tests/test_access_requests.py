@@ -37,7 +37,7 @@ async def test_create_access_request_happy_path(
     assert body["status"] == "new"
     assert "id" in body and "created_at" in body
 
-    from bimstitch_api.models.access_request import AccessRequest
+    from bimdossier_api.models.access_request import AccessRequest
 
     rows = (await session.execute(select(AccessRequest))).scalars().all()
     assert len(rows) == 1
@@ -117,7 +117,7 @@ async def test_submit_same_email_with_pending_returns_409(
     assert second.status_code == 409
     assert second.json()["detail"] == "ACCESS_REQUEST_PENDING_DUPLICATE"
 
-    from bimstitch_api.models.access_request import AccessRequest
+    from bimdossier_api.models.access_request import AccessRequest
 
     count = len((await session.execute(select(AccessRequest))).scalars().all())
     assert count == 1, "second submission must not have created a row"
@@ -130,7 +130,7 @@ async def test_submit_same_email_after_approved_returns_409(
     """Once a request has been approved, the prospect's account exists —
     further form submissions point them at their email instead of creating
     another row."""
-    from bimstitch_api.models.access_request import AccessRequest, AccessRequestStatus
+    from bimdossier_api.models.access_request import AccessRequest, AccessRequestStatus
 
     first = await client.post("/access-requests", json=VALID_BODY)
     assert first.status_code == 201
@@ -152,7 +152,7 @@ async def test_submit_same_email_after_rejected_allowed(
 ) -> None:
     """A previously-rejected applicant can retry — they may have addressed
     whatever caused the rejection."""
-    from bimstitch_api.models.access_request import AccessRequest, AccessRequestStatus
+    from bimdossier_api.models.access_request import AccessRequest, AccessRequestStatus
 
     first = await client.post("/access-requests", json=VALID_BODY)
     assert first.status_code == 201

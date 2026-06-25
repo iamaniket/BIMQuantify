@@ -30,7 +30,7 @@ export function useAlignedSheets(
     queryKey: [
       ...alignedSheetsKey(projectId),
       filters.modelId ?? null,
-      filters.storeyId ?? null,
+      filters.levelId ?? null,
       filters.pdfModelId ?? null,
     ] as const,
     queryFn: (accessToken) => listAlignedSheets(accessToken, projectId, filters),

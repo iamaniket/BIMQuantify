@@ -52,7 +52,7 @@ const Schema = z.object({
     .string()
     .default('1025')
     .transform((v) => Number.parseInt(v, 10)),
-  SMTP_FROM: z.string().default('no-reply@bimstitch.dev'),
+  SMTP_FROM: z.string().default('no-reply@bimdossier.dev'),
   POSTMARK_SERVER_TOKEN: z.string().optional(),
   ACTION_CONCURRENCY: z
     .string()
@@ -67,8 +67,8 @@ export type Config = z.infer<typeof Schema>;
 // constants only let the guard and the boot audit RECOGNISE a dev value supplied
 // explicitly. Mirrors `validate_production_config` on the API.
 const DEV_PROCESSOR_SHARED_SECRET = 'dev-shared-secret-change-me';
-const DEV_S3_ACCESS_KEY_ID = 'bimstitch';
-const DEV_S3_SECRET_ACCESS_KEY = 'bimstitch-secret';
+const DEV_S3_ACCESS_KEY_ID = 'bimdossier';
+const DEV_S3_SECRET_ACCESS_KEY = 'bimdossier-secret';
 
 // Production is the default posture. Only an explicit NODE_ENV of 'development'
 // or 'test' opts out of the guard; an UNSET NODE_ENV is treated as production so

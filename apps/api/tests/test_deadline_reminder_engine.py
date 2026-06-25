@@ -59,7 +59,7 @@ async def _set_deadline_due_date(
     Returns the deadline id. Useful for forcing specific timing scenarios
     without needing to reverse-engineer the project dates.
     """
-    from bimstitch_api.models.deadline import Deadline
+    from bimdossier_api.models.deadline import Deadline
 
     async with session_maker() as session:
         await session.execute(text(f'SET LOCAL search_path = "{org_schema}", public'))
@@ -80,7 +80,7 @@ async def _get_notification_log_count(
     deadline_id: str,
 ) -> int:
     """Count notification log entries for a deadline."""
-    from bimstitch_api.models.deadline_notification_log import DeadlineNotificationLog
+    from bimdossier_api.models.deadline_notification_log import DeadlineNotificationLog
 
     async with session_maker() as session:
         await session.execute(text(f'SET LOCAL search_path = "{org_schema}", public'))
@@ -96,7 +96,7 @@ def _org_schema(org_user: dict[str, str]) -> str:
     """Derive tenant schema name from org_user fixture."""
     from uuid import UUID
 
-    from bimstitch_api.tenancy import schema_name_for
+    from bimdossier_api.tenancy import schema_name_for
 
     return schema_name_for(UUID(org_user["organization_id"]))
 
@@ -115,7 +115,7 @@ class TestReminderEngine:
         action_dispatch_calls: list[dict[str, object]],
     ) -> None:
         """Sweep sends a reminder when a deadline is within the reminder window."""
-        from bimstitch_api.deadlines.reminder_engine import sweep_all_orgs
+        from bimdossier_api.deadlines.reminder_engine import sweep_all_orgs
 
         token = org_user["access_token"]
         project = await _create_project_with_dates(client, token)
@@ -154,8 +154,8 @@ class TestReminderEngine:
         no reminder; with the (30, 14, 7, 3, 1) default it must fire one, and
         the notification log records the tier as days_before=30.
         """
-        from bimstitch_api.deadlines.reminder_engine import sweep_all_orgs
-        from bimstitch_api.models.deadline_notification_log import (
+        from bimdossier_api.deadlines.reminder_engine import sweep_all_orgs
+        from bimdossier_api.models.deadline_notification_log import (
             DeadlineNotificationLog,
         )
 
@@ -202,7 +202,7 @@ class TestReminderEngine:
         action_dispatch_calls: list[dict[str, object]],
     ) -> None:
         """Running the sweep twice for the same tier sends only once."""
-        from bimstitch_api.deadlines.reminder_engine import sweep_all_orgs
+        from bimdossier_api.deadlines.reminder_engine import sweep_all_orgs
 
         token = org_user["access_token"]
         project = await _create_project_with_dates(client, token)
@@ -231,7 +231,7 @@ class TestReminderEngine:
         action_dispatch_calls: list[dict[str, object]],
     ) -> None:
         """Met deadlines are not processed by the sweep."""
-        from bimstitch_api.deadlines.reminder_engine import sweep_all_orgs
+        from bimdossier_api.deadlines.reminder_engine import sweep_all_orgs
 
         token = org_user["access_token"]
         project = await _create_project_with_dates(client, token)
@@ -276,7 +276,7 @@ class TestReminderEngine:
         action_dispatch_calls: list[dict[str, object]],
     ) -> None:
         """Not-applicable deadlines are not processed."""
-        from bimstitch_api.deadlines.reminder_engine import sweep_all_orgs
+        from bimdossier_api.deadlines.reminder_engine import sweep_all_orgs
 
         # Create project without dates → all deadlines not_applicable
         token = org_user["access_token"]
@@ -293,7 +293,7 @@ class TestReminderEngine:
         action_dispatch_calls: list[dict[str, object]],
     ) -> None:
         """Missed deadline sends one alert; second sweep sends nothing."""
-        from bimstitch_api.deadlines.reminder_engine import sweep_all_orgs
+        from bimdossier_api.deadlines.reminder_engine import sweep_all_orgs
 
         token = org_user["access_token"]
         project = await _create_project_with_dates(client, token)
@@ -327,7 +327,7 @@ class TestReminderEngine:
         action_dispatch_calls: list[dict[str, object]],
     ) -> None:
         """When notification is disabled, no emails are dispatched."""
-        from bimstitch_api.deadlines.reminder_engine import sweep_all_orgs
+        from bimdossier_api.deadlines.reminder_engine import sweep_all_orgs
 
         token = org_user["access_token"]
 
@@ -365,7 +365,7 @@ class TestReminderEngine:
         action_dispatch_calls: list[dict[str, object]],
     ) -> None:
         """When project dates change and deadline recomputes, notification log is cleared."""
-        from bimstitch_api.deadlines.reminder_engine import sweep_all_orgs
+        from bimdossier_api.deadlines.reminder_engine import sweep_all_orgs
 
         token = org_user["access_token"]
         project = await _create_project_with_dates(client, token)

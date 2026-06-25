@@ -1,4 +1,4 @@
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 /** Canonical date: "Jun 12, 2026" (EN) / "12 jun. 2026" (NL). */
 export function formatDate(

@@ -1,10 +1,10 @@
 'use client';
 
-import { AlertTriangle, Search } from '@bimstitch/ui/icons';
+import { AlertTriangle, Search } from '@bimdossier/ui/icons';
 import { useState, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 
-import { Input } from '@bimstitch/ui';
+import { Input } from '@bimdossier/ui';
 
 import { PageShell } from '@/components/shared/layout/PageShell';
 import { useExpiringCertificates } from '@/features/certificates/useExpiringCertificates';

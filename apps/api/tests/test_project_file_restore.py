@@ -18,7 +18,7 @@ from tests.conftest import (
     _add_member,
     _audit_rows,
     _auth,
-    _create_model,
+    _create_document,
     _create_project,
     _new_hash,
 )
@@ -35,13 +35,13 @@ async def _init_complete(
     fake: FakeStorage,
     org_user: dict[str, str],
     project_id: str,
-    model_id: str,
+    document_id: str,
     name: str,
 ) -> str:
     """Initiate + complete an IFC version (status ready, extraction queued)."""
     init = (
         await client.post(
-            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            f"/projects/{project_id}/documents/{document_id}/files/initiate",
             json={
                 "filename": name,
                 "size_bytes": len(VALID_IFC_HEADER),
@@ -53,7 +53,7 @@ async def _init_complete(
     ).json()
     fake.objects[init["storage_key"]] = VALID_IFC_HEADER
     complete = await client.post(
-        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        f"/projects/{project_id}/documents/{document_id}/files/{init['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
     assert complete.status_code == 200, complete.text
@@ -88,9 +88,9 @@ async def _two_succeeded_versions(
     name: str = "restore",
 ) -> tuple[str, str, str, str]:
     """Project + model with v1, v2 both extraction-succeeded. Returns
-    (project_id, model_id, v1_file_id, v2_file_id)."""
+    (project_id, document_id, v1_file_id, v2_file_id)."""
     project = await _create_project(client, org_user["access_token"], name=name + "-p")
-    model = await _create_model(
+    model = await _create_document(
         client, org_user["access_token"], project["id"], name=name + "-m"
     )
     pid, mid = project["id"], model["id"]
@@ -102,10 +102,10 @@ async def _two_succeeded_versions(
 
 
 async def _restore(
-    client: AsyncClient, token: str, project_id: str, model_id: str, file_id: str
+    client: AsyncClient, token: str, project_id: str, document_id: str, file_id: str
 ) -> object:
     return await client.post(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/restore",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/restore",
         headers=_auth(token),
     )
 
@@ -127,10 +127,10 @@ async def test_restore_repoints_head_and_creates_nothing(
     assert resp.status_code == 200, resp.text
     assert resp.json()["head_file_id"] == v1
 
-    # Model now points at v1, but the version history is untouched (still v2, v1).
+    # Document now points at v1, but the version history is untouched (still v2, v1).
     model = (
         await client.get(
-            f"/projects/{pid}/models/{mid}", headers=_auth(org_user["access_token"])
+            f"/projects/{pid}/documents/{mid}", headers=_auth(org_user["access_token"])
         )
     ).json()
     assert model["head_file_id"] == v1
@@ -138,7 +138,7 @@ async def test_restore_repoints_head_and_creates_nothing(
 
     files = (
         await client.get(
-            f"/projects/{pid}/models/{mid}/files?status=all",
+            f"/projects/{pid}/documents/{mid}/files?status=all",
             headers=_auth(org_user["access_token"]),
         )
     ).json()
@@ -159,7 +159,7 @@ async def test_restore_manifest_follows_pointer(
             f"/projects/{pid}/viewer-bundle", headers=_auth(org_user["access_token"])
         )
     ).json()
-    entry = next(m for m in before["models"] if m["model_id"] == mid)
+    entry = next(m for m in before["models"] if m["document_id"] == mid)
     assert entry["file_id"] == _v2
 
     assert (await _restore(client, org_user["access_token"], pid, mid, v1)).status_code == 200
@@ -169,7 +169,7 @@ async def test_restore_manifest_follows_pointer(
             f"/projects/{pid}/viewer-bundle", headers=_auth(org_user["access_token"])
         )
     ).json()
-    entry = next(m for m in after["models"] if m["model_id"] == mid)
+    entry = next(m for m in after["models"] if m["document_id"] == mid)
     assert entry["file_id"] == v1
 
 
@@ -205,7 +205,7 @@ async def test_restore_non_succeeded_source_conflicts(
 ) -> None:
     client, fake = fake_storage_client
     project = await _create_project(client, org_user["access_token"], name="notready-p")
-    model = await _create_model(
+    model = await _create_document(
         client, org_user["access_token"], project["id"], name="notready-m"
     )
     pid, mid = project["id"], model["id"]
@@ -240,7 +240,7 @@ async def test_upload_new_version_reclaims_head(
 
     model = (
         await client.get(
-            f"/projects/{pid}/models/{mid}", headers=_auth(org_user["access_token"])
+            f"/projects/{pid}/documents/{mid}", headers=_auth(org_user["access_token"])
         )
     ).json()
     assert model["head_file_id"] is None
@@ -250,7 +250,7 @@ async def test_upload_new_version_reclaims_head(
             f"/projects/{pid}/viewer-bundle", headers=_auth(org_user["access_token"])
         )
     ).json()
-    entry = next(m for m in manifest["models"] if m["model_id"] == mid)
+    entry = next(m for m in manifest["models"] if m["document_id"] == mid)
     assert entry["file_id"] == v3
 
 

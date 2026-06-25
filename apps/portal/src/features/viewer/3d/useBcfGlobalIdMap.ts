@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 
-import type { ViewerHandle } from '@bimstitch/viewer';
+import type { ViewerHandle } from '@bimdossier/viewer';
 
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 

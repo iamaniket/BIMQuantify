@@ -7,7 +7,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-import { AppDialog, Input } from '@bimstitch/ui';
+import { AppDialog, Input } from '@bimdossier/ui';
 
 import { Field } from '@/components/shared/forms/Field';
 import { useRegisterField } from '@/hooks/useRegisterField';

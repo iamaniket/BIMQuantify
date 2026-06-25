@@ -1,10 +1,10 @@
 'use client';
 
-import { Bell } from '@bimstitch/ui/icons';
+import { Bell } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Skeleton } from '@bimstitch/ui';
+import { Skeleton } from '@bimdossier/ui';
 
 import { DeadlineNotificationForm } from '@/features/projects/detail/deadlines/DeadlineNotificationForm';
 import {

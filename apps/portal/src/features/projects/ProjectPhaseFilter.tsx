@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, ChevronDown, ListFilter } from '@bimstitch/ui/icons';
+import { Check, ChevronDown, ListFilter } from '@bimdossier/ui/icons';
 import type { JSX } from 'react';
 
 import { useTranslations } from 'next-intl';
@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   cn,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import type { Project, ProjectPhaseValue } from '@/lib/api/schemas';
 import { ProjectPhaseEnum } from '@/lib/api/schemas';

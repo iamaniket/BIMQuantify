@@ -4,15 +4,15 @@ import { useParams } from 'next/navigation';
 
 import { useEffect, useMemo, useState, type JSX } from 'react';
 
-import { Button, Skeleton } from '@bimstitch/ui';
+import { Button, Skeleton } from '@bimdossier/ui';
 import {
   ArrowRight, Pencil, Settings, Share2,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
-import { useModels } from '@/features/models/useModels';
+import { useDocuments } from '@/features/documents/useDocuments';
 import { useProject } from '@/features/projects/useProject';
 import { useAttachments } from '@/features/attachments/useAttachments';
 import { useFindings } from '@/features/findings/useFindings';
@@ -48,7 +48,7 @@ export default function ProjectDetailPage(): JSX.Element {
   useEffect(() => {
     track(PORTAL_EVENTS.PROJECT_OPENED, { project_id: projectId });
   }, [projectId]);
-  const modelsQuery = useModels(projectId);
+  const documentsQuery = useDocuments(projectId);
   const deadlinesQuery = useDeadlines(projectId);
   const attachmentsQuery = useAttachments(projectId);
   const findingsQuery = useFindings(projectId);
@@ -74,7 +74,7 @@ export default function ProjectDetailPage(): JSX.Element {
     [attachments],
   );
 
-  const modelCount = modelsQuery.data?.length ?? 0;
+  const modelCount = documentsQuery.data?.length ?? 0;
   const findingsOpen = useMemo(
     () => findings.filter((f) => f.status !== 'resolved' && f.status !== 'verified').length,
     [findings],
@@ -129,7 +129,7 @@ export default function ProjectDetailPage(): JSX.Element {
     return <main className="flex flex-1 items-center justify-center" />;
   }
 
-  const models = modelsQuery.data ?? [];
+  const documents = documentsQuery.data ?? [];
 
   const heroAction = (
     <>
@@ -195,7 +195,7 @@ export default function ProjectDetailPage(): JSX.Element {
           <RightColumnTabs
             projectId={projectId}
             projectCountry={project.country}
-            models={models}
+            documents={documents}
           />
         </div>
       </PageShell>

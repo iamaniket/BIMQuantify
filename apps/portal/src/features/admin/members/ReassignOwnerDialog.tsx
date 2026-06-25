@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { AppDialog, Label, Select } from '@bimstitch/ui';
+import { AppDialog, Label, Select } from '@bimdossier/ui';
 
 import type { MemberRead } from '@/lib/api/schemas';
 

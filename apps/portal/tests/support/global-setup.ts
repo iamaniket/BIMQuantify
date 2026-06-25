@@ -21,7 +21,7 @@ const REPO_ROOT = resolve(__dirname, '../../../..');
 
 // All configurable — run-e2e.mjs overrides these for test containers.
 const DB_URL = process.env['E2E_DATABASE_URL']
-  ?? 'postgresql+asyncpg://bim:bim@localhost:5434/bimstitch_e2e';
+  ?? 'postgresql+asyncpg://bim:bim@localhost:5434/bimdossier_e2e';
 const REDIS_URL = process.env['E2E_REDIS_URL']
   ?? 'redis://localhost:6380/2';
 const MAILHOG_URL = process.env['E2E_MAILHOG_URL']
@@ -30,7 +30,7 @@ const SMTP_PORT = process.env['E2E_SMTP_PORT'] ?? '1025';
 const S3_ENDPOINT = process.env['E2E_S3_ENDPOINT']
   ?? 'http://localhost:9000';
 const REDIS_CONTAINER = process.env['E2E_REDIS_CONTAINER']
-  ?? 'bimstitch-redis';
+  ?? 'bimdossier-redis';
 const REDIS_DB = process.env['E2E_REDIS_DB'] ?? '2';
 const API_PORT = process.env['E2E_API_PORT'] ?? '8010';
 
@@ -153,7 +153,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
   console.log(`[E2E Setup] Starting API server on port ${API_PORT}...`);
   const apiProcess = spawn(
     'uv',
-    ['run', 'uvicorn', 'bimstitch_api.main:app', '--port', API_PORT],
+    ['run', 'uvicorn', 'bimdossier_api.main:app', '--port', API_PORT],
     {
       cwd: API_DIR,
       env: {

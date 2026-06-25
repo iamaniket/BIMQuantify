@@ -9,12 +9,12 @@ import {
   Clock,
   ExternalLink,
   Layers,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import { useMemo, type JSX } from 'react';
 
-import { Skeleton } from '@bimstitch/ui';
-import type { Locale } from '@bimstitch/i18n';
+import { Skeleton } from '@bimdossier/ui';
+import type { Locale } from '@bimdossier/i18n';
 
 import { BarChartMini } from '@/components/shared/charts/BarChartMini';
 import { ChartSection } from '@/components/shared/charts/ChartSection';

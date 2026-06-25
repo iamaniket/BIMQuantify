@@ -1,11 +1,11 @@
 'use client';
 
-import { Box, ClipboardCheck, Download, Eye, FileBadge, Glasses, ShieldCheck, Trash2, Upload } from '@bimstitch/ui/icons';
+import { Box, ClipboardCheck, Download, Eye, FileBadge, Glasses, ShieldCheck, Trash2, Upload } from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import type { ComponentType, JSX } from 'react';
 
-import { Badge, type BadgeVariant } from '@bimstitch/ui';
-import type { Locale } from '@bimstitch/i18n';
+import { Badge, type BadgeVariant } from '@bimdossier/ui';
+import type { Locale } from '@bimdossier/i18n';
 
 import { DataTable } from '@/components/shared/DataTable';
 import type { Column } from '@/components/shared/PageTable';

@@ -2,8 +2,8 @@
 
 import type {
   EntityMarkerData, Vec3, ViewerBundle, ViewerHandle,
-} from '@bimstitch/viewer';
-import { IfcViewer } from '@bimstitch/viewer/viewer-3d';
+} from '@bimdossier/viewer';
+import { IfcViewer } from '@bimdossier/viewer/viewer-3d';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useRef, useState, type JSX,
@@ -97,9 +97,12 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
   }, []);
 
   // `sizeBoost` makes the model read bigger than a plain fit (distance ÷ boost).
+  // `panFraction` is the desktop right-shift (fraction of the viewport half-width);
+  // lowered from the 0.4 default so the model sits a touch further left / less
+  // clipped at the right edge while the hero text on the left stays clear.
   // The reveal is deferred until this framing lands (see onReady), so the model
   // appears already at this size — no zoom-in pop.
-  const ZOOM = { sizeBoost: 1.2 } as const;
+  const ZOOM = { sizeBoost: 1.2, panFraction: 0.2 } as const;
   const plugins = reducedMotion
     ? [
       monochromeLookPlugin(),

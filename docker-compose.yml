@@ -1,31 +1,31 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: bimstitch-postgres
+    container_name: bimdossier-postgres
     environment:
       POSTGRES_USER: bim
       POSTGRES_PASSWORD: bim
-      POSTGRES_DB: bimstitch
+      POSTGRES_DB: bimdossier
     ports:
       - "5434:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bim -d bimstitch"]
+      test: ["CMD-SHELL", "pg_isready -U bim -d bimdossier"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   mailhog:
     image: mailhog/mailhog
-    container_name: bimstitch-mailhog
+    container_name: bimdossier-mailhog
     ports:
       - "1025:1025"
       - "8025:8025"
 
   redis:
     image: redis:7-alpine
-    container_name: bimstitch-redis
+    container_name: bimdossier-redis
     command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "6380:6379"
@@ -39,11 +39,11 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: bimstitch-minio
+    container_name: bimdossier-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: bimstitch
-      MINIO_ROOT_PASSWORD: bimstitch-secret
+      MINIO_ROOT_USER: bimdossier
+      MINIO_ROOT_PASSWORD: bimdossier-secret
       # Dev-only: allow any origin so the viewer-embed local harness (:5173), an
       # iOS LAN origin, and any preview port can fetch presigned model bytes.
       # Presigned URLs are already signed, so a cross-origin GET grants nothing
@@ -64,7 +64,7 @@ services:
     build:
       context: ./apps/processor
       dockerfile: Dockerfile
-    container_name: bimstitch-processor
+    container_name: bimdossier-processor
     environment:
       NODE_ENV: development
       PORT: "8080"
@@ -76,8 +76,8 @@ services:
       SMTP_PORT: "1025"
       S3_ENDPOINT_URL: http://minio:9000
       S3_REGION: us-east-1
-      S3_ACCESS_KEY_ID: bimstitch
-      S3_SECRET_ACCESS_KEY: bimstitch-secret
+      S3_ACCESS_KEY_ID: bimdossier
+      S3_SECRET_ACCESS_KEY: bimdossier-secret
       S3_BUCKET_IFC: ifc-files
       # apps/api still runs on the host during dev, so the worker reaches
       # it via host.docker.internal. Override to http://api:8000 if/when 
@@ -104,12 +104,12 @@ services:
     build:
       context: ./apps/arbiter
       dockerfile: Dockerfile
-    container_name: bimstitch-arbiter
+    container_name: bimdossier-arbiter
     environment:
       S3_ENDPOINT_URL: http://minio:9000
       S3_REGION: us-east-1
-      S3_ACCESS_KEY_ID: bimstitch
-      S3_SECRET_ACCESS_KEY: bimstitch-secret
+      S3_ACCESS_KEY_ID: bimdossier
+      S3_SECRET_ACCESS_KEY: bimdossier-secret
       S3_BUCKET_IFC: ifc-files
       ARBITER_HOST: "0.0.0.0"
       ARBITER_PORT: "8090"

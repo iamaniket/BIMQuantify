@@ -1,12 +1,12 @@
 'use client';
 
-import { CalendarDays, FileBadge, Layers, LayoutGrid } from '@bimstitch/ui/icons';
+import { CalendarDays, FileBadge, Layers, LayoutGrid } from '@bimdossier/ui/icons';
 import { usePathname } from '@/i18n/navigation';
 import type { JSX } from 'react';
 
 import { useTranslations } from 'next-intl';
 
-import { Eyebrow } from '@bimstitch/ui';
+import { Eyebrow } from '@bimdossier/ui';
 
 import { useSidebar } from '@/components/shared/sidebar/SidebarContext';
 import { SidebarNavItem } from '@/components/shared/sidebar/SidebarNavItem';

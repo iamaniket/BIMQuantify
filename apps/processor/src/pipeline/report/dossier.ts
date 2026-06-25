@@ -71,7 +71,7 @@ const PayloadSchema: z.ZodType<DossierData & { storage_key: string }> = z
         bbl_article_ref: z.string().nullable().optional(),
         resolution_note: z.string().nullable().optional(),
         linked_element_global_id: z.string().nullable().optional(),
-        linked_model_id: z.string().nullable().optional(),
+        linked_document_id: z.string().nullable().optional(),
         linked_file_type: z.string().nullable().optional(),
         anchor_page: z.number().nullable().optional(),
         anchor_x: z.number().nullable().optional(),

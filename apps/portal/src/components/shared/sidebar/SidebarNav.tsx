@@ -1,6 +1,6 @@
 'use client';
 
-import { HelpCircle, LogOut, Settings, Shield, Users } from '@bimstitch/ui/icons';
+import { HelpCircle, LogOut, Settings, Shield, Users } from '@bimdossier/ui/icons';
 import { usePathname, useRouter } from '@/i18n/navigation';
 import { useCallback, type JSX } from 'react';
 

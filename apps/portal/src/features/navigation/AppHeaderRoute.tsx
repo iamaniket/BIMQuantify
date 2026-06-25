@@ -8,7 +8,7 @@ import { AppHeader, type Crumb } from '@/components/shared/header/AppHeader';
 import { useAppHeaderOverrides } from '@/components/shared/header/AppHeaderContext';
 import { NotificationsBell } from '@/components/shared/header/NotificationsBell';
 import { useSidebar } from '@/components/shared/sidebar/SidebarContext';
-import { useModels } from '@/features/models/useModels';
+import { useDocuments } from '@/features/documents/useDocuments';
 import { ModelSwitcher } from '@/features/navigation/ModelSwitcher';
 import { useViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
 import { useProject } from '@/features/projects/useProject';
@@ -100,7 +100,7 @@ export function AppHeaderRoute(): JSX.Element {
   const modelId = target.kind === 'single' ? target.modelId : '';
 
   const projectQuery = useProject(projectId);
-  const modelsQuery = useModels(projectId);
+  const modelsQuery = useDocuments(projectId);
 
   const { status, crumbs: crumbsOverride } = useAppHeaderOverrides();
 

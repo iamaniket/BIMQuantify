@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 import pytest
 from fastapi_users.password import PasswordHelper
 
-from bimstitch_api.models.user import User
+from bimdossier_api.models.user import User
 
 if TYPE_CHECKING:
     from httpx import AsyncClient

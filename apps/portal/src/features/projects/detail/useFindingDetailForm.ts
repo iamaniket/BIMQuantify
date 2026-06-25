@@ -91,7 +91,7 @@ export type LocalAnchor = {
   anchor_y?: number | null | undefined;
   anchor_z?: number | null | undefined;
   anchor_page?: number | null | undefined;
-  linked_model_id?: string | null | undefined;
+  linked_document_id?: string | null | undefined;
   linked_file_id?: string | null | undefined;
   linked_element_global_id?: string | null | undefined;
 } | null;
@@ -141,7 +141,7 @@ export type FindingDetailFormApi = {
     anchor_y?: number | null | undefined;
     anchor_z?: number | null | undefined;
     anchor_page?: number | null | undefined;
-    linked_model_id?: string | null | undefined;
+    linked_document_id?: string | null | undefined;
     linked_file_id?: string | null | undefined;
     linked_element_global_id?: string | null | undefined;
   }) => void;
@@ -329,7 +329,7 @@ export function useFindingDetailForm(
         anchor_y: null,
         anchor_z: null,
         anchor_page: null,
-        linked_model_id: null,
+        linked_document_id: null,
         linked_file_id: null,
         linked_element_global_id: null,
       };
@@ -345,8 +345,8 @@ export function useFindingDetailForm(
     };
     // Only stamp model/file links when the pin actually carried them, so
     // re-pinning an already-linked finding never nulls its existing link.
-    if (pendingAnchor.linked_model_id !== undefined) {
-      next.linked_model_id = pendingAnchor.linked_model_id;
+    if (pendingAnchor.linked_document_id !== undefined) {
+      next.linked_document_id = pendingAnchor.linked_document_id;
     }
     if (pendingAnchor.linked_file_id !== undefined) {
       next.linked_file_id = pendingAnchor.linked_file_id;
@@ -423,7 +423,7 @@ export function useFindingDetailForm(
     },
     unlink: () => {
       mutateWithSaved({
-        linked_model_id: null,
+        linked_document_id: null,
         linked_file_id: null,
         linked_element_global_id: null,
       });

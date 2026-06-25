@@ -27,7 +27,7 @@ export type CertificateMetadataInput = {
   valid_until?: string | null;
   description?: string | null;
   linked_element_global_id?: string | null;
-  linked_model_id?: string | null;
+  linked_document_id?: string | null;
   linked_file_id?: string | null;
   linked_file_type?: LinkedFileTypeValue | null;
   anchor_x?: number | null;
@@ -88,7 +88,7 @@ export async function listCertificates(
   const params = new URLSearchParams();
   if (filters?.certificateType !== undefined) params.set('certificate_type', filters.certificateType);
   if (filters?.linkedElementGlobalId !== undefined) params.set('linked_element_global_id', filters.linkedElementGlobalId);
-  if (filters?.linkedModelId !== undefined) params.set('linked_model_id', filters.linkedModelId);
+  if (filters?.linkedModelId !== undefined) params.set('linked_document_id', filters.linkedModelId);
   if (filters?.linkedFileId !== undefined) params.set('linked_file_id', filters.linkedFileId);
   if (filters?.unlinked === true) params.set('unlinked', 'true');
   if (filters?.expiringBefore !== undefined) params.set('expiring_before', filters.expiringBefore);

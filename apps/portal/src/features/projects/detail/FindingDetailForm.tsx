@@ -1,12 +1,12 @@
 'use client';
 
-import { Trash2 } from '@bimstitch/ui/icons';
+import { Trash2 } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Button } from '@bimstitch/ui';
+import { Button } from '@bimdossier/ui';
 
-import type { DocumentViewerHandle, FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import type { DocumentViewerHandle, FloorPlanViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import type { ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import type { Finding, LinkedFileTypeValue } from '@/lib/api/schemas';
@@ -32,8 +32,8 @@ type Props = {
   resolvePickedGlobalId?: ((item: { modelId: string; localId: number } | null) => string | null) | undefined;
   /** Current viewport layout — routes IFC picks to the floor-plan in 2D mode. */
   viewMode?: ViewMode | undefined;
-  /** Floor-plan handle (2D plan surface) for picking in 2D mode. */
-  floorPlanHandle?: FloorPlanViewerHandle | null | undefined;
+  /** Active 2D pick surface (generated floor plan OR aligned PDF) for picking in 2D mode. */
+  floorPlanHandle?: FloorPlanViewerHandle | DocumentViewerHandle | null | undefined;
   /** Convert a normalized plan point to a 3D world anchor. */
   convertFloorPlanPoint?: ConvertFloorPlanPoint | undefined;
 };

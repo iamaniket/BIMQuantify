@@ -5,7 +5,7 @@ import { IntlWrapper } from '@/__tests__/intl-wrapper';
 
 import type { CheckResultItem, RuleSummaryItem } from '@/lib/api/schemas';
 
-vi.mock('@bimstitch/ui', () => ({
+vi.mock('@bimdossier/ui', () => ({
   Badge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 

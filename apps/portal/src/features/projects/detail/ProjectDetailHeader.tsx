@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, Layers, MapPin, Ruler } from '@bimstitch/ui/icons';
+import { Building2, Layers, MapPin, Ruler } from '@bimdossier/ui/icons';
 import { useEffect, useState, type JSX, type ReactNode } from 'react';
 
 import type { Project } from '@/lib/api/schemas';
@@ -13,7 +13,7 @@ import {
 } from '@/lib/formatting/projects';
 import { useLocale, useTranslations } from 'next-intl';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 import { HeroShell } from '@/components/shared/layout/HeroShell';

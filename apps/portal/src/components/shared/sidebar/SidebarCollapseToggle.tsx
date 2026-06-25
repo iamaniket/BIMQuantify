@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronLeft, ChevronRight } from '@bimstitch/ui/icons';
+import { ChevronLeft, ChevronRight } from '@bimdossier/ui/icons';
 import type { JSX } from 'react';
 
 import { useSidebar } from './SidebarContext';

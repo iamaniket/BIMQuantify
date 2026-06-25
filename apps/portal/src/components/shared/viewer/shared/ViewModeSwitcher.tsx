@@ -1,6 +1,6 @@
 'use client';
 
-import { Blueprint, Box, Crosshair, SquareSplitHorizontal } from '@bimstitch/ui/icons';
+import { Blueprint, Box, Crosshair, SquareSplitHorizontal } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

@@ -4,18 +4,18 @@ import {
   type ViewerBundleResponse,
 } from '@/lib/api/schemas/files';
 
-// GET /projects/{id}/models/{modelId}/files/{fileId}/viewer-bundle — presigned
-// artifact URLs for one IFC file. The native side fetches this and hands the
-// camelCase bundle (below) to the embedded viewer over the WebView bridge; the
-// WebView never holds a token.
+// GET /projects/{id}/documents/{documentId}/files/{fileId}/viewer-bundle —
+// presigned artifact URLs for one IFC file. The native side fetches this and
+// hands the camelCase bundle (below) to the embedded viewer over the WebView
+// bridge; the WebView never holds a token.
 export async function getViewerBundle(
   accessToken: string,
   projectId: string,
-  modelId: string,
+  documentId: string,
   fileId: string,
 ): Promise<ViewerBundleResponse> {
   return apiClient.get<ViewerBundleResponse>(
-    `/projects/${projectId}/models/${modelId}/files/${fileId}/viewer-bundle`,
+    `/projects/${projectId}/documents/${documentId}/files/${fileId}/viewer-bundle`,
     ViewerBundleResponseSchema,
     accessToken,
   );
@@ -23,7 +23,7 @@ export async function getViewerBundle(
 
 /**
  * The camelCase shape the embedded viewer's `IfcViewer` consumes (mirrors
- * `@bimstitch/viewer`'s `ViewerBundle`). Defined locally — mobile doesn't depend
+ * `@bimdossier/viewer`'s `ViewerBundle`). Defined locally — mobile doesn't depend
  * on the viewer package; the bridge ships this as plain JSON.
  */
 export type EmbedViewerBundle = {

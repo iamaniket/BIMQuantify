@@ -4,13 +4,13 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { buildCssVariables, cssVarNames, darkTheme, lightTheme } from '@bimstitch/design-tokens';
+import { buildCssVariables, cssVarNames, darkTheme, lightTheme } from '@bimdossier/design-tokens';
 
 /**
  * Contract guard for the design-token CSS-variable pipeline:
  *
- *   `@bimstitch/design-tokens` (tokens.css)  →  defines the core `--vars`
- *   `@bimstitch/tailwind-config` (preset)    →  references them as `var(--x)`
+ *   `@bimdossier/design-tokens` (tokens.css)  →  defines the core `--vars`
+ *   `@bimdossier/tailwind-config` (preset)    →  references them as `var(--x)`
  *   `apps/portal/src/app/globals.css`        →  defines the extra `--vars`
  *                                                (sidebar / brand / disc / header …)
  *
@@ -27,12 +27,12 @@ import { buildCssVariables, cssVarNames, darkTheme, lightTheme } from '@bimstitc
 
 const require = createRequire(import.meta.url);
 
-/** Minimal shape we introspect; `@bimstitch/tailwind-config` ships no type declarations. */
+/** Minimal shape we introspect; `@bimdossier/tailwind-config` ships no type declarations. */
 interface TailwindPreset {
   theme?: { extend?: Record<string, unknown> };
 }
 
-const preset = require('@bimstitch/tailwind-config') as TailwindPreset;
+const preset = require('@bimdossier/tailwind-config') as TailwindPreset;
 
 /**
  * Vars that are referenced by the preset but legitimately have no static CSS

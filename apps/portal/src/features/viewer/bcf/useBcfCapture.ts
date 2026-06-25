@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 
-import type { ViewerHandle } from '@bimstitch/viewer';
+import type { ViewerHandle } from '@bimdossier/viewer';
 
 import type { BcfViewpointCreateInput } from '@/lib/api/schemas/bcf';
 

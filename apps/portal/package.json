@@ -32,13 +32,13 @@
     "clean": "rimraf .next .turbo node_modules"
   },
   "dependencies": {
-    "@bimstitch/annotation": "workspace:*",
-    "@bimstitch/brand": "workspace:*",
-    "@bimstitch/design-tokens": "workspace:*",
-    "@bimstitch/i18n": "workspace:*",
-    "@bimstitch/map": "workspace:*",
-    "@bimstitch/ui": "workspace:*",
-    "@bimstitch/viewer": "workspace:*",
+    "@bimdossier/annotation": "workspace:*",
+    "@bimdossier/brand": "workspace:*",
+    "@bimdossier/design-tokens": "workspace:*",
+    "@bimdossier/i18n": "workspace:*",
+    "@bimdossier/map": "workspace:*",
+    "@bimdossier/ui": "workspace:*",
+    "@bimdossier/viewer": "workspace:*",
     "@dnd-kit/core": "^6.3.1",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-dialog": "^1.1.6",
@@ -69,8 +69,8 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@bimstitch/tailwind-config": "workspace:*",
-    "@bimstitch/tsconfig": "workspace:*",
+    "@bimdossier/tailwind-config": "workspace:*",
+    "@bimdossier/tsconfig": "workspace:*",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.17.0",
     "@next/eslint-plugin-next": "^16.2.9",

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { IntlWrapper } from '@/__tests__/intl-wrapper';
 
-vi.mock('@bimstitch/ui', () => ({
+vi.mock('@bimdossier/ui', () => ({
   Progress: ({ value }: { value: number }) => (
     <div data-testid="progress" data-value={value} />
   ),

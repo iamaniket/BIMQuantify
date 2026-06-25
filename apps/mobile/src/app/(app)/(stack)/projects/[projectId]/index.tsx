@@ -11,18 +11,18 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { latestReadyFile, useProjectModels } from '@/features/projects/queries';
+import { latestReadyFile, useProjectDocuments } from '@/features/projects/queries';
 import { humanize } from '@/lib/format';
 import { useAuth } from '@/providers/AuthProvider';
 import { colors, radii } from '@/theme';
 
-export default function ProjectModelsScreen() {
+export default function ProjectDocumentsScreen() {
   const router = useRouter();
   const { tokens } = useAuth();
   const params = useLocalSearchParams<{ projectId: string; name?: string }>();
   const projectId = params.projectId;
   const insets = useSafeAreaInsets();
-  const { data, isLoading, isError, refetch, isRefetching } = useProjectModels(projectId ?? '');
+  const { data, isLoading, isError, refetch, isRefetching } = useProjectDocuments(projectId ?? '');
 
   if (tokens === null) {
     return <Redirect href="/login" />;
@@ -33,14 +33,14 @@ export default function ProjectModelsScreen() {
 
   return (
     <View style={styles.flex}>
-      <Stack.Screen options={{ title: params.name ?? 'Models' }} />
+      <Stack.Screen options={{ title: params.name ?? 'Documents' }} />
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={colors.primary} />
         </View>
       ) : isError ? (
         <View style={styles.centered}>
-          <Text style={styles.muted}>Couldn’t load models.</Text>
+          <Text style={styles.muted}>Couldn’t load documents.</Text>
           <Pressable style={styles.retry} onPress={() => { void refetch(); }}>
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
@@ -54,7 +54,7 @@ export default function ProjectModelsScreen() {
             <RefreshControl refreshing={isRefetching} onRefresh={() => { void refetch(); }} />
           }
           ListEmptyComponent={
-            <View style={styles.centered}><Text style={styles.muted}>No models in this project.</Text></View>
+            <View style={styles.centered}><Text style={styles.muted}>No documents in this project.</Text></View>
           }
           renderItem={({ item }) => {
             const ready = latestReadyFile(item);

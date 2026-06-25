@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
-import { CaretDownIcon, Crosshair, X } from '@bimstitch/ui/icons';
+import { CaretDownIcon, Crosshair, X } from '@bimdossier/ui/icons';
 import {
   useCallback,
   useEffect,
@@ -18,32 +18,35 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Skeleton,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 import { toast } from 'sonner';
 
 import type {
   DocumentLoadedInfo,
   DocumentViewerHandle,
   ViewerHandle,
-} from '@bimstitch/viewer';
+} from '@bimdossier/viewer';
 
 import {
   ToolbarDivider,
   ToolbarGroup,
 } from '@/components/shared/viewer/shared/_toolbarPrimitives';
+import { useAlignedSheets } from '@/features/aligned-sheets/hooks';
 import { useSheetCalibration } from '@/features/aligned-sheets/useSheetCalibration';
-import { modelsWithVersionsKey } from '@/features/models/queryKeys';
+import { useProjectLevels } from '@/features/levels/hooks';
+import { documentsWithVersionsKey } from '@/features/documents/queryKeys';
 import { useStoreys } from '@/features/storeys/useStoreys';
+import { useCalibrationEntryCamera } from '@/features/viewer/2d/useCalibrationEntryCamera';
 import { useFloorPlanData } from '@/features/viewer/2d/useFloorPlanData';
 import { buildStoreyMembership } from '@/features/viewer/3d/minimap/storeyMembership';
 import { useViewerBundle } from '@/features/viewer/shared/useViewerBundle';
-import { listModelsWithVersions } from '@/lib/api/models';
-import type { ModelWithVersions } from '@/lib/api/schemas';
+import { listDocumentsWithVersions } from '@/lib/api/documents';
+import type { DocumentWithVersions } from '@/lib/api/schemas';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
 
 const DocumentViewer = dynamic(
-  () => import('@bimstitch/viewer').then((m) => m.DocumentViewer),
+  () => import('@bimdossier/viewer').then((m) => m.DocumentViewer),
   { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
 );
 
@@ -62,7 +65,7 @@ type Props = {
 };
 
 /** Resolve a model's head ProjectFile id (restore pointer, else newest ready). */
-function headFileId(model: ModelWithVersions): string | null {
+function headFileId(model: DocumentWithVersions): string | null {
   if (model.head_file_id) return model.head_file_id;
   const ready = model.versions
     .filter((v) => v.status === 'ready')
@@ -88,36 +91,40 @@ export function CalibrationPane({
 }: Props): JSX.Element {
   const t = useTranslations('viewer');
 
-  const modelsQuery = useAuthQuery({
-    queryKey: modelsWithVersionsKey(projectId),
-    queryFn: (token) => listModelsWithVersions(token, projectId),
+  const documentsQuery = useAuthQuery({
+    queryKey: documentsWithVersionsKey(projectId),
+    queryFn: (token) => listDocumentsWithVersions(token, projectId),
     enabled: projectId.length > 0,
   });
-  const pdfModels = useMemo(
-    () => (modelsQuery.data ?? []).filter((m) => m.primary_file_type === 'pdf'),
-    [modelsQuery.data],
+  const pdfDocuments = useMemo(
+    () => (documentsQuery.data ?? []).filter((m) => m.primary_file_type === 'pdf'),
+    [documentsQuery.data],
   );
 
+  // Levels are the alignment target (the shared spine). Storeys of the 3D model
+  // are still needed to isolate the matching floor in the 3D pane for picking.
+  const levelsQuery = useProjectLevels(projectId);
+  const levels = useMemo(() => levelsQuery.data ?? [], [levelsQuery.data]);
   const storeysQuery = useStoreys(projectId, planApiModelId ?? '');
   const storeys = useMemo(() => storeysQuery.data ?? [], [storeysQuery.data]);
 
   const [selectedPdfModelId, setSelectedPdfModelId] = useState<string | null>(null);
-  const [selectedStoreyId, setSelectedStoreyId] = useState<string | null>(null);
+  const [selectedLevelId, setSelectedLevelId] = useState<string | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [docHandle, setDocHandle] = useState<DocumentViewerHandle | null>(null);
 
   // Default the selections once data lands.
   useEffect(() => {
-    if (selectedPdfModelId === null && pdfModels.length > 0) {
-      setSelectedPdfModelId(pdfModels[0]!.id);
+    if (selectedPdfModelId === null && pdfDocuments.length > 0) {
+      setSelectedPdfModelId(pdfDocuments[0]!.id);
     }
-  }, [pdfModels, selectedPdfModelId]);
+  }, [pdfDocuments, selectedPdfModelId]);
   useEffect(() => {
-    if (selectedStoreyId === null && storeys.length > 0) {
-      setSelectedStoreyId(storeys[0]!.id);
+    if (selectedLevelId === null && levels.length > 0) {
+      setSelectedLevelId(levels[0]!.id);
     }
-  }, [storeys, selectedStoreyId]);
+  }, [levels, selectedLevelId]);
 
   // Plan axes (for minimap calibration) + element→storey membership (for 3D
   // isolation). Both come from the 3D model's floor-plan artifact + metadata —
@@ -126,10 +133,15 @@ export function CalibrationPane({
   const levelFallback = useCallback((n: number) => String(n), []);
   const { planAxisX, planAxisY } = useFloorPlanData(floorPlansUrl, metadata, levelFallback);
   const storeyMembership = useMemo(() => buildStoreyMembership(metadata), [metadata]);
+  // The 3D model's storey that reconciles onto the selected level (for isolation).
   const selectedStorey = useMemo(
-    () => storeys.find((s) => s.id === selectedStoreyId) ?? null,
-    [storeys, selectedStoreyId],
+    () => storeys.find((s) => s.level_id === selectedLevelId) ?? null,
+    [storeys, selectedLevelId],
   );
+
+  // Orient the 3D pane to a top-down orthographic view to match the flat 2D PDF
+  // (restores the prior projection + nav mode when leaving calibration).
+  useCalibrationEntryCamera({ viewerHandle, viewerReady });
 
   // Calibrate the minimap here too — in calibration mode neither the Split pane
   // nor the minimap pop-out is mounted, so without this `minimap.projectPoint`
@@ -162,8 +174,8 @@ export function CalibrationPane({
   }, [viewerHandle, viewerReady, selectedStorey, storeyMembership]);
 
   const selectedModel = useMemo(
-    () => pdfModels.find((m) => m.id === selectedPdfModelId) ?? null,
-    [pdfModels, selectedPdfModelId],
+    () => pdfDocuments.find((m) => m.id === selectedPdfModelId) ?? null,
+    [pdfDocuments, selectedPdfModelId],
   );
   const pdfFileId = selectedModel ? headFileId(selectedModel) : null;
 
@@ -174,13 +186,33 @@ export function CalibrationPane({
   );
   const fileUrl = bundleQuery.data?.file_url ?? null;
 
+  // An existing sheet for this exact storey + PDF model + page. If present, the
+  // run reuses it (overwrite-in-place via /calibrate) instead of creating a new
+  // one — otherwise the create trips the (storey, pdf_model, page) uniqueness
+  // constraint and fails with ALIGNED_SHEET_DUPLICATE.
+  const alignedSheetsQuery = useAlignedSheets(
+    projectId,
+    planApiModelId ? { modelId: planApiModelId } : {},
+  );
+  const existingSheet = useMemo(
+    () =>
+      (alignedSheetsQuery.data ?? []).find(
+        (s) =>
+          s.level_id === selectedLevelId &&
+          s.pdf_model_id === selectedPdfModelId &&
+          s.page_index === pageIndex,
+      ) ?? null,
+    [alignedSheetsQuery.data, selectedLevelId, selectedPdfModelId, pageIndex],
+  );
+
   const { step, errorCode, start, cancel } = useSheetCalibration({
     projectId,
     modelId: planApiModelId ?? '',
-    storeyId: selectedStoreyId ?? '',
+    levelId: selectedLevelId ?? '',
     pdfModelId: selectedPdfModelId ?? '',
     pageIndex,
     pdfFileId: pdfFileId ?? undefined,
+    existingSheetId: existingSheet?.id,
     viewerHandle,
     documentHandle: docHandle,
     pickPdfMessage: t('aligned.pickPdf'),
@@ -200,7 +232,7 @@ export function CalibrationPane({
   const ready =
     viewerReady &&
     docHandle !== null &&
-    selectedStoreyId !== null &&
+    selectedLevelId !== null &&
     selectedPdfModelId !== null;
 
   const stepLabel = ((): string | null => {
@@ -236,8 +268,8 @@ export function CalibrationPane({
     [numPages],
   );
 
-  const storeyLabel =
-    storeys.find((s) => s.id === selectedStoreyId)?.name ?? t('aligned.pickStorey');
+  const levelLabel =
+    levels.find((l) => l.id === selectedLevelId)?.name ?? t('aligned.pickLevel');
   const modelLabel = selectedModel?.name ?? t('aligned.pickPdfModel');
 
   return (
@@ -247,7 +279,7 @@ export function CalibrationPane({
         <ToolbarGroup className="gap-0.5">
           <Crosshair className="mx-1 h-3.5 w-3.5 text-foreground-tertiary" aria-hidden />
           <Dropdown label={modelLabel} disabled={active}>
-            {pdfModels.map((m) => (
+            {pdfDocuments.map((m) => (
               <DropdownMenuItem key={m.id} onSelect={() => { setSelectedPdfModelId(m.id); }}>
                 {m.name}
               </DropdownMenuItem>
@@ -262,10 +294,10 @@ export function CalibrationPane({
             ))}
           </Dropdown>
           <ToolbarDivider />
-          <Dropdown label={storeyLabel} disabled={active}>
-            {storeys.map((s) => (
-              <DropdownMenuItem key={s.id} onSelect={() => { setSelectedStoreyId(s.id); }}>
-                {s.name ?? s.id}
+          <Dropdown label={levelLabel} disabled={active}>
+            {levels.map((l) => (
+              <DropdownMenuItem key={l.id} onSelect={() => { setSelectedLevelId(l.id); }}>
+                {l.name}
               </DropdownMenuItem>
             ))}
           </Dropdown>
@@ -277,11 +309,19 @@ export function CalibrationPane({
             </Button>
           ) : (
             <Button type="button" variant="primary" size="sm" disabled={!ready} onClick={onStart}>
-              {t('aligned.start')}
+              {existingSheet?.is_calibrated ? t('aligned.recalibrate') : t('aligned.start')}
             </Button>
           )}
         </ToolbarGroup>
       </div>
+
+      {/* Already-aligned hint: the run will overwrite the existing transform.
+          Idle-only so it never collides with the stepper/error banner (top-16). */}
+      {step === 'idle' && existingSheet?.is_calibrated && (
+        <div className="absolute left-1/2 top-16 z-10 max-w-[320px] -translate-x-1/2 rounded-md border border-border bg-surface-low px-3 py-1.5 text-center text-caption text-foreground-secondary shadow-sm">
+          {t('aligned.replaceHint')}
+        </div>
+      )}
 
       {/* Stepper / status banner */}
       {(stepLabel !== null || errorMessage !== null) && (
@@ -295,12 +335,12 @@ export function CalibrationPane({
       )}
 
       {/* Missing prerequisites hints */}
-      {planApiModelId !== null && storeys.length === 0 && !storeysQuery.isLoading && (
+      {levels.length === 0 && !levelsQuery.isLoading && (
         <div className="absolute inset-x-6 top-28 z-10 rounded-md border border-border bg-surface-low p-3 text-center text-caption text-foreground-secondary">
-          {t('aligned.noStoreys')}
+          {t('aligned.noLevels')}
         </div>
       )}
-      {pdfModels.length === 0 && !modelsQuery.isLoading && (
+      {pdfDocuments.length === 0 && !documentsQuery.isLoading && (
         <div className="absolute inset-x-6 top-40 z-10 rounded-md border border-border bg-surface-low p-3 text-center text-caption text-foreground-secondary">
           {t('aligned.noPdfModels')}
         </div>

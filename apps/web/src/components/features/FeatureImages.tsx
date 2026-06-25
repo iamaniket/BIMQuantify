@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import type { JSX } from 'react';
 
-import { Eyebrow } from '@bimstitch/ui';
+import { Eyebrow } from '@bimdossier/ui';
 
 import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
 import { Reveal } from '@/components/shared/Reveal';

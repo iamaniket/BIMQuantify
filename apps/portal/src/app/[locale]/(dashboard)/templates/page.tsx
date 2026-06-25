@@ -1,11 +1,11 @@
 'use client';
 
-import { LayoutGrid, Plus, Table2 } from '@bimstitch/ui/icons';
+import { LayoutGrid, Plus, Table2 } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useMemo, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
-import { Badge, Button, Select, Skeleton, TabsContent } from '@bimstitch/ui';
+import { Badge, Button, Select, Skeleton, TabsContent } from '@bimdossier/ui';
 
 import { SearchInput, TableToolbar } from '@/components/shared/PageTable';
 import { TablePaginationFooter } from '@/components/shared/TablePaginationFooter';

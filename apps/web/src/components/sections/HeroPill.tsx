@@ -1,4 +1,4 @@
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 import type { JSX, ReactNode } from 'react';
 
 type HeroPillProps = {
@@ -11,7 +11,7 @@ type HeroPillProps = {
 /**
  * White-on-gradient pill used inside `HeroShell` (badges, title chips, tags).
  * The translucent-white look only reads on the brand gradient, so this lives
- * next to `HeroShell` rather than in `@bimstitch/ui` (whose `Badge` is
+ * next to `HeroShell` rather than in `@bimdossier/ui` (whose `Badge` is
  * token-themed for on-surface use).
  */
 export function HeroPill({ children, compact, className }: HeroPillProps): JSX.Element {

@@ -1,11 +1,11 @@
 'use client';
 
-import { Award, Pencil, Plus, Trash2 } from '@bimstitch/ui/icons';
+import { Award, Pencil, Plus, Trash2 } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
-import { Badge, Button, Card, CardBody, Skeleton } from '@bimstitch/ui';
+import { Badge, Button, Card, CardBody, Skeleton } from '@bimdossier/ui';
 
 import {
   useDeleteReportTemplate,

@@ -1,5 +1,5 @@
 {
-  "name": "@bimstitch/design-tokens",
+  "name": "@bimdossier/design-tokens",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -29,7 +29,7 @@
     "clean": "rimraf dist .turbo"
   },
   "devDependencies": {
-    "@bimstitch/tsconfig": "workspace:*",
+    "@bimdossier/tsconfig": "workspace:*",
     "rimraf": "^5.0.10",
     "typescript": "^5.8.3"
   }

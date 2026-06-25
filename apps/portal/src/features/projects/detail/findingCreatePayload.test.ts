@@ -47,7 +47,7 @@ describe('buildFindingCreatePayload', () => {
     expect(result.payload.description).toBe('Niet afgewerkt');
     expect(result.payload.severity).toBe('high');
     expect(result.payload.bbl_article_ref).toBeNull();
-    expect(result.payload.linked_model_id).toBeNull();
+    expect(result.payload.linked_document_id).toBeNull();
     expect(result.payload.linked_file_id).toBeNull();
     expect(result.payload.linked_element_global_id).toBeNull();
     expect(result.payload.photo_ids).toBeUndefined();
@@ -66,7 +66,7 @@ describe('buildFindingCreatePayload', () => {
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.payload.linked_model_id).toBe('m1');
+    expect(result.payload.linked_document_id).toBe('m1');
     expect(result.payload.linked_file_id).toBe('f1');
     expect(result.payload.linked_element_global_id).toBe('GID123');
     expect(result.payload.linked_file_type).toBe('ifc');

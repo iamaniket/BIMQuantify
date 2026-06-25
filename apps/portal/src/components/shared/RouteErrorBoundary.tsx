@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/nextjs';
 import { useTranslations } from 'next-intl';
 import { useEffect, type JSX } from 'react';
 
-import { Button } from '@bimstitch/ui';
+import { Button } from '@bimdossier/ui';
 
 type Props = {
   error: Error;

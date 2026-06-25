@@ -1,7 +1,7 @@
 """Alembic env for the TENANT chain.
 
 Runs once per tenant schema. The target schema is supplied via the env var
-`BIMSTITCH_TENANT_SCHEMA` (e.g. `org_a1b2c3...`). The schema must already
+`BIMDOSSIER_TENANT_SCHEMA` (e.g. `org_a1b2c3...`). The schema must already
 exist — the provisioning saga creates it before invoking this chain.
 
 Each tenant schema has its own `alembic_version` table so we can track
@@ -20,11 +20,11 @@ from alembic import context
 from sqlalchemy import pool, text
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from bimstitch_api.config import get_settings
-from bimstitch_api.db import Base, is_tenant_table
+from bimdossier_api.config import get_settings
+from bimdossier_api.db import Base, is_tenant_table
 # Import ALL models so the shared Base.metadata is populated; the
 # `_include_object` filter below restricts the chain to tenant-side tables.
-from bimstitch_api.models import (  # noqa: F401
+from bimdossier_api.models import (  # noqa: F401
     AccessRequest,
     AuditLog,
     Borgingsmoment,
@@ -51,10 +51,10 @@ if TYPE_CHECKING:
 
 
 def _target_schema() -> str:
-    schema = os.environ.get("BIMSTITCH_TENANT_SCHEMA")
+    schema = os.environ.get("BIMDOSSIER_TENANT_SCHEMA")
     if not schema:
         raise RuntimeError(
-            "BIMSTITCH_TENANT_SCHEMA env var is required for the tenant migration chain"
+            "BIMDOSSIER_TENANT_SCHEMA env var is required for the tenant migration chain"
         )
     return schema
 

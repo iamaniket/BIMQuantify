@@ -1,12 +1,12 @@
 'use client';
 
-import { ArrowLeft, Download } from '@bimstitch/ui/icons';
+import { ArrowLeft, Download } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useMemo, useState, type JSX } from 'react';
 
-import { Badge, Button, Eyebrow, Skeleton } from '@bimstitch/ui';
+import { Badge, Button, Eyebrow, Skeleton } from '@bimdossier/ui';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 
 import { ComplianceByDomainCard } from '@/features/projects/detail/ComplianceByDomainCard';
@@ -21,7 +21,7 @@ import {
   useComplianceSummary,
   useProjectReports,
 } from '@/features/compliance/hooks';
-import { useModels } from '@/features/models/useModels';
+import { useDocuments } from '@/features/documents/useDocuments';
 import { useProject } from '@/features/projects/useProject';
 import { triggerBrowserDownload } from '@/lib/api/client';
 import { downloadComplianceCsv, downloadComplianceRulesCsv } from '@/lib/api/compliance';
@@ -35,7 +35,7 @@ export default function ReportDetailPage(): JSX.Element {
   const modelIdFromQuery = search.get('modelId') ?? undefined;
 
   const projectQuery = useProject(projectId);
-  const modelsQuery = useModels(projectId);
+  const modelsQuery = useDocuments(projectId);
   const reportsQuery = useProjectReports(projectId, framework);
   const { tokens } = useAuth();
 

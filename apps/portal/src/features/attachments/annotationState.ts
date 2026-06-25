@@ -1,4 +1,4 @@
-import type { Annotation2D } from '@bimstitch/annotation';
+import type { Annotation2D } from '@bimdossier/annotation';
 
 import type { Attachment } from '@/lib/api/schemas';
 

@@ -4,7 +4,7 @@ import path from 'node:path';
 import matter from 'gray-matter';
 import readingTime from 'reading-time';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { fetchBlogPost, fetchBlogPosts } from '../api';
 import type { PostMeta } from './types.js';

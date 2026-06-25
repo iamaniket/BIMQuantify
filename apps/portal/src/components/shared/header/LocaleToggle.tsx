@@ -4,7 +4,7 @@ import { useTransition, type JSX } from 'react';
 
 import { useLocale } from 'next-intl';
 
-import { type Locale } from '@bimstitch/i18n';
+import { type Locale } from '@bimdossier/i18n';
 
 import { usePathname, useRouter } from '@/i18n/navigation';
 

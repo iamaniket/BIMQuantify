@@ -14,7 +14,7 @@
   "en": {
     "title": "Deadline tracking",
     "card": "Automatic computation of bouwmelding, informatieplicht, and gereedmelding deadlines. Email reminders at T-30, T-14, T-7, and T-1 days so you never miss a filing.",
-    "tagline": "Never miss a Wkb filing again",
+    "tagline": "Never miss a deadline again",
     "intro": "BimDossier takes the Wet kwaliteitsborging voor het bouwen (Wkb) timeline and turns it into deadlines it computes and watches for you. The moment you set a project's start and handover dates, it schedules the bouwmelding, the informatieplicht moments, and the gereedmelding for you. Then it reminds your whole team well before each one, so a statutory filing never comes down to someone happening to remember a date.",
     "problemTitle": "Missed deadlines carry real consequences",
     "problem": "The Wkb ties construction to hard statutory dates. The bouwmelding lands four weeks before you break ground, informatieplicht moments fall during the build, and the gereedmelding is due two weeks before handover. Miss one and the fallout is concrete. The bevoegd gezag can halt work, occupancy slips, and the project takes a credibility hit. Now picture tracking all of that by hand across a whole portfolio, each project on its own schedule. It's exactly the kind of repetitive work where one oversight slips past everyone until it's too late to recover.",
@@ -74,7 +74,7 @@
   "nl": {
     "title": "Deadlines bijhouden",
     "card": "Automatische berekening van bouwmelding-, informatieplicht- en gereedmeldingsdeadlines. E-mailherinneringen op T-30, T-14, T-7 en T-1 dagen zodat u geen indienmoment mist.",
-    "tagline": "Mis nooit meer een Wkb-indiening",
+    "tagline": "Mis nooit meer een deadline",
     "intro": "BimDossier zet de tijdlijn van de Wet kwaliteitsborging voor het bouwen (Wkb) om in deadlines die het voor u berekent en bewaakt. Zodra u de start- en opleverdatum van een project instelt, plant het de bouwmelding, de informatieplichtmomenten en de gereedmelding automatisch in. Vervolgens herinnert het uw hele team ruim van tevoren, zodat een wettelijke indiening nooit afhangt van iemand die toevallig aan een datum denkt.",
     "problemTitle": "Gemiste deadlines hebben echte gevolgen",
     "problem": "De Wkb koppelt de bouw aan harde wettelijke data. De bouwmelding ligt vier weken vóór aanvang, de informatieplichtmomenten vallen tijdens de bouw en de gereedmelding moet twee weken vóór oplevering. Mist u er één, dan zijn de gevolgen concreet. Het bevoegd gezag kan het werk stilleggen, de oplevering schuift op en de geloofwaardigheid van het project loopt een deuk op. Stel u nu voor dat u dit allemaal handmatig bijhoudt voor een heel portfolio, elk project met een eigen planning. Het is precies het soort repetitief werk waarbij één vergissing iedereen ontgaat tot het te laat is.",

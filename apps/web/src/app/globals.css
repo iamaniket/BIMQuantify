@@ -1,4 +1,4 @@
-@import '@bimstitch/design-tokens/tokens.css';
+@import '@bimdossier/design-tokens/tokens.css';
 
 /* Brand identity tokens. Owned by the design-tokens package conceptually,
    declared here until they migrate into the shared token bundle. */

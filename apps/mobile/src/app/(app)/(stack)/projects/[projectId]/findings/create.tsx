@@ -75,7 +75,7 @@ export default function FindingCreateScreen() {
         title: title.trim(),
         description: description.trim(),
         severity,
-        linked_model_id: params.modelId ?? null,
+        linked_document_id: params.modelId ?? null,
         linked_file_id: params.fileId ?? null,
         linked_file_type: fileType ?? null,
         anchor_x: anchorX,

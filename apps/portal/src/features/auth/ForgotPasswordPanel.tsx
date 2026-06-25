@@ -1,10 +1,10 @@
 'use client';
 
-import { ArrowRight, Mail } from '@bimstitch/ui/icons';
+import { ArrowRight, Mail } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useId, useState, type FormEvent, type JSX } from 'react';
 
-import { Button, FormField, Input } from '@bimstitch/ui';
+import { Button, FormField, Input } from '@bimdossier/ui';
 
 import { AuthFormIntro } from '@/features/auth/AuthFormIntro';
 import { apiClient } from '@/lib/api/client';

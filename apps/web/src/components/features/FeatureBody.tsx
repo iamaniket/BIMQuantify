@@ -3,8 +3,8 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Eyebrow } from '@bimstitch/ui';
-import { CheckCircle } from '@bimstitch/ui/icons';
+import { Eyebrow } from '@bimdossier/ui';
+import { CheckCircle } from '@bimdossier/ui/icons';
 
 import { Reveal } from '@/components/shared/Reveal';
 

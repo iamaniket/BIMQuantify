@@ -1,10 +1,10 @@
 'use client';
 
-import { MoreHorizontal } from '@bimstitch/ui/icons';
+import { MoreHorizontal } from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import {
   Badge,
@@ -13,7 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { DataTable } from '@/components/shared/DataTable';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';

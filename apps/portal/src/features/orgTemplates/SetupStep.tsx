@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { type Dispatch, type SetStateAction, type JSX } from 'react';
 
-import { Input, Label, Switch, Textarea } from '@bimstitch/ui';
+import { Input, Label, Switch, Textarea } from '@bimdossier/ui';
 
 import { BUILTIN_KEYS, type BuiltinState, type TemplateCategory } from './orgTemplateBuilderTypes';
 

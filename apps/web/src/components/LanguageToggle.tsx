@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useTransition } from 'react';
 import type { JSX } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 import { usePathname, useRouter } from '@/i18n/navigation';
 

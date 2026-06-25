@@ -11,20 +11,20 @@ import pytest
 from fastapi_users.password import PasswordHelper
 from sqlalchemy import select
 
-from bimstitch_api.models.access_request import AccessRequest, AccessRequestStatus
-from bimstitch_api.models.organization import Organization, OrganizationStatus
-from bimstitch_api.models.organization_member import (
+from bimdossier_api.models.access_request import AccessRequest, AccessRequestStatus
+from bimdossier_api.models.organization import Organization, OrganizationStatus
+from bimdossier_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
 )
-from bimstitch_api.models.user import User
-from bimstitch_api.tenancy import schema_name_for
+from bimdossier_api.models.user import User
+from bimdossier_api.tenancy import schema_name_for
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from bimstitch_api.email.transport import InMemoryEmailTransport
+    from bimdossier_api.email.transport import InMemoryEmailTransport
 
 
 PASSWORD = "correct-horse-battery"
@@ -245,9 +245,9 @@ def stub_provisioning(monkeypatch: pytest.MonkeyPatch) -> None:
     alembic / grants so the approve test can hit the route without setting
     up real per-tenant schemas.
     """
-    from bimstitch_api.admin import provisioning as prov_module
-    from bimstitch_api.db import get_session_maker
-    from bimstitch_api.routers import admin_organizations as router_module
+    from bimdossier_api.admin import provisioning as prov_module
+    from bimdossier_api.db import get_session_maker
+    from bimdossier_api.routers import admin_organizations as router_module
 
     async def _fake_provision(
         *,
@@ -535,7 +535,7 @@ async def test_approve_marks_ar_approved_when_email_dispatch_raises(
     saga's org+user+member committed but AR stranded at `new` — the admin then
     hit ORG_NAME_TAKEN on retry. See admin_organizations._dispatch_invite_email.
     """
-    from bimstitch_api.email.transport import (
+    from bimdossier_api.email.transport import (
         InMemoryEmailTransport,
         set_email_transport,
     )

@@ -25,7 +25,7 @@ export function buildOptimisticFinding(
     deadline_date: null,
     bbl_article_ref: null,
     created_by_user_id: userId ?? PLACEHOLDER_USER_ID,
-    linked_model_id: input.linked_model_id ?? null,
+    linked_document_id: input.linked_document_id ?? null,
     linked_file_id: input.linked_file_id ?? null,
     linked_element_global_id: null,
     linked_file_type: input.linked_file_type ?? null,

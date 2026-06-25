@@ -192,7 +192,7 @@ export function AppSidebar(props: DrawerContentComponentProps) {
           <BrandMark size={34} />
           <View style={styles.brandText}>
             <Text style={styles.wordmark}>BimDossier</Text>
-            <Text style={styles.tagline}>BIMstitch Platform</Text>
+            <Text style={styles.tagline}>BimDossier Platform</Text>
           </View>
         </View>
       </View>

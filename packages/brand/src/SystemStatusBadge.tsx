@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 export type SystemStatusValue = 'normal' | 'degraded' | 'down' | 'loading';
 

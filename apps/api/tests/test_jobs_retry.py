@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import bimstitch_api.jobs.lifecycle as lifecycle_mod
-from bimstitch_api.jobs import DispatchJobError, set_job_dispatcher
-from bimstitch_api.jobs.dispatcher import JobConcurrencyError
+import bimdossier_api.jobs.lifecycle as lifecycle_mod
+from bimdossier_api.jobs import DispatchJobError, set_job_dispatcher
+from bimdossier_api.jobs.dispatcher import JobConcurrencyError
 from tests.conftest import FakeStorage, _auth
 from tests.test_project_files_extraction import _bearer, _ready_file
 
@@ -40,7 +40,7 @@ async def test_retry_retriable_job_creates_new_job(
 
     set_job_dispatcher(_boom)
     client, fake = fake_storage_client
-    project_id, _model_id, file_id = await _ready_file(client, fake, org_user, name="r1.ifc")
+    project_id, _document_id, file_id = await _ready_file(client, fake, org_user, name="r1.ifc")
 
     failed = await _latest_job(client, org_user["access_token"], project_id)
     assert failed["status"] == "failed"
@@ -80,7 +80,7 @@ async def test_retry_permanent_failure_rejected(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, _model_id, file_id = await _ready_file(client, fake, org_user, name="r2.ifc")
+    project_id, _document_id, file_id = await _ready_file(client, fake, org_user, name="r2.ifc")
     job = await _latest_job(client, org_user["access_token"], project_id)
 
     # Worker reports a permanent failure (retriable omitted → False).
@@ -111,7 +111,7 @@ async def test_retry_non_failed_rejected(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, _model_id, _file_id = await _ready_file(client, fake, org_user, name="r3.ifc")
+    project_id, _document_id, _file_id = await _ready_file(client, fake, org_user, name="r3.ifc")
     job = await _latest_job(client, org_user["access_token"], project_id)
     assert job["status"] == "pending"
 
@@ -134,7 +134,7 @@ async def test_retry_concurrency_limit_returns_429(
 
     set_job_dispatcher(_boom)
     client, fake = fake_storage_client
-    project_id, _model_id, _file_id = await _ready_file(client, fake, org_user, name="r4.ifc")
+    project_id, _document_id, _file_id = await _ready_file(client, fake, org_user, name="r4.ifc")
     failed = await _latest_job(client, org_user["access_token"], project_id)
 
     async def _too_many(*_a: object, **_k: object) -> None:
@@ -160,7 +160,7 @@ async def test_retry_dispatch_failure_marks_new_job_failed(
 
     set_job_dispatcher(_boom)
     client, fake = fake_storage_client
-    project_id, _model_id, _file_id = await _ready_file(client, fake, org_user, name="r5.ifc")
+    project_id, _document_id, _file_id = await _ready_file(client, fake, org_user, name="r5.ifc")
     failed = await _latest_job(client, org_user["access_token"], project_id)
 
     # Dispatcher still failing — the retry's fresh job should land failed but
@@ -187,7 +187,7 @@ async def test_retry_job_rejected_when_project_archived(
 
     set_job_dispatcher(_boom)
     client, fake = fake_storage_client
-    project_id, _model_id, _file_id = await _ready_file(client, fake, org_user, name="arch.ifc")
+    project_id, _document_id, _file_id = await _ready_file(client, fake, org_user, name="arch.ifc")
 
     failed = await _latest_job(client, org_user["access_token"], project_id)
     assert failed["status"] == "failed"

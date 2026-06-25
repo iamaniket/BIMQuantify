@@ -7,7 +7,7 @@ import {
 
 import type {
   DocumentViewerHandle, MeasurementController, SectionPlane, ViewerHandle,
-} from '@bimstitch/viewer';
+} from '@bimdossier/viewer';
 
 import type { PanelId, RailBadge } from '@/components/shared/viewer/shared/SideRail';
 import type { ViewerFormat } from '@/components/shared/viewer/shared/viewerMode';

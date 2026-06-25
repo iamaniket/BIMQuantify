@@ -1,6 +1,6 @@
 'use client';
 
-import { Upload } from '@bimstitch/ui/icons';
+import { Upload } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -19,7 +19,7 @@ import {
   Label,
   Select,
   Textarea,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import type { CertificateTypeValue } from '@/lib/api/schemas';
 

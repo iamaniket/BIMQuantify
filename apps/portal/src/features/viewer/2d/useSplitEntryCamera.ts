@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 
-import type { ViewerHandle } from '@bimstitch/viewer';
+import type { ViewerHandle } from '@bimdossier/viewer';
 
 import type { FloorPlanDisplayLevel } from './useFloorPlanData';
 

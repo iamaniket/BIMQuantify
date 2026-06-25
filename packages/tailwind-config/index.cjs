@@ -1,5 +1,5 @@
 /**
- * Shared Tailwind preset for BIMstitch apps.
+ * Shared Tailwind preset for BimDossier apps.
  * Consumers add their own `content` paths and inherit `darkMode` + `theme.extend` from here.
  */
 /** @type {import('tailwindcss').Config} */

@@ -6,7 +6,7 @@
 //
 // Device chrome from the mock (fake status bar, home indicator) is dropped —
 // the real OS supplies those; we pad by safe-area insets instead.
-import { NL_ASPECT_RATIO, type MapMarker } from '@bimstitch/map';
+import { NL_ASPECT_RATIO, type MapMarker } from '@bimdossier/map';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   Keyboard,

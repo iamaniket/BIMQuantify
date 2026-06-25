@@ -16,13 +16,13 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimstitch_api.email.transport import InMemoryEmailTransport
-from bimstitch_api.models.organization import Organization, OrganizationStatus
-from bimstitch_api.models.organization_member import (
+from bimdossier_api.email.transport import InMemoryEmailTransport
+from bimdossier_api.models.organization import Organization, OrganizationStatus
+from bimdossier_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
 )
-from bimstitch_api.models.user import User
+from bimdossier_api.models.user import User
 from tests.conftest import make_test_user
 
 NEW_PASSWORD = "fresh-horse-staple-67"

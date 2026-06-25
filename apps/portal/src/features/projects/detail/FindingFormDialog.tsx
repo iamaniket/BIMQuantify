@@ -11,7 +11,7 @@ import {
   Label,
   Select,
   Textarea,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { FormDialog } from '@/components/shared/FormDialog';
 import { Field } from '@/components/shared/forms/Field';

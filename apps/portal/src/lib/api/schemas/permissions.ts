@@ -20,7 +20,7 @@ export type PermissionAction = z.infer<typeof PermissionActionEnum>;
 
 export const PermissionResourceEnum = z.enum([
   'project',
-  'model',
+  'document',
   'project_file',
   'member',
   'invitation',

@@ -221,6 +221,16 @@ export interface ViewerContext {
    */
   requestRender: () => void;
   /**
+   * Re-derive the orthographic camera's frustum aspect from the live canvas
+   * size. ThatOpen keeps the ortho frustum in sync via a fragile size-delta
+   * (no absolute recompute), so a projection switch coinciding with a container
+   * resize — entering calibration's top-down split — can desync the frustum
+   * aspect from the canvas and squeeze the model. Plugins that switch to
+   * orthographic (`camera.setProjection`) call this as the last write to correct
+   * it. No-op in perspective; idempotent.
+   */
+  syncOrthoAspect: () => void;
+  /**
    * Precomputed-outline supply handed to `loadFragments` for this model, if
    * any. Resolves to the compressed artifact bytes, or null when the fetch
    * failed — consumers (outline plugin) decode it and fall back to

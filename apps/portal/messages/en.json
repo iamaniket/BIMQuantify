@@ -267,8 +267,8 @@
   "breadcrumbs": {
     "projects": "Projects",
     "project": "Project",
-    "model": "Model",
-    "allModels": "All models",
+    "model": "Document",
+    "allModels": "All documents",
     "report": "Report",
     "settings": "Settings",
     "admin": "Admin",
@@ -283,7 +283,7 @@
     "appName": "BimDossier"
   },
   "modelSwitcher": {
-    "switchModel": "Switch model",
+    "switchModel": "Switch document",
     "noViewableFile": "Not viewable",
     "type2d": "2D",
     "type3d": "3D"
@@ -920,7 +920,7 @@
         "totalSub": "files",
         "imagesLabel": "Images",
         "imagesSub": "photos",
-        "documentsLabel": "Documents",
+        "documentsLabel": "Office files",
         "documentsSub": "PDFs & office",
         "sizeLabel": "Total size",
         "sizeSub": "stored"
@@ -944,7 +944,7 @@
       "overview": {
         "total": "Total",
         "images": "Images",
-        "documents": "Documents",
+        "documents": "Office files",
         "totalSize": "Total size",
         "byCategoryTitle": "By category",
         "donutCenterLabel": "files",
@@ -958,7 +958,7 @@
         "image": "Images",
         "video": "Videos",
         "audio": "Audio",
-        "office": "Documents",
+        "office": "Office files",
         "other": "Other"
       }
     }
@@ -1111,18 +1111,18 @@
       },
       "dossier": {
         "optionalBadge": "Optional",
-        "statusProvided": "{count, plural, =1 {1 document} other {# documents}} provided",
+        "statusProvided": "{count, plural, =1 {1 proof} other {# proofs}} provided",
         "statusMissing": "Missing",
         "derivedCount": "{count, plural, =1 {1 open} other {# open}}",
         "uploadCta": "Upload",
         "uploadCertificate": "Upload certificate",
-        "addModel": "Add model",
-        "linkExisting": "Link an existing document",
+        "addModel": "Add document",
+        "linkExisting": "Link an existing proof",
         "uploadSuccess": "Uploaded {name}",
-        "linkSuccess": "Document linked to the dossier",
-        "linkDialogTitle": "Link an existing document",
-        "linkDialogDescription": "Pick an already-uploaded document to satisfy this requirement.",
-        "linkEmpty": "No untagged documents available. Upload a new one instead.",
+        "linkSuccess": "Proof linked to the dossier",
+        "linkDialogTitle": "Link an existing proof",
+        "linkDialogDescription": "Pick an already-uploaded proof to satisfy this requirement.",
+        "linkEmpty": "No untagged proofs available. Upload a new one instead.",
         "emptyTitle": "No dossier checklist available",
         "emptyDescription": "This project's jurisdiction has no dossier requirements configured yet.",
         "expiredCertWarning": "Certificate expired or expiring soon"
@@ -1143,9 +1143,9 @@
         "noActivity": "No activity yet",
         "done": "Done",
         "missing": "Missing",
-        "models": "Models",
+        "models": "Documents",
         "photos": "Photos",
-        "documents": "Documents",
+        "documents": "Office files",
         "certificates": "Certificates",
         "findings": "Findings",
         "deadlines": "Deadlines",
@@ -1176,39 +1176,58 @@
           "emptyDossier": "No dossier requirements yet"
         }
       },
-      "models": {
-        "label": "Models",
+      "documents": {
+        "label": "Documents",
         "eyebrow": "BIM workspace",
-        "subtitle": "{count, plural, =0 {No models yet} =1 {1 model} other {# models}}",
+        "subtitle": "{count, plural, =0 {No documents yet} =1 {1 document} other {# documents}}",
         "columnName": "Name",
-        "searchPlaceholder": "Search models…",
-        "noResults": "No models match your search.",
+        "searchPlaceholder": "Search documents…",
+        "noResults": "No documents match your search.",
         "filterAll": "All disciplines",
         "filterArchitectural": "Architectural",
         "filterStructural": "Structural",
         "filterMep": "MEP",
         "filterCoordination": "Coordination",
         "filterOther": "Other",
-        "newModel": "New model",
+        "newModel": "New document",
+        "newLevel": "New level",
+        "group": {
+          "models3d": "3D models",
+          "unassigned": "Unassigned drawings"
+        },
+        "assignLevel": {
+          "label": "Level",
+          "unassigned": "Unassigned"
+        },
+        "assignDiscipline": {
+          "label": "Discipline",
+          "options": {
+            "architectural": "Architectural",
+            "structural": "Structural",
+            "mep": "MEP",
+            "coordination": "Coordination",
+            "other": "Other"
+          }
+        },
         "loadSelected": "Load selected ({count})",
         "loadAll": "Load all",
         "loadAll3d": "Load all 3D",
         "loadAll2d": "Load all 2D",
         "loadAllMenu": "Load options",
-        "selectedCount": "{count, plural, =1 {1 model selected} other {# models selected}}",
+        "selectedCount": "{count, plural, =1 {1 document selected} other {# documents selected}}",
         "clearSelection": "Clear",
         "bulkCheckBbl": "Check Bbl",
         "bulkDownload": "Download",
         "bulkRemove": "Remove",
-        "bulkRemoveTitle": "{count, plural, =1 {Remove model?} other {Remove # models?}}",
-        "bulkRemoveBody": "{count, plural, =1 {This permanently deletes the selected model and all its file versions.} other {This permanently deletes the # selected models and all their file versions.}} This cannot be undone.",
+        "bulkRemoveTitle": "{count, plural, =1 {Remove document?} other {Remove # documents?}}",
+        "bulkRemoveBody": "{count, plural, =1 {This permanently deletes the selected document and all its file versions.} other {This permanently deletes the # selected documents and all their file versions.}} This cannot be undone.",
         "bulkRemoveConfirm": "Remove",
         "cancel": "Cancel",
-        "emptyState": "No models yet",
-        "emptyDescription": "Upload IFC files to view and manage your BIM models.",
-        "newModelDialog": {
-          "title": "New model",
-          "description": "Group file versions by discipline. You can upload a file into the model after creating it.",
+        "emptyState": "No documents yet",
+        "emptyDescription": "Upload IFC files to view and manage your BIM documents.",
+        "newDocumentDialog": {
+          "title": "New document",
+          "description": "Group file versions by discipline. You can upload a file into the document after creating it.",
           "submitCreate": "Create",
           "submitCreating": "Creating…",
           "cancel": "Cancel",
@@ -1217,15 +1236,7 @@
           },
           "fields": {
             "name": "Name",
-            "discipline": "Discipline",
             "status": "Status"
-          },
-          "disciplines": {
-            "architectural": "Architectural",
-            "structural": "Structural",
-            "mep": "MEP",
-            "coordination": "Coordination",
-            "other": "Other"
           },
           "statuses": {
             "active": "Active",
@@ -1233,7 +1244,24 @@
             "archived": "Archived"
           }
         },
+        "newLevelDialog": {
+          "title": "New level",
+          "description": "Levels organise 2D drawings by floor and are the shared spine 3D storeys align to.",
+          "submitCreate": "Create",
+          "submitCreating": "Creating…",
+          "cancel": "Cancel",
+          "errors": {
+            "nameTaken": "This name is taken"
+          },
+          "fields": {
+            "name": "Name",
+            "elevation": "Elevation (m)",
+            "elevationPlaceholder": "e.g. 3.0"
+          }
+        },
         "row": {
+          "kindModel": "3D model",
+          "kindDrawing": "Drawing",
           "noFiles": "No files",
           "viewFile": "View file",
           "selectAria": "Select {name} to load in the viewer",
@@ -1245,7 +1273,7 @@
           "remove": "Remove",
           "versionHistory": "Version history · {count} versions",
           "verCount": "{count} ver",
-          "removeTitle": "Remove model?",
+          "removeTitle": "Remove document?",
           "removeBody": "This permanently deletes “{name}” and all its file versions. This cannot be undone.",
           "removeConfirm": "Remove",
           "restore": "Restore",
@@ -1377,7 +1405,7 @@
             "photo": "Photo",
             "certificate": "Certificate",
             "measurement": "Measurement",
-            "document": "Document",
+            "document": "Report",
             "signature": "Signature"
           }
         }
@@ -1430,7 +1458,7 @@
         "filterImage": "Images",
         "filterVideo": "Videos",
         "filterAudio": "Audio",
-        "filterOffice": "Documents",
+        "filterOffice": "Office files",
         "captureLink": "Capture link",
         "captureLinkTitle": "Create capture link",
         "captureLinkDescription": "Generate a shareable link that lets anyone upload photos or files to this project without logging in.",
@@ -1489,7 +1517,7 @@
         "uploadButton": "Upload",
         "moreUploadOptions": "More upload options",
         "uploadTitle": "Upload certificate",
-        "uploadDescription": "Add a proof-of-conformity document with its type and validity window.",
+        "uploadDescription": "Add a proof of conformity with its type and validity window.",
         "versionBadge": "v{n}",
         "uploadNewVersion": "Upload new version",
         "newVersionTitle": "Upload new version",
@@ -1576,7 +1604,7 @@
         },
         "filing": {
           "dialogTitle": "File {label}",
-          "readinessHeading": "Document readiness",
+          "readinessHeading": "Dossier readiness",
           "readyCount": "{ready} of {total} required items ready",
           "warningIncomplete": "Some required documents are missing. You can still proceed.",
           "allReady": "All required documents are present.",
@@ -3366,7 +3394,7 @@
       "risk": "Risks",
       "bcf_topic": "BCF issues",
       "bcf_comment": "BCF comments",
-      "model": "Models",
+      "document": "Documents",
       "project_file": "Files",
       "project_files": "Files",
       "attachment": "Attachments",
@@ -3383,9 +3411,9 @@
       "project": "Project",
       "project_member": "Members"
     },
-    "modelCreated": "Created model {name}",
-    "modelUpdated": "Updated model {name}",
-    "modelDeleted": "Deleted model {name}",
+    "documentCreated": "Created document {name}",
+    "documentUpdated": "Updated document {name}",
+    "documentDeleted": "Deleted document {name}",
     "fileCompleted": "Added {filename}",
     "fileRejected": "Rejected {filename}",
     "fileDeleted": "Removed {filename}",
@@ -3481,7 +3509,9 @@
       "levelFallback": "Level {n}",
       "clickToNavigate": "Click to move the 3D view here",
       "isolateLevel": "Isolate level",
-      "allLevels": "All levels"
+      "allLevels": "All levels",
+      "showAlignedSheet": "Show aligned PDF",
+      "showGeneratedPlan": "Show generated plan"
     },
     "viewMode": {
       "label": "View",
@@ -3497,10 +3527,12 @@
     "aligned": {
       "pickPdfModel": "PDF drawing",
       "pickPage": "Page {n}",
-      "pickStorey": "Storey",
+      "pickLevel": "Level",
       "pickPdf": "Click the same point on the PDF",
       "pickModel": "Click the matching point on the model",
       "start": "Start alignment",
+      "recalibrate": "Recalibrate",
+      "replaceHint": "This floor + page is already aligned — recalibrating replaces it.",
       "cancel": "Cancel",
       "step": {
         "pdf1": "Pick point 1 on the PDF",
@@ -3514,7 +3546,7 @@
         "MINIMAP_NOT_CALIBRATED": "The floor plan isn't ready for alignment yet.",
         "generic": "Alignment failed. Please try again."
       },
-      "noStoreys": "This model has no storeys yet. Re-extract the model to enable alignment.",
+      "noLevels": "This project has no levels yet. Create a level (or extract a 3D model) to enable alignment.",
       "noPdfModels": "No PDF model found. Upload a PDF as its own model first."
     },
     "explorer": {

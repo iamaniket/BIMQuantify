@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import type { ViewerHandle, ViewerMode } from '@bimstitch/viewer';
+import type { ViewerHandle, ViewerMode } from '@bimdossier/viewer';
 
 export interface ViewerModeState {
   mode: ViewerMode;

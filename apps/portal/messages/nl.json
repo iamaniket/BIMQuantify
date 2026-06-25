@@ -267,8 +267,8 @@
   "breadcrumbs": {
     "projects": "Projecten",
     "project": "Project",
-    "model": "Model",
-    "allModels": "Alle modellen",
+    "model": "Document",
+    "allModels": "Alle documenten",
     "report": "Rapport",
     "settings": "Instellingen",
     "admin": "Beheer",
@@ -283,7 +283,7 @@
     "appName": "BimDossier"
   },
   "modelSwitcher": {
-    "switchModel": "Model wisselen",
+    "switchModel": "Document wisselen",
     "noViewableFile": "Niet bekijkbaar",
     "type2d": "2D",
     "type3d": "3D"
@@ -920,7 +920,7 @@
         "totalSub": "bestanden",
         "imagesLabel": "Afbeeldingen",
         "imagesSub": "foto's",
-        "documentsLabel": "Documenten",
+        "documentsLabel": "Office-bestanden",
         "documentsSub": "PDF's & office",
         "sizeLabel": "Totale grootte",
         "sizeSub": "opgeslagen"
@@ -944,7 +944,7 @@
       "overview": {
         "total": "Totaal",
         "images": "Afbeeldingen",
-        "documents": "Documenten",
+        "documents": "Office-bestanden",
         "totalSize": "Totale grootte",
         "byCategoryTitle": "Per categorie",
         "donutCenterLabel": "bestanden",
@@ -958,7 +958,7 @@
         "image": "Afbeeldingen",
         "video": "Video's",
         "audio": "Audio",
-        "office": "Documenten",
+        "office": "Office-bestanden",
         "other": "Overig"
       }
     }
@@ -1111,18 +1111,18 @@
       },
       "dossier": {
         "optionalBadge": "Optioneel",
-        "statusProvided": "{count, plural, =1 {1 document} other {# documenten}} aangeleverd",
+        "statusProvided": "{count, plural, =1 {1 bewijs} other {# bewijzen}} aangeleverd",
         "statusMissing": "Ontbreekt",
         "derivedCount": "{count, plural, =1 {1 open} other {# open}}",
         "uploadCta": "Uploaden",
         "uploadCertificate": "Certificaat uploaden",
-        "addModel": "Model toevoegen",
-        "linkExisting": "Bestaand document koppelen",
+        "addModel": "Document toevoegen",
+        "linkExisting": "Een bestaand bewijs koppelen",
         "uploadSuccess": "{name} geüpload",
-        "linkSuccess": "Document gekoppeld aan het dossier",
-        "linkDialogTitle": "Bestaand document koppelen",
-        "linkDialogDescription": "Kies een al geüpload document om aan deze eis te voldoen.",
-        "linkEmpty": "Geen ongetagde documenten beschikbaar. Upload een nieuw document.",
+        "linkSuccess": "Bewijs gekoppeld aan het dossier",
+        "linkDialogTitle": "Een bestaand bewijs koppelen",
+        "linkDialogDescription": "Kies een al geüpload bewijs om aan deze eis te voldoen.",
+        "linkEmpty": "Geen ongetagde bewijzen beschikbaar. Upload een nieuw bewijs.",
         "emptyTitle": "Geen dossierchecklist beschikbaar",
         "emptyDescription": "Voor de jurisdictie van dit project zijn nog geen dossiereisen geconfigureerd.",
         "expiredCertWarning": "Certificaat verlopen of verloopt binnenkort"
@@ -1143,9 +1143,9 @@
         "noActivity": "Nog geen activiteit",
         "done": "Gereed",
         "missing": "Ontbreekt",
-        "models": "Modellen",
+        "models": "Documenten",
         "photos": "Foto's",
-        "documents": "Documenten",
+        "documents": "Office-bestanden",
         "certificates": "Certificaten",
         "findings": "Bevindingen",
         "deadlines": "Deadlines",
@@ -1176,39 +1176,58 @@
           "emptyDossier": "Nog geen dossiervereisten"
         }
       },
-      "models": {
-        "label": "Modellen",
+      "documents": {
+        "label": "Documenten",
         "eyebrow": "BIM-werkruimte",
-        "subtitle": "{count, plural, =0 {Nog geen modellen} =1 {1 model} other {# modellen}}",
+        "subtitle": "{count, plural, =0 {Nog geen documenten} =1 {1 document} other {# documenten}}",
         "columnName": "Naam",
-        "searchPlaceholder": "Modellen zoeken…",
-        "noResults": "Geen modellen komen overeen met uw zoekopdracht.",
+        "searchPlaceholder": "Documenten zoeken…",
+        "noResults": "Geen documenten komen overeen met uw zoekopdracht.",
         "filterAll": "Alle disciplines",
         "filterArchitectural": "Architectuur",
         "filterStructural": "Constructie",
         "filterMep": "Installaties",
         "filterCoordination": "Coördinatie",
         "filterOther": "Overig",
-        "newModel": "Nieuw model",
+        "newModel": "Nieuw document",
+        "newLevel": "Nieuwe verdieping",
+        "group": {
+          "models3d": "3D-modellen",
+          "unassigned": "Niet-toegewezen tekeningen"
+        },
+        "assignLevel": {
+          "label": "Verdieping",
+          "unassigned": "Niet toegewezen"
+        },
+        "assignDiscipline": {
+          "label": "Discipline",
+          "options": {
+            "architectural": "Architectuur",
+            "structural": "Constructie",
+            "mep": "Installaties",
+            "coordination": "Coördinatie",
+            "other": "Overig"
+          }
+        },
         "loadSelected": "Geselecteerde laden ({count})",
         "loadAll": "Alles laden",
         "loadAll3d": "Alle 3D laden",
         "loadAll2d": "Alle 2D laden",
         "loadAllMenu": "Laadopties",
-        "selectedCount": "{count, plural, =1 {1 model geselecteerd} other {# modellen geselecteerd}}",
+        "selectedCount": "{count, plural, =1 {1 document geselecteerd} other {# documenten geselecteerd}}",
         "clearSelection": "Wissen",
         "bulkCheckBbl": "Bbl controleren",
         "bulkDownload": "Downloaden",
         "bulkRemove": "Verwijderen",
-        "bulkRemoveTitle": "{count, plural, =1 {Model verwijderen?} other {# modellen verwijderen?}}",
-        "bulkRemoveBody": "{count, plural, =1 {Hiermee worden het geselecteerde model en alle bestandsversies definitief verwijderd.} other {Hiermee worden de # geselecteerde modellen en al hun bestandsversies definitief verwijderd.}} Dit kan niet ongedaan worden gemaakt.",
+        "bulkRemoveTitle": "{count, plural, =1 {Document verwijderen?} other {# documenten verwijderen?}}",
+        "bulkRemoveBody": "{count, plural, =1 {Hiermee worden het geselecteerde document en alle bestandsversies definitief verwijderd.} other {Hiermee worden de # geselecteerde documenten en al hun bestandsversies definitief verwijderd.}} Dit kan niet ongedaan worden gemaakt.",
         "bulkRemoveConfirm": "Verwijderen",
         "cancel": "Annuleren",
-        "emptyState": "Nog geen modellen",
-        "emptyDescription": "Upload IFC-bestanden om uw BIM-modellen te bekijken en beheren.",
-        "newModelDialog": {
-          "title": "Nieuw model",
-          "description": "Groepeer bestandsversies op discipline. Na het aanmaken kun je een bestand uploaden in het model.",
+        "emptyState": "Nog geen documenten",
+        "emptyDescription": "Upload IFC-bestanden om uw BIM-documenten te bekijken en beheren.",
+        "newDocumentDialog": {
+          "title": "Nieuw document",
+          "description": "Groepeer bestandsversies op discipline. Na het aanmaken kun je een bestand uploaden in het document.",
           "submitCreate": "Aanmaken",
           "submitCreating": "Bezig met aanmaken…",
           "cancel": "Annuleren",
@@ -1217,15 +1236,7 @@
           },
           "fields": {
             "name": "Naam",
-            "discipline": "Discipline",
             "status": "Status"
-          },
-          "disciplines": {
-            "architectural": "Architectuur",
-            "structural": "Constructie",
-            "mep": "Installaties",
-            "coordination": "Coördinatie",
-            "other": "Overig"
           },
           "statuses": {
             "active": "Actief",
@@ -1233,7 +1244,24 @@
             "archived": "Gearchiveerd"
           }
         },
+        "newLevelDialog": {
+          "title": "Nieuwe verdieping",
+          "description": "Verdiepingen ordenen 2D-tekeningen per bouwlaag en vormen de gedeelde spil waarop 3D-bouwlagen worden uitgelijnd.",
+          "submitCreate": "Aanmaken",
+          "submitCreating": "Bezig met aanmaken…",
+          "cancel": "Annuleren",
+          "errors": {
+            "nameTaken": "Deze naam is al in gebruik"
+          },
+          "fields": {
+            "name": "Naam",
+            "elevation": "Hoogte (m)",
+            "elevationPlaceholder": "bijv. 3.0"
+          }
+        },
         "row": {
+          "kindModel": "3D-model",
+          "kindDrawing": "Tekening",
           "noFiles": "Geen bestanden",
           "viewFile": "Bestand bekijken",
           "selectAria": "{name} selecteren om in de viewer te laden",
@@ -1245,7 +1273,7 @@
           "remove": "Verwijderen",
           "versionHistory": "Versiegeschiedenis · {count} versies",
           "verCount": "{count} ver",
-          "removeTitle": "Model verwijderen?",
+          "removeTitle": "Document verwijderen?",
           "removeBody": "Hiermee worden “{name}” en alle bestandsversies definitief verwijderd. Dit kan niet ongedaan worden gemaakt.",
           "removeConfirm": "Verwijderen",
           "restore": "Herstellen",
@@ -1377,7 +1405,7 @@
             "photo": "Foto",
             "certificate": "Certificaat",
             "measurement": "Meting",
-            "document": "Document",
+            "document": "Rapport",
             "signature": "Handtekening"
           }
         }
@@ -1430,7 +1458,7 @@
         "filterImage": "Afbeeldingen",
         "filterVideo": "Video's",
         "filterAudio": "Audio",
-        "filterOffice": "Documenten",
+        "filterOffice": "Office-bestanden",
         "captureLink": "Opnamelink",
         "captureLinkTitle": "Opnamelink aanmaken",
         "captureLinkDescription": "Genereer een deelbare link waarmee iedereen foto's of bestanden kan uploaden naar dit project zonder in te loggen.",
@@ -1489,7 +1517,7 @@
         "uploadButton": "Uploaden",
         "moreUploadOptions": "Meer uploadopties",
         "uploadTitle": "Certificaat uploaden",
-        "uploadDescription": "Voeg een bewijs-van-conformiteit document toe met type en geldigheidsperiode.",
+        "uploadDescription": "Voeg een bewijs-van-conformiteit toe met type en geldigheidsperiode.",
         "versionBadge": "v{n}",
         "uploadNewVersion": "Nieuwe versie uploaden",
         "newVersionTitle": "Nieuwe versie uploaden",
@@ -1576,7 +1604,7 @@
         },
         "filing": {
           "dialogTitle": "Indienen {label}",
-          "readinessHeading": "Documentgereedheid",
+          "readinessHeading": "Dossiergereedheid",
           "readyCount": "{ready} van {total} vereiste items gereed",
           "warningIncomplete": "Sommige vereiste documenten ontbreken. U kunt toch doorgaan.",
           "allReady": "Alle vereiste documenten zijn aanwezig.",
@@ -3366,7 +3394,7 @@
       "risk": "Risico's",
       "bcf_topic": "BCF-kwesties",
       "bcf_comment": "BCF-reacties",
-      "model": "Modellen",
+      "document": "Documenten",
       "project_file": "Bestanden",
       "project_files": "Bestanden",
       "attachment": "Bijlagen",
@@ -3383,9 +3411,9 @@
       "project": "Project",
       "project_member": "Leden"
     },
-    "modelCreated": "Model aangemaakt: {name}",
-    "modelUpdated": "Model bijgewerkt: {name}",
-    "modelDeleted": "Model verwijderd: {name}",
+    "documentCreated": "Document aangemaakt: {name}",
+    "documentUpdated": "Document bijgewerkt: {name}",
+    "documentDeleted": "Document verwijderd: {name}",
     "fileCompleted": "Toegevoegd: {filename}",
     "fileRejected": "Afgewezen: {filename}",
     "fileDeleted": "Verwijderd: {filename}",
@@ -3481,7 +3509,9 @@
       "levelFallback": "Verdieping {n}",
       "clickToNavigate": "Klik om de 3D-weergave hierheen te verplaatsen",
       "isolateLevel": "Verdieping isoleren",
-      "allLevels": "Alle verdiepingen"
+      "allLevels": "Alle verdiepingen",
+      "showAlignedSheet": "Uitgelijnde PDF tonen",
+      "showGeneratedPlan": "Gegenereerde plattegrond tonen"
     },
     "viewMode": {
       "label": "Weergave",
@@ -3497,10 +3527,12 @@
     "aligned": {
       "pickPdfModel": "PDF-tekening",
       "pickPage": "Pagina {n}",
-      "pickStorey": "Bouwlaag",
+      "pickLevel": "Verdieping",
       "pickPdf": "Klik hetzelfde punt op de PDF",
       "pickModel": "Klik het overeenkomende punt op het model",
       "start": "Uitlijnen starten",
+      "recalibrate": "Opnieuw uitlijnen",
+      "replaceHint": "Deze verdieping + pagina is al uitgelijnd — opnieuw uitlijnen vervangt de uitlijning.",
       "cancel": "Annuleren",
       "step": {
         "pdf1": "Kies punt 1 op de PDF",
@@ -3514,7 +3546,7 @@
         "MINIMAP_NOT_CALIBRATED": "De plattegrond is nog niet gereed voor uitlijning.",
         "generic": "Uitlijnen mislukt. Probeer het opnieuw."
       },
-      "noStoreys": "Dit model heeft nog geen bouwlagen. Her-extraheer het model om uitlijnen mogelijk te maken.",
+      "noLevels": "Dit project heeft nog geen verdiepingen. Maak een verdieping aan (of extraheer een 3D-model) om uitlijnen mogelijk te maken.",
       "noPdfModels": "Geen PDF-model gevonden. Upload eerst een PDF als eigen model."
     },
     "explorer": {

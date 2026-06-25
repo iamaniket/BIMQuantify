@@ -3,7 +3,7 @@
 // SubCopy, KpiStrip, StatusRow, FooterLinks) plus the SVG hero background and
 // the Netherlands map. Props-only; all data is threaded in from `login.tsx`.
 //
-// The NL map reuses the shared geometry/projection from `@bimstitch/map`
+// The NL map reuses the shared geometry/projection from `@bimdossier/map`
 // (NL_PROVINCE_PATHS / NL_VIEWBOX / createNlProjection) — identical to the web
 // `NetherlandsMap`, just rendered with react-native-svg instead of DOM SVG.
 import {
@@ -12,7 +12,7 @@ import {
   NL_PROVINCE_PATHS,
   NL_VIEWBOX,
   type MapMarker,
-} from '@bimstitch/map';
+} from '@bimdossier/map';
 import { Fragment, useMemo } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, {
@@ -348,7 +348,7 @@ export function FooterLinks({
       }}
     >
       <Text style={{ fontSize: 11.5, color: colors.textMuted }}>
-        © 2026 BimDossier B.V. · Wkb {wkb}
+        © 2026 BimDossier · Wkb {wkb}
       </Text>
       <View style={{ flexDirection: 'row', gap: 16 }}>
         {LEGAL_LINKS.map((l) => (

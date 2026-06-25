@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 const TONE_CLASSES = {
   default: 'border-error bg-error/10 text-body3',

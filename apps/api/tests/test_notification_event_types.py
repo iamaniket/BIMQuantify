@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from bimstitch_api.models.notification import NotificationEventType
+from bimdossier_api.models.notification import NotificationEventType
 
 
 # Override conftest's autouse DB/Redis fixtures — enum is pure Python.

@@ -27,7 +27,7 @@
  *   X. Audit log visibility + Logout (tenant audit, global audit, sign out)
  *
  * Prerequisites: handled automatically by `globalSetup` (see global-setup.ts).
- * The setup creates an isolated `bimstitch_e2e` database, starts the API
+ * The setup creates an isolated `bimdossier_e2e` database, starts the API
  * server, and seeds test data.  Just run `pnpm test:e2e:multi:ci`.
  *
  * For fully isolated containers: `pnpm test:e2e:full` (spins up
@@ -48,7 +48,7 @@ import { state } from '../support/state';
 /** Build unique names scoped to this test run so reruns never clash. */
 const RUN = state.runId;
 
-const REDIS_CONTAINER = process.env['E2E_REDIS_CONTAINER'] ?? 'bimstitch-redis';
+const REDIS_CONTAINER = process.env['E2E_REDIS_CONTAINER'] ?? 'bimdossier-redis';
 const REDIS_DB = process.env['E2E_REDIS_DB'] ?? '2';
 
 function flushRedis(): void {

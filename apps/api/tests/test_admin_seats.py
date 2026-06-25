@@ -18,13 +18,13 @@ from fastapi_users.password import PasswordHelper
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimstitch_api.models.organization import Organization, OrganizationStatus
-from bimstitch_api.models.organization_member import (
+from bimdossier_api.models.organization import Organization, OrganizationStatus
+from bimdossier_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
 )
-from bimstitch_api.models.user import User
-from bimstitch_api.tenancy import schema_name_for
+from bimdossier_api.models.user import User
+from bimdossier_api.tenancy import schema_name_for
 from tests.conftest import _audit_rows
 
 
@@ -129,7 +129,7 @@ async def superadmin(client: AsyncClient, session: AsyncSession) -> dict[str, st
 async def test_count_consumed_seats_counts_non_removed(
     session: AsyncSession,
 ) -> None:
-    from bimstitch_api.admin.seats import count_consumed_seats
+    from bimdossier_api.admin.seats import count_consumed_seats
 
     org = await _make_org(session, name="HelperOrg", seat_limit=10)
     await _add_member(session, org=org, email="active@helper.example", status=OrganizationMemberStatus.active)
@@ -145,7 +145,7 @@ async def test_count_consumed_seats_counts_non_removed(
 async def test_assert_seat_available_passes_when_unlimited(
     session: AsyncSession,
 ) -> None:
-    from bimstitch_api.admin.seats import assert_seat_available
+    from bimdossier_api.admin.seats import assert_seat_available
 
     org = await _make_org(session, name="Unlimited", seat_limit=None)
     # Fill up some seats; no cap means no exception.
@@ -159,7 +159,7 @@ async def test_assert_seat_available_raises_when_full(
 ) -> None:
     from fastapi import HTTPException
 
-    from bimstitch_api.admin.seats import assert_seat_available
+    from bimdossier_api.admin.seats import assert_seat_available
 
     org = await _make_org(session, name="Full", seat_limit=2)
     await _add_member(session, org=org, email="a@full.example")
@@ -386,7 +386,7 @@ async def test_delete_member_frees_seat(
     for a new invite. The router does SET search_path against the tenant
     schema for project_members; we can't run that without a real schema, so
     instead we delete the row directly and check the seat count moves."""
-    from bimstitch_api.admin.seats import count_consumed_seats
+    from bimdossier_api.admin.seats import count_consumed_seats
 
     org = await _make_org(session, name="FreeUpCo", seat_limit=2)
     user, member = await _add_member(session, org=org, email="goner@freeup.example")

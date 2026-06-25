@@ -3,8 +3,8 @@
 import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState, type JSX } from 'react';
 
-import type { Locale } from '@bimstitch/i18n';
-import { Select } from '@bimstitch/ui';
+import type { Locale } from '@bimdossier/i18n';
+import { Select } from '@bimdossier/ui';
 
 import type { Column } from '@/components/shared/PageTable';
 import { listProjectActivityPage } from '@/lib/api/activity';
@@ -58,9 +58,9 @@ const CATEGORY_LABEL_KEY: Record<ActivityCategory, string> = {
 };
 
 const ACTION_I18N_KEY: Record<string, string> = {
-  'model.created': 'modelCreated',
-  'model.updated': 'modelUpdated',
-  'model.deleted': 'modelDeleted',
+  'document.created': 'documentCreated',
+  'document.updated': 'documentUpdated',
+  'document.deleted': 'documentDeleted',
   'project_file.completed': 'fileCompleted',
   'project_file.rejected': 'fileRejected',
   'project_file.deleted': 'fileDeleted',

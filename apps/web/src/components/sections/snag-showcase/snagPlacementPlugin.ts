@@ -1,5 +1,5 @@
-import type { Plugin, ViewerContext, Vec3 } from '@bimstitch/viewer';
-import { pick } from '@bimstitch/viewer/viewer-3d';
+import type { Plugin, ViewerContext, Vec3 } from '@bimdossier/viewer';
+import { pick } from '@bimdossier/viewer/viewer-3d';
 
 export type ElementPointsArgs = {
   /** How many spread-out surface points to return. */

@@ -7,14 +7,14 @@ import {
   Clock,
   ExternalLink,
   X,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import {
   useMemo, useState, type JSX, type ReactNode,
 } from 'react';
 
-import { Button, IconButton, Skeleton } from '@bimstitch/ui';
-import type { Locale } from '@bimstitch/i18n';
+import { Button, IconButton, Skeleton } from '@bimdossier/ui';
+import type { Locale } from '@bimdossier/i18n';
 
 import { CalendarEventChip, TONE_STYLES } from '@/components/shared/calendar/CalendarEventChip';
 import { MonthCalendar } from '@/components/shared/calendar/MonthCalendar';

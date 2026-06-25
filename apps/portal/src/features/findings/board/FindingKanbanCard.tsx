@@ -11,11 +11,11 @@ import {
   Paperclip,
   RefreshCw,
   User,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import type { ComponentType, JSX, ReactNode } from 'react';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
 import { UserAvatar } from '@/components/shared/UserAvatar';
@@ -100,7 +100,7 @@ export function FindingKanbanCard({ finding, assigneeName, reporterName }: Props
 
   const hasBbl = finding.bbl_article_ref !== null && finding.bbl_article_ref !== '';
   const isLinked =
-    finding.linked_model_id !== null
+    finding.linked_document_id !== null
     || finding.linked_file_id !== null
     || finding.linked_element_global_id !== null;
   const linkedLabel = finding.linked_file_type !== null ? finding.linked_file_type.toUpperCase() : null;

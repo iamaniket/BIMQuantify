@@ -4,7 +4,7 @@ Pure-function tests — no DB, no FastAPI, no fixtures. The solver maps a pair o
 source control points (PDF page space, already flipped to plan convention) onto
 a pair of target control points (the 3D model projected into plan space) as a
 similarity transform: uniform scale + rotation + translation, no shear. See
-``bimstitch_api.alignment.similarity``.
+``bimdossier_api.alignment.similarity``.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import math
 
 import pytest
 
-from bimstitch_api.alignment import (
+from bimdossier_api.alignment import (
     DegeneratePointsError,
     Similarity2D,
     solve_similarity,
