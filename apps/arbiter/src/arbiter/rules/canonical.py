@@ -58,9 +58,21 @@ FORMAT_RICHNESS: dict[SourceFormat, int] = {
 
 
 def format_supports(source: str, required: str) -> bool:
-    """Return True if *source* format is at least as rich as *required*."""
-    src = FORMAT_RICHNESS.get(SourceFormat(source), 0)
-    req = FORMAT_RICHNESS.get(SourceFormat(required), 0)
+    """Return True if *source* format is at least as rich as *required*.
+
+    An unrecognised format string degrades to least-rich (0) rather than raising
+    mid-evaluation — `SourceFormat(unknown)` would otherwise throw and crash the
+    whole compliance run. (engine.evaluate normalises source_format up front, so
+    this is a backstop for an unexpected rule `min_source_format`.)
+    """
+    try:
+        src = FORMAT_RICHNESS[SourceFormat(source)]
+    except ValueError:
+        src = 0
+    try:
+        req = FORMAT_RICHNESS[SourceFormat(required)]
+    except ValueError:
+        req = 0
     return src >= req
 
 

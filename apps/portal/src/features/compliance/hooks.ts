@@ -85,8 +85,10 @@ function mapToIssues(resp: ComplianceCheckResponse): ComplianceIssue[] {
       bblCode: d.article,
       severity: d.status as 'fail' | 'warn',
       objectName: d.element_name ?? d.element_global_id,
-      location: d.element_type ?? '',
-      modelDiscipline: d.property_set ?? '',
+      // Em-dash sentinel (not '') so a reviewer can tell the API omitted the
+      // field from the model genuinely having no value for it.
+      location: d.element_type ?? '—',
+      modelDiscipline: d.property_set ?? '—',
       owner: '',
       createdAt: resp.checked_at,
       requirementText: d.message,

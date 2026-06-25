@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 
+import { verror } from '../../../core/debugLog.js';
 import type { Plugin, ViewerContext, ItemId, Vec3, CameraControls } from '../../../core/types.js';
 import type { ScreenshotCaptureOptions, ScreenshotResult } from '../screenshot/index.js';
 import type { SectionPlane } from '../section/index.js';
@@ -100,6 +101,11 @@ export function bcfPlugin(options: BcfPluginOptions = {}): Plugin & BcfPluginAPI
       const item = globalIdToItem.get(gid);
       if (item) items.push(item);
     }
+    if (items.length < gids.length) {
+      // An incomplete GlobalId map silently drops part of a viewpoint's
+      // selection/visibility set on apply — surface the lossy round-trip.
+      verror('bcf', `applyViewpoint: ${String(gids.length - items.length)}/${String(gids.length)} GlobalIds had no loaded item (incomplete map)`);
+    }
     return items;
   };
 
@@ -108,6 +114,9 @@ export function bcfPlugin(options: BcfPluginOptions = {}): Plugin & BcfPluginAPI
     for (const item of items) {
       const gid = itemToGlobalId.get(itemKey(item));
       if (gid) gids.push(gid);
+    }
+    if (gids.length < items.length) {
+      verror('bcf', `captureViewpoint: ${String(items.length - gids.length)}/${String(items.length)} items had no GlobalId (incomplete map) — viewpoint will be lossy`);
     }
     return gids;
   };

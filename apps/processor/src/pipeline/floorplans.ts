@@ -59,7 +59,7 @@
 import { gunzipSync, gzipSync } from 'fflate';
 import { IFCBUILDINGSTOREY, IFCSPACE, type IfcAPI } from 'web-ifc';
 
-import type { Logger } from '../log.js';
+import { logger, type Logger } from '../log.js';
 import { numberValue } from './attributes.js';
 
 /** One IfcSpace footprint on a level: cut segments + centroid (label anchor). */
@@ -114,7 +114,11 @@ export function metresPerUnit(lengthUnit: string | null): number {
   if (u.includes('KILO')) return 1000;
   if (u.includes('FOOT') || u.includes('FEET')) return 0.3048;
   if (u.includes('INCH')) return 0.0254;
-  return 1; // METRE or unrecognised
+  if (u.includes('METR')) return 1; // METRE / METER
+  // Non-empty but unrecognised unit: defaulting to metres can cut a mislabeled
+  // millimetre model at ~1.2 mm (a degenerate, near-floor plan) with no signal.
+  logger.warn({ lengthUnit }, 'metresPerUnit: unrecognised length unit; assuming metres');
+  return 1;
 }
 
 /**

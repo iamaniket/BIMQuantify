@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import type * as FRAGS from '@thatopen/fragments';
 
+import { verror } from '../../../core/debugLog.js';
 import { frameView } from '../../../core/framing.js';
 import { computeVisibleSolidBox } from '../../../core/visibleBox.js';
 import type { ItemId, Plugin, Vec3, ViewerContext } from '../../../core/types.js';
@@ -361,5 +362,11 @@ async function computeSelectionBox(
 function sceneOrFallbackBox(ctx: ViewerContext): THREE.Box3 {
   const box = computeSceneBox(ctx);
   if (!box.isEmpty()) return box;
+  // An empty box with models LOADED means bounds failed to compute (not merely
+  // an empty scene) — the ±5 fallback would then frame the wrong place. Log only
+  // that anomaly; a genuinely empty scene is expected and stays silent.
+  if (ctx.models().size > 0) {
+    verror('camera', 'scene box empty despite loaded models — using ±5 fallback frame');
+  }
   return new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5));
 }

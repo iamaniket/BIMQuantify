@@ -38,14 +38,12 @@ async function copyFragmentsWorker() {
     const entry = require.resolve('@thatopen/fragments');
     fragmentsDir = dirname(entry);
   } catch (err) {
-    console.error('[copy-wasm] @thatopen/fragments not installed — skipping worker', err);
-    return;
+    throw new Error(`[copy-wasm] @thatopen/fragments is not installed — cannot copy the fragments worker: ${String(err)}`);
   }
   // The worker file ships at dist/Worker/worker.mjs in @thatopen/fragments.
   const src = join(fragmentsDir, 'Worker', 'worker.mjs');
   if (!(await exists(src))) {
-    console.error(`[copy-wasm] expected worker at ${src} but it is missing`);
-    return;
+    throw new Error(`[copy-wasm] required fragments worker missing at ${src}`);
   }
   const targetDir = join(here, '..', 'public', 'fragments');
   await mkdir(targetDir, { recursive: true });

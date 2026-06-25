@@ -155,6 +155,10 @@ export default function ReportDetailPage(): JSX.Element {
               embedded
             />
           </>
+        ) : summaryQuery.isError ? (
+          <div className="px-4 py-10 text-center">
+            <ErrorBanner message={t('loadFailed')} tone="soft" className="text-body2" />
+          </div>
         ) : (
           <div className="px-4 py-10 text-center text-body3 text-foreground-tertiary">
             {t('loadingResults')}

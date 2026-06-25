@@ -20,7 +20,7 @@ export function RequestAccessSuccess({
       <div
         aria-hidden
         className="grid size-12 place-items-center rounded-full"
-        style={{ background: 'var(--color-success-light, #eaf6ef)', color: 'var(--color-success, #3f8f65)' }}
+        style={{ background: 'var(--success-light, #eaf6ef)', color: 'var(--success, #3f8f65)' }}
       >
         <Check className="h-[22px] w-[22px]" weight="bold" />
       </div>
@@ -28,7 +28,7 @@ export function RequestAccessSuccess({
       <div>
         <div
           className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em]"
-          style={{ color: 'var(--color-success, #3f8f65)' }}
+          style={{ color: 'var(--success, #3f8f65)' }}
         >
           Application received
         </div>

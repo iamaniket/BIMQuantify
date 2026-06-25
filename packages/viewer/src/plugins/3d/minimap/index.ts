@@ -23,6 +23,7 @@
  * across portal React effects.
  */
 
+import { verror } from '../../../core/debugLog.js';
 import type { Plugin, ViewerContext, Vec3 } from '../../../core/types.js';
 
 import {
@@ -163,7 +164,12 @@ export function minimapPlugin(
     if (!ctx || !args) return;
     const worldBox = await ctx.commands
       .execute<undefined, WorldBox | null>('camera.getSceneBox')
-      .catch(() => null);
+      .catch((err: unknown) => {
+        // Don't silently abort calibration — the minimap would then never track
+        // the camera (no "you are here", dead click-to-navigate) with no signal.
+        verror('minimap', 'camera.getSceneBox failed during calibrate', err);
+        return null;
+      });
     if (!worldBox) return;
     planModelId = args.modelId ?? null;
     sheetTransform = args.sheetTransform ?? null;

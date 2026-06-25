@@ -22,6 +22,9 @@ for (const { src, dest } of assets) {
     cpSync(srcPath, destPath, { recursive: true });
     console.log(`  copied ${src} → ${dest}`);
   } else {
-    console.warn(`  WARN: ${src} does not exist, skipping`);
+    // The report pipeline needs these assets at runtime; a missing source dir
+    // must fail the build rather than ship a dist that renders unstyled report
+    // PDFs (with the build/CI staying green).
+    throw new Error(`  copy-assets: required asset not found: ${src}`);
   }
 }

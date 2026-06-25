@@ -15,6 +15,7 @@ Rules:
 
 from __future__ import annotations
 
+import logging
 from uuid import UUID
 
 from sqlalchemy import delete as sa_delete
@@ -25,6 +26,8 @@ from bimdossier_api.deadlines.working_days import compute_due_date
 from bimdossier_api.jurisdictions import require
 from bimdossier_api.models.deadline import Deadline, DeadlineStatus
 from bimdossier_api.models.deadline_notification_log import DeadlineNotificationLog
+
+logger = logging.getLogger(__name__)
 
 
 async def recompute_deadlines(
@@ -56,7 +59,18 @@ async def recompute_deadlines(
     deadlines: list[Deadline] = []
 
     for rule in rules:
-        source_date = getattr(project, rule.source_field, None)
+        if not hasattr(project, rule.source_field):
+            # A rule whose source_field is a typo'd / renamed Project attribute
+            # would silently resolve to None → not_applicable, making a real
+            # legal deadline vanish with no signal. Log the config bug instead.
+            logger.error(
+                "deadline rule %r references unknown Project field %r; treating "
+                "as not applicable — fix the jurisdiction rule's source_field",
+                rule.deadline_type, rule.source_field,
+            )
+            source_date = None
+        else:
+            source_date = getattr(project, rule.source_field)
 
         if source_date is None:
             new_due = None

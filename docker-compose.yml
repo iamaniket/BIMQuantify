@@ -108,9 +108,15 @@ services:
     environment:
       S3_ENDPOINT_URL: http://minio:9000
       S3_REGION: us-east-1
+      # Dev-only credentials. The config fields no longer carry these as code
+      # defaults (a missing var fails closed at construction); supplied here so
+      # the local stack works. DEPLOY_REGION=dev opts this stack into the
+      # config-guard skip — a real deploy sets DEPLOY_REGION to its region, and
+      # the guard then refuses to boot on these dev values.
       S3_ACCESS_KEY_ID: bimdossier
       S3_SECRET_ACCESS_KEY: bimdossier-secret
       S3_BUCKET_IFC: ifc-files
+      DEPLOY_REGION: dev
       ARBITER_HOST: "0.0.0.0"
       ARBITER_PORT: "8090"
     depends_on:

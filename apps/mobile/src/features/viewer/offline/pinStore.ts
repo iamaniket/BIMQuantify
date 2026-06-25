@@ -20,9 +20,20 @@ async function ensureDir(dir: string): Promise<void> {
 }
 
 async function downloadTo(url: string, dest: string): Promise<number> {
-  await FileSystem.downloadAsync(url, dest);
+  // downloadAsync only REJECTS on a transport error, not on a 4xx/5xx — so an
+  // expired presigned URL (403) or 404 writes the XML/HTML error body to disk.
+  // Check the status (and a non-empty file) so pinModel rejects and the caller's
+  // "Download failed" alert fires, instead of persisting a corrupt manifest.
+  const result = await FileSystem.downloadAsync(url, dest);
+  if (result.status < 200 || result.status >= 300) {
+    throw new Error(`Download failed: HTTP ${String(result.status)} for ${url}`);
+  }
   const info = await FileSystem.getInfoAsync(dest);
-  return info.exists && info.size !== undefined ? info.size : 0;
+  const size = info.exists && info.size !== undefined ? info.size : 0;
+  if (size === 0) {
+    throw new Error(`Download produced an empty file for ${url}`);
+  }
+  return size;
 }
 
 /**

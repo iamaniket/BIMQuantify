@@ -59,6 +59,18 @@ export default function ProjectDetailPage(): JSX.Element {
   const findings = flattenPages(findingsQuery.data);
   const certificates = flattenPages(certificatesQuery.data);
 
+  // The five secondary queries coalesce to []/empty above; on a fetch error
+  // that empty data feeds the dossier %, model/finding/deadline counts, etc.,
+  // producing a confident-but-wrong (often falsely optimistic) figure. Surface
+  // a non-blocking banner so the user knows the numbers may be incomplete.
+  // (The query errors are also reported to Sentry via QueryProvider's QueryCache.)
+  const secondaryError =
+    documentsQuery.isError
+    || deadlinesQuery.isError
+    || attachmentsQuery.isError
+    || findingsQuery.isError
+    || certificatesQuery.isError;
+
   const deadlinesSummary = useMemo(() => {
     let met = 0;
     let overdue = 0;
@@ -171,6 +183,11 @@ export default function ProjectDetailPage(): JSX.Element {
           />
         }
       >
+        {secondaryError && (
+          <div className="px-3.5 pt-3.5">
+            <ErrorBanner message={tHero('partialDataError')} tone="soft" className="text-body2" />
+          </div>
+        )}
         <div className="grid min-h-0 flex-1 grid-rows-[1fr_2fr] grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-rows-1 lg:grid-cols-2">
           <div className="flex min-h-0 flex-col gap-3.5">
             <ProjectChartsPanel

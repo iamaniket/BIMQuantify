@@ -16,6 +16,7 @@
 
 import * as THREE from 'three';
 
+import { verror } from '../../../core/debugLog.js';
 import type { ItemId, Plugin, ViewerContext } from '../../../core/types.js';
 import { InstancedOutline } from '../shared/instanced-outline.js';
 import { getModelWorldMatrix } from '../shared/modelCoordination.js';
@@ -166,8 +167,11 @@ export function outlinePlugin(
           cache.loadPrecomputed(modelId, decoded);
         }
       }
-    } catch {
-      // No precomputed outline available — edges won't be shown.
+    } catch (err) {
+      // A precomputed-outline read/decode failure (corrupt/old artifact, missing
+      // DecompressionStream) just means no hard edges — but log it so a backend
+      // artifact regression is distinguishable from "this model has no edges".
+      verror('outline', `precomputed outline unavailable for model "${modelId}"`, err);
     }
   };
 

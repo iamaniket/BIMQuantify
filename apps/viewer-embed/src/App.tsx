@@ -53,7 +53,12 @@ export function App() {
   const planReady = floorPlan.status === 'ready' && floorPlan.data !== null;
 
   const exec = useCallback((name: string, args?: unknown): void => {
-    handleRef.current?.commands.execute(name, args).catch(() => undefined);
+    handleRef.current?.commands.execute(name, args).catch((err: unknown) => {
+      // Don't swallow: a failed marker-sync / placement / isolate otherwise
+      // leaves a misleading view and the native host never learns. console.error
+      // is forwarded over the bridge to Metro/Logcat.
+      console.error(`[viewer-embed] command "${name}" failed`, err);
+    });
   }, []);
 
   // A 2D/Split request only sticks when this model actually has a plan; the
@@ -156,14 +161,14 @@ export function App() {
       if (localIds.length > 0) {
         const modelId = bundle.modelId;
         const items = localIds.map((localId) => ({ modelId, localId }));
-        handle.commands.execute('visibility.isolateItem', items).catch(() => undefined);
+        handle.commands.execute('visibility.isolateItem', items).catch((err: unknown) => { console.error('[viewer-embed] visibility.isolateItem failed', err); });
       }
     } else {
-      handle.commands.execute('visibility.showAll').catch(() => undefined);
+      handle.commands.execute('visibility.showAll').catch((err: unknown) => { console.error('[viewer-embed] visibility.showAll failed', err); });
     }
 
     return () => {
-      handle.commands.execute('visibility.showAll').catch(() => undefined);
+      handle.commands.execute('visibility.showAll').catch((err: unknown) => { console.error('[viewer-embed] visibility.showAll failed', err); });
     };
   }, [viewerReady, activeLevel, viewMode, bundle, floorPlan.levels, floorPlan.storeyMembership]);
 
@@ -193,7 +198,7 @@ export function App() {
     if (pendingMarkersRef.current) {
       handle.commands
         .execute('entity-marker.sync', pendingMarkersRef.current)
-        .catch(() => undefined);
+        .catch((err: unknown) => { console.error('[viewer-embed] entity-marker.sync (pending flush) failed', err); });
       pendingMarkersRef.current = null;
     }
 

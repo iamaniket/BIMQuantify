@@ -1078,6 +1078,7 @@
   },
   "projectDetail": {
     "hero": {
+      "partialDataError": "Sommige projectgegevens konden niet worden geladen; onderstaande cijfers zijn mogelijk onvolledig.",
       "wkbScore": "Wkb-score",
       "issuesOpen": "Open issues",
       "holdback": "Inhouding",
@@ -1990,6 +1991,7 @@
       "title": "{projectName} · Nalevingsrapport",
       "noReport": "Geen {framework}-rapport gevonden voor dit bestand. Voer eerst een controle uit.",
       "loadingResults": "Nalevingsresultaten laden…",
+      "loadFailed": "Kan de nalevingsresultaten niet laden. Probeer het opnieuw.",
       "ruleBreakdownTitle": "Regeloverzicht",
       "elementsAndChecks": "{elements} elementen · {checks} controles",
       "loadingRules": "Regeldetails laden…",

@@ -26,6 +26,7 @@
  */
 
 import { pick } from '../../../core/Raycaster.js';
+import { verror } from '../../../core/debugLog.js';
 import type { ItemId, Plugin, ViewerContext } from '../../../core/types.js';
 import { createExceptionManager, normalizeType } from './exceptionManager.js';
 import { createModelHider, type ModelHider } from './modelHider.js';
@@ -155,7 +156,12 @@ export function visibilityPlugin(
     // Rebuild the authoritative hidden set from actual model state.
     hiddenSet.clear();
     hiddenItemMap.clear();
-    const hiddenMap = await hider.getVisibilityMap(false).catch(() => ({}));
+    const hiddenMap = await hider.getVisibilityMap(false).catch((err: unknown) => {
+      // Don't silently forget the hidden set — a failed read can otherwise leave
+      // geometry stuck invisible after show-all. Surface it (always-on verror).
+      verror('visibility', 'getVisibilityMap failed during hidden-set rebuild', err);
+      return {};
+    });
     for (const [modelId, ids] of Object.entries(hiddenMap)) {
       if (!ids) continue;
       for (const localId of ids) {
@@ -225,7 +231,12 @@ export function visibilityPlugin(
     // Rebuild tracking from actual model state.
     hiddenSet.clear();
     hiddenItemMap.clear();
-    const hiddenMap = await hider.getVisibilityMap(false).catch(() => ({}));
+    const hiddenMap = await hider.getVisibilityMap(false).catch((err: unknown) => {
+      // Don't silently forget the hidden set — a failed read can otherwise leave
+      // geometry stuck invisible after show-all. Surface it (always-on verror).
+      verror('visibility', 'getVisibilityMap failed during hidden-set rebuild', err);
+      return {};
+    });
     for (const [modelId, ids] of Object.entries(hiddenMap)) {
       if (!ids) continue;
       for (const localId of ids) {

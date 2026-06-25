@@ -16,6 +16,7 @@ import {
 import { SearchInput, TableToolbar } from '@/components/shared/PageTable';
 import { TablePaginationFooter } from '@/components/shared/TablePaginationFooter';
 import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
 
 import {
   getOrgCertificateDownloadUrl,
@@ -157,6 +158,8 @@ export default function CertificatesPage(): JSX.Element {
       <TabsContent value="overview" className="mt-0">
         {certsQuery.isLoading ? (
           <Skeleton className="h-64 w-full" />
+        ) : certsQuery.isError ? (
+          <ErrorBanner message={t('list.loadError')} tone="soft" className="text-body2" />
         ) : (
           <OrgCertificatesOverview certificates={allCerts} onView={setViewingCert} />
         )}

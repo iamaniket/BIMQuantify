@@ -1078,6 +1078,7 @@
   },
   "projectDetail": {
     "hero": {
+      "partialDataError": "Some project data couldn’t be loaded, so the figures below may be incomplete.",
       "wkbScore": "Wkb score",
       "issuesOpen": "Issues open",
       "holdback": "Holdback",
@@ -1990,6 +1991,7 @@
       "title": "{projectName} · Compliance report",
       "noReport": "No {framework} report found for this file. Run a check first.",
       "loadingResults": "Loading compliance results…",
+      "loadFailed": "Couldn’t load the compliance results. Please try again.",
       "ruleBreakdownTitle": "Rule breakdown",
       "elementsAndChecks": "{elements} elements · {checks} checks",
       "loadingRules": "Loading rule details…",

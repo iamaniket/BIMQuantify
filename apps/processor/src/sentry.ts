@@ -32,11 +32,15 @@ export function initSentry(): boolean {
   if (initialised) return true;
   const dsn = process.env['SENTRY_DSN'];
   if (dsn === undefined || dsn.trim() === '') return false;
+  // A SET-but-non-numeric SENTRY_TRACES_SAMPLE_RATE (e.g. "10%") would parse to
+  // NaN and silently disable tracing; fall back to the intended default instead.
+  const parsedRate = Number(process.env['SENTRY_TRACES_SAMPLE_RATE'] ?? '0.1');
+  const tracesSampleRate = Number.isFinite(parsedRate) ? parsedRate : 0.1;
   Sentry.init({
     dsn,
     environment: process.env['SENTRY_ENVIRONMENT'] ?? process.env['NODE_ENV'] ?? 'development',
     release: resolveRelease(),
-    tracesSampleRate: Number(process.env['SENTRY_TRACES_SAMPLE_RATE'] ?? '0.1'),
+    tracesSampleRate,
   });
   initialised = true;
   return true;

@@ -13,10 +13,10 @@ export interface SystemStatusBadgeProps {
 }
 
 const dotColor: Record<SystemStatusValue, string> = {
-  normal: 'var(--color-success, #3f8f65)',
-  degraded: 'var(--color-warning, #a97428)',
-  down: 'var(--color-error, #c94736)',
-  loading: 'var(--color-foreground-tertiary, #94a3b8)',
+  normal: 'var(--success, #3f8f65)',
+  degraded: 'var(--warning, #a97428)',
+  down: 'var(--error, #c94736)',
+  loading: 'var(--foreground-tertiary, #94a3b8)',
 };
 
 const labelText: Record<SystemStatusValue, string> = {
@@ -33,7 +33,7 @@ export function SystemStatusBadge({
   className,
   labels,
 }: SystemStatusBadgeProps): JSX.Element {
-  const fg = tone === 'on-dark' ? 'rgba(255,255,255,0.85)' : 'var(--color-foreground-tertiary, #4b5563)';
+  const fg = tone === 'on-dark' ? 'rgba(255,255,255,0.85)' : 'var(--foreground-tertiary, #4b5563)';
   const label = labels?.[status] ?? labelText[status];
   return (
     <div

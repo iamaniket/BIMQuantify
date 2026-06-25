@@ -93,15 +93,37 @@ async def run_compliance_check(
     if result is None:
         raise ComplianceCheckError("Arbiter returned empty result")
 
+    # A tool that raised is reported as a *successful* JSON-RPC response with
+    # `isError: true` and the message in `content` (the MCP tool-error
+    # convention) — NOT a protocol-level `data["error"]`. Without this check a
+    # raised arbiter error would be json.loads'd as an empty/garbage result and
+    # stored as a "0 rules / nothing checked" SUCCEEDED report (silent pass).
+    if isinstance(result, dict) and result.get("isError"):
+        text = ""
+        content_items = result.get("content")
+        if isinstance(content_items, list) and content_items:
+            text = content_items[0].get("text", "")
+        raise ComplianceCheckError(f"Arbiter tool error: {text or 'unknown'}")
+
     if isinstance(result, list) and len(result) > 0:
-        content = result[0].get("text", "{}")
-        return json.loads(content)  # type: ignore[no-any-return]
+        content = result[0].get("text")
+        if content is None:
+            raise ComplianceCheckError("Arbiter result item had no text content")
+        try:
+            return json.loads(content)  # type: ignore[no-any-return]
+        except json.JSONDecodeError as exc:
+            raise ComplianceCheckError(f"Arbiter returned non-JSON content: {exc}") from exc
 
     if isinstance(result, dict) and "content" in result:
         content_items = result.get("content", [])
         if isinstance(content_items, list) and len(content_items) > 0:
-            text = content_items[0].get("text", "{}")
-            return json.loads(text)  # type: ignore[no-any-return]
+            text = content_items[0].get("text")
+            if text is None:
+                raise ComplianceCheckError("Arbiter content item had no text")
+            try:
+                return json.loads(text)  # type: ignore[no-any-return]
+            except json.JSONDecodeError as exc:
+                raise ComplianceCheckError(f"Arbiter returned non-JSON content: {exc}") from exc
         if isinstance(result.get("structuredContent"), dict):
             return result["structuredContent"]  # type: ignore[no-any-return]
 

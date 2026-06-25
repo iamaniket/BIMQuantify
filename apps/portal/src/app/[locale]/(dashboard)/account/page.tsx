@@ -12,6 +12,7 @@ import {
   type JSX,
 } from 'react';
 import { toast } from 'sonner';
+import * as Sentry from '@sentry/nextjs';
 
 import {
   Badge,
@@ -30,6 +31,7 @@ import { PageShell } from '@/components/shared/layout/PageShell';
 import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ApiError } from '@/lib/api/client';
+import { getErrorMessage } from '@/lib/api/errorMessages';
 import {
   acceptInvitation,
   declineInvitation,
@@ -514,7 +516,13 @@ export default function AccountPage(): JSX.Element {
 
   useEffect(() => {
     if (accessToken === null || !user?.avatar_url) return;
-    void getAvatarUrl(accessToken).then(setAvatarPresignedUrl).catch(() => {});
+    void getAvatarUrl(accessToken)
+      .then(setAvatarPresignedUrl)
+      .catch((err: unknown) => {
+        // Cosmetic (falls back to initials), but a persistent presign/storage
+        // outage otherwise looks identical to "no avatar" — leave a dev trace.
+        if (process.env.NODE_ENV !== 'production') console.warn('[account] avatar presign failed', err);
+      });
   }, [accessToken, user?.avatar_url]);
 
   const onAvatarPick = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
@@ -526,8 +534,9 @@ export default function AccountPage(): JSX.Element {
       await refreshMe();
       const url = await getAvatarUrl(accessToken);
       setAvatarPresignedUrl(url);
-    } catch {
-      // handled silently
+    } catch (err) {
+      Sentry.captureException(err, { tags: { feature: 'account-avatar-upload' } });
+      toast.error(getErrorMessage(err));
     } finally {
       setAvatarBusy(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -541,8 +550,9 @@ export default function AccountPage(): JSX.Element {
       await deleteAvatar(accessToken);
       await refreshMe();
       setAvatarPresignedUrl(null);
-    } catch {
-      // handled silently
+    } catch (err) {
+      Sentry.captureException(err, { tags: { feature: 'account-avatar-remove' } });
+      toast.error(getErrorMessage(err));
     } finally {
       setAvatarBusy(false);
     }
@@ -566,8 +576,9 @@ export default function AccountPage(): JSX.Element {
       await updateProfile(accessToken, trimmed ? { full_name: trimmed } : {});
       await refreshMe();
       setEditingName(false);
-    } catch {
-      // handled silently
+    } catch (err) {
+      Sentry.captureException(err, { tags: { feature: 'account-name-save' } });
+      toast.error(getErrorMessage(err));
     } finally {
       setNameBusy(false);
     }

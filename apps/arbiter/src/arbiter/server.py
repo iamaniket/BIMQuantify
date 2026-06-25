@@ -6,7 +6,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from arbiter.config import get_settings
+from arbiter.config import enforce_production_config, get_settings
 from arbiter.rules.engine import evaluate
 from arbiter.rules.loader import RuleIndex
 from arbiter.rules.report import build_payload
@@ -80,7 +80,7 @@ def get_rule_details(rule_id: str) -> dict[str, Any]:
     """
     rule = rule_index.get_rule(rule_id)
     if rule is None:
-        return {"error": f"Rule '{rule_id}' not found"}
+        raise ValueError(f"Rule '{rule_id}' not found")
     return rule.model_dump(mode="json")
 
 
@@ -118,7 +118,7 @@ async def check_compliance(
     )
 
     if not isinstance(metadata, dict) or not isinstance(properties, dict):
-        return {"error": "Invalid artifact format: expected JSON objects"}
+        raise ValueError("Invalid artifact format: expected JSON objects")
 
     result = evaluate(
         properties=properties,
@@ -147,13 +147,13 @@ async def check_rule(
     """
     rule = rule_index.get_rule(rule_id)
     if rule is None:
-        return {"error": f"Rule '{rule_id}' not found"}
+        raise ValueError(f"Rule '{rule_id}' not found")
 
     metadata = await artifact_reader.get_json(metadata_key)
     properties = await artifact_reader.get_json(properties_key)
 
     if not isinstance(metadata, dict) or not isinstance(properties, dict):
-        return {"error": "Invalid artifact format: expected JSON objects"}
+        raise ValueError("Invalid artifact format: expected JSON objects")
 
     result = evaluate(
         properties=properties,
@@ -186,7 +186,7 @@ async def get_compliance_report(
     properties = await artifact_reader.get_json(properties_key)
 
     if not isinstance(metadata, dict) or not isinstance(properties, dict):
-        return {"error": "Invalid artifact format: expected JSON objects"}
+        raise ValueError("Invalid artifact format: expected JSON objects")
 
     applicable_rules = rule_index.get_applicable_rules(framework=framework)
 
@@ -253,13 +253,13 @@ async def explain_compliance(
     properties = await artifact_reader.get_json(properties_key)
 
     if not isinstance(metadata, dict) or not isinstance(properties, dict):
-        return {"error": "Invalid artifact format: expected JSON objects"}
+        raise ValueError("Invalid artifact format: expected JSON objects")
 
     effective_framework: str | None
     if rule_id is not None:
         rule = rule_index.get_rule(rule_id)
         if rule is None:
-            return {"error": f"Rule '{rule_id}' not found"}
+            raise ValueError(f"Rule '{rule_id}' not found")
         applicable_rules = [rule]
         effective_framework = framework or str(rule.framework)
     else:
@@ -448,6 +448,10 @@ def sync_status_resource() -> str:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
+    # Fail closed before serving if a dev-default credential is in use outside
+    # an explicit DEPLOY_REGION=dev. (Missing creds already fail at Settings()
+    # construction — see arbiter.config.)
+    enforce_production_config(settings)
     logger.info("Starting Arbiter MCP server on %s:%d", settings.host, settings.port)
     start_scheduler(rule_index, settings)
     mcp.run(transport="streamable-http")

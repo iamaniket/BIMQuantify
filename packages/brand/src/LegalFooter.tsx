@@ -32,8 +32,8 @@ export function LegalFooter({
   links = DEFAULT_LINKS,
   className,
 }: LegalFooterProps): JSX.Element {
-  const fg = tone === 'on-dark' ? 'rgba(255,255,255,0.55)' : 'var(--color-foreground-tertiary, #4b5563)';
-  const fgLink = tone === 'on-dark' ? 'rgba(255,255,255,0.85)' : 'var(--color-foreground-secondary, #1f2937)';
+  const fg = tone === 'on-dark' ? 'rgba(255,255,255,0.55)' : 'var(--foreground-tertiary, #4b5563)';
+  const fgLink = tone === 'on-dark' ? 'rgba(255,255,255,0.85)' : 'var(--foreground-secondary, #1f2937)';
   return (
     <div
       className={cn('flex items-center justify-between font-sans text-[11px] tracking-[0.02em]', className)}

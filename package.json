@@ -6,8 +6,9 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "pnpm check:i18n && turbo run lint",
+    "lint": "pnpm check:i18n && pnpm check:brand-tokens && turbo run lint",
     "check:i18n": "node scripts/check-i18n-parity.mjs",
+    "check:brand-tokens": "node scripts/check-brand-tokens.mjs",
     "type-check": "turbo run type-check",
     "test": "turbo run test",
     "clean": "turbo run clean && rimraf node_modules"
