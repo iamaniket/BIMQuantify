@@ -291,7 +291,7 @@ function OverviewPane({
       </div>
 
       {/* Recently created */}
-      <div className="rounded-lg border border-border bg-surface-low p-5 xl:col-span-2">
+      <div className="rounded-lg border border-border bg-surface-low p-5">
         <h3 className="mb-4 text-body2 font-bold">{t('recentTitle')}</h3>
         {recentOrgs.length === 0 ? (
           <p className="text-body3 text-foreground-tertiary">{t('noTenants')}</p>
@@ -318,7 +318,7 @@ function OverviewPane({
       </div>
 
       {/* Quick actions */}
-      <div className="rounded-lg border border-border bg-surface-low p-5 xl:col-span-2">
+      <div className="rounded-lg border border-border bg-surface-low p-5">
         <h3 className="mb-3 text-body2 font-bold">{t('quickActionsTitle')}</h3>
         <div className="space-y-0.5">
           <button

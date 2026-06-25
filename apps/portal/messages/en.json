@@ -1193,7 +1193,8 @@
         "newLevel": "New level",
         "group": {
           "models3d": "3D models",
-          "unassigned": "Unassigned drawings"
+          "unassigned": "Unassigned drawings",
+          "unknown": "Unknown"
         },
         "assignLevel": {
           "label": "Level",
@@ -1262,6 +1263,7 @@
         "row": {
           "kindModel": "3D model",
           "kindDrawing": "Drawing",
+          "kindUnknown": "No file yet",
           "noFiles": "No files",
           "viewFile": "View file",
           "selectAria": "Select {name} to load in the viewer",

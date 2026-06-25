@@ -1193,7 +1193,8 @@
         "newLevel": "Nieuwe verdieping",
         "group": {
           "models3d": "3D-modellen",
-          "unassigned": "Niet-toegewezen tekeningen"
+          "unassigned": "Niet-toegewezen tekeningen",
+          "unknown": "Onbekend"
         },
         "assignLevel": {
           "label": "Verdieping",
@@ -1262,6 +1263,7 @@
         "row": {
           "kindModel": "3D-model",
           "kindDrawing": "Tekening",
+          "kindUnknown": "Nog geen bestand",
           "noFiles": "Geen bestanden",
           "viewFile": "Bestand bekijken",
           "selectAria": "{name} selecteren om in de viewer te laden",

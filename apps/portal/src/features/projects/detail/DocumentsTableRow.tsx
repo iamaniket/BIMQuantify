@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  Blueprint, Box, Eye, RotateCcw, ShieldCheck, Upload, Trash2,
+  Blueprint, Box, Eye, FileDashed, RotateCcw, ShieldCheck, Upload, Trash2,
 } from '@bimdossier/ui/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -117,15 +117,19 @@ export function DocumentsTableRow({
   const [confirmRestore, setConfirmRestore] = useState<{ fileId: string; version: number } | null>(null);
   const files = prefetchedFiles ?? filesQuery.data ?? [];
   const colors = disciplineChipColors(document.discipline);
-  // 2D drawings (PDF/DXF/DWG) get the blueprint glyph; everything else (IFC or
-  // not-yet-typed) is a 3D model. Matches the grouping in DocumentsTab so the row
-  // glyph never contradicts its section header.
+  // A document with no determined type (no IFC/PDF uploaded yet) is "unknown" and
+  // gets the dashed-file glyph; 2D drawings (PDF/DXF/DWG) get the blueprint glyph;
+  // an IFC is a 3D model. Matches the grouping in DocumentsTab so the row glyph
+  // never contradicts its section header.
+  const isUnknown = document.primary_file_type == null;
   const isDrawing = (
     document.primary_file_type === 'pdf'
     || document.primary_file_type === 'dxf'
     || document.primary_file_type === 'dwg'
   );
-  const kindLabel = isDrawing ? t('kindDrawing') : t('kindModel');
+  const kindLabel = isUnknown
+    ? t('kindUnknown')
+    : isDrawing ? t('kindDrawing') : t('kindModel');
   // The head is the model's restore pointer when set, else the newest version.
   const latestFile = (
     document.head_file_id != null ? files.find((f) => f.id === document.head_file_id) : undefined
@@ -303,9 +307,11 @@ export function DocumentsTableRow({
                 title={kindLabel}
                 aria-label={kindLabel}
               >
-                {isDrawing
-                  ? <Blueprint className="h-4 w-4" aria-hidden />
-                  : <Box className="h-4 w-4" aria-hidden />}
+                {isUnknown
+                  ? <FileDashed className="h-4 w-4" aria-hidden />
+                  : isDrawing
+                    ? <Blueprint className="h-4 w-4" aria-hidden />
+                    : <Box className="h-4 w-4" aria-hidden />}
               </span>
             </div>
           }

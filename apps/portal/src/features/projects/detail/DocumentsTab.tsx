@@ -45,6 +45,11 @@ function is2dDocument(m: Document): boolean {
   );
 }
 
+/** A document with no IFC/PDF uploaded yet — its type is undetermined. */
+function isUnknownDocument(m: Document): boolean {
+  return m.primary_file_type == null;
+}
+
 export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
   const [newDocumentOpen, setNewDocumentOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -177,16 +182,21 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
     />
   );
 
-  // Group: 3D/untyped documents first (ungrouped), then 2D drawings under their
-  // level, then an "Unassigned" bucket. Flat (legacy) when there's nothing 2D
-  // and no levels, so a pure-3D project looks unchanged.
+  // Group: 3D (IFC) models first, then 2D drawings under their level, then an
+  // "Unassigned" bucket, then an "Unknown" bucket for documents with no file
+  // yet. Flat (legacy) when there's only one kind and no levels, so a pure-3D
+  // project looks unchanged.
   const twoD = filtered.filter(is2dDocument);
-  const grouped = twoD.length > 0 || levels.length > 0;
+  const unknown = filtered.filter(isUnknownDocument);
+  const models3d = filtered.filter((m) => !is2dDocument(m) && !isUnknownDocument(m));
+  // Headers only earn their keep once there's more than one kind to separate
+  // (or levels exist). A list that is all one bucket stays flat.
+  const distinctKinds = [models3d, twoD, unknown].filter((b) => b.length > 0).length;
+  const grouped = distinctKinds > 1 || levels.length > 0;
 
   const listChildren = ((): ReactNode => {
     if (!grouped) return filtered.map(renderRow);
 
-    const top = filtered.filter((m) => !is2dDocument(m));
     const byLevel = new Map<string, Document[]>();
     const unassigned: Document[] = [];
     for (const m of twoD) {
@@ -197,10 +207,10 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
     }
 
     const sections: ReactNode[] = [];
-    if (top.length > 0) {
+    if (models3d.length > 0) {
       sections.push(
-        <GroupHeader key="hdr-3d" label={t('group.models3d')} count={top.length} />,
-        ...top.map(renderRow),
+        <GroupHeader key="hdr-3d" label={t('group.models3d')} count={models3d.length} />,
+        ...models3d.map(renderRow),
       );
     }
     for (const lvl of levels) {
@@ -215,6 +225,12 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
       sections.push(
         <GroupHeader key="hdr-unassigned" label={t('group.unassigned')} count={unassigned.length} />,
         ...unassigned.map(renderRow),
+      );
+    }
+    if (unknown.length > 0) {
+      sections.push(
+        <GroupHeader key="hdr-unknown" label={t('group.unknown')} count={unknown.length} />,
+        ...unknown.map(renderRow),
       );
     }
     return sections;

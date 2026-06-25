@@ -9,6 +9,7 @@ import {
   encodeFloorPlans,
   type FloorPlanElement,
   metresPerUnit,
+  resolveUpAxis,
   scanModelGeometry,
   sliceTriangleAtAxis,
 } from '../src/pipeline/floorplans.js';
@@ -45,6 +46,40 @@ const makeApi = (
       return vec<number>([]);
     },
     GetLine: () => ({ Elevation: storeyElevation }),
+    GetGeometry: (_m: number, geomId: number) => ({
+      GetVertexData: () => geomId,
+      GetVertexDataSize: () => geoms[geomId]!.positions.length,
+      GetIndexData: () => geomId + 100000,
+      GetIndexDataSize: () => geoms[geomId]!.indices.length,
+    }),
+    GetVertexArray: (ptr: number) => geoms[ptr]!.positions,
+    GetIndexArray: (ptr: number) => geoms[ptr - 100000]!.indices,
+    StreamAllMeshes: (_m: number, cb: (mesh: unknown) => void) => {
+      for (const mh of meshes) {
+        cb({
+          expressID: mh.expressID,
+          geometries: vec([{ geometryExpressID: mh.geomId, flatTransformation: IDENT16 }]),
+        });
+      }
+    },
+  }) as never;
+
+/** Mocked IfcAPI with multiple storeys (per-id Elevation) + per-mesh geometry. */
+const makeMultiStoreyApi = (
+  geoms: Record<number, Geom>,
+  meshes: { expressID: number; geomId: number }[],
+  storeys: { id: number; elevation: number | null }[],
+  spaceExpressIds: number[] = [],
+): never =>
+  ({
+    GetLineIDsWithType: (_m: number, code: number) => {
+      if (code === IFCBUILDINGSTOREY) return vec(storeys.map((s) => s.id));
+      if (code === IFCSPACE) return vec(spaceExpressIds);
+      return vec<number>([]);
+    },
+    GetLine: (_m: number, id: number) => ({
+      Elevation: storeys.find((s) => s.id === id)?.elevation ?? null,
+    }),
     GetGeometry: (_m: number, geomId: number) => ({
       GetVertexData: () => geomId,
       GetVertexDataSize: () => geoms[geomId]!.positions.length,
@@ -237,5 +272,196 @@ describe('scanModelGeometry', () => {
     const scan = scanModelGeometry(api, 0, 'METRE', []);
     expect(scan.bbox).toBeNull();
     expect(scan.storeys).toHaveLength(0);
+  });
+});
+
+describe('resolveUpAxis', () => {
+  const bbox = {
+    min: [0, 0, 0] as [number, number, number],
+    max: [30, 9, 20] as [number, number, number],
+  };
+  const m = (entries: [number, [number, number, number]][]) =>
+    new Map<number, [number, number, number]>(entries);
+
+  it('stacking overrides an ambiguous normal histogram (facade Y-up model)', () => {
+    // Histogram screams Z (dominant facade walls), but the two storeys stack
+    // along Y — their Y bands are disjoint while X/Z bands fully overlap.
+    const r = resolveUpAxis(
+      [1, 1, 100],
+      m([
+        [1, [0, 0, 0]],
+        [2, [0, 3, 0]],
+      ]),
+      m([
+        [1, [10, 3, 10]],
+        [2, [10, 6, 10]],
+      ]),
+      new Map(),
+      bbox,
+    );
+    expect(r).toMatchObject({ upAxis: 1, method: 'stacking' });
+  });
+
+  it('uses band overlap, not minima spread, so setbacks do not fool it', () => {
+    // A 3-storey Y-up model with progressive X setbacks. Per-storey *minima
+    // spread* would be largest on X (0→10) and elect X (the old bug); but the X
+    // bands still overlap (upper footprints sit within the lower), while the Y
+    // bands are disjoint, so the overlap metric correctly elects Y.
+    const r = resolveUpAxis(
+      [100, 1, 1], // histogram says X (wrong)
+      m([
+        [1, [0, 0, 0]],
+        [2, [5, 3, 0]],
+        [3, [10, 6, 0]],
+      ]),
+      m([
+        [1, [30, 3, 20]],
+        [2, [25, 6, 20]],
+        [3, [20, 9, 20]],
+      ]),
+      new Map(),
+      bbox,
+    );
+    expect(r).toMatchObject({ upAxis: 1, method: 'stacking' });
+  });
+
+  it('reaches consensus when stacking + elevation agree against the histogram', () => {
+    // Histogram says Z (wrong), but both storey signals say Y → 2 votes win.
+    const r = resolveUpAxis(
+      [1, 1, 80],
+      m([
+        [1, [0, 0, 0]],
+        [2, [0, 3, 0]],
+      ]),
+      m([
+        [1, [10, 3, 10]],
+        [2, [10, 6, 10]],
+      ]),
+      new Map([
+        [1, 0],
+        [2, 3],
+      ]),
+      bbox,
+    );
+    expect(r).toMatchObject({ upAxis: 1, method: 'consensus' });
+  });
+
+  it('all three signals agree on Z (stacked Z-up model) → consensus', () => {
+    const r = resolveUpAxis(
+      [1, 1, 50],
+      m([
+        [1, [0, 0, 0]],
+        [2, [0, 0, 3]],
+        [3, [0, 0, 6]],
+      ]),
+      m([
+        [1, [10, 10, 3]],
+        [2, [10, 10, 6]],
+        [3, [10, 10, 9]],
+      ]),
+      new Map([
+        [1, 0],
+        [2, 3],
+        [3, 6],
+      ]),
+      bbox,
+    );
+    expect(r).toMatchObject({ upAxis: 2, method: 'consensus' });
+  });
+
+  it('falls back to the normal histogram with no storey signal (default Z)', () => {
+    expect(resolveUpAxis([1, 1, 5], new Map(), new Map(), new Map(), null)).toMatchObject({
+      upAxis: 2,
+      method: 'histogram',
+    });
+    expect(resolveUpAxis([9, 1, 1], new Map(), new Map(), new Map(), null)).toMatchObject({
+      upAxis: 0,
+      method: 'histogram',
+    });
+    // Degenerate / absent geometry → default Z.
+    expect(resolveUpAxis([0, 0, 0], new Map(), new Map(), new Map(), null)).toMatchObject({
+      upAxis: 2,
+      method: 'histogram',
+    });
+  });
+});
+
+describe('scanModelGeometry up-axis (multi-storey)', () => {
+  it('uses storey stacking to pick Y-up where wall area would fool the histogram', () => {
+    // A Y-up model whose vertical facade walls (XY plane, normal ‖ Z) carry far
+    // more area than the thin floors (XZ plane, normal ‖ Y), so the normal
+    // histogram alone would elect Z and the plan would read as a side elevation.
+    // Two storeys stacked along Y rescue the detection.
+    const geoms: Record<number, Geom> = {
+      // Storey 1 (y 0→3): small floor + two big facade walls.
+      10: quad([0, 0, 0], [2, 0, 0], [2, 0, 2], [0, 0, 2]), // floor, normal ‖ Y
+      11: quad([0, 0, 0], [10, 0, 0], [10, 3, 0], [0, 3, 0]), // wall z=0, normal ‖ Z
+      12: quad([0, 0, 10], [10, 0, 10], [10, 3, 10], [0, 3, 10]), // wall z=10, normal ‖ Z
+      // Storey 2 (y 3→6): the same, lifted by 3.
+      20: quad([0, 3, 0], [2, 3, 0], [2, 3, 2], [0, 3, 2]),
+      21: quad([0, 3, 0], [10, 3, 0], [10, 6, 0], [0, 6, 0]),
+      22: quad([0, 3, 10], [10, 3, 10], [10, 6, 10], [0, 6, 10]),
+    };
+    const api = makeMultiStoreyApi(
+      geoms,
+      [
+        { expressID: 110, geomId: 10 },
+        { expressID: 111, geomId: 11 },
+        { expressID: 112, geomId: 12 },
+        { expressID: 210, geomId: 20 },
+        { expressID: 211, geomId: 21 },
+        { expressID: 212, geomId: 22 },
+      ],
+      [
+        { id: 1, elevation: 0 },
+        { id: 2, elevation: 3 },
+      ],
+    );
+    const elements: FloorPlanElement[] = [
+      { expressID: 110, containedIn: 1 },
+      { expressID: 111, containedIn: 1 },
+      { expressID: 112, containedIn: 1 },
+      { expressID: 210, containedIn: 2 },
+      { expressID: 211, containedIn: 2 },
+      { expressID: 212, containedIn: 2 },
+    ];
+    const scan = scanModelGeometry(api, 0, 'METRE', elements);
+    expect(scan.upAxis).toBe(1); // Y, not the histogram's Z
+    expect([scan.planAxisX, scan.planAxisY]).toEqual([0, 2]);
+    expect(scan.storeys).toHaveLength(2);
+  });
+
+  it('keeps a stacked Z-up model on Z (no regression)', () => {
+    const geoms: Record<number, Geom> = {
+      // Storey 1 (z 0→3): floor in XY (normal ‖ Z) + wall in XZ (normal ‖ Y).
+      30: quad([0, 0, 0], [10, 0, 0], [10, 10, 0], [0, 10, 0]), // floor z=0
+      31: quad([0, 0, 0], [10, 0, 0], [10, 0, 3], [0, 0, 3]), // wall
+      // Storey 2 (z 3→6).
+      40: quad([0, 0, 3], [10, 0, 3], [10, 10, 3], [0, 10, 3]),
+      41: quad([0, 0, 3], [10, 0, 3], [10, 0, 6], [0, 0, 6]),
+    };
+    const api = makeMultiStoreyApi(
+      geoms,
+      [
+        { expressID: 130, geomId: 30 },
+        { expressID: 131, geomId: 31 },
+        { expressID: 240, geomId: 40 },
+        { expressID: 241, geomId: 41 },
+      ],
+      [
+        { id: 1, elevation: 0 },
+        { id: 2, elevation: 3 },
+      ],
+    );
+    const elements: FloorPlanElement[] = [
+      { expressID: 130, containedIn: 1 },
+      { expressID: 131, containedIn: 1 },
+      { expressID: 240, containedIn: 2 },
+      { expressID: 241, containedIn: 2 },
+    ];
+    const scan = scanModelGeometry(api, 0, 'METRE', elements);
+    expect(scan.upAxis).toBe(2);
+    expect([scan.planAxisX, scan.planAxisY]).toEqual([0, 1]);
+    expect(scan.storeys).toHaveLength(2);
   });
 });

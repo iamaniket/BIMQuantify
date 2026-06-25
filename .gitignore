@@ -13,6 +13,10 @@ samples/*
 # Throwaway local diagnostic scripts (scratch harnesses, not committed)
 scripts/_diag_*.py
 
+# Lint/tool output dumps (e.g. `eslint -f json -o _lint.json`) — never commit
+_lint.json
+*.lint.json
+
 # Python — bytecode + tool caches (never commit; apps/api has its own copy,
 # this covers apps/arbiter and any other Python at the repo root)
 __pycache__/
