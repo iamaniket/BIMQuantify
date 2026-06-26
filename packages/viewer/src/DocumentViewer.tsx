@@ -22,6 +22,7 @@ import type {
   DocumentTool,
   SearchHighlightState,
 } from './pdf-core/documentTypes.js';
+import type { RasterSource } from './pdf-core/rasterSource.js';
 import type { CameraControlsConfig } from './plugins/2d/camera/index.js';
 import { cameraPlugin } from './plugins/2d/camera/index.js';
 import { documentCameraPosePlugin } from './plugins/2d/camera-pose/index.js';
@@ -116,6 +117,13 @@ export type DocumentViewerProps = {
    */
   fileUrl?: string;
   /**
+   * Source the engine renders `fileUrl` through. The pdfjs-defaulting wrapper
+   * exported from the main barrel injects `pdfjsRasterSource`; the pdfjs-free
+   * `./viewer-2d` entry exports this bare component, so the mobile embed passes
+   * `imageRasterSource` (server page-images). Ignored for a `floorPlan` source.
+   */
+  rasterSource?: RasterSource;
+  /**
    * Floor-plan (vector) source — a decoded BIMFPLN2 artifact. When set, the
    * viewer renders the model-extracted floor plan through this same engine:
    * `currentPage` selects the storey level (1-based), and there is no raster
@@ -172,6 +180,7 @@ export type DocumentViewerProps = {
 function DocumentViewerInner(
   {
     fileUrl,
+    rasterSource,
     floorPlan,
     roomNames,
     colors,
@@ -211,6 +220,7 @@ function DocumentViewerInner(
 
   // Live refs so engine event handlers and the mount-time state sync always
   // read current values without stale closures.
+  const rasterSourceRef = useRef(rasterSource);
   const floorPlanRef = useRef(floorPlan);
   const roomNamesRef = useRef(roomNames);
   const colorsRef = useRef(colors);
@@ -232,6 +242,7 @@ function DocumentViewerInner(
   const onPageRenderedRef = useRef(onPageRendered);
   const onPageMatchCountRef = useRef(onPageMatchCount);
   useEffect(() => {
+    rasterSourceRef.current = rasterSource;
     floorPlanRef.current = floorPlan;
     roomNamesRef.current = roomNames;
     colorsRef.current = colors;
@@ -346,7 +357,11 @@ function DocumentViewerInner(
       plugins.push(navCompassPlugin({ locale: navCompassRef.current?.locale ?? 'nl' }));
     }
 
-    const engine = new DocumentEngine({ plugins });
+    const engine = new DocumentEngine(
+      rasterSourceRef.current !== undefined
+        ? { plugins, rasterSource: rasterSourceRef.current }
+        : { plugins },
+    );
     engineRef.current = engine;
     let cancelled = false;
 

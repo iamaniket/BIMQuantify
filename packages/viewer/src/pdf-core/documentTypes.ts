@@ -4,8 +4,6 @@
  * plugins what `ViewerContext`/`ViewerEvents` are to 3D plugins.
  */
 
-import type * as pdfjsLib from 'pdfjs-dist';
-
 import type { CommandRegistry } from '../core/CommandRegistry.js';
 import type { EventBus } from '../core/EventBus.js';
 import type {
@@ -113,15 +111,15 @@ export interface DocumentEvents extends PluginLifecycleEvents {
 
 /**
  * What every PDF plugin gets at install time. Plugins read/drive the document
- * through these getters/setters + the bus and registries — they never touch
- * pdf.js directly except via `getDocument()`/`getPage()`.
+ * through these getters/setters + the bus and registries — they are pdf.js-free
+ * (the raster source behind the engine is the only thing that may use pdf.js).
  */
 export interface DocumentContext {
   /** Scrollable viewport element. */
   container: HTMLElement;
   /** Page raster canvas. */
   canvas: HTMLCanvasElement;
-  /** pdf.js TextLayer host (sits over the canvas). */
+  /** Selectable text-layer host (sits over the canvas; empty for sources with no text). */
   textLayer: HTMLElement;
   /** Page-anchored overlay slot (sized to the page; CSS-transformed with it). */
   overlayHost: HTMLElement;
@@ -135,8 +133,13 @@ export interface DocumentContext {
    */
   viewportOverlay: HTMLElement;
 
-  getDocument(): pdfjsLib.PDFDocumentProxy | null;
-  getPage(): pdfjsLib.PDFPageProxy | null;
+  /**
+   * Joined lowercased text of a page (1-indexed) for the search scan. Absent
+   * when the active raster source has no text (e.g. mobile server-image PDFs) —
+   * the `search` plugin then degrades to a no-op. Returns `undefined` when no
+   * document/text is available.
+   */
+  getPageText(page: number): Promise<string> | undefined;
   getNumPages(): number;
   getCurrentPage(): number;
   getScale(): number;

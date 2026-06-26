@@ -18,11 +18,15 @@ import type {
 
 import { createBridge, type Bridge, type HostMessage, type ViewMode } from './bridge';
 import { FloorPlanPane } from './FloorPlanPane';
-import { useFloorPlanData } from './useFloorPlanData';
+import { useFloorPlanData, type FloorPlanLevelInfo } from './useFloorPlanData';
 
 /** Clamp the split divider so neither pane collapses. */
 const SPLIT_MIN = 0.2;
 const SPLIT_MAX = 0.8;
+
+// Stable empties for the PDF-document path (no storeys / room names).
+const EMPTY_LEVELS: FloorPlanLevelInfo[] = [];
+const EMPTY_ROOMS = new Map<number, string>();
 
 /**
  * The embeddable viewer host. Holds no domain state — it waits for the native
@@ -41,6 +45,9 @@ const SPLIT_MAX = 0.8;
 export function App() {
   const [bundle, setBundle] = useState<ViewerBundle | null>(null);
   const [additionalBundles, setAdditionalBundles] = useState<ViewerBundle[]>([]);
+  // PDF DOCUMENT (no IFC model): the page-image manifest URL. When set, the host
+  // pushed a `loadPdf`, so we render the 2D pane only (no 3D IfcViewer).
+  const [pdfDocUrl, setPdfDocUrl] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('3d');
   const [activeLevel, setActiveLevel] = useState(0);
   const [splitRatio, setSplitRatio] = useState(0.5);
@@ -81,12 +88,22 @@ export function App() {
       switch (msg.type) {
         case 'loadModel':
           setViewerReady(false);
+          setPdfDocUrl(null);
           setBundle(msg.bundle);
           setAdditionalBundles(msg.additionalBundles ?? []);
           setActiveLevel(0);
-          // 2D plan rendering is stubbed (see file header), so default to 3D
-          // regardless of floor-plan availability; honor an explicit host mode.
-          setViewMode(msg.viewMode ?? '3d');
+          // Default to 2D when the model has a floor plan (the 2D pane now renders
+          // through the shared DocumentViewer); else 3D. Honor an explicit host mode.
+          setViewMode(msg.viewMode ?? (msg.bundle.floorPlansUrl !== undefined ? '2d' : '3d'));
+          break;
+        case 'loadPdf':
+          // PDF document: 2D-only, no IFC model. Renders server page-images.
+          setViewerReady(false);
+          setBundle(null);
+          setAdditionalBundles([]);
+          setActiveLevel(0);
+          setPdfDocUrl(msg.pdfPagesUrl);
+          setViewMode('2d');
           break;
         case 'setViewMode':
           requestViewMode(msg.mode);
@@ -134,6 +151,15 @@ export function App() {
       setViewMode('3d');
     }
   }, [viewMode, floorPlan.status]);
+
+  // PDF document: there is no IfcViewer to fire onReady, so announce the load
+  // to the native shell directly (the DocumentViewer shows its own load spinner).
+  useEffect(() => {
+    if (pdfDocUrl !== null) {
+      bridgeRef.current?.send({ type: 'sceneReady' });
+      bridgeRef.current?.send({ type: 'modelLoaded' });
+    }
+  }, [pdfDocUrl]);
 
   // The 3D pane is always sized (see layout note below), but a mode change can
   // alter its dimensions (e.g. 3D↔Split). ThatOpen's renderer resizes from the
@@ -236,6 +262,23 @@ export function App() {
     draggingRef.current = false;
     e.currentTarget.releasePointerCapture?.(e.pointerId);
   }, []);
+
+  // PDF document: 2D-only, full-screen page-image viewer (no 3D pane / switcher).
+  if (pdfDocUrl !== null) {
+    return (
+      <div ref={containerRef} style={containerStyle}>
+        <div style={fillStyle}>
+          <FloorPlanPane
+            levels={EMPTY_LEVELS}
+            roomNames={EMPTY_ROOMS}
+            activeLevel={activeLevel}
+            onLevelChange={setActiveLevel}
+            pdfPagesUrl={pdfDocUrl}
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (!bundle) {
     return <div style={waitingStyle}>Waiting for model…</div>;

@@ -46,6 +46,27 @@ const Schema = z.object({
     .default('1')
     .transform((v) => Number.parseInt(v, 10)),
 
+  // PDF→page-image rasterization (mobile viewer underlay). Pages are rendered at
+  // JOB_PDF_RASTER_DPI, with the long edge capped at JOB_PDF_RASTER_MAX_EDGE_PX
+  // (safely under canvas limits, a few hundred KB as WebP, ~3× crisp zoom on a
+  // phone). Render concurrency is bounded so peak memory stays ~N canvases.
+  JOB_PDF_RASTER_DPI: z
+    .string()
+    .default('150')
+    .transform((v) => Number.parseInt(v, 10)),
+  JOB_PDF_RASTER_MAX_EDGE_PX: z
+    .string()
+    .default('4096')
+    .transform((v) => Number.parseInt(v, 10)),
+  JOB_PDF_RASTER_QUALITY: z
+    .string()
+    .default('80')
+    .transform((v) => Number.parseInt(v, 10)),
+  JOB_PDF_RASTER_CONCURRENCY: z
+    .string()
+    .default('2')
+    .transform((v) => Number.parseInt(v, 10)),
+
   EMAIL_TRANSPORT: z.enum(['smtp', 'postmark']).default('smtp'),
   SMTP_HOST: z.string().default('localhost'),
   SMTP_PORT: z

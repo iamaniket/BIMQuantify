@@ -1,4 +1,7 @@
-export { DocumentViewer } from './DocumentViewer.js';
+// PDF-capable DocumentViewer: the barrel wrapper injects `pdfjsRasterSource`
+// (and thus pdf.js) as the default, so the portal renders PDFs unchanged. The
+// pdfjs-free core + `imageRasterSource` live behind the `./viewer-2d` entry.
+export { DocumentViewer } from './pdfDocumentViewer.js';
 export type {
   DocumentViewerProps,
   DocumentViewerHandle,
@@ -9,6 +12,19 @@ export type {
   SearchHighlight,
   PageDimensions,
 } from './DocumentViewer.js';
+// Pluggable page-raster backend. `pdfjsRasterSource` (pdf.js, web) is the
+// barrel default; `imageRasterSource` (server page-images) is pdfjs-free and
+// used by the mobile embed via `./viewer-2d`.
+export { pdfjsRasterSource } from './pdf-core/PdfjsRasterSource.js';
+export { imageRasterSource } from './pdf-core/ImageRasterSource.js';
+export type {
+  RasterSource,
+  RasterDocument,
+  RenderedPage,
+  RenderPageOptions,
+  RenderTextLayerOptions,
+  RasterLoadProgress,
+} from './pdf-core/rasterSource.js';
 export { IfcViewer } from './IfcViewer.js';
 export {
   getWasmPath,

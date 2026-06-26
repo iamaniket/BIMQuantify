@@ -66,3 +66,13 @@ export function toViewerBundle(
   if (resp.floor_plans_url !== null) out.floorPlansUrl = resp.floor_plans_url;
   return out;
 }
+
+/**
+ * Page-image manifest URL for a PDF DOCUMENT (no fragments), or null. The viewer
+ * screen sends a `loadPdf` (2D-only) when this is present, instead of the IFC
+ * `loadModel`. The embed renders it pdfjs-free via `imageRasterSource`.
+ */
+export function pdfPagesUrlFor(resp: ViewerBundleResponse): string | null {
+  if (resp.file_type !== 'pdf') return null;
+  return resp.pdf_pages_url ?? null;
+}

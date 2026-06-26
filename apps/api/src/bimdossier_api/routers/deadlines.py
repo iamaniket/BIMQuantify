@@ -28,18 +28,9 @@ from bimdossier_api.access import (
 )
 from bimdossier_api.auth.fastapi_users import current_verified_user
 from bimdossier_api.auth.permissions import Action, Resource, require_permission
+from bimdossier_api.deadlines.completeness import ReadinessItem, _check_fulfillment
 from bimdossier_api.jurisdictions import get_deadline_rules, get_dossier_requirements, pick_label
-from bimdossier_api.models.certificate import Certificate, CertificateStatus
 from bimdossier_api.models.deadline import Deadline, DeadlineStatus
-from bimdossier_api.models.finding import Finding, FindingStatus
-from bimdossier_api.models.document import Document
-from bimdossier_api.models.project_file import (
-    ExtractionStatus,
-    FileType,
-    ProjectFile,
-    ProjectFileRole,
-    ProjectFileStatus,
-)
 from bimdossier_api.models.user import User
 from bimdossier_api.schemas.deadline import DeadlineFileMet, DeadlineRead
 from bimdossier_api.tenancy import get_tenant_session, require_active_organization
@@ -128,15 +119,6 @@ async def get_deadline(
     return _serialize_deadline(dl)
 
 
-class ReadinessItem(BaseModel):
-    code: str
-    label: str
-    category: str
-    required: bool
-    fulfilled: bool
-    count: int
-
-
 class DeadlineReadiness(BaseModel):
     deadline_id: UUID
     deadline_type: str
@@ -144,143 +126,6 @@ class DeadlineReadiness(BaseModel):
     ready_count: int
     total_required: int
     is_ready: bool
-
-
-async def _count_ready_attachments_in_slot(
-    session: AsyncSession,
-    project_id: UUID,
-    slot: str,
-) -> int:
-    """Count ready, non-deleted attachments tagged with the given dossier slot."""
-    return (
-        await session.scalar(
-            select(func.count()).select_from(
-                select(ProjectFile.id).where(
-                    ProjectFile.project_id == project_id,
-                    ProjectFile.role == ProjectFileRole.attachment,
-                    ProjectFile.dossier_slot == slot,
-                    ProjectFile.status == ProjectFileStatus.ready,
-                    ProjectFile.deleted_at.is_(None),
-                ).subquery()
-            )
-        )
-    ) or 0
-
-
-async def _count_models(session: AsyncSession, project_id: UUID) -> int:
-    """Count non-deleted BIM models in the project."""
-    return (
-        await session.scalar(
-            select(func.count()).select_from(
-                select(Document.id).where(
-                    Document.project_id == project_id,
-                    Document.deleted_at.is_(None),
-                ).subquery()
-            )
-        )
-    ) or 0
-
-
-async def _count_viewable_models(session: AsyncSession, project_id: UUID) -> int:
-    """Count distinct models with at least one *viewable* model-source file.
-
-    "Viewable" mirrors the portal: a ready IFC whose geometry extraction
-    succeeded, or a ready PDF (something the 3D/2D viewer can actually open).
-    A model that exists but is still processing — or has no file — does not
-    count. This is what fulfils the model-backed "drawings" dossier slot.
-    """
-    return (
-        await session.scalar(
-            select(func.count(func.distinct(ProjectFile.document_id))).where(
-                ProjectFile.project_id == project_id,
-                ProjectFile.role == ProjectFileRole.model_source,
-                ProjectFile.deleted_at.is_(None),
-                ProjectFile.document_id.is_not(None),
-                ProjectFile.status == ProjectFileStatus.ready,
-                (
-                    (
-                        (ProjectFile.file_type == FileType.ifc)
-                        & (ProjectFile.extraction_status == ExtractionStatus.succeeded)
-                    )
-                    | (ProjectFile.file_type == FileType.pdf)
-                ),
-            )
-        )
-    ) or 0
-
-
-async def _check_fulfillment(
-    session: AsyncSession,
-    project_id: UUID,
-    source_kind: str,
-    source_value: str,
-) -> tuple[bool, int]:
-    """Check whether a single dossier requirement is fulfilled.
-
-    Returns (fulfilled, count) where count is the number of matching items.
-    """
-    if source_kind == "attachment_slot":
-        count = await _count_ready_attachments_in_slot(session, project_id, source_value)
-        return count > 0, count
-
-    if source_kind == "certificate_type":
-        count = (
-            await session.scalar(
-                select(func.count()).select_from(
-                    select(Certificate.id).where(
-                        Certificate.project_id == project_id,
-                        Certificate.certificate_type == source_value,
-                        Certificate.status == CertificateStatus.ready,
-                        Certificate.deleted_at.is_(None),
-                    ).subquery()
-                )
-            )
-        ) or 0
-        return count > 0, count
-
-    if source_kind == "derived":
-        if source_value == "findings":
-            open_count = (
-                await session.scalar(
-                    select(func.count()).select_from(
-                        select(Finding.id).where(
-                            Finding.project_id == project_id,
-                            Finding.status.in_(
-                                [FindingStatus.open, FindingStatus.in_progress]
-                            ),
-                            Finding.deleted_at.is_(None),
-                        ).subquery()
-                    )
-                )
-            ) or 0
-            return open_count == 0, open_count
-
-        if source_value == "deadlines":
-            today = datetime.now(_AMS).date()
-            overdue_count = (
-                await session.scalar(
-                    select(func.count()).select_from(
-                        select(Deadline.id).where(
-                            Deadline.project_id == project_id,
-                            Deadline.status == DeadlineStatus.pending,
-                            Deadline.due_date < today,
-                        ).subquery()
-                    )
-                )
-            ) or 0
-            return overdue_count == 0, overdue_count
-
-        if source_value == "documents":
-            count = await _count_models(session, project_id)
-            return count > 0, count
-
-    if source_kind == "document" and source_value == "documents":
-        # Drawings: a viewable/processed model (ready+extracted IFC or ready
-        # PDF). Documents still processing — or without a file — don't count.
-        count = await _count_viewable_models(session, project_id)
-        return count > 0, count
-
-    return False, 0
 
 
 @router.get("/{deadline_id}/readiness", response_model=DeadlineReadiness)

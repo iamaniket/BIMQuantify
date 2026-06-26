@@ -128,9 +128,14 @@ async def test_pdf_complete_creates_job(
     resp = await client.get("/jobs", headers=_auth(org_user["access_token"]))
     assert resp.status_code == 200
     body = resp.json()
-    assert body["total"] == 1
-    job = body["items"][0]
-    assert job["job_type"] == "pdf_extraction"
+    # PDF complete now dispatches extraction AND page-image rasterization (the
+    # mobile pdfjs-free viewer underlay), in parallel.
+    assert body["total"] == 2
+    assert {it["job_type"] for it in body["items"]} == {
+        "pdf_extraction",
+        "pdf_pages_rasterization",
+    }
+    job = next(it for it in body["items"] if it["job_type"] == "pdf_extraction")
     assert job["status"] == "pending"
     assert job["file_id"] == file_id
     assert job["project_id"] == project_id

@@ -245,33 +245,30 @@ async def list_project_activity(
     ]
 
 
-@router.get("/timeline", response_model=list[ActivityTimelineBucket])
-async def project_activity_timeline(
+async def compute_activity_timeline(
+    session: AsyncSession,
     project_id: UUID,
-    bucket: str = Query(default="day", pattern="^(day|week)$"),
-    since: datetime | None = Query(default=None),
-    category: str | None = Query(default=None, pattern="^(upload|scan|create|change|delete)$"),
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
+    *,
+    bucket: str = "day",
+    since: datetime | None = None,
+    category: str | None = None,
 ) -> list[ActivityTimelineBucket]:
-    """Activity-over-time trend for a project's feed.
+    """Build the activity-over-time buckets for a project.
+
+    Shared by the ``/timeline`` endpoint and the project-overview aggregate so
+    both produce an identical chart. The CALLER is responsible for the access
+    check (``require_project_read_access``); this only runs the query.
 
     Counts feed events grouped into ``day`` or ``week`` buckets, sharing the
-    list endpoint's scoping (same project + ``_EXCLUDED_ACTIONS`` denylist +
-    category mapping) so the chart matches the table. Returns only buckets with
-    at least one event, ascending by ``bucket_start`` — the client zero-fills
-    gaps over its fixed time axis. Not paginated (no ``X-Total-Count``).
+    list endpoint's scoping (``_EXCLUDED_ACTIONS`` denylist + category mapping)
+    so the chart matches the table. Returns only buckets with at least one
+    event, ascending by ``bucket_start`` — the client zero-fills gaps over its
+    fixed time axis.
 
-    Each bucket also carries ``by_category`` / ``by_resource`` breakdowns. We
-    group by ``(bucket, action, resource_type)`` and fold in Python through
-    :func:`_category_for`, so the category mapping has a single source of truth
-    (no second SQL mirror to drift). The grouped result set is tiny — at most
-    ``distinct actions x resource types x buckets`` rows.
+    Each bucket carries ``by_category`` / ``by_resource`` breakdowns. We group
+    by ``(bucket, action, resource_type)`` and fold in Python through
+    :func:`_category_for`, so the category mapping has a single source of truth.
     """
-    project = await load_project_or_404(session, project_id)
-    await require_project_read_access(session, project.id, user, active_org_id)
-
     grain = "week" if bucket == "week" else "day"
     bucket_col = func.date_trunc(grain, AuditLog.created_at).label("bucket_start")
 
@@ -283,7 +280,7 @@ async def project_activity_timeline(
         # label collides with tuple.count and mypy reads row.count as a method.
         func.count().label("n"),
     ).where(
-        AuditLog.project_id == project.id,
+        AuditLog.project_id == project_id,
         AuditLog.action.notin_(_EXCLUDED_ACTIONS),
     )
     stmt = _apply_category_filter(stmt, category)
@@ -321,6 +318,28 @@ async def project_activity_timeline(
         )
         for bucket_start in order
     ]
+
+
+@router.get("/timeline", response_model=list[ActivityTimelineBucket])
+async def project_activity_timeline(
+    project_id: UUID,
+    bucket: str = Query(default="day", pattern="^(day|week)$"),
+    since: datetime | None = Query(default=None),
+    category: str | None = Query(default=None, pattern="^(upload|scan|create|change|delete)$"),
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> list[ActivityTimelineBucket]:
+    """Activity-over-time trend for a project's feed.
+
+    Thin wrapper over :func:`compute_activity_timeline` — gates on project read
+    access, then delegates the grouping. Not paginated (no ``X-Total-Count``).
+    """
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
+    return await compute_activity_timeline(
+        session, project.id, bucket=bucket, since=since, category=category
+    )
 
 
 __all__ = ["router"]

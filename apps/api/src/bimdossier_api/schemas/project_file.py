@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -77,6 +78,10 @@ class ViewerBundleResponse(BaseModel):
     outline_url: str | None = None
     floor_plans_url: str | None = None
     file_url: str | None = None
+    # Presigned URL of the server-rasterized PDF page-image manifest (pages.json).
+    # Set only for PDFs whose pdf_pages_rasterization job has succeeded; the mobile
+    # viewer's ImageRasterSource loads it so PDFs render pdfjs-free on the device.
+    pdf_pages_url: str | None = None
     expires_in: int
 
 
@@ -164,3 +169,28 @@ class ExtractionCallbackRequest(BaseModel):
     # IfcBuildingStorey list (IFC extraction only). Absent for PDF/DXF jobs and
     # pre-storey extractor versions; the handler upserts these onto the document.
     storeys: list[StoreyCallbackItem] | None = None
+
+
+class PagesRasterizeCallbackRequest(BaseModel):
+    """Worker → API callback for `pdf_pages_rasterization` jobs.
+
+    Separate from `ExtractionCallbackRequest` because the file's `extraction_status`
+    is already terminal (rasterization runs in parallel with / after extraction):
+    this callback only records the page-image manifest key + the rasterization
+    Job's terminal state, never the extraction status.
+    """
+
+    file_id: UUID
+    organization_id: UUID
+    job_id: UUID | None = None
+    status: Literal["running", "succeeded", "failed"]
+    # Set on `succeeded`: the key of the page-image manifest (pages.json) the
+    # mobile viewer's ImageRasterSource loads.
+    pdf_pages_key: str | None = None
+    page_count: int | None = None
+    error: str | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    progress: int | None = Field(default=None, ge=0, le=100)
+    retriable: bool = False
+    error_kind: str | None = None

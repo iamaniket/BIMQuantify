@@ -27,7 +27,7 @@ function isAuthorized(header: string | undefined, secret: string): boolean {
  */
 const JobBody = z.object({
   job_id: z.string().uuid(),
-  job_type: z.enum(['ifc_extraction', 'pdf_extraction', 'dxf_extraction', 'image_metadata_extraction', 'compliance_report', 'assurance_plan_report', 'completion_declaration_report', 'dossier_report', 'send_email']),
+  job_type: z.enum(['ifc_extraction', 'pdf_extraction', 'pdf_pages_rasterization', 'dxf_extraction', 'image_metadata_extraction', 'compliance_report', 'assurance_plan_report', 'completion_declaration_report', 'dossier_report', 'snag_list_report', 'send_email']),
   // Schema-per-tenant routing key — the worker echoes it back in callbacks
   // so the API can resolve which `org_<hex>` schema to write to.
   organization_id: z.string().uuid(),

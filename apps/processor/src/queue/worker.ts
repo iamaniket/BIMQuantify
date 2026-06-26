@@ -2,12 +2,14 @@ import { type Job, UnrecoverableError, Worker } from 'bullmq';
 
 import { postAttachmentCallback } from '../api/attachmentCallback.js';
 import { postCallback } from '../api/callback.js';
+import { postPagesCallback } from '../api/pagesCallback.js';
 import { getConfig, QUEUE_NAME } from '../config.js';
 import { logger } from '../log.js';
 import { runExtraction } from '../pipeline/extract.js';
 import { runImageMetadataExtraction } from '../pipeline/image.js';
 import { runDxfExtraction } from '../pipeline/dxf.js';
 import { runPdfExtraction } from '../pipeline/pdf.js';
+import { runPdfPagesRasterization } from '../pipeline/pdf-rasterize.js';
 import { postReportCallback } from '../pipeline/report/callback.js';
 import { classifyError } from '../pipeline/errors.js';
 import { runAssurancePlanReport } from '../pipeline/report/assurance-plan.js';
@@ -51,6 +53,19 @@ async function notifyTerminalFailure(data: WorkerJob, err: Error): Promise<void>
     case 'pdf_extraction':
     case 'dxf_extraction':
       await postCallback({
+        file_id: pickStr(data.payload, 'file_id'),
+        organization_id: data.organization_id,
+        job_id: data.job_id,
+        status: 'failed',
+        error,
+        finished_at,
+        retriable,
+        error_kind,
+      });
+      break;
+    case 'pdf_pages_rasterization':
+      // Dedicated callback — rasterization never touches extraction_status.
+      await postPagesCallback({
         file_id: pickStr(data.payload, 'file_id'),
         organization_id: data.organization_id,
         job_id: data.job_id,
@@ -149,6 +164,9 @@ export function startWorker(): Worker<WorkerJob> {
             break;
           case 'pdf_extraction':
             await runPdfExtraction(job.data, onProgress);
+            break;
+          case 'pdf_pages_rasterization':
+            await runPdfPagesRasterization(job.data, onProgress);
             break;
           case 'dxf_extraction':
             await runDxfExtraction(job.data, onProgress);

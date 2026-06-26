@@ -23,21 +23,19 @@ export function searchPlugin(): DocumentPlugin {
 
   async function find(query: string): Promise<DocumentSearchHit[]> {
     const trimmed = query.trim();
-    const d = ctx?.getDocument() ?? null;
-    if (trimmed.length === 0 || d === null) return [];
+    if (trimmed.length === 0 || ctx === null) return [];
+    const numPages = ctx.getNumPages();
     const needle = trimmed.toLowerCase();
     const hits: DocumentSearchHit[] = [];
 
-    for (let i = 1; i <= d.numPages; i += 1) {
+    for (let i = 1; i <= numPages; i += 1) {
       let pageText = pageTextCache.get(i);
       if (pageText === undefined) {
+        // No text source (e.g. mobile server-image PDFs) → search is a no-op.
+        const textPromise = ctx.getPageText(i);
+        if (textPromise === undefined) break;
         try {
-          const page = await d.getPage(i);
-          const content = await page.getTextContent();
-          pageText = content.items
-            .map((item) => ('str' in item ? item.str : ''))
-            .join(' ')
-            .toLowerCase();
+          pageText = await textPromise;
           pageTextCache.set(i, pageText);
         } catch (err) {
           // Do NOT cache '' for a page whose text extraction threw — caching it

@@ -173,6 +173,16 @@ export function pdfGeometryKeyFor(sourceKey: string): string {
   return sourceKey.replace(/\.pdf$/i, '.geometry.json');
 }
 
+/** Manifest listing every rasterized page image (consumed by ImageRasterSource). */
+export function pdfPagesManifestKeyFor(sourceKey: string): string {
+  return sourceKey.replace(/\.pdf$/i, '.pages.json');
+}
+
+/** Per-page rasterized WebP image. `pageIndex` is 0-based. */
+export function pdfPageImageKeyFor(sourceKey: string, pageIndex: number): string {
+  return sourceKey.replace(/\.pdf$/i, `.page-${String(pageIndex)}.webp`);
+}
+
 export function dxfGeometryKeyFor(sourceKey: string): string {
   return sourceKey.replace(/\.(dxf|dwg)$/i, '.geometry.json');
 }

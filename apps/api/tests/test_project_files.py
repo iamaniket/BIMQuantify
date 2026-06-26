@@ -1086,8 +1086,11 @@ async def test_complete_pdf_valid_marks_ready_no_extraction(
     assert body["file_type"] == "pdf"
     assert body["ifc_schema"] is None
     assert body["extraction_status"] == "queued"
-    assert len(extraction_calls) == 1
-    assert extraction_calls[0]["job_type"] == "pdf_extraction"
+    # PDF complete dispatches BOTH extraction (metadata + geometry) and
+    # page-image rasterization (mobile pdfjs-free viewer underlay), in parallel.
+    assert len(extraction_calls) == 2
+    job_types = {c["job_type"] for c in extraction_calls}
+    assert job_types == {"pdf_extraction", "pdf_pages_rasterization"}
 
 
 async def test_complete_pdf_invalid_magic_rejects(
@@ -1222,6 +1225,113 @@ async def test_pdf_callback_persists_geometry_and_bundle_serves_it(
     assert body["file_type"] == "pdf"
     assert body["geometry_url"] is not None
     assert "geometry.json" in body["geometry_url"]
+
+
+async def _complete_ready_pdf(
+    client: AsyncClient,
+    fake: FakeStorage,
+    org_user: dict[str, str],
+    sha: str,
+    name: str = "plan.pdf",
+) -> tuple[str, str, str]:
+    """Initiate + complete a valid PDF; returns (project_id, document_id, file_id)."""
+    project_id, document_id = await _project_and_model(
+        client, org_user["access_token"], project_name=f"Pdf-{sha[:6]}"
+    )
+    init = (
+        await client.post(
+            f"/projects/{project_id}/documents/{document_id}/files/initiate",
+            json={
+                "filename": name,
+                "size_bytes": len(VALID_PDF_BYTES),
+                "content_type": "application/pdf",
+                "content_sha256": sha,
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = VALID_PDF_BYTES
+    await client.post(
+        f"/projects/{project_id}/documents/{document_id}/files/{init['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+    return project_id, document_id, init["file_id"]
+
+
+_WORKER_AUTH = {"Authorization": "Bearer dev-shared-secret-change-me"}
+
+
+async def test_pages_callback_persists_manifest_and_bundle_serves_it(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """A succeeded pdf_pages_rasterization callback persists the manifest key,
+    and the viewer-bundle then presigns a pdf_pages_url for the mobile viewer."""
+    client, fake = fake_storage_client
+    project_id, document_id, file_id = await _complete_ready_pdf(
+        client, fake, org_user, "1111111111111111111111111111111111111111111111111111111111111111"
+    )
+
+    cb = await client.post(
+        "/internal/jobs/pages/callback",
+        json={
+            "file_id": file_id,
+            "organization_id": org_user["organization_id"],
+            "status": "succeeded",
+            "pdf_pages_key": "projects/x/doc/plan.pages.json",
+            "page_count": 3,
+        },
+        headers=_WORKER_AUTH,
+    )
+    assert cb.status_code == 200, cb.text
+
+    resp = await client.get(
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/viewer-bundle",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["file_type"] == "pdf"
+    assert body["pdf_pages_url"] is not None
+    assert "pages.json" in body["pdf_pages_url"]
+
+
+async def test_pages_callback_failed_leaves_bundle_without_pages_url(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """A failed rasterization callback records the failure without a manifest;
+    the file stays viewable (extraction untouched) and the bundle has no pages url."""
+    client, fake = fake_storage_client
+    project_id, document_id, file_id = await _complete_ready_pdf(
+        client, fake, org_user, "2222222222222222222222222222222222222222222222222222222222222222"
+    )
+
+    cb = await client.post(
+        "/internal/jobs/pages/callback",
+        json={
+            "file_id": file_id,
+            "organization_id": org_user["organization_id"],
+            "status": "failed",
+            "error": "boom",
+            "retriable": False,
+        },
+        headers=_WORKER_AUTH,
+    )
+    assert cb.status_code == 200, cb.text
+
+    resp = await client.get(
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/viewer-bundle",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    # Rasterization failure is non-fatal: the PDF is still viewable (file_url),
+    # only the mobile page-image underlay is absent.
+    assert body["file_url"] is not None
+    assert body["pdf_pages_url"] is None
 
 
 # ---------------------------------------------------------------------------

@@ -122,10 +122,17 @@ async def get_viewer_bundle(
             geometry_url = await storage.presigned_get_url(
                 row.geometry_storage_key, "geometry.json"
             )
+        # Server-rasterized page-image manifest for the mobile pdfjs-free viewer.
+        pdf_pages_url: str | None = None
+        if row.pdf_pages_storage_key is not None:
+            pdf_pages_url = await storage.presigned_get_url(
+                row.pdf_pages_storage_key, "pages.json"
+            )
         return ViewerBundleResponse(
             file_type=row.file_type,
             file_url=file_url,
             geometry_url=geometry_url,
+            pdf_pages_url=pdf_pages_url,
             expires_in=storage.presign_ttl,
         )
 

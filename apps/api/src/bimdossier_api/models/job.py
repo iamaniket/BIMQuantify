@@ -15,6 +15,9 @@ from bimdossier_api.models._mixins import TimestampMixin
 class JobType(StrEnum):
     ifc_extraction = "ifc_extraction"
     pdf_extraction = "pdf_extraction"
+    # Server-side PDF→page-image rasterization for the mobile viewer underlay.
+    # Dispatched after pdf_extraction succeeds; writes a page-image manifest.
+    pdf_pages_rasterization = "pdf_pages_rasterization"
     dxf_extraction = "dxf_extraction"
     verification = "verification"
     batch_update = "batch_update"

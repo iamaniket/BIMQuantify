@@ -9,9 +9,6 @@
  * where `Viewer.ts` owns the scene/render loop and plugins own behavior.
  */
 
-import * as pdfjsLib from 'pdfjs-dist';
-
-
 import { CommandRegistry } from '../core/CommandRegistry.js';
 import { EventBus } from '../core/EventBus.js';
 import { PluginManager } from '../core/plugin.js';
@@ -26,23 +23,24 @@ import {
   type DocumentTool,
   type SearchHighlightState,
 } from './documentTypes.js';
+import {
+  RasterRenderAborted,
+  type RasterDocument,
+  type RasterSource,
+} from './rasterSource.js';
 import type { DecodedFloorPlans, FloorPlanLevel } from '../plugins/3d/shared/floorplan-codec.js';
 import { unionBbox, type PlanBbox } from '../plugins/3d/shared/floorplanBbox.js';
-
-// Configure the pdf.js worker once at module load — same setup the old
-// monolithic DocumentViewer used.
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
-
-
-
-type PdfTextContent = Awaited<ReturnType<pdfjsLib.PDFPageProxy['getTextContent']>>;
 
 interface DocumentEngineOptions {
   /** Plugins to register at mount. Order matters for dependencies. */
   plugins?: DocumentPlugin[];
+  /**
+   * Source the engine renders a PDF (or any paged raster) through: pdf.js on
+   * web (`pdfjsRasterSource`), server page-images on mobile
+   * (`imageRasterSource`). Not needed for a floor-plan source — `loadFloorPlan`
+   * renders vector line work with no raster.
+   */
+  rasterSource?: RasterSource;
 }
 
 interface MountElements {
@@ -65,12 +63,10 @@ export class DocumentEngine {
   private canvas: HTMLCanvasElement | null = null;
   private textLayerEl: HTMLElement | null = null;
 
-  // pdf.js state.
-  private doc: pdfjsLib.PDFDocumentProxy | null = null;
-  private page: pdfjsLib.PDFPageProxy | null = null;
-  private renderTask: pdfjsLib.RenderTask | null = null;
-  private textLayerInstance: pdfjsLib.TextLayer | null = null;
-  private readonly textContentCache = new Map<number, PdfTextContent>();
+  // Raster (PDF / page-image) state — driven through the injected RasterSource.
+  private rasterDoc: RasterDocument | null = null;
+  // Aborts the in-flight render when a newer one supersedes it.
+  private renderAbort: AbortController | null = null;
 
   // Authoritative viewer state.
   private currentPage = 1;
@@ -82,9 +78,9 @@ export class DocumentEngine {
   private pageDims: PageDimensions | null = null;
   private unscaledViewport: PageDimensions | null = null;
 
-  // Monotonic tokens used to discard stale async load/render results.
+  // Monotonic token used to discard a stale async load result (a newer load
+  // started before this one resolved). Per-render staleness uses `renderAbort`.
   private loadToken = 0;
-  private renderToken = 0;
 
   // Floor-plan (vector) source. When set, this engine renders a decoded
   // BIMFPLN2 plan instead of a PDF: pages are storey levels, the page box is the
@@ -112,8 +108,7 @@ export class DocumentEngine {
       overlayHost: elements.overlayHost,
       webglHost: elements.webglHost,
       viewportOverlay: elements.viewportOverlay,
-      getDocument: () => this.doc,
-      getPage: () => this.page,
+      getPageText: (n) => this.rasterDoc?.getPageText?.(n),
       getNumPages: () => this.numPages,
       getCurrentPage: () => this.currentPage,
       getScale: () => this.scale,
@@ -147,27 +142,26 @@ export class DocumentEngine {
   async load(fileUrl: string): Promise<void> {
     this.floorPlanMode = false;
     await this.unloadDoc();
+    const source = this.options.rasterSource;
+    if (source === undefined) {
+      this.events.emit('doc:error', {
+        error: new Error('DocumentEngine.load() requires a rasterSource'),
+      });
+      return;
+    }
     const token = ++this.loadToken;
     try {
-      const task = pdfjsLib.getDocument({
-        url: fileUrl,
-        disableAutoFetch: true,
-        disableStream: false,
-        verbosity: pdfjsLib.VerbosityLevel.ERRORS,
-      });
-      task.onProgress = ({ loaded, total }: { loaded: number; total: number }) => {
+      const doc = await source.open(fileUrl, ({ loaded, total }) => {
         if (token !== this.loadToken) return;
         this.events.emit('doc:progress', { loaded, total });
-      };
-      const newDoc = await task.promise;
+      });
       if (token !== this.loadToken) {
-        await newDoc.destroy();
+        await doc.destroy();
         return;
       }
-      this.doc = newDoc;
-      this.numPages = newDoc.numPages;
-      this.textContentCache.clear();
-      this.events.emit('doc:loaded', { numPages: newDoc.numPages });
+      this.rasterDoc = doc;
+      this.numPages = doc.numPages;
+      this.events.emit('doc:loaded', { numPages: doc.numPages });
       await this.renderActive();
     } catch (err) {
       if (token !== this.loadToken) return;
@@ -178,23 +172,14 @@ export class DocumentEngine {
   }
 
   private async unloadDoc(): Promise<void> {
-    if (this.renderTask !== null) {
-      this.renderTask.cancel();
-      this.renderTask = null;
+    if (this.renderAbort !== null) {
+      this.renderAbort.abort();
+      this.renderAbort = null;
     }
-    if (this.textLayerInstance !== null) {
-      this.textLayerInstance.cancel();
-      this.textLayerInstance = null;
+    if (this.rasterDoc !== null) {
+      this.rasterDoc.destroy().catch(() => undefined);
+      this.rasterDoc = null;
     }
-    if (this.page !== null) {
-      this.page.cleanup();
-      this.page = null;
-    }
-    if (this.doc !== null) {
-      this.doc.destroy().catch(() => undefined);
-      this.doc = null;
-    }
-    this.textContentCache.clear();
     this.unscaledViewport = null;
     this.pageDims = null;
   }
@@ -211,7 +196,6 @@ export class DocumentEngine {
     this.floorPlanMode = true;
     this.floorPlanLevels = data.levels;
     this.floorPlanUnionBox = unionBbox(data.levels);
-    this.textContentCache.clear();
     if (this.floorPlanUnionBox === null) {
       // No geometry — nothing to render.
       this.numPages = 0;
@@ -249,7 +233,7 @@ export class DocumentEngine {
   setCurrentPage(pageNumber: number): void {
     const max = this.floorPlanMode
       ? (this.numPages || 1)
-      : (this.doc?.numPages ?? Number.MAX_SAFE_INTEGER);
+      : (this.rasterDoc?.numPages ?? Number.MAX_SAFE_INTEGER);
     const safe = Math.min(Math.max(1, pageNumber), max);
     if (safe === this.currentPage) return;
     this.currentPage = safe;
@@ -289,133 +273,85 @@ export class DocumentEngine {
   // ---- Rendering (ported verbatim from the old DocumentViewer effect) ----
 
   private async renderActive(): Promise<void> {
-    // Floor-plan (vector) mode: no pdf.js raster. Re-emit the synthetic
-    // page:rendered the floor-plan plugin redraws off, then bail. Dims are the
-    // stable union box, so the camera frame doesn't jump on a level switch.
+    // Floor-plan (vector) mode: no raster. Re-emit the synthetic page:rendered
+    // the floor-plan plugin redraws off, then bail. Dims are the stable union
+    // box, so the camera frame doesn't jump on a level switch.
     if (this.floorPlanMode) {
       this.emitRendered();
       return;
     }
-    const doc = this.doc;
+    const doc = this.rasterDoc;
     const canvas = this.canvas;
     const textLayerDiv = this.textLayerEl;
     if (doc === null || canvas === null) return;
 
-    const token = ++this.renderToken;
-    const cancelled = (): boolean => token !== this.renderToken;
-
-    if (this.renderTask !== null) {
-      this.renderTask.cancel();
-      this.renderTask = null;
-    }
-    if (this.textLayerInstance !== null) {
-      this.textLayerInstance.cancel();
-      this.textLayerInstance = null;
-    }
-    if (this.page !== null) {
-      this.page.cleanup();
-      this.page = null;
-    }
+    // Supersede any in-flight render.
+    if (this.renderAbort !== null) this.renderAbort.abort();
+    const abort = new AbortController();
+    this.renderAbort = abort;
+    const { signal } = abort;
 
     try {
       const safePage = Math.min(Math.max(1, this.currentPage), doc.numPages);
-      const page = await doc.getPage(safePage);
-      if (cancelled()) {
-        page.cleanup();
-        return;
-      }
-      this.page = page;
 
-      // Track the unscaled viewport so fit-page/fit-width math works.
-      const base = page.getViewport({ scale: 1, rotation: this.rotation });
+      // Unscaled (scale=1) viewport so fit-page/fit-width + the canvas-dim
+      // clamp work. The engine owns dpr + MAX_CANVAS_DIM policy; the source
+      // owns the actual page raster.
+      const base = await doc.getPageSize(safePage, this.rotation);
+      if (signal.aborted) return;
       this.unscaledViewport = { width: base.width, height: base.height };
 
       const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
       const maxDim = Math.max(base.width, base.height);
-      const maxSafeScale = maxDim > 0
-        ? MAX_CANVAS_DIM / (maxDim * dpr)
-        : this.scale;
+      const maxSafeScale = maxDim > 0 ? MAX_CANVAS_DIM / (maxDim * dpr) : this.scale;
       const effectiveScale = Math.min(this.scale, maxSafeScale);
 
-      const viewport = page.getViewport({ scale: effectiveScale, rotation: this.rotation });
-      const bufW = Math.floor(viewport.width * dpr);
-      const bufH = Math.floor(viewport.height * dpr);
-      const cssW = Math.floor(viewport.width);
-      const cssH = Math.floor(viewport.height);
-      this.pageDims = { width: cssW, height: cssH };
-
-      // Render to an offscreen buffer so the visible canvas keeps its old
-      // content until the new frame is ready (avoids blank-canvas flash).
-      const offscreen = document.createElement('canvas');
-      offscreen.width = bufW;
-      offscreen.height = bufH;
-      const offCtx = offscreen.getContext('2d');
-      if (offCtx === null) {
-        this.events.emit('doc:error', {
-          error: new Error(`Canvas context unavailable (${bufW}×${bufH}px)`),
-        });
-        return;
-      }
-
-      const task = page.render({
-        canvasContext: offCtx,
-        canvas: offscreen,
-        viewport,
-        transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined,
+      const rendered = await doc.renderPage(safePage, {
+        scale: effectiveScale,
+        rotation: this.rotation,
+        dpr,
+        signal,
       });
-      this.renderTask = task;
-      await task.promise;
-      if (this.renderTask === task) {
-        this.renderTask = null;
-      }
+      if (signal.aborted) return;
+      this.pageDims = { width: rendered.cssW, height: rendered.cssH };
 
-      // Swap: resize visible canvas and blit the finished frame in one
+      // Swap: resize the visible canvas and blit the finished frame in one
       // synchronous step — no blank-canvas flash.
-      if (!cancelled()) {
-        canvas.width = bufW;
-        canvas.height = bufH;
-        canvas.style.width = `${cssW}px`;
-        canvas.style.height = `${cssH}px`;
-        const ctx2d = canvas.getContext('2d');
-        ctx2d?.drawImage(offscreen, 0, 0);
+      canvas.width = rendered.bufW;
+      canvas.height = rendered.bufH;
+      canvas.style.width = `${rendered.cssW}px`;
+      canvas.style.height = `${rendered.cssH}px`;
+      const ctx2d = canvas.getContext('2d');
+      ctx2d?.drawImage(rendered.buffer, 0, 0);
 
-        // Emit immediately after the swap so plugins (pdf-underlay) update
-        // renderState in sync with the new canvas dimensions.
-        this.events.emit('page:rendered', {
-          pageNumber: safePage,
-          dims: this.pageDims!,
-          scale: effectiveScale,
-          rotation: this.rotation,
-        });
-      }
+      // Emit immediately after the swap so plugins (pdf-underlay) update
+      // renderState in sync with the new canvas dimensions.
+      this.events.emit('page:rendered', {
+        pageNumber: safePage,
+        dims: this.pageDims,
+        scale: effectiveScale,
+        rotation: this.rotation,
+      });
 
-      // ---- Render TextLayer over the canvas ----
-      if (textLayerDiv !== null && !cancelled()) {
+      // ---- Selectable text layer (sources that have text — pdf.js) ----
+      if (textLayerDiv !== null) {
         textLayerDiv.innerHTML = '';
-        textLayerDiv.style.setProperty('--scale-factor', String(effectiveScale));
-
-        let textContent = this.textContentCache.get(safePage);
-        if (textContent === undefined) {
-          textContent = await page.getTextContent();
-          if (cancelled()) return;
-          this.textContentCache.set(safePage, textContent);
+        if (doc.renderTextLayer !== undefined) {
+          await doc.renderTextLayer(safePage, {
+            container: textLayerDiv,
+            scale: effectiveScale,
+            rotation: this.rotation,
+            signal,
+          });
         }
-
-        const tl = new pdfjsLib.TextLayer({
-          textContentSource: textContent,
-          container: textLayerDiv,
-          viewport,
-        });
-        this.textLayerInstance = tl;
-        await tl.render();
       }
     } catch (err) {
-      if (cancelled()) return;
-      const e = err as { name?: string };
-      if (e?.name === 'RenderingCancelledException') return;
+      if (signal.aborted || err instanceof RasterRenderAborted) return;
       this.events.emit('doc:error', {
         error: err instanceof Error ? err : new Error(String(err)),
       });
+    } finally {
+      if (this.renderAbort === abort) this.renderAbort = null;
     }
   }
 

@@ -26,7 +26,7 @@ import {
 import { resolveEmbedSource } from '@/features/viewer/embedSource';
 import { usePinForOffline } from '@/features/viewer/offline/usePinForOffline';
 import { ViewModeMenu } from '@/features/viewer/ViewModeMenu';
-import { useViewerBundle } from '@/features/viewer/queries';
+import { usePdfPagesUrl, useViewerBundle } from '@/features/viewer/queries';
 import type { EmbedViewerBundle } from '@/lib/api/viewerBundle';
 import { useNetworkStatus } from '@/lib/offline/networkStatus';
 import { useAuth } from '@/providers/AuthProvider';
@@ -62,6 +62,10 @@ export default function ViewerScreen() {
   const sentLoadRef = useRef(false);
 
   const bundleQuery = useViewerBundle(projectId ?? '', modelId ?? '', fileId ?? '');
+  // PDF documents (no IFC fragments): a 2D-only page-image viewer. Separate
+  // query so the IFC bundle path above is untouched.
+  const pdfPagesQuery = usePdfPagesUrl(projectId ?? '', modelId ?? '', fileId ?? '');
+  const pdfPagesUrl = pdfPagesQuery.data ?? null;
   const embedSource = resolveEmbedSource();
   const online = useNetworkStatus();
   const pin = usePinForOffline(projectId ?? '', modelId ?? '', fileId ?? '');
@@ -78,13 +82,21 @@ export default function ViewerScreen() {
   useEffect(() => {
     if (!webReady || sentLoadRef.current) return;
     const bundle = effectiveBundle;
-    if (!bundle) return; // still loading, errored, or non-IFC
-    // Default to the 2D plan when the model has one (mobile snags on plans).
-    const initialMode: ViewMode = bundle.floorPlansUrl != null ? '2d' : '3d';
-    send({ type: 'loadModel', bundle, viewMode: initialMode });
-    setViewMode(initialMode);
-    sentLoadRef.current = true;
-  }, [webReady, effectiveBundle, send]);
+    if (bundle) {
+      // Default to the 2D plan when the model has one (mobile snags on plans).
+      const initialMode: ViewMode = bundle.floorPlansUrl != null ? '2d' : '3d';
+      send({ type: 'loadModel', bundle, viewMode: initialMode });
+      setViewMode(initialMode);
+      sentLoadRef.current = true;
+      return;
+    }
+    // No IFC bundle, but the file is a rasterized PDF → 2D-only document viewer.
+    if (pdfPagesUrl !== null) {
+      send({ type: 'loadPdf', pdfPagesUrl });
+      setViewMode('2d');
+      sentLoadRef.current = true;
+    }
+  }, [webReady, effectiveBundle, pdfPagesUrl, send]);
 
   const onViewModeChange = useCallback(
     (mode: ViewMode): void => {
@@ -179,7 +191,10 @@ export default function ViewerScreen() {
     embedSource !== null &&
     viewerError === null &&
     !bundleError &&
-    (bundleQuery.isLoading || (effectiveBundle !== null && !modelLoaded));
+    (bundleQuery.isLoading ||
+      pdfPagesQuery.isLoading ||
+      (effectiveBundle !== null && !modelLoaded) ||
+      (pdfPagesUrl !== null && !modelLoaded));
 
   return (
     <View style={styles.flex}>
@@ -256,7 +271,10 @@ export default function ViewerScreen() {
                   : t('viewer.loadFailedOffline')}
               </Text>
             </View>
-          ) : effectiveBundle === null && !bundleQuery.isLoading ? (
+          ) : effectiveBundle === null &&
+            pdfPagesUrl === null &&
+            !bundleQuery.isLoading &&
+            !pdfPagesQuery.isLoading ? (
             <View style={styles.overlay}>
               <Text style={styles.title}>{t('viewer.notViewable')}</Text>
               <Text style={styles.muted}>{t('viewer.notViewableBody')}</Text>

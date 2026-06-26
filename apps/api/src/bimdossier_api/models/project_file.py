@@ -239,6 +239,11 @@ class ProjectFile(TimestampMixin, SoftDeleteMixin, FileBackedMixin, StoredFileMi
     geometry_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     outline_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     floor_plans_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # Manifest (pages.json) of server-rasterized PDF page images, written by the
+    # pdf_pages_rasterization job. Consumed by the mobile viewer's ImageRasterSource
+    # (PDFs render pdfjs-free on mobile). NULL for IFC/DXF files and PDFs not yet
+    # rasterized.
+    pdf_pages_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     # Content-based discipline classification computed at extraction time from
     # the element histogram (architectural / structural / mep / mixed / none).
     # NULL for non-IFC files and files extracted before this field existed.

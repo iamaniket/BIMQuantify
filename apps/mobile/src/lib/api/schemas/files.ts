@@ -30,6 +30,11 @@ export const ViewerBundleResponseSchema = z.object({
   properties_url: z.union([z.string(), z.null()]),
   outline_url: z.union([z.string(), z.null()]),
   floor_plans_url: z.union([z.string(), z.null()]),
+  // Server-rasterized PDF page-image manifest (mobile pdfjs-free PDF viewer).
+  // Optional (absent on older API builds); `.optional()` keeps the schema's
+  // input == output so apiClient's validation stays sound. Consumers treat
+  // `undefined` as "no manifest" (`?? null`).
+  pdf_pages_url: z.union([z.string(), z.null()]).optional(),
   expires_in: z.number().int().positive(),
 });
 

@@ -36,6 +36,9 @@ export type HostMessage =
       /** Initial layout. Defaults to '2d' when the bundle has floor plans, else '3d'. */
       viewMode?: ViewMode;
     }
+  // Load a PDF DOCUMENT (no IFC model): renders 2D-only from server page-images
+  // (`pdfPagesUrl` = the page manifest) via the pdfjs-free image raster source.
+  | { type: 'loadPdf'; pdfPagesUrl: string }
   | { type: 'setViewMode'; mode: ViewMode }
   | { type: 'syncMarkers'; markers: EntityMarkerData[] }
   | { type: 'clearMarkers' }

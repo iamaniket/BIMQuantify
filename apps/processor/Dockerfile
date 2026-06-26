@@ -29,8 +29,12 @@ ENV NODE_ENV=production \
 #  * chromium             — headless browser for HTML→PDF
 #  * fonts-liberation     — generic Helvetica/Times/Courier replacement
 #  * fonts-noto + emoji   — Dutch diacritics, broad Unicode coverage
+#  * fontconfig           — font discovery for @napi-rs/canvas (PDF→WebP raster)
 #  * ca-certificates      — TLS for outbound API/S3 calls
 #  * dumb-init            — proper signal forwarding to node
+# @napi-rs/canvas ships a prebuilt glibc binary (installed via `npm ci`), so no
+# build toolchain is needed; pdf.js's standard-14 fonts ride along in
+# node_modules/pdfjs-dist and are read off disk at render time.
 # NOTE: libredwg-tools (provides `dwg2dxf` for DWG→DXF conversion) is not in
 # Debian bookworm; DWG-file conversion is unavailable until it is re-added (e.g.
 # built from source). IFC/DXF/PDF jobs are unaffected.
@@ -40,6 +44,7 @@ RUN apt-get update \
        fonts-liberation \
        fonts-noto \
        fonts-noto-color-emoji \
+       fontconfig \
        ca-certificates \
        dumb-init \
     && rm -rf /var/lib/apt/lists/*

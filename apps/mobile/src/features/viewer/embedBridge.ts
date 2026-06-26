@@ -30,6 +30,8 @@ export type HostMessage =
       /** Initial layout. Defaults to '2d' when the bundle has floor plans, else '3d'. */
       viewMode?: ViewMode;
     }
+  // PDF document (no IFC model): 2D-only viewer from server page-images.
+  | { type: 'loadPdf'; pdfPagesUrl: string }
   | { type: 'setViewMode'; mode: ViewMode }
   | { type: 'syncMarkers'; markers: EmbedMarker[] }
   | { type: 'clearMarkers' }

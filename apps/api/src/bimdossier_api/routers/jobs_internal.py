@@ -48,6 +48,7 @@ from bimdossier_api.notifications.service import (
 from bimdossier_api.schemas.attachment import AttachmentCallbackRequest, AttachmentRead
 from bimdossier_api.schemas.project_file import (
     ExtractionCallbackRequest,
+    PagesRasterizeCallbackRequest,
     ProjectFileRead,
     StoreyCallbackItem,
 )
@@ -543,6 +544,74 @@ async def _load_job_optional(session: AsyncSession, job_id: UUID) -> Job | None:
     return (
         await session.execute(select(Job).where(Job.id == job_id).with_for_update())
     ).scalar_one_or_none()
+
+
+# ---------------------------------------------------------------------------
+# PDF page-rasterization callback (pdf_pages_rasterization)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/pages/callback", response_model=ProjectFileRead)
+async def pages_rasterization_callback(
+    payload: PagesRasterizeCallbackRequest,
+    session: AsyncSession = Depends(get_async_session),
+) -> ProjectFile:
+    """Worker → API callback for `pdf_pages_rasterization` jobs.
+
+    Records the page-image manifest key on the file (consumed by the mobile
+    viewer's ImageRasterSource) and drives the rasterization Job to a terminal
+    state. Deliberately does NOT touch `extraction_status` — rasterization is an
+    additive artifact that runs alongside extraction, which owns that field.
+    Idempotent on a terminal Job status. No notification (background bonus).
+    """
+    async with session.begin():
+        await _set_tenant_schema(session, payload.organization_id)
+        row = await _load_file(session, payload.file_id)
+        job = (
+            await _load_job_optional(session, payload.job_id)
+            if payload.job_id is not None
+            else None
+        )
+        if job is not None and job.status in _JOB_TERMINAL:
+            return row  # idempotent no-op
+
+        if payload.status == "running":
+            if job is not None:
+                job.status = JobStatus.running
+                if payload.started_at is not None:
+                    job.started_at = payload.started_at
+                if payload.progress is not None:
+                    job.progress = payload.progress
+        elif payload.status == "succeeded":
+            if payload.pdf_pages_key is not None:
+                row.pdf_pages_storage_key = payload.pdf_pages_key
+            if job is not None:
+                job.status = JobStatus.succeeded
+                job.finished_at = payload.finished_at
+                job.progress = 100
+                job.result = {
+                    k: v
+                    for k, v in {
+                        "pdf_pages_key": payload.pdf_pages_key,
+                        "page_count": payload.page_count,
+                    }.items()
+                    if v is not None
+                }
+        else:  # failed
+            if job is not None:
+                job.status = JobStatus.failed
+                job.error = payload.error
+                job.finished_at = payload.finished_at
+                job.retriable = payload.retriable
+                job.error_kind = payload.error_kind
+
+    # Re-anchor the search_path for the refresh (the SET LOCAL above is gone now
+    # that the wrapping transaction committed).
+    schema = schema_name_for(payload.organization_id)
+    async with session.begin():
+        await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+        await session.refresh(row)
+    return row
 
 
 # ---------------------------------------------------------------------------

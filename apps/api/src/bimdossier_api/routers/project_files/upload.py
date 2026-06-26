@@ -322,6 +322,36 @@ async def complete_upload(
             logger.warning("Worker dispatch failed for %s: %s", row.storage_key, exc)
             await session.flush()
 
+        # Also kick off PDF→page-image rasterization for the mobile viewer (the
+        # processor renders each page to WebP so the embed needs no pdf.js). It
+        # runs in parallel with extraction — it re-reads the PDF itself, so it has
+        # no dependency on extraction output. Best-effort: a dispatch failure must
+        # not fail the upload or the (primary) extraction path; it only leaves the
+        # mobile-PDF underlay unavailable until re-upload.
+        raster_job = Job(
+            project_id=project.id,
+            file_id=row.id,
+            job_type=JobType.pdf_pages_rasterization,
+            status=JobStatus.pending,
+            payload={
+                "file_id": str(row.id),
+                "project_id": str(project.id),
+                "storage_key": row.storage_key,
+            },
+            created_by_user_id=user.id,
+        )
+        session.add(raster_job)
+        await session.flush()
+        try:
+            await dispatch_job(raster_job, settings, active_org_id)
+        except DispatchJobError as exc:
+            raster_job.status = JobStatus.failed
+            raster_job.error = f"DISPATCH_FAILED: {exc}"[:500]
+            raster_job.retriable = True
+            raster_job.error_kind = "dispatch"
+            logger.warning("Rasterization dispatch failed for %s: %s", row.storage_key, exc)
+            await session.flush()
+
         await audit.record(
             session,
             action="project_file.completed",
