@@ -5,6 +5,8 @@ from uuid import UUID
 
 from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, UUIDIDMixin
+from fastapi_users import exceptions as fau_exceptions
+from fastapi_users import schemas as fau_schemas
 from fastapi_users.db import SQLAlchemyUserDatabase
 from sqlalchemy import select
 
@@ -22,6 +24,11 @@ from bimdossier_api.models.organization_member import (
     OrganizationMemberStatus,
 )
 from bimdossier_api.models.user import User
+
+# Minimum password length enforced by `UserManager.validate_password`. fastapi-users
+# ships a no-op validator (any password — even a single char — is accepted); this is
+# the SOC2 CC6.1 credential-strength control. NIST 800-63B floors at 8; we use 12.
+MIN_PASSWORD_LENGTH = 12
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
@@ -45,6 +52,32 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
         # Bump verify-token lifetime for admin invites — the default 1h
         # is too short when an admin invites a colleague.
         self.verification_token_lifetime_seconds = settings.invite_token_ttl_seconds
+
+    async def validate_password(
+        self,
+        password: str,
+        user: "fau_schemas.UC | User",
+    ) -> None:
+        """Enforce the minimum password policy (SOC2 CC6.1).
+
+        fastapi-users' base implementation is a no-op, which accepted
+        single-character passwords. fastapi-users invokes this from `create`,
+        `reset_password`, and `update`; the `/auth/activate` handler calls it
+        explicitly too, since it sets the initial password via `_update`
+        (which would otherwise bypass validation). Invite/seed flows insert a
+        pre-hashed random password directly and never reach here.
+        """
+        if len(password) < MIN_PASSWORD_LENGTH:
+            raise fau_exceptions.InvalidPasswordException(
+                reason=f"Password must be at least {MIN_PASSWORD_LENGTH} characters long."
+            )
+        email = getattr(user, "email", None)
+        if email:
+            local_part = email.split("@", 1)[0].strip().lower()
+            if local_part and local_part in password.lower():
+                raise fau_exceptions.InvalidPasswordException(
+                    reason="Password must not contain your email address."
+                )
 
     async def on_after_register(self, user: User, request: Request | None = None) -> None:
         # Admin-invite flow: send activation email so the invited user can

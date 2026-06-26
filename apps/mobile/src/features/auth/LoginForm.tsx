@@ -31,6 +31,8 @@ export interface LoginFormProps {
   submitting: boolean;
   error: string | null;
   canSubmit: boolean;
+  /** No connectivity — signing in is impossible (the server mints the token). */
+  offline?: boolean;
   onSubmit: () => void;
   onForgot: () => void;
   onRequestAccess: () => void;
@@ -74,6 +76,7 @@ export function LoginForm({
   submitting,
   error,
   canSubmit,
+  offline = false,
   onSubmit,
   onForgot,
   onRequestAccess,
@@ -209,6 +212,13 @@ export function LoginForm({
           </Text>
         </Pressable>
 
+        {offline ? (
+          <View style={styles.offlineBanner}>
+            <Ionicons name="cloud-offline-outline" size={16} color={colors.textMuted} />
+            <Text style={styles.offlineText}>{t('login.offline.banner')}</Text>
+          </View>
+        ) : null}
+
         {error !== null ? <Text style={styles.error}>{error}</Text> : null}
 
         {/* Sign in */}
@@ -265,6 +275,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   error: { color: colors.error, fontSize: 13.5 },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  offlineText: { flex: 1, color: colors.textMuted, fontSize: 13 },
   button: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -102,7 +102,7 @@ function CountPill({
             ? 'bg-white text-[var(--brand-gradient-start)] ring-white'
             : 'bg-[var(--brand-gradient-start)] text-white ring-white'
           : isActive
-            ? 'bg-white/85 text-[var(--brand-gradient-start)]/60 ring-white/70'
+            ? 'bg-white/85 text-[color-mix(in_srgb,var(--brand-gradient-start)_60%,transparent)] ring-white/70'
             : 'bg-background text-foreground-tertiary ring-border',
       )}
     >

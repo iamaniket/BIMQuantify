@@ -236,7 +236,7 @@ async def test_callback_is_idempotent_after_terminal(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    _project_id, _document_id, file_id = await _ready_file(client, fake, org_user, name="idem.ifc")
+    project_id, _document_id, file_id = await _ready_file(client, fake, org_user, name="idem.ifc")
 
     first = await client.post(
         "/internal/jobs/callback",
@@ -244,7 +244,7 @@ async def test_callback_is_idempotent_after_terminal(
             "file_id": file_id,
             "organization_id": org_user["organization_id"],
             "status": "succeeded",
-            "fragments_key": "projects/x/y.frag",
+            "fragments_key": f"projects/{project_id}/y.frag",
         },
         headers=_bearer(),
     )

@@ -10,7 +10,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { useState, type JSX, type ReactNode } from 'react';
+import { useMemo, useState, type JSX, type ReactNode } from 'react';
 
 import { cn } from './lib/cn.js';
 import { KanbanCard } from './KanbanCard.js';
@@ -68,6 +68,19 @@ export function KanbanBoard<T>({
 
   const activeColumn = activeItem !== null ? getItemColumn(activeItem) : null;
 
+  // Bucket items by column once per render (O(n)) instead of re-filtering the
+  // full list for every column (O(columns × items)).
+  const itemsByColumn = useMemo(() => {
+    const map = new Map<string, T[]>();
+    for (const item of items) {
+      const col = getItemColumn(item);
+      const bucket = map.get(col);
+      if (bucket) bucket.push(item);
+      else map.set(col, [item]);
+    }
+    return map;
+  }, [items, getItemColumn]);
+
   const handleDragStart = (event: DragStartEvent): void => {
     setActiveId(String(event.active.id));
   };
@@ -109,7 +122,7 @@ export function KanbanBoard<T>({
     >
       <div className={cn('flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2', className)}>
         {columns.map((col) => {
-          const columnItems = items.filter((item) => getItemColumn(item) === col.id);
+          const columnItems = itemsByColumn.get(col.id) ?? [];
           const isDropAllowed = activeId !== null && activeColumn !== col.id && (
             canDrop === undefined || canDrop(activeId, activeColumn ?? '', col.id)
           );

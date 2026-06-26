@@ -33,6 +33,17 @@ export const en = {
   'settings.language': 'Language',
   'settings.languageDutch': 'Dutch',
   'settings.languageEnglish': 'English',
+  'settings.offline.title': 'Offline data',
+  'settings.offline.cached': '{projects} projects · {findings} findings · {documents} documents cached',
+  'settings.offline.pinned': '{models} models saved offline · {size}',
+  'settings.offline.empty': 'No offline data stored on this device yet.',
+  'settings.offline.clear': 'Clear offline data',
+  'settings.offline.clearConfirmTitle': 'Clear offline data?',
+  'settings.offline.clearConfirmBody':
+    'Cached projects, findings and downloaded models will be removed from this device. You will stay signed in.',
+  'settings.offline.clearConfirmBodyPending':
+    '{count} unsynced change(s) have not reached the server yet and will be lost. Cached data and downloaded models will also be removed. You will stay signed in.',
+  'settings.offline.cleared': 'Offline data cleared.',
 
   // --- offline / sync ---
   'offline.banner': 'Offline — showing saved data. Changes sync when you reconnect.',
@@ -163,6 +174,10 @@ export const en = {
   // --- login: errors ---
   'login.error.invalidCredentials': 'Invalid email or password.',
   'login.error.signInFailed': 'Sign in failed: {message}',
+  'login.error.offline': "You're offline. Connect to the internet to sign in.",
+
+  // --- login: offline ---
+  'login.offline.banner': "You're offline — connect to sign in.",
 
   // --- login: system status (KPI value + form status row) ---
   'login.status.normal': 'Normal',

@@ -101,6 +101,10 @@ export function CalendarOverviewTab(): JSX.Element {
     return <Skeleton className="h-64 w-full" />;
   }
 
+  if (summaryQuery.isError) {
+    return <ErrorBanner message={t('loadError')} />;
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {/* KPI stat cards */}

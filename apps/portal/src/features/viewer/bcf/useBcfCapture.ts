@@ -11,33 +11,6 @@ type BcfCaptureResult = {
   snapshotDataUrl: string | null;
 };
 
-type Vec3 = { x: number; y: number; z: number };
-
-interface CapturedCamera {
-  type?: string;
-  viewPoint?: Vec3;
-  direction?: Vec3;
-  upVector?: Vec3;
-  fieldOfView?: number | null;
-  fieldOfHeight?: number | null;
-}
-
-/**
- * Loose, hand-written shape of the `bcf.captureViewpoint` command result. The
- * viewer command returns `unknown`; this types the fields we read so we avoid an
- * `any` cast while staying tolerant of missing keys (all optional).
- */
-interface CapturedViewpoint {
-  camera?: CapturedCamera;
-  components?: {
-    visibility?: { defaultVisibility?: boolean; exceptions?: string[] };
-    selection?: string[];
-  };
-  clippingPlanes?: Array<{ location: Vec3; direction: Vec3 }>;
-  xray?: { items?: string[]; opacityOverrides?: Array<{ globalId: string; opacity: number }> };
-  measurements?: Array<{ type: string; points: Vec3[]; height?: number }>;
-}
-
 const THUMBNAIL_MAX_WIDTH = 480;
 
 /**
@@ -77,7 +50,8 @@ export function useBcfCapture(handle: ViewerHandle | null): {
     const vpData = await handle.commands.execute('bcf.captureViewpoint');
     if (vpData === undefined) return null;
 
-    const vp = vpData as CapturedViewpoint;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vp = vpData as any;
 
     // Capture at native canvas size (no width/height) so the camera aspect
     // ratio is correct, then downsample to a small thumbnail.
@@ -90,7 +64,7 @@ export function useBcfCapture(handle: ViewerHandle | null): {
         : null;
 
     const guid = crypto.randomUUID();
-    const cam: CapturedCamera = vp.camera ?? {};
+    const cam = vp.camera ?? {};
 
     const viewpoint: BcfViewpointCreateInput = {
       guid,

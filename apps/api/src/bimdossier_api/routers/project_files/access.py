@@ -30,10 +30,10 @@ from bimdossier_api.models.project_file import (
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.documents import _load_document_or_404
 from bimdossier_api.routers.project_files._shared import (
-    logger,
-    router,
     _load_file_or_404,
     _presign_ifc_bundle,
+    logger,
+    router,
 )
 from bimdossier_api.schemas.project_file import (
     ProjectFileDownloadResponse,
@@ -42,7 +42,11 @@ from bimdossier_api.schemas.project_file import (
 )
 from bimdossier_api.storage import StorageBackend, get_storage
 from bimdossier_api.storage.minio import ObjectNotFoundError
-from bimdossier_api.tenancy import get_tenant_session, require_active_organization
+from bimdossier_api.tenancy import (
+    get_tenant_session,
+    open_tenant_session,
+    require_active_organization,
+)
 
 
 @router.get("", response_model=list[ProjectFileRead])
@@ -186,46 +190,57 @@ async def delete_file(
     document_id: UUID,
     file_id: UUID,
     request: Request,
-    session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
 ) -> Response:
-    project = await load_project_or_404(session, project_id)
-    membership = await require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.project_file, Action.delete)
-    require_project_writable(project)
-    document = await _load_document_or_404(session, project.id, document_id)
+    """Delete a file version. The S3 delete is network I/O and runs with NO
+    tenant DB connection held (Phase 2) so a slow object store can't pin a
+    pooled connection — the same discipline as routers/compliance.py."""
+    schema: str = request.state.active_schema
 
-    row = await _load_file_or_404(session, document.id, file_id)
-    before = {
-        "original_filename": row.original_filename,
-        "file_type": row.file_type.value,
-        "version_number": row.version_number,
-    }
+    # --- Phase 1: validate + snapshot the values Phases 2/3 need.
+    async with open_tenant_session(schema, active_org_id, user.id) as session:
+        project = await load_project_or_404(session, project_id)
+        membership = await require_membership(session, project.id, user.id)
+        require_permission(membership.role, Resource.project_file, Action.delete)
+        require_project_writable(project)
+        document = await _load_document_or_404(session, project.id, document_id)
+        row = await _load_file_or_404(session, document.id, file_id)
+        storage_key = row.storage_key
+        before = {
+            "original_filename": row.original_filename,
+            "file_type": row.file_type.value,
+            "version_number": row.version_number,
+        }
+        project_uuid = project.id
 
+    # --- Phase 2: delete the stored object with no connection held.
     try:
-        await storage.delete_object(row.storage_key)
+        await storage.delete_object(storage_key)
     except ObjectNotFoundError:
         pass
     except Exception:
         logger.warning(
             "Failed to delete object %s during file delete; proceeding with row delete",
-            row.storage_key,
+            storage_key,
             exc_info=True,
         )
 
-    await audit.record(
-        session,
-        action="project_file.deleted",
-        resource_type="project_file",
-        resource_id=row.id,
-        before=before,
-        actor_user_id=user.id,
-        project_id=project.id,
-        request=request,
-    )
-
-    await session.delete(row)
-    await session.flush()
+    # --- Phase 3: audit + delete the row in a fresh short transaction.
+    async with open_tenant_session(schema, active_org_id, user.id) as session:
+        document = await _load_document_or_404(session, project_uuid, document_id)
+        row = await _load_file_or_404(session, document.id, file_id)
+        await audit.record(
+            session,
+            action="project_file.deleted",
+            resource_type="project_file",
+            resource_id=row.id,
+            before=before,
+            actor_user_id=user.id,
+            project_id=project_uuid,
+            request=request,
+        )
+        await session.delete(row)
+        await session.flush()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

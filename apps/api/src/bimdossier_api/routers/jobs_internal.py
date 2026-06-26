@@ -73,6 +73,27 @@ _VALID_INCOMING = {
 }
 
 
+def _assert_key_scoped(key: str | None, expected_prefix: str) -> None:
+    """Reject a worker-supplied storage key not scoped to ``expected_prefix``.
+
+    The processor is trusted (shared-secret auth), but these callbacks persist
+    object keys verbatim onto rows that are later served to users via presigned
+    GET. A compromised worker — or a leaked shared secret — could otherwise point
+    a row at another tenant's object and have the API hand out a presigned URL
+    for it. Every legitimate artifact key is derived by the worker from the
+    source object key (``fragmentsKeyFor`` et al. swap the suffix), so artifacts
+    live under ``projects/{project_id}/`` and report PDFs under
+    ``reports/{org_id}/{project_id}/``. A prefix check is therefore sufficient
+    to bind the key to the row's own tenant/project. ``None`` (an absent optional
+    artifact) passes. (SOC2 CC6.1 / CC6.6 — tenant isolation.)
+    """
+    if key is not None and not key.startswith(expected_prefix):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="INVALID_STORAGE_KEY",
+        )
+
+
 async def _set_tenant_schema(session: AsyncSession, organization_id: UUID) -> str:
     """Verify the org id from a worker callback exists, then set search_path
     so subsequent tenant-table operations resolve in that org's schema.
@@ -157,6 +178,18 @@ async def extraction_callback(
                         exc_info=True,
                     )
             else:
+                # Bind every worker-supplied artifact key to this file's project
+                # before persisting — see _assert_key_scoped.
+                project_prefix = f"projects/{row.project_id}/"
+                for candidate in (
+                    payload.fragments_key,
+                    payload.metadata_key,
+                    payload.properties_key,
+                    payload.geometry_key,
+                    payload.outline_key,
+                    payload.floor_plans_key,
+                ):
+                    _assert_key_scoped(candidate, project_prefix)
                 row.extraction_status = ExtractionStatus.succeeded
                 row.fragments_storage_key = payload.fragments_key
                 row.metadata_storage_key = payload.metadata_key
@@ -583,6 +616,7 @@ async def pages_rasterization_callback(
                 if payload.progress is not None:
                     job.progress = payload.progress
         elif payload.status == "succeeded":
+            _assert_key_scoped(payload.pdf_pages_key, f"projects/{row.project_id}/")
             if payload.pdf_pages_key is not None:
                 row.pdf_pages_storage_key = payload.pdf_pages_key
             if job is not None:
@@ -651,6 +685,10 @@ async def report_callback(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="MISSING_STORAGE_KEY",
                 )
+            _assert_key_scoped(
+                payload.storage_key,
+                f"reports/{payload.organization_id}/{report.project_id}/",
+            )
             report.status = ReportStatus.ready
             report.storage_key = payload.storage_key
             report.byte_size = payload.byte_size

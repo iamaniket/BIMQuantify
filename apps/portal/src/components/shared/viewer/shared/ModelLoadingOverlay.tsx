@@ -198,8 +198,7 @@ function HouseBuildAnimation(): JSX.Element {
     <svg
       viewBox="0 0 240 180"
       className="h-36 w-48"
-      role="img"
-      aria-label="Loading animation"
+      aria-hidden="true"
     >
       <defs>
         <linearGradient id="lg-glass" x1="0" y1="0" x2="1" y2="1">

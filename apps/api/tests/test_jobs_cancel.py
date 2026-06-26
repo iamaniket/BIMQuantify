@@ -101,7 +101,7 @@ async def test_cancel_terminal_job_rejected(
             "job_id": job["id"],
             "organization_id": org_user["organization_id"],
             "status": "succeeded",
-            "fragments_key": "x/y.frag",
+            "fragments_key": f"projects/{project_id}/{file_id}.frag",
         },
         headers=_bearer(),
     )

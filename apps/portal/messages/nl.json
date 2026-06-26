@@ -61,6 +61,10 @@
     "success": "Account geactiveerd. U kunt nu inloggen."
   },
   "common": {
+    "a11y": {
+      "openNavigation": "Navigatie openen",
+      "closeNavigation": "Navigatie sluiten"
+    },
     "dropzone": {
       "prompt": "Sleep een bestand hierheen, of",
       "chooseFile": "Kies bestand"
@@ -247,6 +251,8 @@
     }
   },
   "sidebar": {
+    "collapseSidebar": "Zijbalk inklappen",
+    "expandSidebar": "Zijbalk uitklappen",
     "adminConsole": "Beheerconsole",
     "orgMembers": "Leden",
     "settings": "Instellingen",
@@ -1546,6 +1552,7 @@
         "captureLinkUses": "{count} / {max} keer gebruikt",
         "captureLinkUsesUnlimited": "{count} keer gebruikt",
         "captureLinkNoLinks": "Nog geen opnamelinks",
+        "captureLinkLoadError": "Kan opnamelinks niet laden.",
         "view": "Bekijken",
         "viewerTitle": "Bijlage details",
         "viewerSubtitle": "Bekijk het bestand en de bijbehorende metadata.",
@@ -3316,6 +3323,7 @@
           "titleNl": "Wkb uitgelegd",
           "description": "Een korte samenvatting voor de kaart en zoekresultaten.",
           "tags": "wkb, compliance, regelgeving",
+          "author": "BimDossier",
           "content": "## Heading\n\nWrite your post body in Markdown.",
           "contentNl": "## Kop\n\nSchrijf je bericht in Markdown."
         },
@@ -3617,6 +3625,11 @@
     "projectInvitationCreated": "Iemand uitgenodigd voor het project"
   },
   "viewer": {
+    "mobileBanner": {
+      "message": "De 3D-viewer werkt het best op een groter scherm.",
+      "ok": "OK",
+      "dismiss": "Sluiten"
+    },
     "loadingOverlay": {
       "model": "Model laden…",
       "updating": "Weergave bijwerken…"

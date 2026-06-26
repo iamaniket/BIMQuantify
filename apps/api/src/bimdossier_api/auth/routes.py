@@ -517,6 +517,22 @@ def build_auth_router() -> APIRouter:
                 detail="ACTIVATION_USER_INACTIVE",
             )
 
+        # Enforce the password policy BEFORE flipping is_verified (below). The
+        # activate flow sets the initial password via `_update`, which bypasses
+        # fastapi-users' own validate_password call — so invoke it explicitly
+        # here. Doing it up front means a rejected password never leaves the
+        # account verified-but-unusable. (SOC2 CC6.1)
+        try:
+            await user_manager.validate_password(payload.password, user)
+        except fau_exceptions.InvalidPasswordException as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "ACTIVATION_INVALID_PASSWORD",
+                    "reason": exc.reason,
+                },
+            ) from exc
+
         # The activation token sets the password EXACTLY ONCE — on the call that
         # flips is_verified. A replay against an already-verified user is an
         # idempotent no-op that must NOT reset the password: the token is a

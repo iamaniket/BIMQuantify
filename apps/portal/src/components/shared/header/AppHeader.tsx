@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { type JSX, type ReactNode } from 'react';
 
 import { ThemeToggle } from '@bimdossier/ui';
@@ -112,6 +113,7 @@ function Breadcrumbs({ crumbs, lastCrumbSlot }: { crumbs: Crumb[]; lastCrumbSlot
 export function AppHeader({
   crumbs, lastCrumbSlot, status, action, rightSlot, onMenuOpen,
 }: Props): JSX.Element {
+  const t = useTranslations('common');
   const lastCrumb = crumbs[crumbs.length - 1];
 
   return (
@@ -124,7 +126,7 @@ export function AppHeader({
       <button
         type="button"
         onClick={onMenuOpen}
-        aria-label="Open navigation"
+        aria-label={t('a11y.openNavigation')}
         className="relative mr-0.5 grid h-[38px] w-[38px] shrink-0 place-items-center rounded-md text-white/80 hover:bg-white/10 hover:text-white md:hidden"
       >
         <Menu className="h-5 w-5" />

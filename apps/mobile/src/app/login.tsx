@@ -18,6 +18,7 @@ import { useT } from '@/i18n';
 import { login } from '@/lib/api/auth';
 import { ApiError } from '@/lib/api/client';
 import { env } from '@/lib/env';
+import { useNetworkStatus } from '@/lib/offline/networkStatus';
 import { useAuth } from '@/providers/AuthProvider';
 import { brand, colors } from '@/theme';
 
@@ -32,6 +33,7 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const { setTokens } = useAuth();
+  const online = useNetworkStatus();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,9 +45,15 @@ export default function LoginScreen() {
   const projectsQuery = useProjectsMap();
   const systemQuery = useSystemStatus();
 
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !submitting;
+  // Logging in needs the server to mint a token — impossible offline. Disable
+  // submit and surface a clear offline state instead of a post-fetch error.
+  const canSubmit = online && email.trim().length > 0 && password.length > 0 && !submitting;
 
   async function onSubmit() {
+    if (!online) {
+      setError(t('login.error.offline'));
+      return;
+    }
     if (!canSubmit) return;
     setError(null);
     setSubmitting(true);
@@ -109,6 +117,7 @@ export default function LoginScreen() {
     submitting,
     error,
     canSubmit,
+    offline: !online,
     onSubmit: () => {
       void onSubmit();
     },

@@ -191,7 +191,9 @@ export function MouseDiagram({
                 onMouseEnter={() => { setHovered(s.id); }}
                 onMouseLeave={() => { setHovered(null); }}
                 onClick={() => { onPick?.(s.id); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') onPick?.(s.id); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick?.(s.id); }
+                }}
                 className="cursor-pointer rounded-lg border transition-all"
                 style={{
                   position: 'absolute',

@@ -20,3 +20,15 @@ export function formatShortDate(value: string | null | undefined): string {
   if (Number.isNaN(d.getTime())) return '—';
   return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
+
+/** Bytes -> "0 B" / "45 KB" / "1.2 MB" / "3.4 GB". Binary (1024) units; one
+ * decimal for MB/GB. Locale-neutral (fixed format, like formatShortDate). */
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  if (bytes < 1024) return `${Math.round(bytes)} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${Math.round(kb)} KB`;
+  const mb = kb / 1024;
+  if (mb < 1024) return `${mb.toFixed(1)} MB`;
+  return `${(mb / 1024).toFixed(1)} GB`;
+}

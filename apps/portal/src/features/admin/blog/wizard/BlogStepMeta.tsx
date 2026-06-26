@@ -181,7 +181,7 @@ export function BlogStepMeta({
           <Input
             id={authorId}
             type="text"
-            placeholder="BimDossier"
+            placeholder={t('placeholders.author')}
             invalid={authorError !== undefined}
             disabled={isSubmitting}
             {...useRegisterField(form, 'author')}

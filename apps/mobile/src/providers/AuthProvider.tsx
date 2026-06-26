@@ -14,6 +14,7 @@ import { ApiError } from '@/lib/api/client';
 import { getAuthMe, switchOrganization as switchOrgApi } from '@/lib/api/auth';
 import { tokenManager } from '@/lib/api/tokenManager';
 import { readStoredTokens, writeStoredTokens } from '@/lib/auth/secureStore';
+import { readCachedMe, writeCachedMe } from '@/lib/auth/cachedMe';
 import { wipeAllOfflineData } from '@/lib/offline/db';
 import type {
   AuthMeResponse,
@@ -46,10 +47,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
     void (async () => {
-      const stored = await readStoredTokens();
+      // Restore tokens AND the cached /auth/me together, seeding `me` BEFORE
+      // flipping hasHydrated so the auth gate sees a non-null `me` on the same
+      // render — an offline returning user reaches the cached project list
+      // instead of an infinite spinner. (Only seed with a live session.)
+      const [stored, cachedMe] = await Promise.all([readStoredTokens(), readCachedMe()]);
       if (!active) return;
       tokensRef.current = stored;
       setTokensState(stored);
+      if (stored !== null && cachedMe !== null) setMe(cachedMe);
       setHasHydrated(true);
     })();
     return () => {
@@ -66,19 +72,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const next = await getAuthMe(current.access_token);
       setMe(next);
+      void writeCachedMe(next);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         try {
           const newToken = await tokenManager.refresh();
           const next = await getAuthMe(newToken);
           setMe(next);
+          void writeCachedMe(next);
           await queryClient.invalidateQueries();
         } catch {
           // Refresh failed — tokenManager already cleared tokens; routes redirect.
         }
         return;
       }
-      // Network blip — keep the existing snapshot.
+      // Connectivity blip (non-ApiError) — keep the hydrated/cached `me`. This
+      // no-op is what makes offline session-restore work: we never clobber a
+      // seeded `me`, and never trigger tokenManager.refresh() offline (which
+      // would clear tokens and log the user out).
     }
   }, [queryClient]);
 

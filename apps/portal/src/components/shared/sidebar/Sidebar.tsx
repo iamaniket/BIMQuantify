@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { X } from '@bimdossier/ui/icons';
@@ -43,6 +44,7 @@ function BrandFooter({ collapsed }: { collapsed: boolean }): JSX.Element {
 
 export function Sidebar(): JSX.Element {
   const { collapsed, forceCollapsed, hydrated, transitionsReady, mobileOpen, setMobileOpen } = useSidebar();
+  const t = useTranslations('common');
   const isMobile = useIsMobile();
 
   if (isMobile) {
@@ -71,7 +73,7 @@ export function Sidebar(): JSX.Element {
             <button
               type="button"
               onClick={() => { setMobileOpen(false); }}
-              aria-label="Close navigation"
+              aria-label={t('a11y.closeNavigation')}
               className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-md text-white/60 hover:bg-white/10 hover:text-white"
             >
               <X className="h-4 w-4" />
