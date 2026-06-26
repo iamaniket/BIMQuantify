@@ -149,6 +149,10 @@ export default function ViewerPage(): JSX.Element {
   // Viewport layout for IFC models: 3D only / Split (3D + plan) / 2D (plan).
   const [viewMode, setViewMode] = useState<ViewMode>('3d');
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
+  // "Align" (PDF→model calibration) is a focused, multi-step task. While it's on
+  // we lock the surrounding chrome (toolbar, side rail, side panels) so the user
+  // must finish or explicitly exit the alignment before navigating elsewhere.
+  const isAligning = viewMode === 'calibration';
   // Dismiss state for the "no models loaded" hint shown over the live-empty
   // scene; re-shown whenever the scene goes empty again.
   const [emptyHintDismissed, setEmptyHintDismissed] = useState(false);
@@ -251,24 +255,36 @@ export default function ViewerPage(): JSX.Element {
   // ─────────────────────────────────────────────────────────────────────────
 
   const togglePanel = useCallback((id: PanelId) => {
+    // Side rail is locked while aligning — ignore toggles defensively.
+    if (isAligning) return;
     setActivePanel((prev) => (prev === id ? null : id));
-  }, []);
+  }, [isAligning]);
+
+  // Entering alignment closes any open side panel so the dimmed inspector can't
+  // sit on top of the CalibrationPane in the right pane.
+  useEffect(() => {
+    if (isAligning) setActivePanel(null);
+  }, [isAligning]);
 
   // Auto-open section panel when entering section placement mode
   useEffect(() => {
     const handle = viewerHandleRef.current;
     if (!handle) return undefined;
     return handle.events.on('mode:enter', ({ toolName }) => {
+      if (isAligning) return;
       if (toolName === 'section.place') {
         setActivePanel('section');
       }
     });
-  }, [viewerReady]);
+  }, [viewerReady, isAligning]);
 
   useEffect(() => {
     const handle = viewerHandleRef.current;
     if (!handle) return undefined;
     return handle.events.on('inspect:request', ({ view }) => {
+      // A model pick during alignment can keep a selection; don't let it re-open
+      // the inspector behind the lock scrim.
+      if (isAligning) return;
       if (view === 'properties') {
         setActivePanel('explorer');
         setPropertiesExpanded(true);
@@ -277,7 +293,7 @@ export default function ViewerPage(): JSX.Element {
         setFindingsRequest((prev) => ({ view: 'findings', nonce: (prev?.nonce ?? 0) + 1 }));
       }
     });
-  }, [viewerReady]);
+  }, [viewerReady, isAligning]);
 
   useViewerBridge(viewerHandleRef.current, viewerReady);
 
@@ -866,6 +882,7 @@ export default function ViewerPage(): JSX.Element {
         onDividerPointerUp={handleDividerPointerUp}
         hasFloorPlans={hasFloorPlans}
         viewerReady={viewerReady}
+        outOfViewSuppressed={loadingActive || overlayFading || isAligning || isEditMode}
         planMetadata={planMetadata}
         projectId={projectId}
         fileId={fileId}
@@ -875,6 +892,7 @@ export default function ViewerPage(): JSX.Element {
         onFpActiveElevationChange={setFpElevation}
         planApiModelId={scope.planModelId}
         onViewModeChange={setViewMode}
+        canCalibrate={canCalibrate}
       />
     );
   }
@@ -946,6 +964,7 @@ export default function ViewerPage(): JSX.Element {
         {isPdf ? <DocumentContextMenu handle={documentHandle} onRequestFindings={handleDocContextMenuFindings} shortcuts={pdfSettings.shortcuts} ready={pdfFirstPageRendered} /> : null}
 
         {showChrome ? (
+          <div className={isAligning ? 'pointer-events-none opacity-40 transition-opacity duration-200' : 'transition-opacity duration-200'}>
             <SidePanel
               activePanel={activePanel}
               findingsContent={
@@ -1027,6 +1046,7 @@ export default function ViewerPage(): JSX.Element {
               headerExpanded={modelTreeExpanded}
               onHeaderToggle={() => { setModelTreeExpanded((prev) => !prev); }}
             />
+          </div>
         ) : null}
 
         {showToolbarPlaceholder ? (
@@ -1037,7 +1057,7 @@ export default function ViewerPage(): JSX.Element {
         ) : null}
 
         {ifcShellReady ? (
-          <div className={isEditMode ? 'pointer-events-none opacity-40 transition-opacity duration-200' : 'transition-opacity duration-200'}>
+          <div className={isEditMode || isAligning ? 'pointer-events-none opacity-40 transition-opacity duration-200' : 'transition-opacity duration-200'}>
             <Toolbar
               handle={viewerHandleRef.current}
               settings={settings}
@@ -1054,7 +1074,6 @@ export default function ViewerPage(): JSX.Element {
               floorPlansUrl={scope.planFloorPlansUrl}
               planMetadata={planMetadata}
               viewerReady={viewerReady}
-              canCalibrate={canCalibrate}
               {...(scope.planViewerModelId ? { planModelId: scope.planViewerModelId } : {})}
             />
           </div>
@@ -1124,12 +1143,18 @@ export default function ViewerPage(): JSX.Element {
 
       </div>
       {showChrome && bundle !== null ? (
-        <SideRail
-          format={format}
-          activePanel={activePanel}
-          onTogglePanel={togglePanel}
-          badges={railBadges}
-        />
+        // `flex shrink-0` keeps the rail a full-height flex child: its root
+        // div stretches to fill the viewer row so the brand gradient runs
+        // top-to-bottom. A plain block wrapper here collapses the rail to its
+        // tab-content height and leaves a white strip below it.
+        <div className={isAligning ? 'flex shrink-0 pointer-events-none opacity-40 transition-opacity duration-200' : 'flex shrink-0 transition-opacity duration-200'}>
+          <SideRail
+            format={format}
+            activePanel={activePanel}
+            onTogglePanel={togglePanel}
+            badges={railBadges}
+          />
+        </div>
       ) : null}
       </div>
     </main>

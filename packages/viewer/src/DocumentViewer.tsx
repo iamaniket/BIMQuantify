@@ -128,9 +128,13 @@ export type DocumentViewerProps = {
   /** Floor-plan only: theme-resolved plan colors (wall/room/label/accent). */
   colors?: Partial<FloorPlanColors>;
   /**
-   * Floor-plan only: the building's true-north bearing in radians (clockwise
-   * from plan-up), from the model metadata. When provided, a static non-
-   * interactive north compass is shown in a plan corner. Omit to hide it.
+   * North bearing in radians, clockwise from THIS view's up-frame. When provided,
+   * a static (non-interactive) north dial is shown in a corner instead of the
+   * interactive page-rotation compass. For the generated floor plan this is the
+   * model's `metadata.trueNorth` directly (plan-up == screen-up). For an aligned
+   * PDF the portal folds the sheet rotation into it (`trueNorth + rotation_rad`)
+   * so the dial points to the model's north on the rotated drawing. Omit to hide
+   * it (floor plan) or fall back to the interactive dial (PDF).
    */
   trueNorth?: number;
   currentPage: number;
@@ -317,15 +321,6 @@ function DocumentViewerInner(
           ...(colorsRef.current ? { colors: colorsRef.current } : {}),
         }),
       );
-      // Static true-north dial (corner), only when the model carries a bearing.
-      if (trueNorthRef.current !== undefined) {
-        plugins.push(
-          navCompassPlugin({
-            northDeg: (trueNorthRef.current * 180) / Math.PI,
-            locale: navCompassRef.current?.locale ?? 'nl',
-          }),
-        );
-      }
     } else if (linkPicksRef.current) {
       // 2D→3D linking surface: page-pick events + the draggable you-are-here
       // camera marker (parity with the floor plan's marker).
@@ -335,9 +330,19 @@ function DocumentViewerInner(
       );
     }
 
-    // Interactive north dial (rotates the page); PDF only — depends on `rotate`,
-    // and a floor plan uses the static dial above.
-    if (!isFp && navCompassRef.current?.enabled !== false) {
+    // North compass. A provided `trueNorth` bearing (radians, CW from this view's
+    // up-frame) mounts the STATIC true-north dial — for the generated floor plan
+    // AND for an aligned PDF (the portal folds the sheet rotation into the bearing
+    // so it points to the model's north). A PDF with no bearing falls back to the
+    // interactive page-rotation dial (which depends on `rotate`).
+    if (trueNorthRef.current !== undefined) {
+      plugins.push(
+        navCompassPlugin({
+          northDeg: (trueNorthRef.current * 180) / Math.PI,
+          locale: navCompassRef.current?.locale ?? 'nl',
+        }),
+      );
+    } else if (!isFp && navCompassRef.current?.enabled !== false) {
       plugins.push(navCompassPlugin({ locale: navCompassRef.current?.locale ?? 'nl' }));
     }
 

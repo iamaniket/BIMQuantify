@@ -20,6 +20,7 @@
 
 import { pick } from '../../../core/Raycaster.js';
 import type { Plugin, ViewerContext } from '../../../core/types.js';
+import type { SnappingPluginAPI } from '../snapping/index.js';
 
 const NAME = 'placement' as const;
 
@@ -94,8 +95,16 @@ export function placementPlugin(): Plugin & PlacementPluginAPI {
     const hit = await pick(ctxRef, ndc);
     if (!hit) return; // tap missed the model — stay armed, no anchor.
 
+    // Snap the anchor to nearby geometry (vertex/edge/intersection) when the
+    // snapping tool is on — used by the PDF↔3D alignment flow for precise
+    // control-point picks. `resolve()` no-ops when snapping is disabled (the
+    // default), so the raw hit is used everywhere else. Mirrors measurement's
+    // `pickOrGround`.
+    const snapping = ctxRef.plugins.get<SnappingPluginAPI>('snapping');
+    const snapped = snapping?.resolve(hit);
+
     ctxRef.events.emit('point:picked', {
-      point: hit.point,
+      point: snapped ? snapped.point : hit.point,
       item: hit.item,
     });
 

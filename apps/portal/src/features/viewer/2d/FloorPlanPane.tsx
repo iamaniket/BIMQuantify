@@ -40,6 +40,7 @@ import {
 import type { ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import { useAlignedSheets } from '@/features/aligned-sheets/hooks';
 import { resolveColor } from '@/features/viewer/3d/minimap/spatialNames';
+import { buildStoreyMembership } from '@/features/viewer/3d/minimap/storeyMembership';
 import { useStoreys } from '@/features/storeys/useStoreys';
 import { useViewerBundle } from '@/features/viewer/shared/useViewerBundle';
 import type { AlignedSheet, Finding } from '@/lib/api/schemas';
@@ -236,6 +237,7 @@ export function FloorPlanPane({
     planAxisX,
     planAxisY,
     sheetTransform: sheetTransformForLink,
+    setActiveLevel,
   });
 
   useSplitEntryCamera({
@@ -407,6 +409,100 @@ export function FloorPlanPane({
     onActiveElevationChange?.(levels[safeLevel]?.elevation ?? null);
   }, [levels, safeLevel, onActiveElevationChange]);
 
+  // Reverse storey membership (element express id → storey express id) so a 3D
+  // selection can auto-follow the PDF sheet to its floor.
+  const localToStorey = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const [storeyId, ids] of buildStoreyMembership(metadata)) {
+      for (const id of ids) m.set(id, storeyId);
+    }
+    return m;
+  }, [metadata]);
+
+  // C2 — level change moves the 3D camera to that floor's height in Split (keep
+  // horizontal position + heading). Other modes leave the 3D camera alone.
+  const handleSelectLevel = useCallback(
+    (i: number) => {
+      setActiveLevel(i);
+      if (viewMode !== 'split' || !handle) return;
+      const lvl = levels[i];
+      if (!lvl) return;
+      void (async () => {
+        const pose = await handle.commands
+          .execute<{ position: { x: number; y: number; z: number }; target: { x: number; y: number; z: number } } | null>(
+            'camera.getPose',
+          )
+          .catch(() => null);
+        if (!pose) return;
+        const proj = await handle.commands
+          .execute<({ x: number; y: number; elevation: number } | null)[]>('minimap.projectPoints', [
+            pose.position,
+            pose.target,
+          ])
+          .catch(() => [] as ({ x: number; y: number; elevation: number } | null)[]);
+        const here = proj[0];
+        const look = proj[1];
+        if (!here || !look) return;
+        await handle.commands
+          .execute('minimap.placeCamera', {
+            planX: here.x,
+            planY: here.y,
+            lookX: look.x,
+            lookY: look.y,
+            elevation: lvl.elevation,
+            lockHeight: false, // move the eye to the new floor's height
+            animate: true,
+          })
+          .catch(() => undefined);
+      })();
+    },
+    [viewMode, handle, levels],
+  );
+
+  // C3 (PDF) — 3D selection → persistent highlight on the aligned sheet + auto-
+  // follow to its storey. The generated-plan counterpart lives in useFloorPlanLink
+  // (fpHandle is null in pdfMode, so the two never both fire).
+  useEffect(() => {
+    if (!docHandle || !handle || !pdfMode || !viewerReady) return undefined;
+    const clear = (): void => {
+      void docHandle.commands.execute('document.setSelectionMarker', null).catch(() => undefined);
+    };
+    const off = handle.events.on('selection:change', (ev) => {
+      void (async () => {
+        const selected = ev.selected;
+        if (!selected || selected.length === 0) {
+          clear();
+          return;
+        }
+        const sole = selected.length === 1 ? selected[0] : null;
+        const centroid = await handle.commands
+          .execute<{ x: number; y: number; z: number } | null>('camera.getSelectionCentroid')
+          .catch(() => null);
+        if (!centroid) return;
+        const proj = await handle.commands
+          .execute<{ x: number; y: number; elevation: number } | null>('minimap.projectPoint', centroid)
+          .catch(() => null);
+        if (!proj) return;
+        // PDF mode: the minimap projects through the sheet transform → normalized
+        // page coords (0..1), the frame document.setSelectionMarker expects.
+        void docHandle.commands
+          .execute('document.setSelectionMarker', { nx: proj.x, ny: proj.y })
+          .catch(() => undefined);
+        if (sole) {
+          const storeyId = localToStorey.get(sole.localId);
+          if (storeyId != null) {
+            const idx = levels.findIndex((l) => l.storeyExpressID === storeyId);
+            if (idx >= 0 && idx !== safeLevel) setActiveLevel(idx);
+          }
+        }
+      })();
+    });
+    return () => {
+      off();
+      clear();
+    };
+  }, [docHandle, handle, pdfMode, viewerReady, localToStorey, levels, safeLevel]);
+
   if (!data || levels.length === 0) return null;
   const level = levels[safeLevel];
   const levelName = level !== undefined ? level.name : '';
@@ -428,7 +524,7 @@ export function FloorPlanPane({
             <DropdownMenuItem
               key={lv.storeyExpressID}
               onSelect={() => {
-                setActiveLevel(i);
+                handleSelectLevel(i);
               }}
             >
               {lv.name}
@@ -464,6 +560,10 @@ export function FloorPlanPane({
           {sheetAvailable && (
             <>
               <ToolbarDivider />
+              {/* Active 2D source label — which drawing the pane currently shows */}
+              <span className="px-1 text-caption font-medium text-foreground-tertiary">
+                {pdfMode ? t('source.alignedPdf') : t('source.generated')}
+              </span>
               {/* Toggle between the calibrated PDF sheet and the generated plan */}
               <ToolButton
                 isActive={pdfMode}
@@ -521,6 +621,15 @@ export function FloorPlanPane({
             activeTool={activeTool}
             linkPicks
             linkColor={colors.accent}
+            // Static true-north dial derived from the sheet alignment: the model's
+            // north bearing folded with the sheet rotation so it points to the
+            // model storey on the (possibly rotated) drawing. Falls back to the
+            // interactive page-rotation compass when the model has no trueNorth.
+            // (Sign of `rotationRad` verified against a rotated sheet at runtime.)
+            {...(metadata?.trueNorth !== undefined && transform
+              ? { trueNorth: metadata.trueNorth + transform.rotationRad }
+              : {})}
+            navCompass={{ locale: compassLocale }}
             className="absolute inset-0"
             onLoaded={() => {
               setDocReady(true);

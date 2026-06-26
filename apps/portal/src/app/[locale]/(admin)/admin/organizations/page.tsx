@@ -37,6 +37,7 @@ import { OrgCreateDialog } from '@/features/admin/organizations/OrgCreateDialog'
 import { OrgTable } from '@/features/admin/organizations/OrgTable';
 import { adminOrganizationsListKey } from '@/features/admin/organizations/queryKeys';
 import { useAdminOrganizations } from '@/features/admin/organizations/useAdminOrganizations';
+import { ProcessorPane } from '@/features/admin/processor/ProcessorPane';
 import {
   exportAccessRequests,
   listAccessRequestsPage,
@@ -363,6 +364,7 @@ export default function AdminOrganizationsPage(): JSX.Element {
   const t = useTranslations('admin.organizations');
   const tReq = useTranslations('admin.accessRequests');
   const tBlog = useTranslations('admin.blog');
+  const tProc = useTranslations('admin.processor');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [createOpen, setCreateOpen] = useState(false);
@@ -538,6 +540,11 @@ export default function AdminOrganizationsPage(): JSX.Element {
       title: tBlog('panel.title', { count: blogTable.total }),
       sub: '',
     },
+    processor: {
+      eyebrow: tProc('panel.eyebrow'),
+      title: tProc('panel.title'),
+      sub: tProc('panel.sub'),
+    },
   }[tab] ?? { eyebrow: '', title: '', sub: '' };
 
   const toolbar = tab === 'organizations' ? (
@@ -604,12 +611,13 @@ export default function AdminOrganizationsPage(): JSX.Element {
         { value: 'organizations', label: t('tabs.organizations'), icon: <Table2 className="h-4 w-4" />, badge: <Badge variant="primary" size="md" bordered={false}>{orgTable.total}</Badge> },
         { value: 'requests', label: t('tabs.requests'), icon: <Inbox className="h-4 w-4" />, badge: pendingRequestCount > 0 ? <Badge variant="primary" size="md" bordered={false}>{pendingRequestCount}</Badge> : undefined },
         { value: 'blog', label: tBlog('tab'), icon: <BookOpen className="h-4 w-4" />, badge: <Badge variant="default" size="md" bordered={false}>{blogTable.total}</Badge> },
+        { value: 'processor', label: tProc('tab'), icon: <Activity className="h-4 w-4" /> },
       ]}
       activeTab={tab}
       onTabChange={setTab}
       panelHeading={panelHeading}
       toolbar={toolbar}
-      fillContent={tab === 'organizations' || tab === 'requests' || tab === 'blog'}
+      fillContent={tab === 'organizations' || tab === 'requests' || tab === 'blog' || tab === 'processor'}
       afterTabs={
         <>
           <OrgCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
@@ -658,6 +666,10 @@ export default function AdminOrganizationsPage(): JSX.Element {
           table={reqTable}
           className="shrink-0 border-t border-border px-5 py-2.5"
         />
+      </TabsContent>
+
+      <TabsContent value="processor" className="mt-0 flex min-h-0 flex-1 flex-col">
+        <ProcessorPane />
       </TabsContent>
     </TabbedPageShell>
   );

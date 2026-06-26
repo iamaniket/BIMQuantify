@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState, type JSX } from 'react';
 
 import { Button, Skeleton } from '@bimdossier/ui';
 import {
-  ArrowRight, Pencil, Settings, Share2,
+  Activity, ArrowRight, Pencil, Settings, Share2,
 } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 
@@ -25,11 +25,7 @@ import { ProjectChartsPanel } from '@/features/projects/detail/ProjectChartsPane
 import { ActivityTimelinePanel } from '@/features/projects/detail/ActivityTimelinePanel';
 import { RightColumnTabs } from '@/features/projects/detail/RightColumnTabs';
 import { useDeadlines } from '@/features/projects/detail/deadlines/useDeadlines';
-import {
-  computeDossierCompleteness,
-  selectDossierTemplate,
-} from '@/features/projects/detail/dossierTemplate';
-import { useJurisdiction } from '@/features/jurisdictions/useJurisdictions';
+import { useDossierCompleteness } from '@/features/projects/detail/useDossierCompleteness';
 import { ProjectFormDialog } from '@/features/projects/ProjectFormDialog';
 import { ProjectSettingsDialog } from '@/features/projects/detail/ProjectSettingsDialog';
 import { RemoveProjectButton } from '@/features/projects/detail/RemoveProjectButton';
@@ -57,7 +53,6 @@ export default function ProjectDetailPage(): JSX.Element {
   const deadlines = deadlinesQuery.data ?? [];
   const attachments = flattenPages(attachmentsQuery.data);
   const findings = flattenPages(findingsQuery.data);
-  const certificates = flattenPages(certificatesQuery.data);
 
   // The five secondary queries coalesce to []/empty above; on a fetch error
   // that empty data feeds the dossier %, model/finding/deadline counts, etc.,
@@ -86,28 +81,7 @@ export default function ProjectDetailPage(): JSX.Element {
     [attachments],
   );
 
-  const modelCount = documentsQuery.data?.length ?? 0;
-  const findingsOpen = useMemo(
-    () => findings.filter((f) => f.status !== 'resolved' && f.status !== 'verified').length,
-    [findings],
-  );
-
-  const buildingType = projectQuery.data?.building_type ?? null;
-  const jurisdiction = useJurisdiction(projectQuery.data?.country);
-
-  const dossierTemplate = useMemo(
-    () => selectDossierTemplate(jurisdiction?.dossier_requirement_templates, buildingType),
-    [jurisdiction, buildingType],
-  );
-
-  const dossier = useMemo(
-    () => computeDossierCompleteness(dossierTemplate, attachments, certificates, {
-      modelCount,
-      findingsOpen,
-      deadlinesOverdue: deadlinesSummary.overdue,
-    }),
-    [dossierTemplate, attachments, certificates, modelCount, findingsOpen, deadlinesSummary.overdue],
-  );
+  const dossier = useDossierCompleteness(projectId, projectQuery.data?.country ?? '');
 
   if (projectQuery.isLoading) {
     return (
@@ -188,7 +162,7 @@ export default function ProjectDetailPage(): JSX.Element {
             <ErrorBanner message={tHero('partialDataError')} tone="soft" className="text-body2" />
           </div>
         )}
-        <div className="grid min-h-0 flex-1 grid-rows-[1fr_2fr] grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-rows-1 lg:grid-cols-2">
+        <div className="grid min-h-0 flex-1 grid-rows-[1fr_2fr] grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-rows-1 lg:grid-cols-[45fr_65fr]">
           <div className="flex min-h-0 flex-col gap-3.5">
             <ProjectChartsPanel
               dossier={dossier}
@@ -201,6 +175,7 @@ export default function ProjectDetailPage(): JSX.Element {
               headerAction={(
                 <Button variant="ghost" size="sm" asChild>
                   <Link href={`/projects/${projectId}/activity`}>
+                    <Activity className="mr-1 h-3.5 w-3.5" />
                     {tActivity('viewAll')}
                     <ArrowRight className="ml-1 h-3.5 w-3.5" />
                   </Link>

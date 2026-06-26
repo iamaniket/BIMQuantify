@@ -7,6 +7,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type JSX,
 } from 'react';
@@ -18,6 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Skeleton,
+  cn,
 } from '@bimdossier/ui';
 import { toast } from 'sonner';
 
@@ -117,6 +119,13 @@ export function CalibrationPane({
   const [numPages, setNumPages] = useState<number | null>(null);
   const [docHandle, setDocHandle] = useState<DocumentViewerHandle | null>(null);
 
+  // Snapping (vertex/edge/intersection) makes the 3D control-point picks land on
+  // exact geometry — the placement tool consults the snapping plugin whenever it's
+  // on (see packages/viewer placement plugin). Default it ON for the alignment
+  // session and restore the viewer's prior state on exit.
+  const [snapEnabled, setSnapEnabled] = useState(false);
+  const priorSnapRef = useRef(false);
+
   // Default the selections once data lands.
   useEffect(() => {
     if (selectedPdfModelId === null && pdfDocuments.length > 0) {
@@ -183,6 +192,37 @@ export function CalibrationPane({
       void viewerHandle.commands.execute('minimap.showAllLevels').catch(() => undefined);
     };
   }, [viewerHandle, viewerReady, selectedStorey, storeyMembership]);
+
+  // Turn snapping on for the alignment session, remembering the prior state so we
+  // can restore it on exit. Mirror MeasurementHeaderActions: subscribe to
+  // `snapping:change` so the toggle button stays in sync with the Shift+S shortcut.
+  useEffect(() => {
+    if (!viewerHandle || !viewerReady) return undefined;
+    let cancelled = false;
+    void viewerHandle.commands
+      .execute<boolean>('snapping.isEnabled')
+      .then((prev) => {
+        if (cancelled) return;
+        priorSnapRef.current = prev ?? false;
+        setSnapEnabled(true);
+        void viewerHandle.commands
+          .execute('snapping.setEnabled', { enabled: true })
+          .catch(() => undefined);
+      })
+      .catch(() => undefined);
+
+    const off = viewerHandle.events.on('snapping:change', (data: { enabled: boolean }) => {
+      setSnapEnabled(data.enabled);
+    });
+
+    return () => {
+      cancelled = true;
+      off();
+      void viewerHandle.commands
+        .execute('snapping.setEnabled', { enabled: priorSnapRef.current })
+        .catch(() => undefined);
+    };
+  }, [viewerHandle, viewerReady]);
 
   const selectedModel = useMemo(
     () => pdfDocuments.find((m) => m.id === selectedPdfModelId) ?? null,
@@ -274,6 +314,14 @@ export function CalibrationPane({
     void start();
   }, [start]);
 
+  const onToggleSnap = useCallback(() => {
+    if (!viewerHandle) return;
+    void viewerHandle.commands.execute('snapping.toggle').catch(() => undefined);
+    // Optimistic: enabling doesn't emit `snapping:change` until the next pointer
+    // move, so flip locally; the subscription keeps us in sync with Shift+S.
+    setSnapEnabled((v) => !v);
+  }, [viewerHandle]);
+
   const pageOptions = useMemo(
     () => Array.from({ length: numPages ?? 1 }, (_, i) => i),
     [numPages],
@@ -312,15 +360,38 @@ export function CalibrationPane({
             ))}
           </Dropdown>
           <ToolbarDivider />
+          {/* Snap toggle — keeps working mid-capture; mirrors Shift+S. */}
+          <button
+            type="button"
+            onClick={onToggleSnap}
+            aria-pressed={snapEnabled}
+            title={t('aligned.snapTooltip', {
+              state: snapEnabled ? t('aligned.snapOn') : t('aligned.snapOff'),
+            })}
+            className={cn(
+              'inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-foreground/[0.06] focus-visible:outline-none',
+              snapEnabled ? 'text-primary' : 'text-foreground-tertiary',
+            )}
+          >
+            <Crosshair className="h-3.5 w-3.5" />
+          </button>
+          <ToolbarDivider />
           {active ? (
             <Button type="button" variant="ghost" size="sm" onClick={cancel}>
               <X className="mr-1 h-3.5 w-3.5" />
               {t('aligned.cancel')}
             </Button>
           ) : (
-            <Button type="button" variant="primary" size="sm" disabled={!ready} onClick={onStart}>
-              {existingSheet?.is_calibrated ? t('aligned.recalibrate') : t('aligned.start')}
-            </Button>
+            <>
+              {/* Sole deliberate way out of the locked alignment session. */}
+              <Button type="button" variant="ghost" size="sm" onClick={onExit}>
+                <X className="mr-1 h-3.5 w-3.5" />
+                {t('aligned.exit')}
+              </Button>
+              <Button type="button" variant="primary" size="sm" disabled={!ready} onClick={onStart}>
+                {existingSheet?.is_calibrated ? t('aligned.recalibrate') : t('aligned.start')}
+              </Button>
+            </>
           )}
         </ToolbarGroup>
       </div>

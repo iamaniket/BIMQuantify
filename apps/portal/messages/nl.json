@@ -267,8 +267,8 @@
   "breadcrumbs": {
     "projects": "Projecten",
     "project": "Project",
-    "model": "Document",
-    "allModels": "Alle documenten",
+    "model": "Informatiecontainer",
+    "allModels": "Alle informatiecontainers",
     "report": "Rapport",
     "settings": "Instellingen",
     "admin": "Beheer",
@@ -280,10 +280,52 @@
     "tenant": "Tenant",
     "certificates": "Certificaten",
     "templates": "Sjablonen",
+    "help": "Hulp en documentatie",
     "appName": "BimDossier"
   },
+  "help": {
+    "hero": {
+      "title": "Hulp en documentatie",
+      "description": "Handleidingen en antwoorden voor het werken met BimDossier."
+    },
+    "kpis": {
+      "articles": "Artikelen",
+      "categories": "Categorieën",
+      "updated": "Laatst bijgewerkt",
+      "support": "Support",
+      "supportValue": "Neem contact op"
+    },
+    "rail": {
+      "searchPlaceholder": "Zoek in help…",
+      "noResults": "Geen artikelen gevonden voor je zoekopdracht."
+    },
+    "categories": {
+      "gettingStarted": "Aan de slag",
+      "modelsUploads": "Modellen & uploads",
+      "viewer": "Viewer (3D / 2D)",
+      "findings": "Bevindingen & snags",
+      "compliance": "Regelgeving & rapporten",
+      "deadlines": "Deadlines & agenda",
+      "account": "Account & organisatie"
+    },
+    "hub": {
+      "welcomeTitle": "Waarmee kunnen we je helpen?",
+      "welcomeBody": "Blader door de onderwerpen hieronder of gebruik het zoekveld in de zijbalk.",
+      "articleCount": "{count, plural, =1 {1 artikel} other {# artikelen}}",
+      "emptyTitle": "Nog geen documentatie",
+      "emptyDescription": "Helpartikelen verschijnen hier zodra ze zijn gepubliceerd."
+    },
+    "article": {
+      "lastUpdatedLabel": "Laatst bijgewerkt",
+      "backToHelp": "Terug naar Help"
+    },
+    "notFound": {
+      "title": "Artikel niet gevonden",
+      "description": "Dit helpartikel bestaat niet of is mogelijk verplaatst."
+    }
+  },
   "modelSwitcher": {
-    "switchModel": "Document wisselen",
+    "switchModel": "Informatiecontainer wisselen",
     "noViewableFile": "Niet bekijkbaar",
     "type2d": "2D",
     "type3d": "3D"
@@ -1144,7 +1186,7 @@
         "noActivity": "Nog geen activiteit",
         "done": "Gereed",
         "missing": "Ontbreekt",
-        "models": "Documenten",
+        "models": "Informatiecontainers",
         "photos": "Foto's",
         "documents": "Office-bestanden",
         "certificates": "Certificaten",
@@ -1178,19 +1220,19 @@
         }
       },
       "documents": {
-        "label": "Documenten",
+        "label": "Informatiecontainers",
         "eyebrow": "BIM-werkruimte",
-        "subtitle": "{count, plural, =0 {Nog geen documenten} =1 {1 document} other {# documenten}}",
+        "subtitle": "{count, plural, =0 {Nog geen informatiecontainers} =1 {1 informatiecontainer} other {# informatiecontainers}}",
         "columnName": "Naam",
-        "searchPlaceholder": "Documenten zoeken…",
-        "noResults": "Geen documenten komen overeen met uw zoekopdracht.",
+        "searchPlaceholder": "Informatiecontainers zoeken…",
+        "noResults": "Geen informatiecontainers komen overeen met uw zoekopdracht.",
         "filterAll": "Alle disciplines",
         "filterArchitectural": "Architectuur",
         "filterStructural": "Constructie",
         "filterMep": "Installaties",
         "filterCoordination": "Coördinatie",
         "filterOther": "Overig",
-        "newModel": "Nieuw document",
+        "newModel": "Nieuwe informatiecontainer",
         "newLevel": "Nieuwe verdieping",
         "group": {
           "models3d": "3D-modellen",
@@ -1216,20 +1258,20 @@
         "loadAll3d": "Alle 3D laden",
         "loadAll2d": "Alle 2D laden",
         "loadAllMenu": "Laadopties",
-        "selectedCount": "{count, plural, =1 {1 document geselecteerd} other {# documenten geselecteerd}}",
+        "selectedCount": "{count, plural, =1 {1 informatiecontainer geselecteerd} other {# informatiecontainers geselecteerd}}",
         "clearSelection": "Wissen",
         "bulkCheckBbl": "Bbl controleren",
         "bulkDownload": "Downloaden",
         "bulkRemove": "Verwijderen",
-        "bulkRemoveTitle": "{count, plural, =1 {Document verwijderen?} other {# documenten verwijderen?}}",
-        "bulkRemoveBody": "{count, plural, =1 {Hiermee worden het geselecteerde document en alle bestandsversies definitief verwijderd.} other {Hiermee worden de # geselecteerde documenten en al hun bestandsversies definitief verwijderd.}} Dit kan niet ongedaan worden gemaakt.",
+        "bulkRemoveTitle": "{count, plural, =1 {Informatiecontainer verwijderen?} other {# informatiecontainers verwijderen?}}",
+        "bulkRemoveBody": "{count, plural, =1 {Hiermee worden de geselecteerde informatiecontainer en alle bestandsversies definitief verwijderd.} other {Hiermee worden de # geselecteerde informatiecontainers en al hun bestandsversies definitief verwijderd.}} Dit kan niet ongedaan worden gemaakt.",
         "bulkRemoveConfirm": "Verwijderen",
         "cancel": "Annuleren",
-        "emptyState": "Nog geen documenten",
-        "emptyDescription": "Upload IFC-bestanden om uw BIM-documenten te bekijken en beheren.",
+        "emptyState": "Nog geen informatiecontainers",
+        "emptyDescription": "Upload IFC-bestanden om uw BIM-informatiecontainers te bekijken en beheren.",
         "newDocumentDialog": {
-          "title": "Nieuw document",
-          "description": "Groepeer bestandsversies op discipline. Na het aanmaken kun je een bestand uploaden in het document.",
+          "title": "Nieuwe informatiecontainer",
+          "description": "Groepeer bestandsversies op discipline. Na het aanmaken kun je een bestand uploaden in de informatiecontainer.",
           "submitCreate": "Aanmaken",
           "submitCreating": "Bezig met aanmaken…",
           "cancel": "Annuleren",
@@ -1293,7 +1335,7 @@
               "stale": "Verouderd"
             }
           },
-          "removeTitle": "Document verwijderen?",
+          "removeTitle": "Informatiecontainer verwijderen?",
           "removeBody": "Hiermee worden “{name}” en alle bestandsversies definitief verwijderd. Dit kan niet ongedaan worden gemaakt.",
           "removeConfirm": "Verwijderen",
           "restore": "Herstellen",
@@ -1464,6 +1506,7 @@
         "uploadButton": "Uploaden",
         "uploading": "Bezig met uploaden…",
         "uploadSuccess": "{name} geüpload",
+        "uploadError": "Kon {name} niet uploaden",
         "downloadError": "Downloadlink kon niet worden aangemaakt",
         "deleteSuccess": "{name} verwijderd",
         "download": "Downloaden",
@@ -1600,13 +1643,19 @@
       "nav": {
         "eyebrow": "Kwaliteit & documenten",
         "subtitle": "Open een eigen werkruimte",
+        "tabLabel": "Kwaliteit & documenten",
         "findingsDesc": "Kwaliteitsissues volgen en oplossen",
         "certificatesDesc": "Conformiteitsdocumenten",
         "attachmentsDesc": "Foto's, tekeningen en bestanden",
-        "reportsDesc": "Gegenereerde indieningsklare PDF's"
+        "reportsDesc": "Gegenereerde indieningsklare PDF's",
+        "viewAll": "Alles bekijken",
+        "new": "Nieuw",
+        "empty": "Nog niets"
       },
       "deadlines": {
         "label": "Deadlines",
+        "eyebrow": "Compliance-data",
+        "headerSubtitle": "{count, plural, =0 {Geen deadlines} =1 {1 deadline} other {# deadlines}}",
         "viewOnCalendar": "Bekijk in agenda",
         "heading": "Deadlines",
         "emptyTitle": "Nog geen deadlines",
@@ -1685,6 +1734,12 @@
       "in_progress": "In behandeling",
       "resolved": "Opgelost",
       "verified": "Geverifieerd"
+    },
+    "row": {
+      "page": "p.{page}",
+      "reporter": "melder",
+      "unassigned": "Niet toegewezen",
+      "linked": "Gekoppeld"
     },
     "form": {
       "createTitle": "Bevinding vastleggen",
@@ -2731,6 +2786,65 @@
     }
   },
   "admin": {
+    "processor": {
+      "tab": "Processor",
+      "panel": {
+        "eyebrow": "Infrastructuur",
+        "title": "Processor- en extractietaken",
+        "sub": "Live status van achtergrondtaken voor alle werkruimtes."
+      },
+      "pane": {
+        "subtitle": "Live voor alle werkruimtes — ververst automatisch elke 10 seconden.",
+        "refresh": "Vernieuwen",
+        "processorUnreachable": "De verwerkingsservice is momenteel onbereikbaar. Wachtrijdiepte is niet beschikbaar; lopende taken hieronder komen nog uit de database."
+      },
+      "queue": {
+        "waiting": "Wachtend",
+        "active": "Actief",
+        "delayed": "Uitgesteld",
+        "completed": "Voltooid",
+        "failed": "Mislukt",
+        "recent": "recent"
+      },
+      "summary": {
+        "ongoing": "Lopend",
+        "stuck": "Vastgelopen"
+      },
+      "status": {
+        "pending": "In wachtrij",
+        "started": "Gestart",
+        "running": "Bezig",
+        "succeeded": "Geslaagd",
+        "failed": "Mislukt",
+        "cancelled": "Geannuleerd"
+      },
+      "jobType": {
+        "ifc_extraction": "IFC-extractie",
+        "pdf_extraction": "PDF-extractie",
+        "dxf_extraction": "DXF-extractie",
+        "verification": "Verificatie",
+        "batch_update": "Bulkupdate",
+        "image_metadata_extraction": "Afbeeldingsmetadata",
+        "compliance_check": "Compliancecontrole",
+        "compliance_report": "Compliancerapport",
+        "assurance_plan_report": "Borgingsplanrapport",
+        "completion_declaration_report": "Verklaring gereedmelding",
+        "dossier_report": "Dossierrapport",
+        "snag_list_report": "Opleverpuntenrapport"
+      },
+      "table": {
+        "org": "Werkruimte",
+        "type": "Type",
+        "status": "Status",
+        "stuck": "Vastgelopen",
+        "age": "Leeftijd",
+        "attempt": "Poging",
+        "error": "Fout",
+        "empty": "Er worden momenteel geen taken uitgevoerd.",
+        "loadError": "Taken konden niet worden geladen.",
+        "truncated": "De eerste {limit} taken worden weergegeven."
+      }
+    },
     "common": {
       "eyebrowSuperAdmin": "Superbeheerder"
     },
@@ -3415,7 +3529,7 @@
       "risk": "Risico's",
       "bcf_topic": "BCF-kwesties",
       "bcf_comment": "BCF-reacties",
-      "document": "Documenten",
+      "document": "Informatiecontainers",
       "project_file": "Bestanden",
       "project_files": "Bestanden",
       "attachment": "Bijlagen",
@@ -3432,9 +3546,9 @@
       "project": "Project",
       "project_member": "Leden"
     },
-    "documentCreated": "Document aangemaakt: {name}",
-    "documentUpdated": "Document bijgewerkt: {name}",
-    "documentDeleted": "Document verwijderd: {name}",
+    "documentCreated": "Informatiecontainer aangemaakt: {name}",
+    "documentUpdated": "Informatiecontainer bijgewerkt: {name}",
+    "documentDeleted": "Informatiecontainer verwijderd: {name}",
     "fileCompleted": "Toegevoegd: {filename}",
     "fileRejected": "Afgewezen: {filename}",
     "fileDeleted": "Verwijderd: {filename}",
@@ -3503,6 +3617,11 @@
       "model": "Model laden…",
       "updating": "Weergave bijwerken…"
     },
+    "framing": {
+      "outOfView": "Model buiten beeld",
+      "recenter": "Centreren",
+      "recenterTooltip": "Breng het model terug in beeld"
+    },
     "minimap": {
       "title": "Plattegrond",
       "level": "Verdieping",
@@ -3532,7 +3651,11 @@
       "isolateLevel": "Verdieping isoleren",
       "allLevels": "Alle verdiepingen",
       "showAlignedSheet": "Uitgelijnde PDF tonen",
-      "showGeneratedPlan": "Gegenereerde plattegrond tonen"
+      "showGeneratedPlan": "Gegenereerde plattegrond tonen",
+      "source": {
+        "alignedPdf": "Uitgelijnde PDF",
+        "generated": "Gegenereerde plattegrond"
+      }
     },
     "viewMode": {
       "label": "Weergave",
@@ -3543,7 +3666,7 @@
       "splitTooltip": "Gesplitst — 3D en plattegrond",
       "planTooltip": "2D-plattegrond",
       "calibrate": "Uitlijnen",
-      "calibrateTooltip": "Lijn een PDF-tekening uit op het model"
+      "calibrateTooltip": "Lijn tekening uit op verdieping van model"
     },
     "aligned": {
       "pickPdfModel": "PDF-tekening",
@@ -3555,6 +3678,10 @@
       "recalibrate": "Opnieuw uitlijnen",
       "replaceHint": "Deze verdieping + pagina is al uitgelijnd — opnieuw uitlijnen vervangt de uitlijning.",
       "cancel": "Annuleren",
+      "exit": "Uitlijnen afsluiten",
+      "snapTooltip": "Snappen: {state}",
+      "snapOn": "aan",
+      "snapOff": "uit",
       "step": {
         "pdf1": "Kies punt 1 op de PDF",
         "model1": "Kies punt 1 op het model",

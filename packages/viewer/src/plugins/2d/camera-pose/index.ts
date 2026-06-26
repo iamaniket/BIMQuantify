@@ -56,6 +56,22 @@ function circleShape(cx: number, cy: number, r: number, segments = 20): THREE.Sh
   return new THREE.Shape(pts);
 }
 
+const SELECT_R_PX = 12; // px radius of the persistent selection ring
+
+/** Persistent selection-highlight marker (ring + dot, px-authored). */
+function buildSelectionMarker(color: THREE.ColorRepresentation): THREE.Group {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(SELECT_R_PX - 2, SELECT_R_PX, 32), mat);
+  ring.renderOrder = RENDER_ORDER + 1;
+  ring.frustumCulled = false;
+  const dot = new THREE.Mesh(new THREE.ShapeGeometry(circleShape(0, 0, 2.5)), mat);
+  dot.renderOrder = RENDER_ORDER + 2;
+  dot.frustumCulled = false;
+  group.add(ring, dot);
+  return group;
+}
+
 function buildCameraMarker(color: THREE.ColorRepresentation): THREE.Group {
   const group = new THREE.Group();
   const solid = new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true });
@@ -120,6 +136,7 @@ export function documentCameraPosePlugin(opts: DocumentCameraPoseOptions = {}): 
   let sceneApi: SceneAPI | null = null;
   let layer: THREE.Group | null = null;
   let group: THREE.Group | null = null;
+  let selectGroup: THREE.Group | null = null; // persistent selection highlight
   let offCamera: (() => void) | null = null;
 
   /** Latest pose in normalized page coords (drives the marker + seeds drag math). */
@@ -225,7 +242,9 @@ export function documentCameraPosePlugin(opts: DocumentCameraPoseOptions = {}): 
       layer = sceneApi.addLayer(LAYER, RENDER_ORDER);
       group = buildCameraMarker(color);
       group.visible = false;
-      layer.add(group);
+      selectGroup = buildSelectionMarker(color);
+      selectGroup.visible = false;
+      layer.add(group, selectGroup);
 
       context.commands.register(
         'document.setCameraPose',
@@ -238,14 +257,38 @@ export function documentCameraPosePlugin(opts: DocumentCameraPoseOptions = {}): 
         { title: 'Set the you-are-here camera marker' },
       );
 
+      // Persistent selection highlight at a normalized page point (0..1, top-left,
+      // Y-down — the frame `document:pick` uses). Null clears it. The host drives
+      // this from the 3D selection projected through the active sheet transform.
+      context.commands.register(
+        'document.setSelectionMarker',
+        (a: unknown) => {
+          if (!ctx || !sceneApi || !selectGroup) return;
+          const p = (a as { nx: number; ny: number } | null) ?? null;
+          const unscaled = ctx.getUnscaledViewport();
+          if (!p || !unscaled) {
+            selectGroup.visible = false;
+            sceneApi.requestRender();
+            return;
+          }
+          selectGroup.position.set(p.nx * unscaled.width, (1 - p.ny) * unscaled.height, 0);
+          selectGroup.visible = true;
+          applyConstantScale(selectGroup, sceneApi);
+          sceneApi.requestRender();
+        },
+        { title: 'Set/clear the persistent PDF selection highlight' },
+      );
+
       // Grab the camera marker on pointerdown (capture phase) so a drag on it
       // pre-empts camera-controls truck / document.pick. Mirrors the floor-plan
       // plugin's pattern.
       context.container.addEventListener('pointerdown', onMarkerPointerDown, true);
 
-      // Keep the marker constant-size on zoom (rotation/position are pose-driven).
+      // Keep the markers constant-size on zoom (rotation/position are pose-driven).
       offCamera = context.events.on('camera:change', () => {
-        if (group?.visible && sceneApi) applyConstantScale(group, sceneApi);
+        if (!sceneApi) return;
+        if (group?.visible) applyConstantScale(group, sceneApi);
+        if (selectGroup?.visible) applyConstantScale(selectGroup, sceneApi);
       });
     },
 
@@ -255,10 +298,12 @@ export function documentCameraPosePlugin(opts: DocumentCameraPoseOptions = {}): 
       endDrag();
       ctx?.container.removeEventListener('pointerdown', onMarkerPointerDown, true);
       if (layer && group) layer.remove(group);
+      if (layer && selectGroup) layer.remove(selectGroup);
       ctx = null;
       sceneApi = null;
       layer = null;
       group = null;
+      selectGroup = null;
       lastPose = null;
     },
   };

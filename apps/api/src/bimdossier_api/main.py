@@ -36,6 +36,7 @@ from bimdossier_api.routers.access_requests import router as access_requests_rou
 from bimdossier_api.routers.activity import router as activity_router
 from bimdossier_api.routers.admin_blog import router as admin_blog_router
 from bimdossier_api.routers.admin_impersonate import router as admin_impersonate_router
+from bimdossier_api.routers.admin_jobs import router as admin_jobs_router
 from bimdossier_api.routers.admin_organizations import router as admin_organizations_router
 from bimdossier_api.routers.aligned_sheets import router as aligned_sheets_router
 from bimdossier_api.routers.attachments import router as attachments_router
@@ -278,6 +279,7 @@ def create_app() -> FastAPI:
     app.include_router(permissions_router)
     app.include_router(build_auth_router())
     app.include_router(admin_organizations_router)
+    app.include_router(admin_jobs_router)
     app.include_router(admin_blog_router)
     app.include_router(admin_impersonate_router)
     app.include_router(org_image_admin_router)

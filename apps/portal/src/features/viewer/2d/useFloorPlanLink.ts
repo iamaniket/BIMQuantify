@@ -29,6 +29,12 @@ interface FloorPlanLinkOptions {
    * would be clobbered by calibrate (which resets it). Reset to null on teardown.
    */
   sheetTransform?: SheetTransform | null;
+  /**
+   * Switch the active plan level (generated-plan mode). When a 3D selection lands
+   * on a different storey, the plan auto-follows it. Optional — omit to keep the
+   * plan on its current level.
+   */
+  setActiveLevel?: ((index: number) => void) | undefined;
 }
 
 /** A world-space centroid command result. */
@@ -49,10 +55,21 @@ type CameraPose = { position: { x: number; y: number; z: number }; target: { x: 
  *     (`minimap.isolateItems`), reusing the metadata-derived membership.
  */
 export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
-  const { fpHandle, viewerHandle, viewerReady, levels, activeLevel, isolate, metadata, planAxisX, planAxisY } = opts;
+  const { fpHandle, viewerHandle, viewerReady, levels, activeLevel, isolate, metadata, planAxisX, planAxisY, setActiveLevel } = opts;
   const sheetTransform = opts.sheetTransform ?? null;
 
   const storeyMembership = useMemo(() => buildStoreyMembership(metadata), [metadata]);
+  // Reverse membership: element express id (== fragment localId) → its storey
+  // express id. Lets a 3D selection auto-follow to its floor on the plan.
+  const localToStorey = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const [storeyId, ids] of storeyMembership) {
+      for (const id of ids) m.set(id, storeyId);
+    }
+    return m;
+  }, [storeyMembership]);
+  const setActiveLevelRef = useRef(setActiveLevel);
+  setActiveLevelRef.current = setActiveLevel;
 
   // Ensure the minimap is calibrated in Split/2D too — the 3D minimap pop-out
   // (which calibrates only while open) isn't mounted here, and its calibration
@@ -118,22 +135,27 @@ export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
     return off;
   }, [fpHandle, viewerHandle]);
 
-  // 3D→2D: selection → project centroid → pan + pulse the plan.
+  // 3D→2D: selection → project centroid → pan + persistent highlight on the plan,
+  // and auto-follow the plan to the selected element's storey. The marker holds
+  // (unlike the old transient pulse) until the selection clears.
   useEffect(() => {
     if (!fpHandle || !viewerHandle || !viewerReady) return undefined;
+    const clearMarker = (): void => {
+      void fpHandle.commands.execute('floorplan.setSelectionMarker', null).catch(() => undefined);
+    };
     const off = viewerHandle.events.on('selection:change', (ev) => {
       void (async () => {
         const selected = ev.selected;
         if (!selected || selected.length === 0) {
           lastSelectedSpaceRef.current = null;
+          clearMarker();
           return;
         }
-        // Skip the echo from our own 2D→3D selection.
         const sole = selected.length === 1 ? selected[0] : null;
-        if (sole && sole.localId === lastSelectedSpaceRef.current) {
-          lastSelectedSpaceRef.current = null;
-          return;
-        }
+        // Echo of our own 2D→3D pick — still mark the room, but don't bounce the
+        // plan camera / level (the user just clicked there).
+        const isEcho = !!sole && sole.localId === lastSelectedSpaceRef.current;
+        if (isEcho) lastSelectedSpaceRef.current = null;
         const centroid = await viewerHandle.commands
           .execute<Centroid>('camera.getSelectionCentroid')
           .catch(() => null);
@@ -142,12 +164,27 @@ export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
           .execute<Projected>('minimap.projectPoint', centroid)
           .catch(() => null);
         if (!proj) return;
+        void fpHandle.commands
+          .execute('floorplan.setSelectionMarker', { planX: proj.x, planY: proj.y })
+          .catch(() => undefined);
+        if (isEcho) return;
         fpHandle.focusPlanPoint(proj.x, proj.y);
-        fpHandle.pulseAt(proj.x, proj.y);
+        // Auto-follow the plan to the selected element's storey.
+        const setLevel = setActiveLevelRef.current;
+        if (sole && setLevel) {
+          const storeyId = localToStorey.get(sole.localId);
+          if (storeyId != null) {
+            const idx = levelsRef.current.findIndex((l) => l.storeyExpressID === storeyId);
+            if (idx >= 0 && idx !== activeLevelRef.current) setLevel(idx);
+          }
+        }
       })();
     });
-    return off;
-  }, [fpHandle, viewerHandle, viewerReady]);
+    return () => {
+      off();
+      clearMarker();
+    };
+  }, [fpHandle, viewerHandle, viewerReady, localToStorey]);
 
   // "You are here": mirror the 3D camera pose onto the plan. The minimap plugin
   // emits plan-projected poses on every camera move; we also seed once on mount

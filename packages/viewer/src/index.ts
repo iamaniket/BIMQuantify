@@ -194,6 +194,8 @@ export type {
 // built-in (by passing `viewCube: { enabled: false }`) and re-add it
 // elsewhere, or compose them with custom ones.
 export { cameraPlugin } from './plugins/3d/camera/index.js';
+export { framingWatchPlugin } from './plugins/3d/framing-watch/index.js';
+export type { FramingState, FramingReason } from './plugins/3d/framing-watch/classify.js';
 export { hoverHighlightPlugin } from './plugins/3d/hover-highlight/index.js';
 export { selectionPlugin } from './plugins/3d/selection/index.js';
 export { keyboardShortcutsPlugin } from './plugins/3d/keyboard-shortcuts/index.js';

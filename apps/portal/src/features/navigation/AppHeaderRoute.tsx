@@ -72,6 +72,9 @@ function resolveCrumbs(
   if (pathname.startsWith('/settings')) {
     return [{ label: t('settings'), href: undefined }];
   }
+  if (pathname.startsWith('/help')) {
+    return [{ label: t('help'), href: undefined }];
+  }
   // Admin shell — the detail page replaces these via useHeaderCrumbsOverride
   // so the tenant's actual name shows up; the rest get static crumbs.
   if (ADMIN_ORG_DETAIL_RE.test(pathname)) {

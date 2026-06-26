@@ -237,6 +237,51 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
         { title: 'Fly to point' },
       );
 
+      // Gently bring the model back into view WITHOUT yanking to an iso view or
+      // changing projection / nav mode — the target for the portal's "Recenter"
+      // pill and the empty-space double-click. Unlike `zoomExtents`/`home` (which
+      // snap to iso, exiting a first-person walkthrough), this preserves the
+      // current viewing angle and re-aims at the model center.
+      //
+      // The root cause of the model sliding out of frame in first-person/split is
+      // accumulated truck/pan `focalOffset`, which `setLookAt` does NOT clear — so
+      // we reset it first, then re-center.
+      commands.register(
+        'camera.recenter',
+        async () => {
+          const box = computeSceneBox(ctx);
+          if (box.isEmpty()) return;
+          const center = box.getCenter(new THREE.Vector3());
+          const sphere = box.getBoundingSphere(new THREE.Sphere());
+          ctx.cameraControls.setFocalOffset(0, 0, 0, false);
+          const pos = new THREE.Vector3();
+          const tgt = new THREE.Vector3();
+          ctx.cameraControls.getPosition(pos);
+          ctx.cameraControls.getTarget(tgt);
+          const dir = pos.sub(tgt); // current view direction × distance
+          let dist = dir.length();
+          if (!(dist > 1e-4)) {
+            dir.set(0, 0, 1);
+            dist = 1;
+          }
+          dir.normalize();
+          // Keep the viewing angle; sanity-clamp distance so the model is neither
+          // a speck nor clipped (perspective). Harmless in ortho (size is zoom-driven).
+          const r = Math.max(sphere.radius, 1e-3);
+          dir.multiplyScalar(THREE.MathUtils.clamp(dist, r * 0.8, r * 12));
+          await ctx.cameraControls.setLookAt(
+            center.x + dir.x,
+            center.y + dir.y,
+            center.z + dir.z,
+            center.x,
+            center.y,
+            center.z,
+            true,
+          );
+        },
+        { title: 'Recenter on model' },
+      );
+
       // Read the current camera pose so the minimap can draw "you are here"
       // before the first camera:change event fires.
       commands.register(

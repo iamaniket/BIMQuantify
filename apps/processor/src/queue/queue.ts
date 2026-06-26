@@ -66,6 +66,23 @@ export function getActionQueue(): Queue<WorkerJob> {
   return cachedActionQueue;
 }
 
+/** BullMQ status → count map (active, waiting, completed, failed, delayed, …). */
+export type QueueCounts = Record<string, number>;
+
+/**
+ * Live queue depth for the admin processor dashboard. `getJobCounts()` reads
+ * Redis sorted-set cardinalities — cheap, no per-job hydration. `completed`
+ * and `failed` are a recent window (bounded by `removeOnComplete`/`removeOnFail`
+ * above), not lifetime totals.
+ */
+export async function getQueueStats(): Promise<{ jobs: QueueCounts; actions: QueueCounts }> {
+  const [jobs, actions] = await Promise.all([
+    getQueue().getJobCounts(),
+    getActionQueue().getJobCounts(),
+  ]);
+  return { jobs, actions };
+}
+
 export async function enqueueJob(job: WorkerJob): Promise<void> {
   const queue = ACTION_JOB_TYPES.has(job.job_type) ? getActionQueue() : getQueue();
   // Use the API's job_id verbatim as the BullMQ job id so cancel can address

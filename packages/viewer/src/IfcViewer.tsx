@@ -16,6 +16,7 @@ import { getCached, putCached } from './fragmentCache.js';
 import { fetchFragments } from './loadFragments.js';
 import { cameraPlugin } from './plugins/3d/camera/index.js';
 import { cameraFlyPlugin } from './plugins/3d/camera-fly/index.js';
+import { framingWatchPlugin } from './plugins/3d/framing-watch/index.js';
 import { effectsPlugin } from './plugins/3d/effects/index.js';
 import { hoverHighlightPlugin } from './plugins/3d/hover-highlight/index.js';
 import { interactivePerformancePlugin } from './plugins/3d/interactive-performance/index.js';
@@ -216,6 +217,10 @@ function IfcViewerImpl(
 
     const builtIns = [
       cameraPlugin(),
+      // Watches whether the model is still in the 3D frame and emits
+      // `camera:framing`; the portal drives a "model out of view" recovery pill
+      // from it. Full preset only (not in MINIMAL_BUILTIN_PLUGINS).
+      framingWatchPlugin(),
       hoverHighlightPlugin(props.hoverHighlight ?? {}),
       selectionPlugin(props.selectionHighlight ?? {}),
       visibilityPlugin(),

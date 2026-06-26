@@ -169,6 +169,7 @@ en_messages: Catalog = {
     # --- authorization / roles ---
     "errors.PERMISSION_DENIED": "You don't have permission to perform this action.",
     "errors.SUPERUSER_REQUIRED": "This action requires super-admin privileges.",
+    "errors.PROCESSOR_UNREACHABLE": "The processing service is currently unreachable. Please try again shortly.",
     "errors.ORG_ADMIN_REQUIRED": "This action requires workspace-admin privileges.",
     "errors.ORG_MEMBERSHIP_REQUIRED": "You must be a member of this workspace to continue.",
     "errors.INSUFFICIENT_PROJECT_ROLE": "Your role on this project doesn't allow this action.",

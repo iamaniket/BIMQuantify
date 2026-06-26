@@ -3,11 +3,16 @@ import { z } from 'zod';
 export const JobTypeSchema = z.enum([
   'ifc_extraction',
   'pdf_extraction',
+  'dxf_extraction',
   'verification',
   'batch_update',
   'image_metadata_extraction',
   'compliance_check',
   'compliance_report',
+  'assurance_plan_report',
+  'completion_declaration_report',
+  'dossier_report',
+  'snag_list_report',
 ]);
 export type JobType = z.infer<typeof JobTypeSchema>;
 

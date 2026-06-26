@@ -122,11 +122,53 @@ function Viewer3DSection({
           </Select>
         </Field>
       </Section>
+      <Section title={t('behavior')} note={t('behaviorNoteColor')}>
+        <Toggle
+          label={t('hoverHighlight')}
+          checked={settings.behavior.hoverHighlight.enabled}
+          onChange={(enabled) => {
+            onChange({
+              ...settings,
+              behavior: { ...settings.behavior, hoverHighlight: { ...settings.behavior.hoverHighlight, enabled } },
+            });
+          }}
+        />
+        <ColorField
+          label={t('hoverColor')}
+          value={colorToHex(settings.behavior.hoverHighlight.color)}
+          onChange={(hex) => {
+            onChange({
+              ...settings,
+              behavior: { ...settings.behavior, hoverHighlight: { ...settings.behavior.hoverHighlight, color: hexToColor(hex) } },
+            });
+          }}
+        />
+        <Toggle
+          label={t('clickToSelect')}
+          checked={settings.behavior.selection.enabled}
+          onChange={(enabled) => {
+            onChange({
+              ...settings,
+              behavior: { ...settings.behavior, selection: { ...settings.behavior.selection, enabled } },
+            });
+          }}
+        />
+        <ColorField
+          label={t('selectionColor')}
+          value={colorToHex(settings.behavior.selection.color)}
+          onChange={(hex) => {
+            onChange({
+              ...settings,
+              behavior: { ...settings.behavior, selection: { ...settings.behavior.selection, color: hexToColor(hex) } },
+            });
+          }}
+        />
+      </Section>
     </div>
   );
 }
 
-// ── Controls tab (zoom / navigation / behavior) ─────────────────────
+// ── Controls tab (zoom / navigation) ────────────────────────────────
 
 function ControlsTab({
   settings,
@@ -222,48 +264,6 @@ function ControlsTab({
             onChange({
               ...settings,
               cameraFly: { ...settings.cameraFly, lookSensitivity },
-            });
-          }}
-        />
-      </Section>
-      <Section title={t('behavior')} note={t('behaviorNoteColor')}>
-        <Toggle
-          label={t('hoverHighlight')}
-          checked={settings.behavior.hoverHighlight.enabled}
-          onChange={(enabled) => {
-            onChange({
-              ...settings,
-              behavior: { ...settings.behavior, hoverHighlight: { ...settings.behavior.hoverHighlight, enabled } },
-            });
-          }}
-        />
-        <ColorField
-          label={t('hoverColor')}
-          value={colorToHex(settings.behavior.hoverHighlight.color)}
-          onChange={(hex) => {
-            onChange({
-              ...settings,
-              behavior: { ...settings.behavior, hoverHighlight: { ...settings.behavior.hoverHighlight, color: hexToColor(hex) } },
-            });
-          }}
-        />
-        <Toggle
-          label={t('clickToSelect')}
-          checked={settings.behavior.selection.enabled}
-          onChange={(enabled) => {
-            onChange({
-              ...settings,
-              behavior: { ...settings.behavior, selection: { ...settings.behavior.selection, enabled } },
-            });
-          }}
-        />
-        <ColorField
-          label={t('selectionColor')}
-          value={colorToHex(settings.behavior.selection.color)}
-          onChange={(hex) => {
-            onChange({
-              ...settings,
-              behavior: { ...settings.behavior, selection: { ...settings.behavior.selection, color: hexToColor(hex) } },
             });
           }}
         />

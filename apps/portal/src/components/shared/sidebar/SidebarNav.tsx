@@ -16,7 +16,7 @@ const itemDefinitions = [
   { key: 'orgMembers', icon: Users, href: '/tenant', requiresSuperuser: false, requiresOrgAdmin: true },
   { key: 'admin', icon: Shield, href: '/admin/organizations', requiresSuperuser: true, requiresOrgAdmin: false },
   { key: 'settings', icon: Settings, href: '/settings', requiresSuperuser: false, requiresOrgAdmin: false },
-  { key: 'help', icon: HelpCircle, href: undefined, requiresSuperuser: false, requiresOrgAdmin: false },
+  { key: 'help', icon: HelpCircle, href: '/help', requiresSuperuser: false, requiresOrgAdmin: false },
 ] as const;
 
 export function SidebarNav(): JSX.Element {

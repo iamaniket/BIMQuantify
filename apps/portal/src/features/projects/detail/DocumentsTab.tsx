@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  Box, FileText, Layers, Plus,
+  Box, ChevronDown, ChevronRight, FileText, Layers, Plus,
 } from '@bimdossier/ui/icons';
 import { useMemo, useState, type JSX, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
@@ -67,6 +67,8 @@ function groupBy<T>(items: readonly T[], key: (item: T) => string): Map<string, 
 export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
   const [newDocumentOpen, setNewDocumentOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Collapsed group keys — empty set = all sections expanded (the default).
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [disciplineFilter, setDisciplineFilter] = useState<ModelDisciplineValue | undefined>(undefined);
   const t = useTranslations('projectDetail.tabs.documents');
@@ -190,6 +192,15 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
     });
   };
 
+  const toggleGroup = (key: string): void => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   const goViewer = (target: ViewerTarget): void => {
     setViewerTarget(projectId, target);
     router.push(`/projects/${projectId}/viewer`);
@@ -242,6 +253,14 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
 
   const renderRow = (m: Document): JSX.Element => {
     const is2d = is2dDocument(m);
+    const pdfLinks = is2d ? buildPdfLinks(m.id) : undefined;
+    // The manual level dropdown is a pre-calibration filing tag. Once a drawing
+    // has ≥1 aligned page, its AlignedSheet owns the real PDF↔storey↔level link
+    // and the row already groups under that level — so the dropdown is redundant
+    // and (when left "Unassigned") actively contradicts the visible link. Hide it.
+    // Exception: keep it visible while a manual `level_id` is still set, so a
+    // stale tag can be cleared (otherwise it can mis-group the row un-fixably).
+    const showLevelControl = is2d && (pdfLinks === undefined || m.level_id != null);
     return (
       <DocumentsTableRow
         key={m.id}
@@ -252,11 +271,11 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
         onToggle={() => { setExpandedId(expandedId === m.id ? null : m.id); }}
         selected={selectedDocumentIds.has(m.id)}
         onSelectToggle={() => { toggleSelected(m.id); }}
-        pdfLinks={is2d ? buildPdfLinks(m.id) : undefined}
+        pdfLinks={pdfLinks}
         modelLinks={!is2d && !isUnknownDocument(m) ? buildModelLinks(m.id) : undefined}
         pageCount={is2d ? (latestFileOf(m.id)?.page_count ?? null) : null}
         levelControl={
-          is2d ? (
+          showLevelControl ? (
             <LevelAssignSelect
               projectId={projectId}
               documentId={m.id}
@@ -294,32 +313,41 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
       byLevel.set(primary, bucket);
     }
 
+    // Push a collapsible section: its header always renders; its rows only when
+    // the group is expanded (not in the collapsed set).
+    const pushSection = (
+      headerKey: string,
+      groupKey: string,
+      label: string,
+      rows: Document[],
+    ): void => {
+      const collapsed = collapsedGroups.has(groupKey);
+      sections.push(
+        <GroupHeader
+          key={headerKey}
+          label={label}
+          count={rows.length}
+          collapsed={collapsed}
+          onToggle={() => { toggleGroup(groupKey); }}
+        />,
+      );
+      if (!collapsed) sections.push(...rows.map(renderRow));
+    };
+
     const sections: ReactNode[] = [];
     if (models3d.length > 0) {
-      sections.push(
-        <GroupHeader key="hdr-3d" label={t('group.models3d')} count={models3d.length} />,
-        ...models3d.map(renderRow),
-      );
+      pushSection('hdr-3d', 'models3d', t('group.models3d'), models3d);
     }
     for (const lvl of levels) {
       const rows = byLevel.get(lvl.id) ?? [];
       if (rows.length === 0) continue;
-      sections.push(
-        <GroupHeader key={`hdr-${lvl.id}`} label={lvl.name} count={rows.length} />,
-        ...rows.map(renderRow),
-      );
+      pushSection(`hdr-${lvl.id}`, `lvl-${lvl.id}`, lvl.name, rows);
     }
     if (unassigned.length > 0) {
-      sections.push(
-        <GroupHeader key="hdr-unassigned" label={t('group.unassigned')} count={unassigned.length} />,
-        ...unassigned.map(renderRow),
-      );
+      pushSection('hdr-unassigned', 'unassigned', t('group.unassigned'), unassigned);
     }
     if (unknown.length > 0) {
-      sections.push(
-        <GroupHeader key="hdr-unknown" label={t('group.unknown')} count={unknown.length} />,
-        ...unknown.map(renderRow),
-      );
+      pushSection('hdr-unknown', 'unknown', t('group.unknown'), unknown);
     }
     return sections;
   })();
@@ -418,16 +446,28 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
   );
 }
 
-function GroupHeader({ label, count }: { label: string; count: number }): JSX.Element {
+function GroupHeader({
+  label, count, collapsed, onToggle,
+}: {
+  label: string;
+  count: number;
+  collapsed: boolean;
+  onToggle: () => void;
+}): JSX.Element {
   return (
-    <div className="flex items-center gap-2 px-1 pb-1 pt-3 first:pt-0">
-      <Layers className="h-3.5 w-3.5 text-foreground-tertiary" aria-hidden />
-      <span className="text-caption font-semibold uppercase tracking-wide text-foreground-secondary">
-        {label}
-      </span>
-      <span className="rounded-full bg-surface-high px-1.5 py-0.5 text-micro font-semibold tabular-nums text-foreground-tertiary">
-        {count}
-      </span>
-    </div>
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={!collapsed}
+      className="flex w-full items-center gap-1.5 px-1 pb-1 pt-3 text-foreground-secondary hover:text-foreground"
+    >
+      {collapsed ? (
+        <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      ) : (
+        <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      )}
+      <span className="text-caption font-semibold uppercase tracking-wide">{label}</span>
+      <span className="ml-0.5 text-caption tabular-nums text-foreground-tertiary">{count}</span>
+    </button>
   );
 }

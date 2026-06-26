@@ -267,8 +267,8 @@
   "breadcrumbs": {
     "projects": "Projects",
     "project": "Project",
-    "model": "Document",
-    "allModels": "All documents",
+    "model": "Container",
+    "allModels": "All containers",
     "report": "Report",
     "settings": "Settings",
     "admin": "Admin",
@@ -280,10 +280,52 @@
     "tenant": "Tenant",
     "certificates": "Certificates",
     "templates": "Templates",
+    "help": "Help & docs",
     "appName": "BimDossier"
   },
+  "help": {
+    "hero": {
+      "title": "Help & documentation",
+      "description": "Guides and answers for working with BimDossier."
+    },
+    "kpis": {
+      "articles": "Articles",
+      "categories": "Categories",
+      "updated": "Last updated",
+      "support": "Support",
+      "supportValue": "Contact us"
+    },
+    "rail": {
+      "searchPlaceholder": "Search help…",
+      "noResults": "No articles match your search."
+    },
+    "categories": {
+      "gettingStarted": "Getting started",
+      "modelsUploads": "Models & uploads",
+      "viewer": "Viewer (3D / 2D)",
+      "findings": "Findings & snagging",
+      "compliance": "Compliance & reports",
+      "deadlines": "Deadlines & calendar",
+      "account": "Account & organization"
+    },
+    "hub": {
+      "welcomeTitle": "How can we help?",
+      "welcomeBody": "Browse the topics below or use the search in the sidebar to find what you need.",
+      "articleCount": "{count, plural, =1 {1 article} other {# articles}}",
+      "emptyTitle": "No documentation yet",
+      "emptyDescription": "Help articles will appear here once they are published."
+    },
+    "article": {
+      "lastUpdatedLabel": "Last updated",
+      "backToHelp": "Back to Help"
+    },
+    "notFound": {
+      "title": "Article not found",
+      "description": "This help article doesn't exist or may have been moved."
+    }
+  },
   "modelSwitcher": {
-    "switchModel": "Switch document",
+    "switchModel": "Switch container",
     "noViewableFile": "Not viewable",
     "type2d": "2D",
     "type3d": "3D"
@@ -1144,7 +1186,7 @@
         "noActivity": "No activity yet",
         "done": "Done",
         "missing": "Missing",
-        "models": "Documents",
+        "models": "Containers",
         "photos": "Photos",
         "documents": "Office files",
         "certificates": "Certificates",
@@ -1178,19 +1220,19 @@
         }
       },
       "documents": {
-        "label": "Documents",
+        "label": "Containers",
         "eyebrow": "BIM workspace",
-        "subtitle": "{count, plural, =0 {No documents yet} =1 {1 document} other {# documents}}",
+        "subtitle": "{count, plural, =0 {No containers yet} =1 {1 container} other {# containers}}",
         "columnName": "Name",
-        "searchPlaceholder": "Search documents…",
-        "noResults": "No documents match your search.",
+        "searchPlaceholder": "Search containers…",
+        "noResults": "No containers match your search.",
         "filterAll": "All disciplines",
         "filterArchitectural": "Architectural",
         "filterStructural": "Structural",
         "filterMep": "MEP",
         "filterCoordination": "Coordination",
         "filterOther": "Other",
-        "newModel": "New document",
+        "newModel": "New container",
         "newLevel": "New level",
         "group": {
           "models3d": "3D models",
@@ -1216,20 +1258,20 @@
         "loadAll3d": "Load all 3D",
         "loadAll2d": "Load all 2D",
         "loadAllMenu": "Load options",
-        "selectedCount": "{count, plural, =1 {1 document selected} other {# documents selected}}",
+        "selectedCount": "{count, plural, =1 {1 container selected} other {# containers selected}}",
         "clearSelection": "Clear",
         "bulkCheckBbl": "Check Bbl",
         "bulkDownload": "Download",
         "bulkRemove": "Remove",
-        "bulkRemoveTitle": "{count, plural, =1 {Remove document?} other {Remove # documents?}}",
-        "bulkRemoveBody": "{count, plural, =1 {This permanently deletes the selected document and all its file versions.} other {This permanently deletes the # selected documents and all their file versions.}} This cannot be undone.",
+        "bulkRemoveTitle": "{count, plural, =1 {Remove container?} other {Remove # containers?}}",
+        "bulkRemoveBody": "{count, plural, =1 {This permanently deletes the selected container and all its file versions.} other {This permanently deletes the # selected containers and all their file versions.}} This cannot be undone.",
         "bulkRemoveConfirm": "Remove",
         "cancel": "Cancel",
-        "emptyState": "No documents yet",
-        "emptyDescription": "Upload IFC files to view and manage your BIM documents.",
+        "emptyState": "No containers yet",
+        "emptyDescription": "Upload IFC files to view and manage your BIM containers.",
         "newDocumentDialog": {
-          "title": "New document",
-          "description": "Group file versions by discipline. You can upload a file into the document after creating it.",
+          "title": "New container",
+          "description": "Group file versions by discipline. You can upload a file into the container after creating it.",
           "submitCreate": "Create",
           "submitCreating": "Creating…",
           "cancel": "Cancel",
@@ -1293,7 +1335,7 @@
               "stale": "Stale"
             }
           },
-          "removeTitle": "Remove document?",
+          "removeTitle": "Remove container?",
           "removeBody": "This permanently deletes “{name}” and all its file versions. This cannot be undone.",
           "removeConfirm": "Remove",
           "restore": "Restore",
@@ -1464,6 +1506,7 @@
         "uploadButton": "Upload",
         "uploading": "Uploading…",
         "uploadSuccess": "{name} uploaded",
+        "uploadError": "Could not upload {name}",
         "downloadError": "Could not generate download link",
         "deleteSuccess": "{name} deleted",
         "download": "Download",
@@ -1600,13 +1643,19 @@
       "nav": {
         "eyebrow": "Quality & documents",
         "subtitle": "Open a dedicated workspace",
+        "tabLabel": "Quality & Documents",
         "findingsDesc": "Track and resolve quality issues",
         "certificatesDesc": "Proof-of-conformity documents",
         "attachmentsDesc": "Photos, drawings and files",
-        "reportsDesc": "Generated filing-ready PDFs"
+        "reportsDesc": "Generated filing-ready PDFs",
+        "viewAll": "View all",
+        "new": "New",
+        "empty": "Nothing here yet"
       },
       "deadlines": {
         "label": "Deadlines",
+        "eyebrow": "Compliance dates",
+        "headerSubtitle": "{count, plural, =0 {No deadlines} =1 {1 deadline} other {# deadlines}}",
         "viewOnCalendar": "View on calendar",
         "heading": "Deadlines",
         "emptyTitle": "No deadlines yet",
@@ -1685,6 +1734,12 @@
       "in_progress": "In progress",
       "resolved": "Resolved",
       "verified": "Verified"
+    },
+    "row": {
+      "page": "p.{page}",
+      "reporter": "reporter",
+      "unassigned": "Unassigned",
+      "linked": "Linked"
     },
     "form": {
       "createTitle": "Log finding",
@@ -2731,6 +2786,65 @@
     }
   },
   "admin": {
+    "processor": {
+      "tab": "Processor",
+      "panel": {
+        "eyebrow": "Infrastructure",
+        "title": "Processor & extraction jobs",
+        "sub": "Live background-job health across all workspaces."
+      },
+      "pane": {
+        "subtitle": "Live across all workspaces — refreshes automatically every 10 seconds.",
+        "refresh": "Refresh",
+        "processorUnreachable": "The processor service is currently unreachable. Queue depth is unavailable; ongoing jobs below still reflect the database."
+      },
+      "queue": {
+        "waiting": "Waiting",
+        "active": "Active",
+        "delayed": "Delayed",
+        "completed": "Completed",
+        "failed": "Failed",
+        "recent": "recent"
+      },
+      "summary": {
+        "ongoing": "Ongoing",
+        "stuck": "Stuck"
+      },
+      "status": {
+        "pending": "Pending",
+        "started": "Started",
+        "running": "Running",
+        "succeeded": "Succeeded",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      },
+      "jobType": {
+        "ifc_extraction": "IFC extraction",
+        "pdf_extraction": "PDF extraction",
+        "dxf_extraction": "DXF extraction",
+        "verification": "Verification",
+        "batch_update": "Batch update",
+        "image_metadata_extraction": "Image metadata",
+        "compliance_check": "Compliance check",
+        "compliance_report": "Compliance report",
+        "assurance_plan_report": "Assurance-plan report",
+        "completion_declaration_report": "Completion declaration",
+        "dossier_report": "Dossier report",
+        "snag_list_report": "Snag-list report"
+      },
+      "table": {
+        "org": "Workspace",
+        "type": "Type",
+        "status": "Status",
+        "stuck": "Stuck",
+        "age": "Age",
+        "attempt": "Attempt",
+        "error": "Error",
+        "empty": "No jobs are currently running.",
+        "loadError": "Couldn't load jobs.",
+        "truncated": "Showing the first {limit} jobs."
+      }
+    },
     "common": {
       "eyebrowSuperAdmin": "Super admin"
     },
@@ -3415,7 +3529,7 @@
       "risk": "Risks",
       "bcf_topic": "BCF issues",
       "bcf_comment": "BCF comments",
-      "document": "Documents",
+      "document": "Containers",
       "project_file": "Files",
       "project_files": "Files",
       "attachment": "Attachments",
@@ -3432,9 +3546,9 @@
       "project": "Project",
       "project_member": "Members"
     },
-    "documentCreated": "Created document {name}",
-    "documentUpdated": "Updated document {name}",
-    "documentDeleted": "Deleted document {name}",
+    "documentCreated": "Created container {name}",
+    "documentUpdated": "Updated container {name}",
+    "documentDeleted": "Deleted container {name}",
     "fileCompleted": "Added {filename}",
     "fileRejected": "Rejected {filename}",
     "fileDeleted": "Removed {filename}",
@@ -3503,6 +3617,11 @@
       "model": "Loading model…",
       "updating": "Updating view…"
     },
+    "framing": {
+      "outOfView": "Model is out of view",
+      "recenter": "Recenter",
+      "recenterTooltip": "Bring the model back into view"
+    },
     "minimap": {
       "title": "Floor plan",
       "level": "Level",
@@ -3532,7 +3651,11 @@
       "isolateLevel": "Isolate level",
       "allLevels": "All levels",
       "showAlignedSheet": "Show aligned PDF",
-      "showGeneratedPlan": "Show generated plan"
+      "showGeneratedPlan": "Show generated plan",
+      "source": {
+        "alignedPdf": "Aligned PDF",
+        "generated": "Generated plan"
+      }
     },
     "viewMode": {
       "label": "View",
@@ -3543,7 +3666,7 @@
       "splitTooltip": "Split — 3D and floor plan",
       "planTooltip": "2D floor plan",
       "calibrate": "Align",
-      "calibrateTooltip": "Align a PDF drawing to the model"
+      "calibrateTooltip": "Align Drawing to model story"
     },
     "aligned": {
       "pickPdfModel": "PDF drawing",
@@ -3555,6 +3678,10 @@
       "recalibrate": "Recalibrate",
       "replaceHint": "This floor + page is already aligned — recalibrating replaces it.",
       "cancel": "Cancel",
+      "exit": "Exit alignment",
+      "snapTooltip": "Snapping: {state}",
+      "snapOn": "on",
+      "snapOff": "off",
       "step": {
         "pdf1": "Pick point 1 on the PDF",
         "model1": "Pick point 1 on the model",

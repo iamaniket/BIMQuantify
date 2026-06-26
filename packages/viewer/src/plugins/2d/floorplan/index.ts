@@ -34,6 +34,7 @@ const PICK_THRESHOLD_PX = 40;
 const LABEL_MIN_PX_PER_UNIT = 0.18; // hide room labels when zoomed too far out
 const PULSE_MS = 1200;
 const PULSE_R = 14; // px radius of the focus pulse ring
+const SELECT_R = 12; // px radius of the persistent selection ring
 
 /** Colors for the plan line work + labels. Portal passes theme-resolved values. */
 export interface FloorPlanColors {
@@ -70,6 +71,12 @@ export interface FloorPlanPluginAPI {
   focusPlanPoint(planX: number, planY: number): void;
   /** Flash a transient ring at a plan point (used by 3D→2D selection sync). */
   pulseAt(planX: number, planY: number): void;
+  /**
+   * Persistent selection highlight (crosshair ring) at a plan point — the 3D
+   * selection projected onto the plan. Unlike {@link pulseAt} it does NOT fade;
+   * it follows the active 3D selection and is cleared with null on deselect.
+   */
+  setSelectionMarker(point: { planX: number; planY: number } | null): void;
   /**
    * Position the "you are here" camera marker (a view cone + dot) at a plan
    * point, oriented from `here` toward `look`. Driven by the 3D `minimap:pose`
@@ -201,6 +208,24 @@ function buildCameraMarker(color: THREE.ColorRepresentation): THREE.Group {
   return group;
 }
 
+/**
+ * Persistent selection-highlight marker — a crosshair ring + center dot authored
+ * in px (constant screen size via the caller's `applyConstantScale`). Distinct
+ * from the transient pulse so a 3D selection reads as a held highlight on the plan.
+ */
+function buildSelectionMarker(color: THREE.ColorRepresentation): THREE.Group {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(SELECT_R - 2, SELECT_R, 32), mat);
+  ring.renderOrder = RENDER_ORDER + 3;
+  ring.frustumCulled = false;
+  const dot = new THREE.Mesh(new THREE.ShapeGeometry(circleShape(0, 0, 2.5)), mat);
+  dot.renderOrder = RENDER_ORDER + 4;
+  dot.frustumCulled = false;
+  group.add(ring, dot);
+  return group;
+}
+
 export function floorPlanPlugin(
   options: FloorPlanPluginOptions,
 ): DocumentPlugin & FloorPlanPluginAPI {
@@ -216,6 +241,7 @@ export function floorPlanPlugin(
   let lineGroup: THREE.Group | null = null; // walls + rooms (document-scaled)
   let labelGroup: THREE.Group | null = null; // room labels (constant screen size)
   let pulseGroup: THREE.Group | null = null; // transient focus ring (constant size)
+  let selectGroup: THREE.Group | null = null; // persistent selection ring (constant size)
   let cameraGroup: THREE.Group | null = null; // "you are here" view cone (constant size)
   /** Latest camera pose in plan coords (drives the marker + seeds drag math). */
   let lastPose: { hereX: number; hereY: number; lookX: number; lookY: number } | null = null;
@@ -325,6 +351,7 @@ export function floorPlanPlugin(
     if (!sceneApi) return;
     rescaleLabels();
     if (pulseGroup) applyConstantScale(pulseGroup, sceneApi);
+    if (selectGroup?.visible) applyConstantScale(selectGroup, sceneApi);
     if (cameraGroup?.visible) applyConstantScale(cameraGroup, sceneApi);
     updateLabelVisibility();
   }
@@ -479,6 +506,19 @@ export function floorPlanPlugin(
       }, PULSE_MS);
     },
 
+    setSelectionMarker(point): void {
+      if (!sceneApi || !selectGroup) return;
+      if (!point) {
+        selectGroup.visible = false;
+        sceneApi.requestRender();
+        return;
+      }
+      selectGroup.position.set(point.planX - offset.x, point.planY - offset.y, 0);
+      selectGroup.visible = true;
+      applyConstantScale(selectGroup, sceneApi);
+      sceneApi.requestRender();
+    },
+
     setCameraPose(pose): void {
       if (!sceneApi || !cameraGroup) return;
       // A live drag owns the marker — ignore echoed poses (the camera:change →
@@ -514,9 +554,11 @@ export function floorPlanPlugin(
       lineGroup = new THREE.Group();
       labelGroup = new THREE.Group();
       pulseGroup = new THREE.Group();
+      selectGroup = buildSelectionMarker(colors.accent);
+      selectGroup.visible = false;
       cameraGroup = buildCameraMarker(colors.accent);
       cameraGroup.visible = false;
-      layer.add(lineGroup, labelGroup, pulseGroup, cameraGroup);
+      layer.add(lineGroup, labelGroup, pulseGroup, selectGroup, cameraGroup);
 
       cleanups.push(context.events.on('page:rendered', rebuild));
       cleanups.push(context.events.on('camera:change', onCameraChange));
@@ -546,6 +588,11 @@ export function floorPlanPlugin(
       context.commands.register<{ planX: number; planY: number }>('floorplan.pulse', (a) => {
         api.pulseAt(a.planX, a.planY);
       }, { title: 'Pulse a ring at a plan point' });
+      context.commands.register<{ planX: number; planY: number } | null>(
+        'floorplan.setSelectionMarker',
+        (a) => { api.setSelectionMarker(a ?? null); },
+        { title: 'Set/clear the persistent plan selection highlight' },
+      );
 
       // Bound to click:left by the DocumentViewer's mouse-bindings overrides
       // (floor-plan source).
@@ -607,11 +654,13 @@ export function floorPlanPlugin(
       clearGroup(lineGroup);
       clearGroup(labelGroup);
       clearGroup(pulseGroup);
+      clearGroup(selectGroup);
       clearGroup(cameraGroup);
       if (sceneApi) sceneApi.removeLayer(LAYER);
       lineGroup = null;
       labelGroup = null;
       pulseGroup = null;
+      selectGroup = null;
       cameraGroup = null;
       layer = null;
       sceneApi = null;

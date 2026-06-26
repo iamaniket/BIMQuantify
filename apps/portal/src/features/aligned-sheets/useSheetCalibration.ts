@@ -19,9 +19,11 @@ import { useCalibrateAlignedSheet, useCreateAlignedSheet } from './hooks';
  *   POST the 2 pdf + 2 plan points to `/calibrate` (server solves the similarity)
  *
  * It captures in *plan* space (not PDF space): `minimap.setSheetTransform(null)`
- * is forced first so `projectPoint` returns raw plan coords. The PDF picks stay
- * raw normalized page coords — the same space the rendered markers/pose use, so
- * no flip is introduced here (capture and render share one convention).
+ * is forced first so `projectPoint` returns raw plan coords (Y-up). The PDF picks
+ * are flipped to plan convention `(u, 1 − v)` before solving — the page is Y-down
+ * but plan space is Y-up, and the server's pure similarity can't encode that
+ * reflection (see `sheetTransform.ts` HANDEDNESS). `pdfToPlan`/`planToPdf` apply
+ * the matching flip at runtime, so the rendered markers/pose stay Y-down.
  *
  * String-agnostic: the caller passes already-translated banner messages.
  */
@@ -201,7 +203,11 @@ export function useSheetCalibration(
           return;
         }
 
-        pdfPoints.push([pdf.x, pdf.y]);
+        // Flip the PDF pick to plan convention `(u, 1 − v)` before solving: the
+        // page is Y-down but plan space is Y-up, and the pure similarity the
+        // server fits can't encode that reflection (see sheetTransform.ts
+        // HANDEDNESS). pdfToPlan/planToPdf apply the matching flip at runtime.
+        pdfPoints.push([pdf.x, 1 - pdf.y]);
         planPoints.push([plan.x, plan.y]);
       }
 

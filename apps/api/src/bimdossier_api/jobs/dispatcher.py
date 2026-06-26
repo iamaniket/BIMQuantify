@@ -195,6 +195,55 @@ async def cancel_dispatched_job(job_id: UUID, settings: Settings) -> CancelResul
     return await _canceller(job_id, settings)
 
 
+# ---------------------------------------------------------------------------
+# Processor introspection (admin dashboard)
+# ---------------------------------------------------------------------------
+
+# Live BullMQ queue depth, keyed by queue name → {status: count}. Returned
+# verbatim from the processor's `/admin/queue-stats`.
+QueueStats = dict[str, dict[str, int]]
+
+QueueStatsFetcher = Callable[[Settings], Awaitable[QueueStats]]
+
+
+async def _http_fetch_queue_stats(settings: Settings) -> QueueStats:
+    """GET the processor's live queue counts. Raises DispatchJobError if unreachable."""
+    headers = {"Authorization": f"Bearer {settings.processor_shared_secret}"}
+    timeout = httpx.Timeout(settings.processor_dispatch_timeout_seconds)
+    client = _get_http_client(timeout)
+    try:
+        response = await client.get(
+            f"{settings.processor_url.rstrip('/')}/admin/queue-stats",
+            headers=headers,
+        )
+    except httpx.HTTPError as exc:
+        raise DispatchJobError(f"{type(exc).__name__}: {exc}") from exc
+    if response.status_code >= 400:
+        raise DispatchJobError(
+            f"processor worker returned {response.status_code}: {response.text[:200]}"
+        )
+    return response.json()  # type: ignore[no-any-return]
+
+
+_queue_stats_fetcher: QueueStatsFetcher = _http_fetch_queue_stats
+
+
+def set_queue_stats_fetcher(fetcher: QueueStatsFetcher) -> None:
+    """Test hook: replace the default HTTP queue-stats fetcher with a stub."""
+    global _queue_stats_fetcher
+    _queue_stats_fetcher = fetcher
+
+
+def reset_queue_stats_fetcher() -> None:
+    global _queue_stats_fetcher
+    _queue_stats_fetcher = _http_fetch_queue_stats
+
+
+async def fetch_queue_stats(settings: Settings) -> QueueStats:
+    """Fetch live processor queue depth. Raises DispatchJobError if unreachable."""
+    return await _queue_stats_fetcher(settings)
+
+
 class JobConcurrencyError(Exception):
     """Raised when a tenant has too many active jobs."""
 

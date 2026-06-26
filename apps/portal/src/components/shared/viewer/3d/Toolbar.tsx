@@ -1,6 +1,6 @@
 'use client';
 
-import { Blueprint, BoundingBox, Box, Crosshair, Eraser, Eye, Footprints, Home, Map, MousePointer2, Orbit, Settings, SquareSplitHorizontal } from '@bimdossier/ui/icons';
+import { Blueprint, BoundingBox, Box, Eraser, Eye, Footprints, Home, Map, MousePointer2, Orbit, Settings, SquareSplitHorizontal } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
@@ -30,9 +30,6 @@ type Props = {
   viewerReady: boolean;
   /** Architectural model id in a federated view; omit for the single-file viewer. */
   planModelId?: string;
-  /** Show the "Align" (PDF↔model calibration) view-mode button. Editor-gated by
-   * the page; only meaningful when a PDF model exists. */
-  canCalibrate?: boolean;
 };
 
 export function Toolbar({
@@ -47,7 +44,6 @@ export function Toolbar({
   planMetadata,
   viewerReady,
   planModelId,
-  canCalibrate = false,
 }: Props): JSX.Element {
   const t = useTranslations('viewer.toolbar');
   const tVm = useTranslations('viewer.viewMode');
@@ -167,16 +163,6 @@ export function Toolbar({
         tooltip: tVm('planTooltip'), isActive: viewMode === '2d',
         onClick: () => { onViewModeChange('2d'); },
       },
-      // Align mode (PDF↔model calibration) — only when offerable (editor + a PDF
-      // model exists), gated by the page via `canCalibrate`.
-      ...(canCalibrate
-        ? [{
-            type: 'button' as const, id: 'view-calibration', icon: Crosshair,
-            label: tVm('calibrate'), tooltip: tVm('calibrateTooltip'),
-            isActive: viewMode === 'calibration',
-            onClick: () => { onViewModeChange('calibration'); },
-          }]
-        : []),
     ],
   };
 

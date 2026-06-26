@@ -1,13 +1,16 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import type React from 'react';
 import { type JSX } from 'react';
 
 import { Skeleton } from '@bimdossier/ui';
+import { Crosshair } from '@bimdossier/ui/icons';
 import type { DocumentViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import { FloorPlanPane } from '@/features/viewer/2d/FloorPlanPane';
+import { ModelOutOfViewIndicator } from '@/features/viewer/3d/ModelOutOfViewIndicator';
 import { type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import type { Finding } from '@/lib/api/schemas';
 
@@ -45,6 +48,8 @@ export interface IfcViewerCanvasProps {
   onDividerPointerUp: (e: React.PointerEvent<HTMLDivElement>) => void;
   hasFloorPlans: boolean;
   viewerReady: boolean;
+  /** Suppress the "model out of view" pill (during load / alignment / edit). */
+  outOfViewSuppressed: boolean;
   planMetadata: ModelMetadata | undefined;
   projectId: string;
   fileId: string;
@@ -58,6 +63,9 @@ export interface IfcViewerCanvasProps {
   planApiModelId: string | null;
   /** Leave calibration mode (back to a normal view mode). */
   onViewModeChange: (mode: ViewMode) => void;
+  /** Offer the "Align" (PDF↔model calibration) entry. Editor-gated by the page;
+   * only meaningful when a PDF model exists. Surfaced as a tab on the split divider. */
+  canCalibrate: boolean;
 }
 
 export function IfcViewerCanvas({
@@ -84,6 +92,7 @@ export function IfcViewerCanvas({
   onDividerPointerUp,
   hasFloorPlans,
   viewerReady,
+  outOfViewSuppressed,
   planMetadata,
   projectId,
   fileId,
@@ -93,7 +102,9 @@ export function IfcViewerCanvas({
   onFpActiveElevationChange,
   planApiModelId,
   onViewModeChange,
+  canCalibrate,
 }: IfcViewerCanvasProps): JSX.Element {
+  const tVm = useTranslations('viewer.viewMode');
   // Calibration mode reuses the split layout (3D live left, chosen PDF right).
   const isSplitLike = viewMode === 'split' || viewMode === 'calibration';
   const ifcViewerEl = (
@@ -186,19 +197,41 @@ export function IfcViewerCanvas({
     >
       <div ref={threeDPaneRef} className={threeDPaneClass} style={threeDSplitStyle}>
         {ifcViewerEl}
+        {/* "Model out of view" recovery pill — scoped to the 3D pane, hidden in
+            pure 2D and while another overlay owns the canvas. */}
+        <ModelOutOfViewIndicator
+          handle={viewerHandleRef.current}
+          viewerReady={viewerReady}
+          active={viewMode !== '2d' && !outOfViewSuppressed}
+        />
       </div>
 
       {/* Draggable divider — desktop split/calibration mode only */}
       {isSplitLike && !isMobile && (
         <div
           ref={dividerRef}
-          className="absolute inset-y-0 z-20 flex w-2 cursor-col-resize touch-none select-none flex-col items-center justify-center"
+          className="absolute inset-y-0 z-30 flex w-2 cursor-col-resize touch-none select-none flex-col items-center justify-center"
           style={{ left: `calc(${splitRatio * 100}% - 4px)` }}
           onPointerDown={onDividerPointerDown}
           onPointerMove={onDividerPointerMove}
           onPointerUp={onDividerPointerUp}
           onPointerCancel={onDividerPointerUp}
         >
+          {/* "Align" entry — a tab centered on the dragger (the 3D/2D seam). Lives
+              inside the divider so it tracks the imperative drag updates for free.
+              Split mode only: calibration mode hands the UI to CalibrationPane. */}
+          {viewMode === 'split' && canCalibrate && (
+            <button
+              type="button"
+              title={tVm('calibrateTooltip')}
+              onPointerDown={(e) => { e.stopPropagation(); }}
+              onClick={() => { onViewModeChange('calibration'); }}
+              className="pointer-events-auto absolute left-1/2 top-3 z-10 flex -translate-x-1/2 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-surface-low px-3 py-1.5 text-body3 font-medium text-foreground shadow-sm transition-colors hover:bg-background-hover"
+            >
+              <Crosshair className="h-4 w-4" />
+              {tVm('calibrate')}
+            </button>
+          )}
           {/* Thin visual bar */}
           <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border" />
           {/* Drag pip */}

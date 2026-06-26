@@ -106,6 +106,26 @@ export interface ViewerEvents {
     allSelected: boolean;
   };
   'camera:change': { position: Vec3; target: Vec3 };
+  /**
+   * Framing-watch plugin: whether the loaded model is currently inside the 3D
+   * camera's view, emitted on a state transition only (rAF-coalesced; never
+   * wakes the renderer). The portal shows a "model out of view" recovery pill
+   * from this. `reason`:
+   *  - `'in-view'` — framed normally (`inView: true`).
+   *  - `'tiny'`    — in the frustum but a speck far away (`inView: true`; a
+   *                  softer "zoom to fit" hint, not a hard loss).
+   *  - `'outside'` — fully outside the frustum laterally/vertically (`inView: false`).
+   *  - `'behind'`  — entirely behind the camera (`inView: false`).
+   *  - `'empty'`   — no model / no computable bounds (`inView: false`; the host
+   *                  should treat this as "nothing loaded", not "lost the model").
+   * `coverage` is the model's apparent size as a fraction (0..1) of the smaller
+   * half-frustum dimension.
+   */
+  'camera:framing': {
+    inView: boolean;
+    reason: 'in-view' | 'behind' | 'outside' | 'tiny' | 'empty';
+    coverage: number;
+  };
   'viewer:idle': undefined;
   /** The frustum-culling policy changed (see {@link ViewerContext.setCullingMode}). */
   'culling:change': { mode: CullingMode };

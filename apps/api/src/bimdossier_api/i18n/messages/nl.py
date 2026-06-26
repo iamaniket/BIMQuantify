@@ -137,6 +137,7 @@ nl_messages: Catalog = {
     # --- autorisatie / rollen ---
     "errors.PERMISSION_DENIED": "U heeft geen toestemming om deze actie uit te voeren.",
     "errors.SUPERUSER_REQUIRED": "Voor deze actie zijn superbeheerdersrechten vereist.",
+    "errors.PROCESSOR_UNREACHABLE": "De verwerkingsservice is momenteel onbereikbaar. Probeer het zo opnieuw.",
     "errors.ORG_ADMIN_REQUIRED": "Voor deze actie zijn beheerdersrechten voor deze organisatie vereist.",
     "errors.ORG_MEMBERSHIP_REQUIRED": "U moet lid zijn van deze organisatie om door te gaan.",
     "errors.INSUFFICIENT_PROJECT_ROLE": "Uw rol in dit project staat deze actie niet toe.",
