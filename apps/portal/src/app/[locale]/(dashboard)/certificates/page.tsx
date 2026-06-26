@@ -66,6 +66,10 @@ export default function CertificatesPage(): JSX.Element {
     queryKey: (p) => ['org-certificates', 'list', p] as const,
     queryFn: (token, p) => listOrgCertificatesPage(token, p),
     initialSort: { key: 'valid_until', dir: 'asc' },
+    // Lazy: the paginated table only fetches once its tab is visible. The
+    // overview tab already loads the full library (`allCerts`) for its KPIs, so
+    // this avoids a duplicate list request on the (default) overview cold load.
+    enabled: tab === 'certificates',
   });
 
   const deleteMutation = useDeleteOrgCertificate();
@@ -114,7 +118,9 @@ export default function CertificatesPage(): JSX.Element {
           value: 'certificates',
           label: t('tabs.certificates'),
           icon: <Table2 className="h-4 w-4" />,
-          badge: <Badge variant="primary" size="md" bordered={false}>{certsTable.total}</Badge>,
+          // Count comes from the always-loaded overview list, not the lazy
+          // table query (which only runs once its tab is open).
+          badge: <Badge variant="primary" size="md" bordered={false}>{allCerts.length}</Badge>,
         },
       ]}
       activeTab={tab}

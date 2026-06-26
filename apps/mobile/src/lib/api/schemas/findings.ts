@@ -53,6 +53,8 @@ export const FindingCreateSchema = z.object({
   anchor_x: z.union([z.number(), z.null()]).optional(),
   anchor_y: z.union([z.number(), z.null()]).optional(),
   anchor_z: z.union([z.number(), z.null()]).optional(),
+  // 1-based page for a PDF (2D) anchor; the API pairs it with anchor_x/y.
+  anchor_page: z.union([z.number(), z.null()]).optional(),
   // Attachment ids of photos captured while logging the finding. The server
   // normalizes these into finding_attachments link rows.
   photo_ids: z.union([z.array(z.string()), z.null()]).optional(),

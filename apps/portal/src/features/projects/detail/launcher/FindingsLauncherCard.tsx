@@ -7,12 +7,10 @@ import { useMemo, useState, type JSX } from 'react';
 import { Badge, Button, IconTile, MediaRow } from '@bimdossier/ui';
 
 import { UserAvatar } from '@/components/shared/UserAvatar';
-import { useFindings } from '@/features/findings/useFindings';
+import { useProjectOverview } from '@/features/projects/useProjectOverview';
 import { useProjectPermissions } from '@/features/permissions';
-import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import type { Finding, FindingStatusValue, ProjectMember } from '@/lib/api/schemas';
 import { formatAgo, formatDateTime, formatMonthDay } from '@/lib/formatting/dates';
-import { totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
 import type { Locale } from '@bimdossier/i18n';
 
 import { FindingDetailModal } from '../FindingDetailModal';
@@ -46,19 +44,22 @@ export function FindingsLauncherCard({ projectId }: { projectId: string }): JSX.
   const tRow = useTranslations('findings.row');
   const locale = useLocale() as Locale;
   const { can } = useProjectPermissions(projectId);
-  const query = useFindings(projectId);
-  const membersQuery = useProjectMembers(projectId);
+  // Findings preview + count and the member roster both come from the one
+  // project-overview aggregate the dashboard already loaded — no extra requests.
+  const overviewQuery = useProjectOverview(projectId);
+  const findingsBlock = overviewQuery.data?.findings;
+  const members = overviewQuery.data?.members ?? [];
 
   const [selected, setSelected] = useState<Finding | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const recent = query.data?.pages[0]?.data.slice(0, MAX_ROWS) ?? [];
-  const count = totalFromPages(query.data);
+  const recent = findingsBlock?.preview.slice(0, MAX_ROWS) ?? [];
+  const count = findingsBlock?.count ?? 0;
 
   // Resolve assignee / reporter user ids → member rows for avatar display.
   const memberById = useMemo(
-    () => new Map<string, ProjectMember>((membersQuery.data ?? []).map((m) => [m.user_id, m])),
-    [membersQuery.data],
+    () => new Map<string, ProjectMember>(members.map((m) => [m.user_id, m])),
+    [members],
   );
 
   /** Resolve "where is this anchored" into an icon + label for its own column, or
@@ -114,7 +115,7 @@ export function FindingsLauncherCard({ projectId }: { projectId: string }): JSX.
         viewAllLabel={t('nav.viewAll')}
         headerAction={createAction}
         emptyLabel={t('nav.empty')}
-        isLoading={query.isLoading}
+        isLoading={overviewQuery.isLoading}
         isEmpty={recent.length === 0}
         rowHeightPx={ROW_HEIGHT_PX}
         maxRows={MAX_ROWS}

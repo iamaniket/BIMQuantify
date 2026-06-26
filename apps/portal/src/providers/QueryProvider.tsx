@@ -10,7 +10,7 @@ import * as Sentry from '@sentry/nextjs';
 import { useState, type JSX, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
-import { isProjectActivityQueryKey } from '@/features/projects/queryKeys';
+import { isProjectActivityQueryKey, isProjectOverviewQueryKey } from '@/features/projects/queryKeys';
 import { getErrorMessage } from '@/lib/api/errorMessages';
 
 type Props = {
@@ -32,13 +32,17 @@ export function QueryProvider({ children }: Props): JSX.Element {
           });
         },
       }),
-      // Any successful write may have produced an audit row, so refresh the
-      // (only) mounted project-activity feed after every mutation — current and
-      // future. Independent of each mutation's own `invalidateKeys`.
+      // Any successful write may have produced an audit row or shifted a
+      // dashboard count/preview, so refresh the (only) mounted project-activity
+      // feed AND the project-overview aggregate after every mutation — current
+      // and future. The launcher cards / KPIs read solely from the overview
+      // query, so this central refresh is what keeps them live without wiring
+      // `projectOverviewKey` into every individual mutation's `invalidateKeys`.
       mutationCache: new MutationCache({
         onSuccess: () => {
           qc.invalidateQueries({
-            predicate: (q) => isProjectActivityQueryKey(q.queryKey),
+            predicate: (q) =>
+              isProjectActivityQueryKey(q.queryKey) || isProjectOverviewQueryKey(q.queryKey),
           }).catch(() => undefined);
         },
       }),

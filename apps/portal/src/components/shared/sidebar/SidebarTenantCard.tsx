@@ -1,6 +1,5 @@
 'use client';
 
-import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
@@ -33,7 +32,6 @@ function seatLabel(used: number, limit: number | null): string {
 export function SidebarTenantCard(): JSX.Element | null {
   const { collapsed } = useSidebar();
   const { me, activeMembership, switchOrganization } = useAuth();
-  const queryClient = useQueryClient();
   const t = useTranslations('sidebar.tenant');
   const tOrgSwitcher = useTranslations('org.switcher');
   const [open, setOpen] = useState(false);
@@ -59,8 +57,10 @@ export function SidebarTenantCard(): JSX.Element | null {
     }
     setPending(organizationId);
     try {
+      // `switchOrganization` already invalidates the cache for the new org —
+      // no second blanket `invalidateQueries()` here (it ran the full refetch
+      // storm twice per switch).
       await switchOrganization(organizationId);
-      await queryClient.invalidateQueries();
     } finally {
       setPending(null);
       setOpen(false);

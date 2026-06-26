@@ -1,10 +1,12 @@
 import { apiClient } from './client';
 import {
   ProjectListSchema,
+  ProjectOverviewSchema,
   ProjectSchema,
   type Project,
   type ProjectCreateInput,
   type ProjectList,
+  type ProjectOverview,
   type ProjectUpdateInput,
 } from './schemas';
 
@@ -14,6 +16,22 @@ export async function listProjects(accessToken: string): Promise<ProjectList> {
 
 export async function getProject(accessToken: string, id: string): Promise<Project> {
   return apiClient.get<Project>(`/projects/${id}`, ProjectSchema, accessToken);
+}
+
+/** BFF aggregate for the project-detail dashboard — one call assembles project
+ * metadata, the completeness donut, header KPIs, and capped previews + exact
+ * counts for findings/certificates/attachments/reports/deadlines, plus members
+ * and the weekly activity trend. Replaces the ~10 cold-load requests the page
+ * used to fire. */
+export async function getProjectOverview(
+  accessToken: string,
+  id: string,
+): Promise<ProjectOverview> {
+  return apiClient.get<ProjectOverview>(
+    `/projects/${id}/overview`,
+    ProjectOverviewSchema,
+    accessToken,
+  );
 }
 
 export async function createProject(

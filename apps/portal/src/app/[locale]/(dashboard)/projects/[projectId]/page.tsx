@@ -2,7 +2,9 @@
 
 import { useParams } from 'next/navigation';
 
-import { useEffect, useMemo, useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
+
+import { useQueryClient } from '@tanstack/react-query';
 
 import { Button, Skeleton } from '@bimdossier/ui';
 import {
@@ -13,19 +15,14 @@ import { useTranslations } from 'next-intl';
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
 import { useDocuments } from '@/features/documents/useDocuments';
-import { useProject } from '@/features/projects/useProject';
-import { useAttachments } from '@/features/attachments/useAttachments';
-import { useFindings } from '@/features/findings/useFindings';
-import { useCertificates } from '@/features/certificates/useCertificates';
-import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
+import { useProjectOverview } from '@/features/projects/useProjectOverview';
+import { projectDeadlinesKey, projectMembersKey } from '@/features/projects/queryKeys';
 import { PageShell } from '@/components/shared/layout/PageShell';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ProjectDetailHeader } from '@/features/projects/detail/ProjectDetailHeader';
 import { ProjectChartsPanel } from '@/features/projects/detail/ProjectChartsPanel';
 import { ActivityTimelinePanel } from '@/features/projects/detail/ActivityTimelinePanel';
 import { RightColumnTabs } from '@/features/projects/detail/RightColumnTabs';
-import { useDeadlines } from '@/features/projects/detail/deadlines/useDeadlines';
-import { useDossierCompleteness } from '@/features/projects/detail/useDossierCompleteness';
 import { ProjectFormDialog } from '@/features/projects/ProjectFormDialog';
 import { ProjectSettingsDialog } from '@/features/projects/detail/ProjectSettingsDialog';
 import { RemoveProjectButton } from '@/features/projects/detail/RemoveProjectButton';
@@ -37,53 +34,33 @@ export default function ProjectDetailPage(): JSX.Element {
   const { projectId } = params;
   const tHero = useTranslations('projectDetail.hero');
   const tActivity = useTranslations('activity');
-  const projectQuery = useProject(projectId);
+  const queryClient = useQueryClient();
+  // One aggregate request feeds the whole dashboard — header KPIs, the
+  // completeness donut, the four launcher cards and the deadlines/readiness
+  // panels all read from this single query (see `useProjectOverview`). The only
+  // remaining cold-load request is the documents list (head versions), which
+  // the aggregate intentionally does not carry.
+  const overviewQuery = useProjectOverview(projectId);
+  const documentsQuery = useDocuments(projectId);
   const [editOpen, setEditOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     track(PORTAL_EVENTS.PROJECT_OPENED, { project_id: projectId });
   }, [projectId]);
-  const documentsQuery = useDocuments(projectId);
-  const deadlinesQuery = useDeadlines(projectId);
-  const attachmentsQuery = useAttachments(projectId);
-  const findingsQuery = useFindings(projectId);
-  const certificatesQuery = useCertificates(projectId);
 
-  const deadlines = deadlinesQuery.data ?? [];
-  const attachments = flattenPages(attachmentsQuery.data);
-  const findings = flattenPages(findingsQuery.data);
+  // Seed the per-resource caches the lazy tabs / assignee avatars read from,
+  // straight out of the aggregate. Both lists are full (uncapped) in the
+  // overview payload, so opening the Deadlines tab or rendering finding-assignee
+  // avatars resolves from cache instead of firing another request.
+  const overview = overviewQuery.data;
+  useEffect(() => {
+    if (overview === undefined) return;
+    queryClient.setQueryData(projectDeadlinesKey(projectId), overview.deadlines.preview);
+    queryClient.setQueryData(projectMembersKey(projectId), overview.members);
+  }, [overview, projectId, queryClient]);
 
-  // The five secondary queries coalesce to []/empty above; on a fetch error
-  // that empty data feeds the dossier %, model/finding/deadline counts, etc.,
-  // producing a confident-but-wrong (often falsely optimistic) figure. Surface
-  // a non-blocking banner so the user knows the numbers may be incomplete.
-  // (The query errors are also reported to Sentry via QueryProvider's QueryCache.)
-  const secondaryError =
-    documentsQuery.isError
-    || deadlinesQuery.isError
-    || attachmentsQuery.isError
-    || findingsQuery.isError
-    || certificatesQuery.isError;
-
-  const deadlinesSummary = useMemo(() => {
-    let met = 0;
-    let overdue = 0;
-    for (const d of deadlines) {
-      if (d.status === 'met') met++;
-      else if (d.is_overdue) overdue++;
-    }
-    return { met, total: deadlines.length, overdue };
-  }, [deadlines]);
-
-  const attachmentCount = useMemo(
-    () => attachments.filter((a) => a.status === 'ready').length,
-    [attachments],
-  );
-
-  const dossier = useDossierCompleteness(projectId, projectQuery.data?.country ?? '');
-
-  if (projectQuery.isLoading) {
+  if (overviewQuery.isLoading) {
     return (
       <main className="flex flex-1 flex-col gap-4 p-6">
         <Skeleton className="h-32 w-full" />
@@ -95,8 +72,8 @@ export default function ProjectDetailPage(): JSX.Element {
     );
   }
 
-  if (projectQuery.isError) {
-    const { error } = projectQuery;
+  if (overviewQuery.isError) {
+    const { error } = overviewQuery;
     const isNotFound = error instanceof ApiError && error.status === 404;
     const errorMessage = isNotFound
       ? tHero('notFound')
@@ -110,12 +87,18 @@ export default function ProjectDetailPage(): JSX.Element {
     );
   }
 
-  const project = projectQuery.data;
-  if (project === undefined) {
+  if (overview === undefined) {
     return <main className="flex flex-1 items-center justify-center" />;
   }
 
+  const project = overview.project;
   const documents = documentsQuery.data ?? [];
+
+  const deadlinesSummary = {
+    met: overview.deadlines.met,
+    total: overview.deadlines.total,
+    overdue: overview.deadlines.overdue,
+  };
 
   const heroAction = (
     <>
@@ -151,13 +134,13 @@ export default function ProjectDetailPage(): JSX.Element {
           <ProjectDetailHeader
             project={project}
             deadlinesSummary={deadlinesSummary}
-            attachmentCount={attachmentCount}
-            dossierPct={dossier.pct}
+            attachmentCount={overview.stats.attachments_count}
+            dossierPct={overview.completeness.dossier.pct}
             action={heroAction}
           />
         }
       >
-        {secondaryError && (
+        {documentsQuery.isError && (
           <div className="px-3.5 pt-3.5">
             <ErrorBanner message={tHero('partialDataError')} tone="soft" className="text-body2" />
           </div>
@@ -165,9 +148,7 @@ export default function ProjectDetailPage(): JSX.Element {
         <div className="grid min-h-0 flex-1 grid-rows-[1fr_2fr] grid-cols-1 gap-3.5 overflow-hidden px-3.5 pb-3.5 lg:grid-rows-1 lg:grid-cols-[45fr_65fr]">
           <div className="flex min-h-0 flex-col gap-3.5">
             <ProjectChartsPanel
-              dossier={dossier}
-              findings={findings}
-              deadlines={deadlines}
+              completeness={overview.completeness}
               country={project.country}
             />
             <ActivityTimelinePanel
@@ -188,6 +169,8 @@ export default function ProjectDetailPage(): JSX.Element {
             projectId={projectId}
             projectCountry={project.country}
             documents={documents}
+            deadlinesTotal={overview.deadlines.total}
+            dossier={overview.completeness.dossier}
           />
         </div>
       </PageShell>

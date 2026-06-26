@@ -18,8 +18,9 @@ import {
 import type { Locale } from '@bimdossier/i18n';
 
 import { ReportViewerDialog } from '@/features/reports/ReportViewerDialog';
-import { useGenerateReport, useReports } from '@/features/reports/hooks';
+import { useGenerateReport } from '@/features/reports/hooks';
 import { REPORT_TYPE_META, REPORT_TYPE_ORDER, STATUS_TONE } from '@/features/reports/reportTypeMeta';
+import { useProjectOverview } from '@/features/projects/useProjectOverview';
 import { useProjectPermissions } from '@/features/permissions';
 import { ApiError } from '@/lib/api/client';
 import type { ReportType } from '@/lib/api/schemas/reports';
@@ -35,13 +36,15 @@ export function ReportsLauncherCard({ projectId }: { projectId: string }): JSX.E
   const tReports = useTranslations('reports');
   const locale = useLocale() as Locale;
   const { can } = useProjectPermissions(projectId);
-  const query = useReports(projectId);
+  // Report preview + count come from the shared project-overview aggregate.
+  const overviewQuery = useProjectOverview(projectId);
+  const reportsBlock = overviewQuery.data?.reports;
   const generate = useGenerateReport(projectId);
 
   const [previewId, setPreviewId] = useState<string | null>(null);
 
-  const recent = query.data?.items.slice(0, MAX_ROWS) ?? [];
-  const count = query.data?.items.length ?? 0;
+  const recent = reportsBlock?.preview.slice(0, MAX_ROWS) ?? [];
+  const count = reportsBlock?.count ?? 0;
 
   const generateType = (reportType: ReportType): void => {
     generate.mutate(
@@ -94,7 +97,7 @@ export function ReportsLauncherCard({ projectId }: { projectId: string }): JSX.E
         viewAllLabel={t('nav.viewAll')}
         headerAction={createAction}
         emptyLabel={t('nav.empty')}
-        isLoading={query.isLoading}
+        isLoading={overviewQuery.isLoading}
         isEmpty={recent.length === 0}
         rowHeightPx={ROW_HEIGHT_PX}
         maxRows={MAX_ROWS}

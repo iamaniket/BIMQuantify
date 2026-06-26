@@ -1,5 +1,5 @@
 import { Redirect, Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -20,13 +20,13 @@ import { useT } from '@/i18n';
 import {
   hostMessageToInjectedJs,
   parseClientMessage,
+  type EmbedMarker2D,
   type HostMessage,
-  type ViewMode,
 } from '@/features/viewer/embedBridge';
 import { resolveEmbedSource } from '@/features/viewer/embedSource';
 import { usePinForOffline } from '@/features/viewer/offline/usePinForOffline';
-import { ViewModeMenu } from '@/features/viewer/ViewModeMenu';
 import { usePdfPagesUrl, useViewerBundle } from '@/features/viewer/queries';
+import { useProjectFindings } from '@/features/findings/queries';
 import type { EmbedViewerBundle } from '@/lib/api/viewerBundle';
 import { useNetworkStatus } from '@/lib/offline/networkStatus';
 import { useAuth } from '@/providers/AuthProvider';
@@ -54,11 +54,8 @@ export default function ViewerScreen() {
   const [modelLoaded, setModelLoaded] = useState(false);
   const [viewerError, setViewerError] = useState<string | null>(null);
   const [webCrashed, setWebCrashed] = useState(false);
-  // The viewer layout (3D / 2D / Split). Defaults to 2D when the model has a
-  // floor plan, else 3D — set when loadModel is sent.
-  const [viewMode, setViewMode] = useState<ViewMode>('3d');
-  // loadModel is sent exactly once, after both the web bridge and the bundle
-  // are ready (whichever order they arrive in).
+  // loadModel/loadPdf is sent exactly once, after both the web bridge and the
+  // bundle are ready (whichever order they arrive in).
   const sentLoadRef = useRef(false);
 
   const bundleQuery = useViewerBundle(projectId ?? '', modelId ?? '', fileId ?? '');
@@ -73,7 +70,32 @@ export default function ViewerScreen() {
   // file:// manifest when offline. Online viewing is unchanged.
   const effectiveBundle: EmbedViewerBundle | null =
     !online && pin.localBundle !== null ? pin.localBundle : (bundleQuery.data ?? null);
-  const floorPlansAvailable = effectiveBundle?.floorPlansUrl != null;
+
+  // PDF (2D) finding pins for this file: PDF-anchored findings only (model
+  // findings are 3D-anchored — projecting those onto the plan is a fast-follow).
+  const findingsQuery = useProjectFindings(projectId ?? '');
+  const markers2D = useMemo<EmbedMarker2D[]>(() => {
+    const all = findingsQuery.data ?? [];
+    return all
+      .filter(
+        (f) =>
+          f.linked_file_id === fileId &&
+          f.linked_file_type === 'pdf' &&
+          f.anchor_page != null &&
+          f.anchor_x != null &&
+          f.anchor_y != null,
+      )
+      .map((f) => ({
+        id: f.id,
+        type: 'finding' as const,
+        page: f.anchor_page as number,
+        x: f.anchor_x as number,
+        y: f.anchor_y as number,
+        label: f.title,
+        entityId: f.id,
+        status: f.status,
+      }));
+  }, [findingsQuery.data, fileId]);
 
   const send = useCallback((msg: HostMessage): void => {
     webRef.current?.injectJavaScript(hostMessageToInjectedJs(msg));
@@ -83,28 +105,23 @@ export default function ViewerScreen() {
     if (!webReady || sentLoadRef.current) return;
     const bundle = effectiveBundle;
     if (bundle) {
-      // Default to the 2D plan when the model has one (mobile snags on plans).
-      const initialMode: ViewMode = bundle.floorPlansUrl != null ? '2d' : '3d';
-      send({ type: 'loadModel', bundle, viewMode: initialMode });
-      setViewMode(initialMode);
+      // 2D-only v1: the embed renders the model's floor plan (no 3D / view mode).
+      send({ type: 'loadModel', bundle });
       sentLoadRef.current = true;
       return;
     }
     // No IFC bundle, but the file is a rasterized PDF → 2D-only document viewer.
     if (pdfPagesUrl !== null) {
       send({ type: 'loadPdf', pdfPagesUrl });
-      setViewMode('2d');
       sentLoadRef.current = true;
     }
   }, [webReady, effectiveBundle, pdfPagesUrl, send]);
 
-  const onViewModeChange = useCallback(
-    (mode: ViewMode): void => {
-      setViewMode(mode);
-      send({ type: 'setViewMode', mode });
-    },
-    [send],
-  );
+  // Push the file's 2D finding pins once the viewer has loaded, and on changes.
+  useEffect(() => {
+    if (!modelLoaded) return;
+    send({ type: 'syncMarkers2D', markers: markers2D });
+  }, [modelLoaded, markers2D, send]);
 
   const onMessage = useCallback((e: WebViewMessageEvent): void => {
     const msg = parseClientMessage(e.nativeEvent.data);
@@ -136,6 +153,21 @@ export default function ViewerScreen() {
             anchorX: String(msg.point.x),
             anchorY: String(msg.point.y),
             anchorZ: String(msg.point.z),
+          },
+        });
+        break;
+      case 'findingPlaced':
+        // 2D PDF pin placed → open the create form pre-anchored to the page.
+        router.push({
+          pathname: '/projects/[projectId]/findings/create',
+          params: {
+            projectId: projectId!,
+            modelId: modelId!,
+            fileId: fileId!,
+            fileType: 'pdf',
+            anchorPage: String(msg.page),
+            anchorX: String(msg.x),
+            anchorY: String(msg.y),
           },
         });
         break;
@@ -217,11 +249,6 @@ export default function ViewerScreen() {
                       if (bundleQuery.data != null) void pin.pin(bundleQuery.data);
                     }}
                     onUnpin={() => { void pin.unpin(); }}
-                  />
-                  <ViewModeMenu
-                    mode={viewMode}
-                    floorPlansAvailable={floorPlansAvailable}
-                    onChange={onViewModeChange}
                   />
                 </View>
               )

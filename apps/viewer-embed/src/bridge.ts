@@ -27,6 +27,23 @@ import type {
 /** The viewer layout the host can request. */
 export type ViewMode = '3d' | '2d' | 'split';
 
+/**
+ * A finding pin on the 2D viewer (floor plan / PDF page). Normalized 0..1
+ * coords (top-left origin, Y-down) relative to the unrotated page box, plus the
+ * 1-based `page` so the embed can show only the visible page's pins. Mirrors the
+ * viewer's `EntityMarker2DData` + a `page` field.
+ */
+export type EntityMarker2D = {
+  id: string;
+  type: 'finding' | 'certificate' | 'attachment';
+  page: number;
+  x: number;
+  y: number;
+  label: string;
+  entityId: string;
+  status?: string;
+};
+
 /** Messages the native shell sends down to the viewer. */
 export type HostMessage =
   | {
@@ -41,6 +58,8 @@ export type HostMessage =
   | { type: 'loadPdf'; pdfPagesUrl: string }
   | { type: 'setViewMode'; mode: ViewMode }
   | { type: 'syncMarkers'; markers: EntityMarkerData[] }
+  // 2D finding pins (floor plan / PDF). The embed filters to the visible page.
+  | { type: 'syncMarkers2D'; markers: EntityMarker2D[] }
   | { type: 'clearMarkers' }
   | { type: 'setMarkersVisible'; visible: boolean }
   | { type: 'enterPlaceMode'; oneShot?: boolean }
@@ -62,9 +81,12 @@ export type ClientMessage =
       id: string;
       markerType: EntityMarkerData['type'];
       entityId: string;
-      position: Vec3;
+      // 3D world position; absent for a 2D pin tap (the host only needs entityId).
+      position?: Vec3;
     }
   | { type: 'pointPicked'; point: Vec3; item: ItemId | null }
+  // 2D finding placement resolved: 1-based page + normalized 0..1 page point.
+  | { type: 'findingPlaced'; page: number; x: number; y: number }
   // Image annotation results reported back to the native shell (groundwork).
   | { type: 'annotationsChanged'; annotations: Annotation2D[] }
   | { type: 'annotationExport'; dataUrl: string };

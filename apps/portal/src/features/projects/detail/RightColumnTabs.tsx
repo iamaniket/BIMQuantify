@@ -5,44 +5,47 @@ import { useState, type JSX } from 'react';
 
 import { Badge, Eyebrow, Tabs, TabsList, TabsTrigger } from '@bimdossier/ui';
 
-import type { Document } from '@/lib/api/schemas';
+import type { Document, DossierBlock } from '@/lib/api/schemas';
 
 import { DeadlinesSection } from './DeadlinesSection';
 import { DossierChecklistTab } from './DossierChecklistTab';
 import { DocumentsTab } from './DocumentsTab';
 import { QualityLauncherGrid } from './launcher/QualityLauncherGrid';
-import { useDeadlines } from './deadlines/useDeadlines';
-import { useDossierCompleteness } from './useDossierCompleteness';
 
 type Props = {
   projectId: string;
   projectCountry: string;
   documents: Document[];
+  /** Total deadlines (incl. not_applicable) for the tab badge — from the
+   * project-overview aggregate the page already loaded. */
+  deadlinesTotal: number;
+  /** Server-computed dossier completeness (overview) for the readiness header —
+   * replaces the page's old client-side `useDossierCompleteness` recompute. */
+  dossier: DossierBlock;
 };
 
 export function RightColumnTabs({
   projectId,
   projectCountry,
   documents,
+  deadlinesTotal,
+  dossier,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs');
   const [topTab, setTopTab] = useState('documents');
-  // React Query dedupes — the page and DeadlinesSection already fetch this, so
-  // reading the count here for the tab badge is free.
-  const deadlinesCount = useDeadlines(projectId).data?.length ?? 0;
-  const dossier = useDossierCompleteness(projectId, projectCountry);
+  const deadlinesCount = deadlinesTotal;
 
   // Readiness header doubles as the dossier-completeness headline now that the
-  // in-tab progress bar is gone; the percentage is only meaningful once loaded
-  // and a template exists, so fall back to the descriptive subtitle otherwise.
-  const readinessSubtitle =
-    dossier.isLoading || dossier.templateEmpty
-      ? t('readiness.subtitle')
-      : t('readiness.progress', {
-          pct: dossier.pct,
-          filled: dossier.filled,
-          total: dossier.total,
-        });
+  // in-tab progress bar is gone. With no required template the percentage is
+  // meaningless, so fall back to the descriptive subtitle.
+  const templateEmpty = dossier.total === 0 && dossier.optional_total === 0;
+  const readinessSubtitle = templateEmpty
+    ? t('readiness.subtitle')
+    : t('readiness.progress', {
+        pct: dossier.pct,
+        filled: dossier.filled,
+        total: dossier.total,
+      });
 
   // Right-side header subtitle for the lower panel, keyed off the active tab.
   const lowerSubtitle =

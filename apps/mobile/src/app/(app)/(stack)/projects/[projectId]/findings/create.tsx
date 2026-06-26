@@ -82,6 +82,7 @@ export default function FindingCreateScreen() {
         anchor_x: anchorX,
         anchor_y: anchorY,
         anchor_z: anchorZ,
+        anchor_page: anchorPage,
         photo_ids: photoIds.length > 0 ? photoIds : null,
       },
       {

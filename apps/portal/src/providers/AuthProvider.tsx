@@ -114,7 +114,9 @@ export function AuthProvider({ children }: Props): JSX.Element {
           const next = await getAuthMe(newToken);
           setMe(next);
           setMeError(null);
-          await queryClient.invalidateQueries();
+          // A silent token refresh renews only the access token — no data
+          // changed, so there is nothing to refetch. (Org switches, which DO
+          // change tenant data, still invalidate via `switchOrganization`.)
         } catch {
           // Refresh failed — tokenManager already called setTokens(null),
           // layouts will redirect to /login.

@@ -15,19 +15,14 @@ import { DrilldownDonut, type DonutWedge } from '@/components/shared/charts/Dril
 import { STATUS_COLORS, STATUS_ORDER } from '@/features/findings/findingChartConstants';
 import { useJurisdiction } from '@/features/jurisdictions/useJurisdictions';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import type { Deadline, Finding } from '@/lib/api/schemas';
+import type { CompletenessBlock } from '@/lib/api/schemas';
 
-import { type DossierCompleteness } from './dossierTemplate';
-import {
-  ringPct,
-  selectDeadlinesBreakdown,
-  selectFindingsBreakdown,
-} from './progressRings/ringSelectors';
+import { ringPct } from './progressRings/ringSelectors';
 
 type Props = {
-  dossier: DossierCompleteness;
-  findings: Finding[];
-  deadlines: Deadline[];
+  /** Server-computed completeness donut (project-overview aggregate). Replaces
+   * the old client-side recompute from the full findings/deadlines arrays. */
+  completeness: CompletenessBlock;
   country: string;
 };
 
@@ -49,15 +44,14 @@ const OVERFLOW_COLOR = 'var(--foreground-tertiary)';
  * already-fetched dossier/findings/deadlines into wedge props and owns the card
  * shell; all interaction + animation lives in the primitive.
  */
-export function ProjectChartsPanel({ dossier, findings, deadlines, country }: Props): JSX.Element {
+export function ProjectChartsPanel({ completeness, country }: Props): JSX.Element {
   const tRings = useTranslations('projectDetail.tabs.chartsPanel.rings');
   const tExp = useTranslations('projectDetail.tabs.chartsPanel.expanded');
   const tStatus = useTranslations('findingsBoard.columns');
   const reducedMotion = useReducedMotion();
   const jurisdiction = useJurisdiction(country);
 
-  const findingsB = useMemo(() => selectFindingsBreakdown(findings), [findings]);
-  const deadlinesB = useMemo(() => selectDeadlinesBreakdown(deadlines), [deadlines]);
+  const { dossier, findings: findingsB, deadlines: deadlinesB } = completeness;
 
   const wedges = useMemo<DonutWedge[]>(() => {
     const categoryLabel = (code: string): string =>
@@ -71,7 +65,7 @@ export function ProjectChartsPanel({ dossier, findings, deadlines, country }: Pr
         weight: Math.max(dossier.total, 1),
         meta: { value: dossier.filled, total: dossier.total, pct: dossier.pct },
         center: { value: `${String(dossier.pct)}%`, label: tRings('dossierLabel') },
-        detail: dossier.groups.map((g, i) => ({
+        detail: dossier.segments.map((g, i) => ({
           label: `${categoryLabel(g.category)} · ${String(g.filled)}/${String(g.total)}`,
           value: g.filled,
           color: PALETTE[i % PALETTE.length] ?? OVERFLOW_COLOR,
@@ -91,7 +85,7 @@ export function ProjectChartsPanel({ dossier, findings, deadlines, country }: Pr
         center: { value: String(findingsB.total), label: tRings('findingsLabel') },
         detail: STATUS_ORDER.map((s) => ({
           label: tStatus(s),
-          value: findingsB.byStatus[s],
+          value: findingsB.by_status[s] ?? 0,
           color: STATUS_COLORS[s],
         })),
         empty: tExp('emptyFindings'),

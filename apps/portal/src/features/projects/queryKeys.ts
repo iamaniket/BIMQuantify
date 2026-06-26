@@ -2,6 +2,17 @@ export const projectsKey = ['projects'] as const;
 
 export const projectKey = (id: string): readonly ['projects', string] => ['projects', id] as const;
 
+/** The project-detail BFF aggregate (GET /projects/{id}/overview). Every
+ * dashboard widget subscribes to this one key, so the cold load is a single
+ * request and a mutation only has to refresh this key (see
+ * `isProjectOverviewQueryKey`, invalidated centrally by the mutation cache). */
+export const projectOverviewKey = (projectId: string): readonly ['projects', string, 'overview'] => ['projects', projectId, 'overview'] as const;
+
+/** True for any project-overview aggregate query key. Used by the global
+ * mutation cache to refresh the dashboard after every successful write. */
+export const isProjectOverviewQueryKey = (key: readonly unknown[]): boolean =>
+  key[0] === 'projects' && key[2] === 'overview';
+
 export const projectMembersKey = (projectId: string): readonly ['projects', string, 'members'] => ['projects', projectId, 'members'] as const;
 
 export const projectDeadlinesKey = (projectId: string): readonly ['projects', string, 'deadlines'] => ['projects', projectId, 'deadlines'] as const;

@@ -17,12 +17,11 @@ import {
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
 import { formatSize } from '@/features/attachments/attachmentMeta';
-import { useAttachments } from '@/features/attachments/useAttachments';
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
+import { useProjectOverview } from '@/features/projects/useProjectOverview';
 import { useProjectPermissions } from '@/features/permissions';
 import type { Attachment, AttachmentCategoryValue } from '@/lib/api/schemas';
 import { formatAgo, formatDateTime } from '@/lib/formatting/dates';
-import { totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import { LauncherPanel } from './LauncherPanel';
 
@@ -48,17 +47,21 @@ export function AttachmentsLauncherCard({ projectId }: { projectId: string }): J
   const tAtt = useTranslations('projectDetail.tabs.attachments');
   const locale = useLocale() as Locale;
   const { can } = useProjectPermissions(projectId);
-  const query = useAttachments(projectId);
+  // Attachment preview + count come from the shared project-overview aggregate.
+  const overviewQuery = useProjectOverview(projectId);
+  const attBlock = overviewQuery.data?.attachments;
   const upload = useUploadAttachment(projectId);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [viewing, setViewing] = useState<Attachment | null>(null);
 
   // Only "ready" attachments have an object to preview; pending/rejected ones
-  // can't be opened, so they're filtered out of the recent preview.
+  // can't be opened, so they're filtered out of the recent preview. (The
+  // overview block already serves ready head-of-group attachments, so the
+  // filter is a belt-and-braces guard.)
   const recent =
-    query.data?.pages[0]?.data.filter((a) => a.status === 'ready').slice(0, MAX_ROWS) ?? [];
-  const count = totalFromPages(query.data);
+    (attBlock?.preview ?? []).filter((a) => a.status === 'ready').slice(0, MAX_ROWS);
+  const count = attBlock?.count ?? 0;
 
   const onPick = (e: ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0];
@@ -95,7 +98,7 @@ export function AttachmentsLauncherCard({ projectId }: { projectId: string }): J
         viewAllLabel={t('nav.viewAll')}
         headerAction={createAction}
         emptyLabel={t('nav.empty')}
-        isLoading={query.isLoading}
+        isLoading={overviewQuery.isLoading}
         isEmpty={recent.length === 0}
         rowHeightPx={ROW_HEIGHT_PX}
         maxRows={MAX_ROWS}

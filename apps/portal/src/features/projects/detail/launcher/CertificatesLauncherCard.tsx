@@ -17,11 +17,10 @@ import {
   getCertificateExpiryState,
   type CertificateExpiryState,
 } from '@/features/certificates/expiry';
-import { useCertificates } from '@/features/certificates/useCertificates';
+import { useProjectOverview } from '@/features/projects/useProjectOverview';
 import { useProjectPermissions } from '@/features/permissions';
 import type { Certificate, CertificateTypeValue } from '@/lib/api/schemas';
 import { formatAgo, formatDateTime, formatMonthDay } from '@/lib/formatting/dates';
-import { totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import { CertificateUploadDialog } from '../CertificateUploadDialog';
 import { LauncherPanel } from './LauncherPanel';
@@ -51,13 +50,15 @@ export function CertificatesLauncherCard({ projectId }: { projectId: string }): 
   const tExpiry = useTranslations('projectDetail.tabs.certificates.expiry');
   const locale = useLocale() as Locale;
   const { can } = useProjectPermissions(projectId);
-  const query = useCertificates(projectId);
+  // Certificate preview + count come from the shared project-overview aggregate.
+  const overviewQuery = useProjectOverview(projectId);
+  const certsBlock = overviewQuery.data?.certificates;
 
   const [viewing, setViewing] = useState<Certificate | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
 
-  const recent = query.data?.pages[0]?.data.slice(0, MAX_ROWS) ?? [];
-  const count = totalFromPages(query.data);
+  const recent = certsBlock?.preview.slice(0, MAX_ROWS) ?? [];
+  const count = certsBlock?.count ?? 0;
 
   const createAction = can('certificate', 'create') ? (
     <Button variant="primary" size="md" onClick={() => { setUploadOpen(true); }}>
@@ -76,7 +77,7 @@ export function CertificatesLauncherCard({ projectId }: { projectId: string }): 
         viewAllLabel={t('nav.viewAll')}
         headerAction={createAction}
         emptyLabel={t('nav.empty')}
-        isLoading={query.isLoading}
+        isLoading={overviewQuery.isLoading}
         isEmpty={recent.length === 0}
         rowHeightPx={ROW_HEIGHT_PX}
         maxRows={MAX_ROWS}

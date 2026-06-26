@@ -19,6 +19,20 @@ export type EmbedMarker = {
   dimmed?: boolean;
 };
 
+/** A 2D finding pin (floor plan / PDF page). Mirrors the embed's `EntityMarker2D`. */
+export type EmbedMarker2D = {
+  id: string;
+  type: 'finding' | 'certificate' | 'attachment';
+  /** 1-based page; the embed shows only the visible page's pins. */
+  page: number;
+  /** Normalized 0..1, top-left origin, Y-down. */
+  x: number;
+  y: number;
+  label: string;
+  entityId: string;
+  status?: string;
+};
+
 /** The viewer layout the native shell can request (mirrors the embed's ViewMode). */
 export type ViewMode = '3d' | '2d' | 'split';
 
@@ -34,6 +48,7 @@ export type HostMessage =
   | { type: 'loadPdf'; pdfPagesUrl: string }
   | { type: 'setViewMode'; mode: ViewMode }
   | { type: 'syncMarkers'; markers: EmbedMarker[] }
+  | { type: 'syncMarkers2D'; markers: EmbedMarker2D[] }
   | { type: 'clearMarkers' }
   | { type: 'setMarkersVisible'; visible: boolean }
   | { type: 'enterPlaceMode'; oneShot?: boolean }
@@ -51,9 +66,12 @@ export type ClientMessage =
       id: string;
       markerType: EmbedMarker['type'];
       entityId: string;
-      position: Vec3;
+      // 3D world position; absent for a 2D pin tap.
+      position?: Vec3;
     }
-  | { type: 'pointPicked'; point: Vec3; item: { modelId: string; localId: number } | null };
+  | { type: 'pointPicked'; point: Vec3; item: { modelId: string; localId: number } | null }
+  // 2D finding placement resolved: 1-based page + normalized 0..1 page point.
+  | { type: 'findingPlaced'; page: number; x: number; y: number };
 
 /**
  * JS that delivers a host→web message through the embed's receive global. The

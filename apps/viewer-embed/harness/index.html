@@ -130,6 +130,13 @@
           <button id="loadBtn" disabled>2 · Load model into viewer</button>
         </div>
         <div class="row">
+          <label for="pdfDoc">PDF document (2D-only · needs the rasterization job)</label>
+          <select id="pdfDoc" disabled></select>
+        </div>
+        <div class="row">
+          <button id="loadPdfBtn" class="secondary" disabled>2b · Load PDF into viewer</button>
+        </div>
+        <div class="row">
           <label>View (sends setViewMode to the embed)</label>
           <div class="inline">
             <button id="view3dBtn" class="secondary" disabled>3D</button>
@@ -161,6 +168,7 @@
 
       let token = null;
       let manifest = []; // ProjectViewerModelEntry[] for the selected project
+      let pdfDocs = []; // PDF DocumentRead[] for the selected project
       let embedReady = false;
       let pendingLoad = null; // { bundle, additionalBundles } queued until embed ready
 
@@ -187,7 +195,11 @@
             embedReady = true;
             setStatus('ready');
             log('← ready (embed bridge up)', 'muted');
-            if (pendingLoad) { doSend(pendingLoad); pendingLoad = null; }
+            if (pendingLoad) {
+              if (pendingLoad.__pdf) doSendPdf(pendingLoad.__pdf);
+              else doSend(pendingLoad);
+              pendingLoad = null;
+            }
             break;
           case 'sceneReady':
             setStatus('scene ready');
@@ -215,6 +227,9 @@
             break;
           case 'pointPicked':
             log(`← pointPicked (${msg.point?.x?.toFixed?.(2)}, ${msg.point?.y?.toFixed?.(2)}, ${msg.point?.z?.toFixed?.(2)})`, 'info');
+            break;
+          case 'findingPlaced':
+            log(`← findingPlaced page ${msg.page} (${msg.x?.toFixed?.(3)}, ${msg.y?.toFixed?.(3)})`, 'ok');
             break;
         }
       });
@@ -285,6 +300,59 @@
         sel.disabled = !ok;
         $('loadBtn').disabled = !ok;
         log(ok ? `✓ ${manifest.length} viewable model(s)` : 'no ready IFC models in this project', ok ? 'ok' : 'warn');
+        await loadPdfDocs(projectId);
+      }
+
+      // PDF documents (2D-only). The embed renders these via `loadPdf` from the
+      // server-rasterized page-image manifest (`pdf_pages_url`) — present only
+      // after the `pdf_pages_rasterization` job has run (rebuild the processor).
+      async function loadPdfDocs(projectId) {
+        let docs = [];
+        try {
+          docs = await authGet(`/projects/${projectId}/documents`);
+        } catch (e) {
+          log(`could not list documents: ${e.message}`, 'warn');
+        }
+        pdfDocs = (docs || []).filter((d) => d.primary_file_type === 'pdf');
+        const sel = $('pdfDoc');
+        sel.innerHTML = '';
+        for (const d of pdfDocs) {
+          const opt = document.createElement('option');
+          opt.value = d.id;
+          opt.textContent = `${d.name} (${d.id.slice(0, 8)})`;
+          sel.appendChild(opt);
+        }
+        const ok = pdfDocs.length > 0;
+        sel.disabled = !ok;
+        $('loadPdfBtn').disabled = !ok;
+        if (ok) log(`✓ ${pdfDocs.length} PDF document(s)`, 'ok');
+      }
+
+      async function sendLoadPdf() {
+        const projectId = $('project').value;
+        const docId = $('pdfDoc').value;
+        if (!docId) { log('pick a PDF document first', 'warn'); return; }
+        const detail = await authGet(`/projects/${projectId}/documents/${docId}`);
+        const versions = (detail.versions || [])
+          .filter((v) => v.file_type === 'pdf' && v.status === 'ready')
+          .sort((a, b) => b.version_number - a.version_number);
+        const file = versions[0];
+        if (!file) { log('no ready PDF version on that document', 'warn'); return; }
+        const bundle = await authGet(
+          `/projects/${projectId}/documents/${docId}/files/${file.id}/viewer-bundle`,
+        );
+        if (!bundle.pdf_pages_url) {
+          log('PDF not rasterized yet — rebuild the processor + re-upload the PDF (no pdf_pages_url)', 'warn');
+          return;
+        }
+        setStatus('loading PDF…');
+        if (embedReady) doSendPdf(bundle.pdf_pages_url);
+        else { pendingLoad = { __pdf: bundle.pdf_pages_url }; log('embed not ready yet — will send on ready', 'muted'); }
+      }
+
+      function doSendPdf(url) {
+        embed.contentWindow.postMessage({ type: 'loadPdf', pdfPagesUrl: url }, '*');
+        log(`→ loadPdf ${url.slice(0, 64)}…`, 'info');
       }
 
       // snake_case manifest entry → the camelCase ViewerBundle the embed consumes.
@@ -340,6 +408,7 @@
         guard(async () => { await login(); await loadProjects(); }, $('loginBtn')));
       $('project').addEventListener('change', (e) => guard(() => loadManifest(e.target.value)));
       $('loadBtn').addEventListener('click', sendLoad);
+      $('loadPdfBtn').addEventListener('click', () => guard(sendLoadPdf, $('loadPdfBtn')));
       $('view3dBtn').addEventListener('click', () => setView('3d'));
       $('view2dBtn').addEventListener('click', () => setView('2d'));
       $('viewSplitBtn').addEventListener('click', () => setView('split'));
