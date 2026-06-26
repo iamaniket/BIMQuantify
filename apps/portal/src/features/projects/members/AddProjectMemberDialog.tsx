@@ -95,7 +95,13 @@ export function AddProjectMemberDialog({
         setErrorMessage(t('errors.notInOrg'));
         return;
       }
-      setErrorMessage(error.detail);
+      if (error.detail === 'ORG_MEMBER_SUSPENDED') {
+        setErrorMessage(t('errors.suspended'));
+        return;
+      }
+      // Any other code: show the server-localized message when present so the
+      // user sees a sentence rather than a bare SCREAMING_SNAKE code.
+      setErrorMessage(error.localizedMessage ?? error.detail);
       return;
     }
     setErrorMessage(String(error));

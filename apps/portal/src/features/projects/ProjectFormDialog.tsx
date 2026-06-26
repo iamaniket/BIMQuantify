@@ -300,7 +300,9 @@ export function ProjectFormDialog(props: Props): JSX.Element {
             if (result.failures.length > 0) {
               toast.error(
                 tWizard('members.partialFailure', {
-                  names: result.failures.map((f) => f.label).join(', '),
+                  names: result.failures
+                    .map((f) => `${f.label} — ${f.reason}`)
+                    .join('; '),
                 }),
               );
             }

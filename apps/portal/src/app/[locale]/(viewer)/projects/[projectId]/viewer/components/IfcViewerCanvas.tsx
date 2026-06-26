@@ -1,12 +1,10 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useTranslations } from 'next-intl';
 import type React from 'react';
 import { type JSX } from 'react';
 
 import { Skeleton } from '@bimdossier/ui';
-import { Crosshair } from '@bimdossier/ui/icons';
 import type { DocumentViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import { FloorPlanPane } from '@/features/viewer/2d/FloorPlanPane';
@@ -63,8 +61,8 @@ export interface IfcViewerCanvasProps {
   planApiModelId: string | null;
   /** Leave calibration mode (back to a normal view mode). */
   onViewModeChange: (mode: ViewMode) => void;
-  /** Offer the "Align" (PDF↔model calibration) entry. Editor-gated by the page;
-   * only meaningful when a PDF model exists. Surfaced as a tab on the split divider. */
+  /** Offer the "Align" (PDF↔model calibration) entry. Editor-gated by the page.
+   * Surfaced as a button in the floor-plan toolbar (split mode). */
   canCalibrate: boolean;
 }
 
@@ -104,7 +102,6 @@ export function IfcViewerCanvas({
   onViewModeChange,
   canCalibrate,
 }: IfcViewerCanvasProps): JSX.Element {
-  const tVm = useTranslations('viewer.viewMode');
   // Calibration mode reuses the split layout (3D live left, chosen PDF right).
   const isSplitLike = viewMode === 'split' || viewMode === 'calibration';
   const ifcViewerEl = (
@@ -217,21 +214,6 @@ export function IfcViewerCanvas({
           onPointerUp={onDividerPointerUp}
           onPointerCancel={onDividerPointerUp}
         >
-          {/* "Align" entry — a tab centered on the dragger (the 3D/2D seam). Lives
-              inside the divider so it tracks the imperative drag updates for free.
-              Split mode only: calibration mode hands the UI to CalibrationPane. */}
-          {viewMode === 'split' && canCalibrate && (
-            <button
-              type="button"
-              title={tVm('calibrateTooltip')}
-              onPointerDown={(e) => { e.stopPropagation(); }}
-              onClick={() => { onViewModeChange('calibration'); }}
-              className="pointer-events-auto absolute left-1/2 top-3 z-10 flex -translate-x-1/2 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-surface-low px-3 py-1.5 text-body3 font-medium text-foreground shadow-sm transition-colors hover:bg-background-hover"
-            >
-              <Crosshair className="h-4 w-4" />
-              {tVm('calibrate')}
-            </button>
-          )}
           {/* Thin visual bar */}
           <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border" />
           {/* Drag pip */}
@@ -268,6 +250,8 @@ export function IfcViewerCanvas({
             onRequestFindings={onRequestFloorPlanFindings}
             onFpHandle={onFpHandle}
             onActiveElevationChange={onFpActiveElevationChange}
+            canCalibrate={canCalibrate}
+            onCalibrate={() => { onViewModeChange('calibration'); }}
           />
         </div>
       ) : null}

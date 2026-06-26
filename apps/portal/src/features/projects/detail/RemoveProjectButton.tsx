@@ -61,7 +61,9 @@ export function RemoveProjectButton({ project }: Props): JSX.Element {
         onSuccess: () => {
           setDeleteOpen(false);
           // The project no longer exists — leave the now-dead detail page.
-          router.push('/projects');
+          // `replace` (not `push`) so the back button doesn't return to the
+          // deleted project's 404 page.
+          router.replace('/projects');
         },
       },
     );

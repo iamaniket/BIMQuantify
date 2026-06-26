@@ -151,11 +151,23 @@ async def invite_to_project(
             target_user = existing_user
             scenario = "existing_org_member"
 
+        elif existing_member.status == OrganizationMemberStatus.pending:
+            # Scenario 4: user has an outstanding, un-accepted org invite. Don't
+            # duplicate the org invite — keep the membership pending, but still
+            # queue the project_members row (it takes effect once they activate)
+            # and re-send the invite. Mirrors resend_invite's clock reset so the
+            # expiry sweeper doesn't reap a row we're actively re-poking.
+            target_user = existing_user
+            existing_member.invited_at = datetime.now(UTC)
+            existing_member.invited_by = user.id
+            scenario = "reinvited_pending"
+
         else:
-            # Pending or suspended — tell them there's already a pending invite.
+            # Suspended — an admin paused this membership; don't silently
+            # re-grant access via a project add. Reactivate it first.
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="ORG_INVITE_ALREADY_PENDING",
+                detail="ORG_MEMBER_SUSPENDED",
             )
 
         # Insert project_members row in the tenant schema.
@@ -219,6 +231,19 @@ async def invite_to_project(
     # Send email AFTER commit so a flaky transport doesn't roll back the invite.
     if scenario == "new_user":
         await user_manager.request_verify(target_user, request)
+    elif scenario == "reinvited_pending":
+        # Re-send whatever the pending member is still waiting on: an unverified
+        # user needs the activation link again; a verified user with a pending
+        # membership gets the accept/decline notification.
+        if not target_user.is_verified:
+            await user_manager.request_verify(target_user, request)
+        else:
+            await send_project_invite_notification(
+                invitee=target_user,
+                organization=org,
+                project_name=project.name,
+                inviter_email=user.email,
+            )
     elif scenario == "new_org_member":
         await send_project_invite_notification(
             invitee=target_user,

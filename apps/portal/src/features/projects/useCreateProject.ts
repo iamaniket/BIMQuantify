@@ -40,7 +40,10 @@ type ProjectCreateResult = {
 };
 
 function reasonOf(error: unknown): string {
-  return error instanceof ApiError ? error.detail : String(error);
+  // Prefer the server-localized message (already in the request's language);
+  // fall back to the bare detail code, then to the raw error string.
+  if (error instanceof ApiError) return error.localizedMessage ?? error.detail;
+  return String(error);
 }
 
 export function useCreateProject(): UseMutationResult<

@@ -307,6 +307,87 @@ async def test_existing_org_member_receives_added_notification(
 
 
 # ---------------------------------------------------------------------------
+# Scenario 4: Existing user with a pending (un-accepted) org invite
+# ---------------------------------------------------------------------------
+
+
+async def test_pending_member_reinvited_adds_project_access(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    session_maker: async_sessionmaker[AsyncSession],
+    email_transport: object,
+) -> None:
+    """A user with an outstanding, un-accepted org invite can still be added to
+    a project: the membership stays pending, but the project_members row is
+    queued and the invite is re-sent (no 409)."""
+    project_a = await _create_project(client, org_user, name="Project A")
+    project_b = await _create_project(client, org_user, name="Project B")
+    email = "pending-person@company.nl"
+
+    # First invite to A creates the user + a pending guest org membership.
+    resp_a = await client.post(
+        INVITE_URL.format(pid=project_a["id"]),
+        json={"email": email, "role": "viewer"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp_a.status_code == 201, resp_a.text
+    assert resp_a.json()["scenario"] == "new_user"
+
+    # Second invite to B: the membership is still pending, so instead of a 409
+    # the project access is queued and the invite re-sent.
+    resp_b = await client.post(
+        INVITE_URL.format(pid=project_b["id"]),
+        json={"email": email, "role": "inspector"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp_b.status_code == 201, resp_b.text
+    body = resp_b.json()
+    assert body["scenario"] == "reinvited_pending"
+    assert body["role"] == "inspector"
+
+    from bimdossier_api.models.organization import Organization
+    from bimdossier_api.models.organization_member import (
+        OrganizationMember,
+        OrganizationMemberStatus,
+    )
+    from bimdossier_api.models.user import User
+
+    async with session_maker() as session:
+        user = (await session.execute(select(User).where(User.email == email))).scalar_one()
+
+        # Org membership is still pending (we didn't activate them).
+        member = (
+            await session.execute(
+                select(OrganizationMember).where(
+                    OrganizationMember.user_id == user.id,
+                    OrganizationMember.organization_id == org_user["organization_id"],
+                )
+            )
+        ).scalar_one()
+        assert member.status == OrganizationMemberStatus.pending
+
+        # Project access to B was queued (verify via raw query — RLS hides the
+        # pending user from the joined GET /members read).
+        org = await session.get(Organization, org_user["organization_id"])
+        assert org is not None
+        row = (
+            await session.execute(
+                text(
+                    f'SELECT role FROM "{org.schema_name}".project_members '
+                    "WHERE project_id = :pid AND user_id = :uid"
+                ),
+                {"pid": project_b["id"], "uid": str(user.id)},
+            )
+        ).one()
+        assert row[0] == "inspector"
+
+    # Activation link was re-sent (the user is still unverified).
+    sent = email_transport.last_for(email)
+    assert sent is not None
+    assert "Activate" in sent.subject or "activate" in sent.body.lower()
+
+
+# ---------------------------------------------------------------------------
 # Error cases
 # ---------------------------------------------------------------------------
 
@@ -347,6 +428,42 @@ async def test_duplicate_invite_returns_409(
     )
     assert resp2.status_code == 409
     assert resp2.json()["detail"] == "MEMBER_ALREADY_EXISTS"
+
+
+async def test_suspended_member_rejected(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """A suspended member is refused with a clear code — an admin paused them,
+    so a project add must not silently re-grant access."""
+    project = await _create_project(client, org_user)
+
+    from bimdossier_api.models.organization_member import (
+        OrganizationMember,
+        OrganizationMemberStatus,
+    )
+
+    async with session_maker() as session:
+        member = (
+            await session.execute(
+                select(OrganizationMember).where(
+                    OrganizationMember.user_id == same_org_non_admin_user["id"],
+                    OrganizationMember.organization_id == org_user["organization_id"],
+                )
+            )
+        ).scalar_one()
+        member.status = OrganizationMemberStatus.suspended
+        await session.commit()
+
+    resp = await client.post(
+        INVITE_URL.format(pid=project["id"]),
+        json={"email": same_org_non_admin_user["email"]},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["detail"] == "ORG_MEMBER_SUSPENDED"
 
 
 async def test_invite_to_archived_project(

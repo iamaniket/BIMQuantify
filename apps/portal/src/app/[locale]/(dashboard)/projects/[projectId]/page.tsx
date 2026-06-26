@@ -99,10 +99,10 @@ export default function ProjectDetailPage(): JSX.Element {
     const { error } = projectQuery;
     const isNotFound = error instanceof ApiError && error.status === 404;
     const errorMessage = isNotFound
-      ? 'Project not found. It may have been deleted.'
+      ? tHero('notFound')
       : error instanceof ApiError
         ? error.detail
-        : 'Failed to load project.';
+        : tHero('loadFailed');
     return (
       <main className="p-6">
         <ErrorBanner message={errorMessage} tone="soft" className="text-body2" />

@@ -214,6 +214,7 @@ en_messages: Catalog = {
     "errors.INVITATION_NOT_FOUND": "That invitation could not be found.",
     "errors.INVITATION_EXPIRED": "This invitation has expired.",
     "errors.ORG_INVITE_ALREADY_PENDING": "An invitation for this user is already pending.",
+    "errors.ORG_MEMBER_SUSPENDED": "This member's access is suspended. Reactivate their membership before adding them to a project.",
     "errors.ALREADY_REVOKED": "This has already been revoked.",
     "errors.ACCESS_REQUEST_NOT_FOUND": "That access request could not be found.",
     "errors.ACCESS_REQUEST_NOT_PENDING": "That access request is no longer pending.",

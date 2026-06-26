@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import {
   CaretDownIcon,
+  Crosshair,
   House,
   Image,
   Move,
@@ -83,6 +84,10 @@ type Props = {
   onFpHandle?: ((handle: DocumentViewerHandle | null) => void) | undefined;
   /** Report the active storey elevation so a plan pick lifts to the right floor. */
   onActiveElevationChange?: ((elevation: number | null) => void) | undefined;
+  /** Whether the current user may calibrate (editor on an IFC model). */
+  canCalibrate: boolean;
+  /** Enter calibration mode (PDF↔model alignment). */
+  onCalibrate: () => void;
 };
 
 /**
@@ -109,9 +114,12 @@ export function FloorPlanPane({
   onRequestFindings,
   onFpHandle,
   onActiveElevationChange,
+  canCalibrate,
+  onCalibrate,
 }: Props): ReactElement | null {
   const t = useTranslations('viewer.floorplan');
   const tb = useTranslations('viewer.toolbar');
+  const tVm = useTranslations('viewer.viewMode');
   const locale = useLocale();
   const compassLocale = locale === 'nl' ? 'nl' : 'en';
   const levelFallback = useCallback((n: number) => t('levelFallback', { n }), [t]);
@@ -577,6 +585,23 @@ export function FloorPlanPane({
               >
                 <Image className="h-4 w-4" />
               </ToolButton>
+            </>
+          )}
+          {viewMode === 'split' && canCalibrate && (
+            <>
+              <ToolbarDivider />
+              {/* Enter PDF↔model alignment for the storey on screen. Editor-gated
+                  by the page; offered for any IFC plan (CalibrationPane guides the
+                  user to upload a PDF when the project has none). */}
+              <button
+                type="button"
+                title={tVm('calibrateTooltip')}
+                onClick={onCalibrate}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-caption font-medium text-foreground/80 hover:bg-foreground/[0.06] focus-visible:outline-none"
+              >
+                <Crosshair className="h-3.5 w-3.5" />
+                {tVm('calibrate')}
+              </button>
             </>
           )}
           {viewMode === '2d' && (

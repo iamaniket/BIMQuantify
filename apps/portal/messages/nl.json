@@ -1066,6 +1066,7 @@
         "pickUser": "Kies eerst een gebruiker.",
         "alreadyMember": "Deze gebruiker is al lid van dit project.",
         "notInOrg": "Deze gebruiker is geen actief lid van de organisatie.",
+        "suspended": "De toegang van dit lid is opgeschort. Activeer het lidmaatschap opnieuw voordat je deze persoon aan een project toevoegt.",
         "invalidEmail": "Voer een geldig e-mailadres in."
       }
     },
@@ -1121,6 +1122,8 @@
   "projectDetail": {
     "hero": {
       "partialDataError": "Sommige projectgegevens konden niet worden geladen; onderstaande cijfers zijn mogelijk onvolledig.",
+      "notFound": "Project niet gevonden. Mogelijk is het al verwijderd.",
+      "loadFailed": "Project kon niet worden geladen.",
       "wkbScore": "Wkb-score",
       "issuesOpen": "Open issues",
       "holdback": "Inhouding",

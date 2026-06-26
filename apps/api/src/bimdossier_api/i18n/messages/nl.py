@@ -182,6 +182,7 @@ nl_messages: Catalog = {
     "errors.INVITATION_NOT_FOUND": "Die uitnodiging kon niet worden gevonden.",
     "errors.INVITATION_EXPIRED": "Deze uitnodiging is verlopen.",
     "errors.ORG_INVITE_ALREADY_PENDING": "Er is al een uitnodiging voor deze gebruiker in behandeling.",
+    "errors.ORG_MEMBER_SUSPENDED": "De toegang van dit lid is opgeschort. Activeer het lidmaatschap opnieuw voordat je deze persoon aan een project toevoegt.",
     "errors.ALREADY_REVOKED": "Dit is al ingetrokken.",
     "errors.ACCESS_REQUEST_NOT_FOUND": "Dat toegangsverzoek kon niet worden gevonden.",
     "errors.ACCESS_REQUEST_NOT_PENDING": "Dat toegangsverzoek is niet langer in behandeling.",

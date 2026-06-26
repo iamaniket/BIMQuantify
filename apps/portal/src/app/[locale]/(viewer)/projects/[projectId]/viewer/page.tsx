@@ -41,7 +41,6 @@ import { useBcfMarkup2d } from '@/features/viewer/bcf/useBcfMarkup2d';
 import { bcfKeys } from '@/features/viewer/bcf/queryKeys';
 import { MarkupToolbar } from '@/components/shared/viewer/2d/MarkupToolbar';
 import { ContextMenu } from '@/features/viewer/3d/ContextMenu';
-import { useDocuments } from '@/features/documents/useDocuments';
 import { useProjectPermissions } from '@/features/permissions/useProjectPermissions';
 import { type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/3d/explorer/ModelExplorer';
@@ -458,14 +457,10 @@ export default function ViewerPage(): JSX.Element {
   // Split / 2D modes (and the view switcher) require a floor-plan artifact.
   const hasFloorPlans = Boolean(isIfc && scope.planFloorPlansUrl);
 
-  // "Align" (PDF↔model calibration) is offered to editors when the project has
-  // at least one PDF model to pin onto the active IFC model.
+  // "Align" (PDF↔model calibration) is offered to any editor on an IFC model.
+  // CalibrationPane guides the user to upload a PDF when the project has none.
   const perms = useProjectPermissions(projectId);
-  const projectModels = useDocuments(projectId);
-  const hasPdfModel = (projectModels.data ?? []).some(
-    (m) => m.primary_file_type === 'pdf',
-  );
-  const canCalibrate = isIfc && hasPdfModel && !perms.isLoading && perms.can('document', 'update');
+  const canCalibrate = isIfc && !perms.isLoading && perms.can('document', 'update');
 
   // Finding-pin layer visibility (persisted) drives the side-rail Findings
   // count pill; re-asserted onto the entity-marker plugin on mount/change.
