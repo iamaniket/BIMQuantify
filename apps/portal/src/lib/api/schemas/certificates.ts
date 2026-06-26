@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { httpUrlString } from './url';
+
 export const CertificateTypeEnum = z.enum([
   'product',
   'installation_test',
@@ -50,7 +52,7 @@ export const CertificateInitiateResponseSchema = z.object({
 export type CertificateInitiateResponse = z.infer<typeof CertificateInitiateResponseSchema>;
 
 export const CertificateDownloadResponseSchema = z.object({
-  download_url: z.string(),
+  download_url: httpUrlString,
   expires_in: z.number(),
 });
 export type CertificateDownloadResponse = z.infer<typeof CertificateDownloadResponseSchema>;

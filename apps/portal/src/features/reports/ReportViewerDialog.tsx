@@ -16,6 +16,7 @@ import {
 import { useProjectPermissions } from '@/features/permissions';
 import { formatDate, formatDateTime } from '@/lib/formatting/dates';
 import { formatFileSize } from '@/lib/formatting/files';
+import { isHttpUrl, openExternalUrl } from '@/lib/url';
 import type { Report } from '@/lib/api/schemas/reports';
 
 import { useReport, useSignReport } from './hooks';
@@ -80,7 +81,7 @@ function ReportPreview({
   // force a save. `#toolbar=0` hides the browser's PDF chrome to match the
   // certificate / attachment viewers.
   const url = report.view_url ?? report.download_url;
-  if (url !== null) {
+  if (isHttpUrl(url)) {
     return (
       <iframe
         src={`${url}#toolbar=0`}
@@ -238,7 +239,7 @@ export function ReportViewerDialog({
       closeLabel={t('close')}
       downloadLabel={downloadUrl !== null ? tShared('download') : undefined}
       onDownload={downloadUrl !== null
-        ? () => { window.open(downloadUrl, '_blank'); }
+        ? () => { openExternalUrl(downloadUrl); }
         : undefined}
     />
   );

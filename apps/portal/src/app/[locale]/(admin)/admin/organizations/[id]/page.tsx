@@ -1,6 +1,7 @@
 'use client';
 
 import { Pause, Pencil, Play, Trash2 } from '@bimdossier/ui/icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { use, useCallback, useMemo, useState, type JSX } from 'react';
@@ -13,6 +14,7 @@ import { InviteMemberDialog } from '@/features/admin/members/InviteMemberDialog'
 import { useOrgMembers } from '@/features/admin/members/useOrgMembers';
 import { OrgEditDialog } from '@/features/admin/organizations/OrgEditDialog';
 import { useAdminOrganization } from '@/features/admin/organizations/useAdminOrganization';
+import { adminOrganizationsKey } from '@/features/admin/organizations/queryKeys';
 import { useDeleteOrganization } from '@/features/admin/organizations/useDeleteOrganization';
 import { useUpdateOrganization } from '@/features/admin/organizations/useUpdateOrganization';
 import { OrgDetailView } from '@/features/org-detail';
@@ -30,6 +32,7 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
   const { id } = use(params);
 
   const { tokens, refreshMe } = useAuth();
+  const queryClient = useQueryClient();
   const orgQuery = useAdminOrganization(id);
   const membersQuery = useOrgMembers(id);
   const auditQuery = useOrgAuditLog(id, { limit: 50 });
@@ -39,16 +42,16 @@ export default function AdminOrganizationDetailPage({ params }: Props): JSX.Elem
   const handleImageUpload = useCallback(async (file: File) => {
     if (!tokens) return;
     await uploadAdminOrgImage(tokens.access_token, id, file);
-    await orgQuery.refetch();
+    await queryClient.invalidateQueries({ queryKey: adminOrganizationsKey });
     await refreshMe();
-  }, [tokens, id, orgQuery, refreshMe]);
+  }, [tokens, id, queryClient, refreshMe]);
 
   const handleImageRemove = useCallback(async () => {
     if (!tokens) return;
     await deleteAdminOrgImage(tokens.access_token, id);
-    await orgQuery.refetch();
+    await queryClient.invalidateQueries({ queryKey: adminOrganizationsKey });
     await refreshMe();
-  }, [tokens, id, orgQuery, refreshMe]);
+  }, [tokens, id, queryClient, refreshMe]);
 
   const tBreadcrumbs = useTranslations('breadcrumbs');
 

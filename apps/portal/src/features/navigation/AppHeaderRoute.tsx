@@ -6,9 +6,9 @@ import { type JSX } from 'react';
 
 import { AppHeader, type Crumb } from '@/components/shared/header/AppHeader';
 import { useAppHeaderOverrides } from '@/components/shared/header/AppHeaderContext';
-import { NotificationsBell } from '@/components/shared/header/NotificationsBell';
 import { useSidebar } from '@/components/shared/sidebar/SidebarContext';
 import { useDocuments } from '@/features/documents/useDocuments';
+import { NotificationsBell } from '@/features/notifications/NotificationsBell';
 import { ModelSwitcher } from '@/features/navigation/ModelSwitcher';
 import { useViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
 import { useProject } from '@/features/projects/useProject';

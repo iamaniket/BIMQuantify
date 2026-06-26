@@ -12,6 +12,14 @@ import {
   type CaptureUploadResponse,
 } from './schemas';
 
+/** Pull the FastAPI `detail` string out of an error body, falling back to the
+ * HTTP status text. Narrows with `in` so the access needs no loose cast. */
+function errorDetail(raw: unknown, fallback: string): string {
+  return typeof raw === 'object' && raw !== null && 'detail' in raw
+    ? String((raw as { detail: unknown }).detail)
+    : fallback;
+}
+
 async function publicGet<T>(
   path: string,
   schema: ZodType<T>,
@@ -23,10 +31,7 @@ async function publicGet<T>(
   });
   if (!response.ok) {
     const raw: unknown = await response.json().catch(() => ({}));
-    const detail = typeof raw === 'object' && raw !== null && 'detail' in raw
-      ? String((raw as Record<string, unknown>)['detail'])
-      : response.statusText;
-    throw new ApiError(response.status, detail);
+    throw new ApiError(response.status, errorDetail(raw, response.statusText));
   }
   const raw: unknown = await response.json();
   const parsed = schema.safeParse(raw);
@@ -48,10 +53,7 @@ async function publicPost<T>(
   });
   if (!response.ok) {
     const raw: unknown = await response.json().catch(() => ({}));
-    const detail = typeof raw === 'object' && raw !== null && 'detail' in raw
-      ? String((raw as Record<string, unknown>)['detail'])
-      : response.statusText;
-    throw new ApiError(response.status, detail);
+    throw new ApiError(response.status, errorDetail(raw, response.statusText));
   }
   const raw: unknown = await response.json();
   const parsed = schema.safeParse(raw);

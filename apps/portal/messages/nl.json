@@ -223,7 +223,8 @@
       "daysRemaining": "{days, plural, =1 {nog 1 dag} other {nog # dagen}}",
       "overdueDays": "{days, plural, =1 {1 dag te laat} other {# dagen te laat}}",
       "trendTitle": "Deadlines na verloop van tijd",
-      "trendEmpty": "Geen aankomende deadlines."
+      "trendEmpty": "Geen aankomende deadlines.",
+      "loadError": "Kan de deadlinekalender niet laden."
     },
     "month": {
       "today": "Vandaag",

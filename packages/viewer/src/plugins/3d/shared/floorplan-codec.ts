@@ -34,6 +34,8 @@
  * check and return null — re-extraction regenerates them.
  */
 
+import { FLOORPLAN_MAGIC } from '@bimdossier/contracts';
+
 /** One IfcSpace footprint: cut segments + centroid (label anchor), plan XY. */
 export interface FloorPlanRoom {
   spaceId: number;
@@ -59,7 +61,9 @@ export interface DecodedFloorPlans {
   levels: FloorPlanLevel[];
 }
 
-const MAGIC = 'BIMFPLN2';
+// Shared with the processor's encoder via @bimdossier/contracts so a one-sided
+// bump can't silently break decoding here. A mismatch returns null (hides the 2D map).
+const MAGIC = FLOORPLAN_MAGIC;
 /** magic(8) + levelCount + wallFloatsTotal + roomCount + roomFloatsTotal + planAxisX + planAxisY. */
 const HEADER_BYTES = 32;
 

@@ -13,9 +13,10 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 import bimdossier_api.routers.compliance as compliance_router
+from bimdossier_api.models.job import Job, JobStatus, JobType
 from tests.conftest import (
     VALID_IFC_HEADER,
     FakeStorage,
@@ -172,3 +173,66 @@ async def test_check_falls_back_to_all_when_project_untyped(
     assert resp.status_code == 200, resp.text
 
     assert stub_arbiter[0]["building_type"] == "all"
+
+
+async def test_check_releases_db_connection_across_arbiter_call(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The (up-to-30s) Arbiter MCP call must run OUTSIDE the tenant DB
+    transaction, so a slow/unavailable Arbiter can't pin a pooled connection
+    and cascade into pool exhaustion (DB_POOL_SIZE=20).
+
+    We prove the connection is released by observing, from a SEPARATE session
+    *during* the stubbed Arbiter call, that the Job row is already committed as
+    `running`. Under READ COMMITTED a separate session can only see it if
+    phase-1 committed before the external call — i.e. the connection was not
+    held across it. With the old single-transaction design the Job would be
+    uncommitted (invisible) during the call.
+    """
+    client, fake = fake_storage_client
+    ids = await _ready_extracted_file(client, fake, session_maker, org_user, name="rel.ifc")
+    _, _, file_id = ids
+    schema = f"org_{str(UUID(org_user['organization_id'])).replace('-', '')}"
+
+    observed: dict[str, Any] = {}
+
+    async def _job_status() -> JobStatus | None:
+        async with session_maker() as s, s.begin():
+            await s.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+            return (
+                await s.execute(
+                    select(Job.status)
+                    .where(
+                        Job.file_id == UUID(file_id),
+                        Job.job_type == JobType.compliance_check,
+                    )
+                    .order_by(Job.started_at.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+
+    async def _fake_run(**kwargs: Any) -> dict[str, Any]:
+        observed["mid_call_status"] = await _job_status()
+        return {
+            "checked_at": "2026-06-23T00:00:00Z",
+            "total_rules": 0,
+            "total_elements_checked": 0,
+            "rules_summary": [],
+            "category_summary": [],
+            "details": [],
+        }
+
+    monkeypatch.setattr(compliance_router, "run_compliance_check", _fake_run)
+
+    resp = await _check(client, org_user, ids, {"framework": "bbl"})
+    assert resp.status_code == 200, resp.text
+
+    # The Job was committed as `running` and visible from another session while
+    # the Arbiter call was in flight → no connection pinned across the call.
+    assert observed["mid_call_status"] == JobStatus.running
+    # And the result was persisted in the post-call phase.
+    assert await _job_status() == JobStatus.succeeded

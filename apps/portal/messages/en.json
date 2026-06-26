@@ -223,7 +223,8 @@
       "daysRemaining": "{days, plural, =1 {1 day left} other {# days left}}",
       "overdueDays": "{days, plural, =1 {1 day overdue} other {# days overdue}}",
       "trendTitle": "Deadlines over time",
-      "trendEmpty": "No upcoming deadlines."
+      "trendEmpty": "No upcoming deadlines.",
+      "loadError": "Failed to load the deadline calendar."
     },
     "month": {
       "today": "Today",

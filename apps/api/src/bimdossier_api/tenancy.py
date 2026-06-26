@@ -25,7 +25,8 @@ claim (e.g. fresh super-admin token), the dep returns 409
 `NO_ACTIVE_ORGANIZATION` so the portal can prompt for tenant selection.
 """
 
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, AsyncIterator
+from contextlib import asynccontextmanager
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
@@ -157,6 +158,40 @@ async def _verify_membership(
     return membership, org
 
 
+@asynccontextmanager
+async def open_tenant_session(
+    schema: str, organization_id: UUID, user_id: UUID
+) -> AsyncIterator[AsyncSession]:
+    """Open a short, self-contained tenant-scoped session + transaction.
+
+    Same `SET LOCAL ROLE bim_app` + `search_path` + GUC setup as
+    `get_tenant_session`, but as a plain async context manager rather than a
+    FastAPI request-lifetime dependency. Use it when a handler must NOT keep a
+    pooled connection checked out across slow external I/O — e.g. the
+    compliance check, which would otherwise hold the connection for the full
+    ~30s Arbiter call and exhaust `DB_POOL_SIZE` under concurrency. Scope each
+    DB phase to its own short `open_tenant_session(...)` block and run the
+    external call between blocks with no transaction open.
+
+    The same hard rule applies: do NOT call `session.commit()` inside — the
+    wrapping `session.begin()` commits/rolls back on exit; an explicit commit
+    drops the search_path + GUCs.
+    """
+    session_maker = get_session_maker()
+    async with session_maker() as session, session.begin():
+        await session.execute(text("SET LOCAL ROLE bim_app"))
+        await session.execute(text(f'SET LOCAL search_path = "{schema}", public'))
+        # Combine the two set_config calls into a single round-trip.
+        await session.execute(
+            text(
+                "SELECT set_config('app.current_org_id', :org, true),"
+                "       set_config('app.current_user_id', :uid, true)"
+            ),
+            {"org": str(organization_id), "uid": str(user_id)},
+        )
+        yield session
+
+
 async def get_tenant_session(
     request: Request,
     user: User = Depends(current_verified_user),
@@ -172,19 +207,7 @@ async def get_tenant_session(
     separated and avoiding any leakage of search_path between them.
     """
     schema: str = request.state.active_schema
-
-    session_maker = get_session_maker()
-    async with session_maker() as session, session.begin():
-        await session.execute(text("SET LOCAL ROLE bim_app"))
-        await session.execute(text(f'SET LOCAL search_path = "{schema}", public'))
-        # Combine the two set_config calls into a single round-trip.
-        await session.execute(
-            text(
-                "SELECT set_config('app.current_org_id', :org, true),"
-                "       set_config('app.current_user_id', :uid, true)"
-            ),
-            {"org": str(organization_id), "uid": str(user.id)},
-        )
+    async with open_tenant_session(schema, organization_id, user.id) as session:
         yield session
 
 

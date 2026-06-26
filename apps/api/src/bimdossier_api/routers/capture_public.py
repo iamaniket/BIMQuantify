@@ -62,12 +62,24 @@ async def _open_tenant_session(org_id: UUID) -> AsyncSession:
     return session
 
 
-async def _load_and_validate_link(session: AsyncSession, token: str) -> CaptureLink:
-    link = (
-        await session.execute(
-            select(CaptureLink).where(CaptureLink.token == token)
-        )
-    ).scalar_one_or_none()
+async def _load_and_validate_link(
+    session: AsyncSession, token: str, *, for_update: bool = False
+) -> CaptureLink:
+    """Load a capture link by token and assert it's currently usable.
+
+    `for_update=True` takes a `SELECT ... FOR UPDATE` row lock so the
+    is_exhausted check and the subsequent `use_count` increment in the write
+    path (`initiate`) serialize across concurrent uploads. Without it, N
+    simultaneous uploads against a `max_uses=1` link all read `use_count=0`,
+    all pass `is_exhausted`, and all increment — consuming a single-use link N
+    times on an unauthenticated endpoint. The lock is held until the
+    surrounding transaction commits. Read-only callers (`validate`) leave it
+    unlocked.
+    """
+    stmt = select(CaptureLink).where(CaptureLink.token == token)
+    if for_update:
+        stmt = stmt.with_for_update()
+    link = (await session.execute(stmt)).scalar_one_or_none()
     if link is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="INVALID_CAPTURE_LINK")
     if not link.is_valid:
@@ -122,7 +134,8 @@ async def initiate_capture_upload(
 ) -> CaptureUploadResponse:
     session = await _open_tenant_session(org_id)
     try:
-        link = await _load_and_validate_link(session, token)
+        # FOR UPDATE: serialize concurrent uploads so the use_count cap holds.
+        link = await _load_and_validate_link(session, token, for_update=True)
 
         fname_lower = payload.filename.lower()
         dot_pos = fname_lower.rfind(".")
@@ -247,14 +260,19 @@ async def complete_capture_upload(
     try:
         link = await _load_and_validate_link(session, token)
 
+        # FOR UPDATE: two concurrent completes must not both read `pending` and
+        # both flip the status / double-write audit rows. The lock serializes
+        # them; the loser sees `ready` and gets ATTACHMENT_NOT_PENDING below.
         att = (
             await session.execute(
-                select(ProjectFile).where(
+                select(ProjectFile)
+                .where(
                     ProjectFile.id == attachment_id,
                     ProjectFile.capture_link_id == link.id,
                     ProjectFile.role == ProjectFileRole.attachment,
                     ProjectFile.deleted_at.is_(None),
                 )
+                .with_for_update()
             )
         ).scalar_one_or_none()
         if att is None:

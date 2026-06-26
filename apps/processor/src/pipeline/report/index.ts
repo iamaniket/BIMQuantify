@@ -16,7 +16,7 @@
  *   5. on any error: POST callback status=failed
  */
 
-import { createHash } from 'node:crypto';
+import { webcrypto } from 'node:crypto';
 
 import { z } from 'zod';
 
@@ -118,7 +118,12 @@ export async function runReportJob<T extends BaseReportPayload>(
       await onProgress?.(90);
     }
 
-    const sha256 = createHash('sha256').update(pdfBytes).digest('hex');
+    // Async WebCrypto digest (offloaded to the libuv threadpool) rather than a
+    // synchronous createHash().update(): a merged dossier PDF can be tens of MB,
+    // and a sync hash would block this single shared event loop (the Fastify
+    // HTTP ingest runs in the same process) for ~100-200ms+ per report. Hex
+    // output is byte-identical to the previous createHash path.
+    const sha256 = Buffer.from(await webcrypto.subtle.digest('SHA-256', pdfBytes)).toString('hex');
 
     logger.info(
       { reportId: payload.report_id, storageKey: payload.storage_key, bytes: pdfBytes.length },

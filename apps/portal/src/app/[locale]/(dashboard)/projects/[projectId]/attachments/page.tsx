@@ -27,6 +27,7 @@ import { useProjectPermissions } from '@/features/permissions';
 import { useProject } from '@/features/projects/useProject';
 import { getAttachmentDownloadUrl } from '@/lib/api/attachments';
 import { ApiError } from '@/lib/api/client';
+import { openExternalUrl } from '@/lib/url';
 import type { Attachment, AttachmentCategoryValue } from '@/lib/api/schemas';
 import { useAllInfinitePages } from '@/lib/query/useAllInfinitePages';
 import { useClientPagination } from '@/lib/query/useTableQuery';
@@ -141,7 +142,7 @@ export default function ProjectAttachmentsPage(): JSX.Element {
       if (tokens === null) return;
       try {
         const resp = await getAttachmentDownloadUrl(tokens.access_token, projectId, att.id);
-        window.open(resp.download_url, '_blank');
+        openExternalUrl(resp.download_url);
       } catch {
         toast.error(tAtt('downloadError'));
       }

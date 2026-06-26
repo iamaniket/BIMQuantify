@@ -1,3 +1,5 @@
+import { federatedModelId } from '@bimdossier/contracts';
+
 import { apiClient } from '@/lib/api/client';
 import {
   ViewerBundleResponseSchema,
@@ -38,13 +40,11 @@ export type EmbedViewerBundle = {
 };
 
 /**
- * Stable viewer scene id for a file. MUST match the portal's `federatedModelId`
- * (`file-<fileId>`) so finding anchors authored in the portal and the app
- * re-base onto the same model in the viewer.
+ * Stable viewer scene id for a file — shared with the portal via
+ * @bimdossier/contracts (`file-<fileId>`) so finding anchors authored in either
+ * client re-base onto the same model in the viewer. Re-exported for local callers.
  */
-export function federatedModelId(fileId: string): string {
-  return `file-${fileId}`;
-}
+export { federatedModelId };
 
 /**
  * snake_case bundle response → the camelCase `EmbedViewerBundle`. Mirrors the

@@ -39,7 +39,11 @@ from bimdossier_api.schemas.compliance import (
     ProjectComplianceReportItem,
     ProjectComplianceReportList,
 )
-from bimdossier_api.tenancy import get_tenant_session, require_active_organization
+from bimdossier_api.tenancy import (
+    get_tenant_session,
+    open_tenant_session,
+    require_active_organization,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +73,6 @@ async def check_compliance(
     file_id: UUID,
     payload: ComplianceCheckRequest,
     request: Request,
-    session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
     settings: Settings = Depends(get_settings),
@@ -78,96 +81,118 @@ async def check_compliance(
 
     The file must have extraction_status=succeeded with metadata and properties
     storage keys available.
+
+    The Arbiter MCP call can take up to ``arbiter_timeout_seconds`` (~30s), so
+    it MUST run with no tenant transaction open — otherwise it would pin a
+    pooled DB connection for the whole call and exhaust ``DB_POOL_SIZE`` under
+    concurrency, cascading into an API-wide blackout for the org. We therefore
+    split the work into three phases, each its own short transaction:
+      1. validate + create the ``running`` Job row (commit, release connection),
+      2. call the Arbiter with NO connection held,
+      3. persist the result/failure + audit.
+    This mirrors the post-commit pattern in ``jobs_internal.py``. Do NOT fold
+    this back into a single ``get_tenant_session`` request.
     """
-    project = await load_project_or_404(session, project_id)
-    membership = await require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.compliance, Action.create)
-    require_project_writable(project)
-    await _load_document_or_404(session, project.id, document_id)
+    schema: str = request.state.active_schema
 
-    pf = (
-        await session.execute(
-            select(ProjectFile).where(
-                ProjectFile.id == file_id,
-                ProjectFile.document_id == document_id,
+    # --- Phase 1: validate everything and persist a `running` Job, then commit
+    # and return the connection to the pool.
+    async with open_tenant_session(schema, active_org_id, user.id) as session:
+        project = await load_project_or_404(session, project_id)
+        membership = await require_membership(session, project.id, user.id)
+        require_permission(membership.role, Resource.compliance, Action.create)
+        require_project_writable(project)
+        await _load_document_or_404(session, project.id, document_id)
+
+        pf = (
+            await session.execute(
+                select(ProjectFile).where(
+                    ProjectFile.id == file_id,
+                    ProjectFile.document_id == document_id,
+                )
             )
+        ).scalar_one_or_none()
+        if pf is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="FILE_NOT_FOUND",
+            )
+
+        if pf.extraction_status != ExtractionStatus.succeeded:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="EXTRACTION_NOT_COMPLETE",
+            )
+
+        if not pf.metadata_storage_key or not pf.properties_storage_key:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="MISSING_ARTIFACTS",
+            )
+
+        if not is_supported_framework(project.country, payload.framework):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"FRAMEWORK_NOT_REGISTERED: '{payload.framework}' is not "
+                    f"registered for country '{project.country}'"
+                ),
+            )
+
+        # Building type drives which rules the Arbiter applies. Prefer an
+        # explicit per-request override, else derive from the project's building
+        # type, else "all" (no narrowing). The Arbiter's rule codes share the
+        # project's neutral building-type vocabulary.
+        effective_building_type = payload.building_type or (
+            project.building_type.value if project.building_type else "all"
         )
-    ).scalar_one_or_none()
-    if pf is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="FILE_NOT_FOUND",
+        # Snapshot the values phases 2/3 need so we don't touch the (closed)
+        # phase-1 session afterwards.
+        metadata_key = pf.metadata_storage_key
+        properties_key = pf.properties_storage_key
+        file_uuid = pf.id
+        project_uuid = project.id
+
+        job = Job(
+            id=uuid4(),
+            project_id=project.id,
+            file_id=pf.id,
+            job_type=JobType.compliance_check,
+            status=JobStatus.running,
+            started_at=datetime.now(UTC),
+            payload={
+                "metadata_key": metadata_key,
+                "properties_key": properties_key,
+                "building_type": effective_building_type,
+                "categories": payload.categories,
+                "framework": payload.framework,
+                "jurisdiction": project.country,
+            },
+            created_by_user_id=user.id,
         )
+        session.add(job)
+        await session.flush()
+        job_id = job.id
 
-    if pf.extraction_status != ExtractionStatus.succeeded:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="EXTRACTION_NOT_COMPLETE",
-        )
-
-    if not pf.metadata_storage_key or not pf.properties_storage_key:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="MISSING_ARTIFACTS",
-        )
-
-    if not is_supported_framework(project.country, payload.framework):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=(
-                f"FRAMEWORK_NOT_REGISTERED: '{payload.framework}' is not "
-                f"registered for country '{project.country}'"
-            ),
-        )
-
-    # Building type drives which rules the Arbiter applies. Prefer an explicit
-    # per-request override, else derive from the project's building type, else
-    # "all" (no narrowing). The Arbiter's rule codes share the project's
-    # neutral building-type vocabulary.
-    effective_building_type = payload.building_type or (
-        project.building_type.value if project.building_type else "all"
-    )
-
-    job = Job(
-        id=uuid4(),
-        project_id=project.id,
-        file_id=pf.id,
-        job_type=JobType.compliance_check,
-        status=JobStatus.pending,
-        payload={
-            "metadata_key": pf.metadata_storage_key,
-            "properties_key": pf.properties_storage_key,
-            "building_type": effective_building_type,
-            "categories": payload.categories,
-            "framework": payload.framework,
-            "jurisdiction": project.country,
-        },
-        created_by_user_id=user.id,
-    )
-    session.add(job)
-
+    # --- Phase 2: external Arbiter call with NO DB connection held.
     try:
-        job.status = JobStatus.running
-        job.started_at = datetime.now(UTC)
-
         result = await run_compliance_check(
-            metadata_key=pf.metadata_storage_key,
-            properties_key=pf.properties_storage_key,
-            file_id=str(pf.id),
+            metadata_key=metadata_key,
+            properties_key=properties_key,
+            file_id=str(file_uuid),
             settings=settings,
             building_type=effective_building_type,
             categories=payload.categories,
             framework=payload.framework,
         )
-
-        job.status = JobStatus.succeeded
-        job.finished_at = datetime.now(UTC)
-        job.result = result
-
     except ComplianceCheckError as exc:
-        job.status = JobStatus.failed
-        job.finished_at = datetime.now(UTC)
-        job.error = str(exc)
+        # --- Phase 3a: record the failure in a fresh short transaction.
+        async with open_tenant_session(schema, active_org_id, user.id) as session:
+            failed_job = await session.get(Job, job_id)
+            if failed_job is not None:
+                failed_job.status = JobStatus.failed
+                failed_job.finished_at = datetime.now(UTC)
+                failed_job.error = str(exc)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"COMPLIANCE_CHECK_FAILED: {exc}",
@@ -178,25 +203,32 @@ async def check_compliance(
     warn_count = sum(1 for r in rules if r.get("status") == "warn")
     fail_count = sum(1 for r in rules if r.get("status") == "fail")
 
-    await audit.record(
-        session,
-        action="compliance.checked",
-        resource_type="project_file",
-        resource_id=pf.id,
-        after={
-            "framework": payload.framework,
-            "pass_count": pass_count,
-            "warn_count": warn_count,
-            "fail_count": fail_count,
-        },
-        actor_user_id=user.id,
-        project_id=project.id,
-        request=request,
-    )
+    # --- Phase 3b: persist the result + audit in a fresh short transaction.
+    async with open_tenant_session(schema, active_org_id, user.id) as session:
+        succeeded_job = await session.get(Job, job_id)
+        if succeeded_job is not None:
+            succeeded_job.status = JobStatus.succeeded
+            succeeded_job.finished_at = datetime.now(UTC)
+            succeeded_job.result = result
+        await audit.record(
+            session,
+            action="compliance.checked",
+            resource_type="project_file",
+            resource_id=file_uuid,
+            after={
+                "framework": payload.framework,
+                "pass_count": pass_count,
+                "warn_count": warn_count,
+                "fail_count": fail_count,
+            },
+            actor_user_id=user.id,
+            project_id=project_uuid,
+            request=request,
+        )
 
     return ComplianceCheckResponse(
-        file_id=str(pf.id),
-        job_id=job.id,
+        file_id=str(file_uuid),
+        job_id=job_id,
         framework=payload.framework,
         checked_at=result.get("checked_at", ""),
         total_rules=result.get("total_rules", 0),
@@ -456,7 +488,7 @@ async def list_project_reports(
                 document_discipline=mdl.discipline.value,
                 file_name=pf.original_filename,
                 file_version=pf.version_number,
-                framework=job_framework,  # type: ignore[arg-type]
+                framework=job_framework,
                 checked_at=result.get("checked_at", ""),
                 finished_at=job.finished_at,
                 pass_count=pass_count,

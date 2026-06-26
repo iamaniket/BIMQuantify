@@ -126,6 +126,12 @@ const preset = {
         body3: ['12px', { lineHeight: '16px', letterSpacing: '-0.01em' }],
         body2: ['14px', { lineHeight: '18px', letterSpacing: '-0.01em' }],
         body1: ['16px', { lineHeight: '20px', letterSpacing: '-0.01em' }],
+        // Form/field label tier. `text-label2` is used across portal forms +
+        // @bimdossier/ui's <Label>; it was previously an UNDEFINED class (no rule
+        // emitted → no size applied), so it's defined here. Metrics match body2
+        // (the size these labels already sat in) to avoid a visual shift. Keep it
+        // registered in packages/ui/src/lib/cn.ts (check-fontsize-sync guards this).
+        label2: ['14px', { lineHeight: '18px', letterSpacing: '-0.01em' }],
         title3: ['18px', { lineHeight: '24px', letterSpacing: '-0.01em' }],
         title2: ['20px', { lineHeight: '24px', letterSpacing: '-0.01em' }],
         title1: ['24px', { lineHeight: '28px', letterSpacing: '-0.01em' }],

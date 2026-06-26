@@ -3,6 +3,12 @@ const { execSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
+// Shared with the runtime resolver (src/features/viewer/embedSource.ts) via
+// @bimdossier/contracts so the copy target and the load path can't drift.
+// @bimdossier/contracts is hand-written CommonJS (no build step), so this
+// require resolves at `expo prebuild` time without the package being built.
+const { VIEWER_EMBED_ASSET_SUBDIR } = require('@bimdossier/contracts');
+
 /**
  * Ships apps/viewer-embed/dist inside the native app so the 3D-viewer WebView
  * loads it from the device filesystem (file://) — no dev server, works offline.
@@ -31,7 +37,7 @@ const path = require('node:path');
  * does not affect Metro/dev or `expo export`.
  */
 
-const ASSET_SUBDIR = 'viewer-embed';
+const ASSET_SUBDIR = VIEWER_EMBED_ASSET_SUBDIR;
 
 /** Absolute path to the apps/viewer-embed package, resolved from the mobile root. */
 function embedAppDir(projectRoot) {
