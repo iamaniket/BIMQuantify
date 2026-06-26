@@ -1,10 +1,10 @@
 'use client';
 
-import { Blueprint, BoundingBox, Box, Eraser, Eye, Footprints, Home, Map, MousePointer2, Orbit, Settings, SquareSplitHorizontal } from '@bimstitch/ui/icons';
+import { Blueprint, BoundingBox, Box, Eraser, Eye, Footprints, Home, Map, MousePointer2, Orbit, Settings, SquareSplitHorizontal } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
-import type { ActionMode, DisplayMode, NavMode, ViewerHandle } from '@bimstitch/viewer';
+import type { ActionMode, DisplayMode, NavMode, ViewerHandle } from '@bimdossier/viewer';
 
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 import type { ViewerSettings } from '@/lib/viewerSettings';

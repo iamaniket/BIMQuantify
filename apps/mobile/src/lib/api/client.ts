@@ -36,6 +36,7 @@ type RequestOptions<TBody> = {
   formEncoded: boolean;
   responseSchema: ZodType<unknown>;
   accessToken: string | undefined;
+  extraHeaders?: Record<string, string>;
 };
 
 type NoContentRequestOptions = {
@@ -85,6 +86,9 @@ function buildHeaders(accessToken: string | undefined): Record<string, string> {
 
 async function request<TResponse, TBody>(options: RequestOptions<TBody>): Promise<TResponse> {
   const headers = buildHeaders(options.accessToken);
+  if (options.extraHeaders !== undefined) {
+    Object.assign(headers, options.extraHeaders);
+  }
   const init: RequestInit = { method: options.method, headers };
   if (options.body !== undefined) {
     if (options.formEncoded) {
@@ -150,7 +154,10 @@ async function requestWithMeta<TResponse, TBody>(
   }
 
   const rawCount = response.headers.get('X-Total-Count');
-  const totalCount = rawCount !== null ? Number(rawCount) : null;
+  // Guard NaN from a malformed header (Number('abc')) so it can't poison
+  // pagination math; degrade to the explicit "unknown total" null path.
+  const parsedCount = rawCount !== null ? Number(rawCount) : null;
+  const totalCount = parsedCount !== null && Number.isFinite(parsedCount) ? parsedCount : null;
   const raw: unknown = await response.json();
   const parsed = options.responseSchema.safeParse(raw);
   if (!parsed.success) {
@@ -186,8 +193,9 @@ export const apiClient = {
     body: unknown,
     responseSchema: ZodType<TResponse>,
     accessToken: string,
+    extraHeaders?: Record<string, string>,
   ): Promise<TResponse> => request<TResponse, unknown>({
-    method: 'POST', path, body, formEncoded: false, responseSchema, accessToken,
+    method: 'POST', path, body, formEncoded: false, responseSchema, accessToken, extraHeaders,
   }),
   patch: async <TResponse>(
     path: string,

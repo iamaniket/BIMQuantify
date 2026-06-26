@@ -1,11 +1,11 @@
 'use client';
 
-import { Sparkles } from '@bimstitch/ui/icons';
+import { Sparkles } from '@bimdossier/ui/icons';
 import { useState, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
-import { Button, Spinner } from '@bimstitch/ui';
+import { Button, Spinner } from '@bimdossier/ui';
 
 import { useProjectPermissions } from '@/features/permissions';
 import { ApiError } from '@/lib/api/client';

@@ -16,7 +16,7 @@ import {
 // --- Mocks ------------------------------------------------------------------
 // Stub the design-system controls used in the toolbar; aria-labels / children
 // text are asserted on.
-vi.mock('@bimstitch/ui', () => ({
+vi.mock('@bimdossier/ui', () => ({
   IconButton: ({ 'aria-label': label, onClick }: { 'aria-label': string; onClick?: () => void }) => (
     <button type="button" aria-label={label} onClick={onClick} />
   ),
@@ -70,7 +70,7 @@ function makeFinding(overrides: Partial<Finding> = {}): Finding {
     created_by_user_id: '33333333-3333-3333-3333-333333333333',
     source_checklist_item_id: null,
     borgingsmoment_id: null,
-    linked_model_id: null,
+    linked_document_id: null,
     linked_file_id: null,
     linked_element_global_id: null,
     linked_file_type: null,

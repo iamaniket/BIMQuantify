@@ -86,10 +86,13 @@ test.describe.serial('Org templates — finding CRUD', () => {
     const overviewTab = page.getByRole('tab', { name: /overview/i });
     await expect(overviewTab).toHaveAttribute('aria-selected', 'true');
 
-    // The unified Overview renders Finding/Report section headings…
-    await expect(page.getByRole('heading', { name: 'Finding templates' })).toBeVisible();
-    // …and the empty report section message.
-    await expect(page.getByText(/no report templates created yet/i)).toBeVisible();
+    // The redesigned Overview is a KPI + charts dashboard (StatCards +
+    // ChartSections, no section headings). Assert the Finding-templates KPI card
+    // renders — exact match so it doesn't substring-hit "No finding templates yet.".
+    await expect(page.getByText('Finding templates', { exact: true })).toBeVisible();
+    // …and the empty report-section message, which renders in two chart sections
+    // when the org has no templates — match the first.
+    await expect(page.getByText(/no report templates created yet/i).first()).toBeVisible();
 
     // Hero KPI sub copy
     await expect(page.getByText(/across all types/i)).toBeVisible();
@@ -168,9 +171,14 @@ test.describe.serial('Org templates — finding CRUD', () => {
   test('T4: Template appears in Overview and table has correct columns', async ({ page }) => {
     await gotoTemplates(page);
 
-    // Overview tab: finding template card visible with its custom-field count
+    // Overview tab: finding template card visible with its custom-field count.
     await expect(page.getByText(TPL_A)).toBeVisible();
-    await expect(page.getByText(/1 custom field/i)).toBeVisible();
+    // The redesigned Overview renders each template's field count as a labeled bar
+    // in the "Custom fields per template" section (name + numeric count, not the
+    // old "N custom fields" prose). TPL_A has one custom field → its bar value
+    // cell (the row's last span) shows "1".
+    const tplFieldRow = page.getByText(TPL_A, { exact: true }).locator('..');
+    await expect(tplFieldRow.locator('span').last()).toHaveText('1');
 
     // Switch to Templates tab
     await page.getByRole('tab', { name: /^templates/i }).click();

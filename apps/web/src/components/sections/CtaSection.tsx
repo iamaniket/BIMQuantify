@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { HeroGrid } from '@bimstitch/brand';
+import { HeroGrid } from '@bimdossier/brand';
 
 import { Reveal } from '@/components/shared/Reveal';
 

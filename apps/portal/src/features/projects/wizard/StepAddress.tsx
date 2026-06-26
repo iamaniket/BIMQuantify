@@ -4,7 +4,7 @@ import { useId, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 import { useFormContext, useWatch } from 'react-hook-form';
 
-import { Input, Label } from '@bimstitch/ui';
+import { Input, Label } from '@bimdossier/ui';
 
 import type { ResolvedAddress } from '@/features/jurisdictions/nl/addressLookup';
 import { useRegisterField } from '@/hooks/useRegisterField';

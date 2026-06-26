@@ -8,7 +8,7 @@ import { AppHeader, type Crumb } from '@/components/shared/header/AppHeader';
 import { useAppHeaderOverrides } from '@/components/shared/header/AppHeaderContext';
 import { NotificationsBell } from '@/components/shared/header/NotificationsBell';
 import { useSidebar } from '@/components/shared/sidebar/SidebarContext';
-import { useModels } from '@/features/models/useModels';
+import { useDocuments } from '@/features/documents/useDocuments';
 import { ModelSwitcher } from '@/features/navigation/ModelSwitcher';
 import { useViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
 import { useProject } from '@/features/projects/useProject';
@@ -72,6 +72,9 @@ function resolveCrumbs(
   if (pathname.startsWith('/settings')) {
     return [{ label: t('settings'), href: undefined }];
   }
+  if (pathname.startsWith('/help')) {
+    return [{ label: t('help'), href: undefined }];
+  }
   // Admin shell — the detail page replaces these via useHeaderCrumbsOverride
   // so the tenant's actual name shows up; the rest get static crumbs.
   if (ADMIN_ORG_DETAIL_RE.test(pathname)) {
@@ -100,7 +103,7 @@ export function AppHeaderRoute(): JSX.Element {
   const modelId = target.kind === 'single' ? target.modelId : '';
 
   const projectQuery = useProject(projectId);
-  const modelsQuery = useModels(projectId);
+  const modelsQuery = useDocuments(projectId);
 
   const { status, crumbs: crumbsOverride } = useAppHeaderOverrides();
 

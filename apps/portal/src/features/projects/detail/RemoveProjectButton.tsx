@@ -1,10 +1,10 @@
 'use client';
 
-import { Trash2 } from '@bimstitch/ui/icons';
+import { Trash2 } from '@bimdossier/ui/icons';
 import { useState, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 
-import { Button } from '@bimstitch/ui';
+import { Button } from '@bimdossier/ui';
 
 import { ApiError } from '@/lib/api/client';
 import type { Project } from '@/lib/api/schemas';

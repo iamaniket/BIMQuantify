@@ -1,4 +1,4 @@
-import type { Plugin, ViewerContext } from '@bimstitch/viewer';
+import type { Plugin, ViewerContext } from '@bimdossier/viewer';
 
 type Vec3Like = { x: number; y: number; z: number };
 

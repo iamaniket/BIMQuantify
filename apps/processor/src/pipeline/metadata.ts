@@ -46,6 +46,15 @@ export type SpatialNode = {
   children: SpatialNode[];
 };
 
+/** A flat IfcBuildingStorey record sent to the API, which upserts it onto the
+ * model's `storeys` table (keyed by globalId). Derived from the spatial tree. */
+export type StoreyInfo = {
+  expressID: number;
+  globalId: string | null;
+  name: string | null;
+  elevation: number | null;
+};
+
 export type ElementEntry = {
   expressID: number;
   globalId: string | null;
@@ -84,6 +93,13 @@ export type Metadata = {
     max: [number, number, number];
   } | null;
   totalElements: number;
+  /**
+   * Building true north as a bearing in the floor-plan frame: radians CLOCKWISE
+   * from plan-up (+planAxisY). Projected from IfcGeometricRepresentationContext
+   * .TrueNorth by `extractTrueNorth`. Absent when the model declares no TrueNorth
+   * or the plan isn't in the world XY plane. Drives the 2D plan's north compass.
+   */
+  trueNorth?: number;
 };
 
 export async function buildMetadata(
@@ -240,6 +256,29 @@ function isSpatialType(type: string): boolean {
   return ['IfcSite', 'IfcBuilding', 'IfcBuildingStorey', 'IfcSpace'].includes(
     type,
   );
+}
+
+/**
+ * Flatten every IfcBuildingStorey out of the spatial tree, in document order.
+ * The API assigns display ordering by elevation on ingest. Pure over the tree
+ * the metadata walk already built, so no extra web-ifc crossings.
+ */
+export function extractStoreys(tree: SpatialNode | null): StoreyInfo[] {
+  if (tree === null) return [];
+  const out: StoreyInfo[] = [];
+  const walk = (node: SpatialNode): void => {
+    if (node.type === 'IfcBuildingStorey') {
+      out.push({
+        expressID: node.expressID,
+        globalId: node.globalId,
+        name: node.name,
+        elevation: node.elevation,
+      });
+    }
+    for (const child of node.children) walk(child);
+  };
+  walk(tree);
+  return out;
 }
 
 // IfcZone groups IfcSpaces via IfcRelAssignsToGroup (RelatingGroup = the zone,

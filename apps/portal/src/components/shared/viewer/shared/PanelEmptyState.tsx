@@ -2,7 +2,7 @@
 
 import type { ComponentType, JSX } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 type PanelEmptyStateProps = {
   icon?: ComponentType<{ className?: string }>;

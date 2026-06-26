@@ -28,7 +28,7 @@ async def test_failed_callback_records_retriable_classification(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, _model_id, file_id = await _ready_file(client, fake, org_user, name="cls1.ifc")
+    project_id, _document_id, file_id = await _ready_file(client, fake, org_user, name="cls1.ifc")
     job = await _latest_job(client, org_user["access_token"], project_id)
 
     cb = await client.post(
@@ -58,7 +58,7 @@ async def test_failed_callback_defaults_to_permanent(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, _model_id, file_id = await _ready_file(client, fake, org_user, name="cls2.ifc")
+    project_id, _document_id, file_id = await _ready_file(client, fake, org_user, name="cls2.ifc")
     job = await _latest_job(client, org_user["access_token"], project_id)
 
     cb = await client.post(

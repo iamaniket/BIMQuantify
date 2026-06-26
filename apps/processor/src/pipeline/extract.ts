@@ -34,6 +34,7 @@ import {
 import type { ProgressReporter, WorkerJob } from '../queue/queue.js';
 import { classifyError } from './errors.js';
 import { UnsupportedSchemaError } from './ifc.js';
+import type { StoreyInfo } from './metadata.js';
 import { time } from './timing.js';
 import { extractIfcFromZip } from './unzip.js';
 import { type ExtractionWorkerHandle, startExtractionWorker } from './worker-host.js';
@@ -160,6 +161,7 @@ export async function runExtraction(
     let floorPlansKey: string | null = null;
     let projectGlobalId: string | null = null;
     let detectedKind: string | null = null;
+    let storeys: StoreyInfo[] = [];
 
     logger.info('generating fragments + walking model');
     // One worker gets the IFC buffer via transfer, the other a copy (also
@@ -217,6 +219,7 @@ export async function runExtraction(
             logStage('walk', msg.timings.walk);
             projectGlobalId = msg.projectGlobalId;
             detectedKind = msg.detectedKind;
+            storeys = msg.storeys;
             startUpload(metadataKey, msg.metadataJson, 'application/json');
             startUpload(propertiesKey, msg.propertiesJson, 'application/json');
           }
@@ -275,6 +278,7 @@ export async function runExtraction(
       ...(outlineKey !== null ? { outline_key: outlineKey } : {}),
       ...(floorPlansKey !== null ? { floor_plans_key: floorPlansKey } : {}),
       ...(detectedKind !== null ? { detected_kind: detectedKind } : {}),
+      ...(storeys.length > 0 ? { storeys } : {}),
       started_at: startedAt,
       finished_at: new Date().toISOString(),
       extractor_version: version,

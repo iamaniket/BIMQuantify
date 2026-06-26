@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -14,11 +15,13 @@ from arbiter.rules.schema import (
 if TYPE_CHECKING:
     from arbiter.rules.schema import RuleDefinition
 
+logger = logging.getLogger("arbiter")
+
 _FRAMEWORK_VALUES = {f.value for f in RegulationFramework}
 
 # Two-letter codes recognized as country directories in the rules tree.
 # Used purely for path inference — the actual list of supported jurisdictions
-# lives in `bimstitch_api.jurisdictions`.
+# lives in `bimdossier_api.jurisdictions`.
 _COUNTRY_CODES = {"nl", "de", "be", "fr", "uk"}
 
 
@@ -35,6 +38,10 @@ class RuleIndex:
                 continue
             raw = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
             if raw is None:
+                # Empty / all-comment / truncated file: the rule silently
+                # vanishes from coverage otherwise, so a model could pass simply
+                # because the rule never loaded. Make the skip observable.
+                logger.warning("skipping empty rule file %s", yaml_path)
                 continue
 
             inferred_country, inferred_fw = self._infer_from_path(yaml_path, rules_dir)
@@ -112,6 +119,14 @@ class RuleIndex:
         building_type: str = "all",
         categories: list[str] | None = None,
     ) -> list[RuleDefinition]:
+        if framework is None:
+            # No framework filter runs rules across ALL frameworks (bbl + wkb +
+            # future jurisdictions). That's a deliberately broad default, but log
+            # it so a caller that meant a single regime isn't silently widened.
+            logger.warning(
+                "get_applicable_rules called with framework=None — evaluating "
+                "rules across ALL frameworks",
+            )
         rules = self.get_rules(
             framework=framework,
             status=ImplementationStatus.implemented,

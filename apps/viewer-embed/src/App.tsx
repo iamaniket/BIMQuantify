@@ -9,12 +9,12 @@ import {
 
 // Value from the PDF-free 3D entry (no pdfjs in the bundle); types from the
 // barrel are erased at build time, so importing them there is free.
-import { IfcViewer } from '@bimstitch/viewer/viewer-3d';
+import { IfcViewer } from '@bimdossier/viewer/viewer-3d';
 import type {
   EntityMarkerData,
   ViewerBundle,
   ViewerHandle,
-} from '@bimstitch/viewer';
+} from '@bimdossier/viewer';
 
 import { createBridge, type Bridge, type HostMessage, type ViewMode } from './bridge';
 import { FloorPlanPane } from './FloorPlanPane';
@@ -26,11 +26,17 @@ const SPLIT_MAX = 0.8;
 
 /**
  * The embeddable viewer host. Holds no domain state — it waits for the native
- * shell to push a `loadModel`, then composes the 3D `IfcViewer` and the 2D
- * `FloorPlanViewer` into one of three layouts (3D / 2D / Split) chosen by the
- * native dropdown over the bridge. The 3D viewer stays mounted across switches
- * (hidden in 2D) to avoid costly fragment reloads. Markers and place-mode are
- * driven entirely by host messages.
+ * shell to push a `loadModel`, then composes the 3D `IfcViewer` and the 2D plan
+ * pane into one of three layouts (3D / 2D / Split) chosen by the native dropdown
+ * over the bridge. The 3D viewer stays mounted across switches (hidden in 2D) to
+ * avoid costly fragment reloads. Markers and place-mode are driven entirely by
+ * host messages.
+ *
+ * NOTE: the 2D plan pane is currently STUBBED — the standalone pdfjs-free
+ * floor-plan viewer was removed from `@bimdossier/viewer` (the web now has a
+ * single `DocumentViewer`) and a dedicated mobile 2D viewer will be rebuilt
+ * separately. Until then the embed defaults to 3D and the 2D/Split pane shows a
+ * placeholder.
  */
 export function App() {
   const [bundle, setBundle] = useState<ViewerBundle | null>(null);
@@ -53,7 +59,12 @@ export function App() {
   const planReady = floorPlan.status === 'ready' && floorPlan.data !== null;
 
   const exec = useCallback((name: string, args?: unknown): void => {
-    handleRef.current?.commands.execute(name, args).catch(() => undefined);
+    handleRef.current?.commands.execute(name, args).catch((err: unknown) => {
+      // Don't swallow: a failed marker-sync / placement / isolate otherwise
+      // leaves a misleading view and the native host never learns. console.error
+      // is forwarded over the bridge to Metro/Logcat.
+      console.error(`[viewer-embed] command "${name}" failed`, err);
+    });
   }, []);
 
   // A 2D/Split request only sticks when this model actually has a plan; the
@@ -73,9 +84,9 @@ export function App() {
           setBundle(msg.bundle);
           setAdditionalBundles(msg.additionalBundles ?? []);
           setActiveLevel(0);
-          setViewMode(
-            msg.viewMode ?? (msg.bundle.floorPlansUrl !== undefined ? '2d' : '3d'),
-          );
+          // 2D plan rendering is stubbed (see file header), so default to 3D
+          // regardless of floor-plan availability; honor an explicit host mode.
+          setViewMode(msg.viewMode ?? '3d');
           break;
         case 'setViewMode':
           requestViewMode(msg.mode);
@@ -156,14 +167,14 @@ export function App() {
       if (localIds.length > 0) {
         const modelId = bundle.modelId;
         const items = localIds.map((localId) => ({ modelId, localId }));
-        handle.commands.execute('visibility.isolateItem', items).catch(() => undefined);
+        handle.commands.execute('visibility.isolateItem', items).catch((err: unknown) => { console.error('[viewer-embed] visibility.isolateItem failed', err); });
       }
     } else {
-      handle.commands.execute('visibility.showAll').catch(() => undefined);
+      handle.commands.execute('visibility.showAll').catch((err: unknown) => { console.error('[viewer-embed] visibility.showAll failed', err); });
     }
 
     return () => {
-      handle.commands.execute('visibility.showAll').catch(() => undefined);
+      handle.commands.execute('visibility.showAll').catch((err: unknown) => { console.error('[viewer-embed] visibility.showAll failed', err); });
     };
   }, [viewerReady, activeLevel, viewMode, bundle, floorPlan.levels, floorPlan.storeyMembership]);
 
@@ -193,7 +204,7 @@ export function App() {
     if (pendingMarkersRef.current) {
       handle.commands
         .execute('entity-marker.sync', pendingMarkersRef.current)
-        .catch(() => undefined);
+        .catch((err: unknown) => { console.error('[viewer-embed] entity-marker.sync (pending flush) failed', err); });
       pendingMarkersRef.current = null;
     }
 

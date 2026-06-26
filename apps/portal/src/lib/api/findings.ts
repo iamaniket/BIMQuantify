@@ -37,7 +37,7 @@ export async function listFindings(
   if (filters?.assignee) params.set('assignee_user_id', filters.assignee);
   // UUID params: an empty string is not a valid UUID and 422s server-side, so
   // only send them when non-empty (truthy), not merely `!== undefined`.
-  if (filters?.linkedModelId) params.set('linked_model_id', filters.linkedModelId);
+  if (filters?.linkedModelId) params.set('linked_document_id', filters.linkedModelId);
   if (filters?.linkedFileId) params.set('linked_file_id', filters.linkedFileId);
   if (filters?.linkedElementGlobalId !== undefined) {
     params.set('linked_element_global_id', filters.linkedElementGlobalId);

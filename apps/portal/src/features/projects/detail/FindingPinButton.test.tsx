@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { DocumentViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import type { DocumentViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import { IntlWrapper } from '@/__tests__/intl-wrapper';
 
@@ -119,7 +119,7 @@ describe('FindingPinButton placement', () => {
       anchor_y: 2,
       anchor_z: 3,
       linked_file_id: 'file-1',
-      linked_model_id: 'model-1',
+      linked_document_id: 'model-1',
       linkedElementGlobalId: 'GID42',
     });
   });
@@ -152,7 +152,7 @@ describe('FindingPinButton placement', () => {
       anchor_y: 5,
       anchor_z: 6,
       linked_file_id: 'file-1',
-      linked_model_id: 'model-1',
+      linked_document_id: 'model-1',
     });
   });
 

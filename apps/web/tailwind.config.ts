@@ -1,6 +1,6 @@
 import type { Config } from 'tailwindcss';
 
-import preset from '@bimstitch/tailwind-config';
+import preset from '@bimdossier/tailwind-config';
 
 const config: Config = {
   presets: [preset],

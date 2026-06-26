@@ -1,4 +1,4 @@
-"""Catalog parity + var-rendering smoke tests for `bimstitch_api.i18n`.
+"""Catalog parity + var-rendering smoke tests for `bimdossier_api.i18n`.
 
 These run as part of the regular pytest sweep; they don't need the DB,
 HTTP client, or any fixtures. The whole point is to fail loudly the
@@ -13,7 +13,7 @@ import re
 
 import pytest
 
-from bimstitch_api.i18n import (
+from bimdossier_api.i18n import (
     BILINGUAL_SEPARATOR,
     PLATFORM_DEFAULT_LOCALE,
     SUPPORTED_LOCALES,
@@ -21,7 +21,7 @@ from bimstitch_api.i18n import (
     t,
     t_bilingual,
 )
-from bimstitch_api.i18n.messages import en_messages, nl_messages
+from bimdossier_api.i18n.messages import en_messages, nl_messages
 
 
 _PLACEHOLDER_RE = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
@@ -81,7 +81,7 @@ def test_t_falls_back_to_platform_default_on_missing_locale_key(monkeypatch: pyt
     """A bad deploy that loses a key from one locale should still render
     something readable rather than crashing the email send."""
     # Inject a temporary key only in the platform-default catalog.
-    from bimstitch_api.i18n import _CATALOGS
+    from bimdossier_api.i18n import _CATALOGS
 
     monkeypatch.setitem(
         _CATALOGS[PLATFORM_DEFAULT_LOCALE], "_test.only_in_default", "fallback"
@@ -122,6 +122,6 @@ def test_coerce_locale_narrows_strings() -> None:
 
 def test_supported_locales_matches_catalog_keys() -> None:
     """If we add a new locale module, this should stay in sync."""
-    from bimstitch_api.i18n import _CATALOGS
+    from bimdossier_api.i18n import _CATALOGS
 
     assert set(SUPPORTED_LOCALES) == set(_CATALOGS.keys())

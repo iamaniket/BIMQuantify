@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { ArrowLeft } from '@bimstitch/ui/icons';
+import { ArrowLeft } from '@bimdossier/ui/icons';
 
 import { HeroShell } from '@/components/sections/HeroShell';
 import { Link } from '@/i18n/navigation';

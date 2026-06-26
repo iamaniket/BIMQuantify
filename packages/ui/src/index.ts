@@ -91,6 +91,10 @@ export {
 export type { TooltipContentProps } from './Tooltip.js';
 export { Badge } from './Badge.js';
 export type { BadgeProps, BadgeVariant } from './Badge.js';
+export { IconTile } from './IconTile.js';
+export type { IconTileProps, IconTileTone, IconTileSize } from './IconTile.js';
+export { MediaRow } from './MediaRow.js';
+export type { MediaRowProps } from './MediaRow.js';
 export { Eyebrow } from './Eyebrow.js';
 export type { EyebrowProps, EyebrowSize } from './Eyebrow.js';
 export { CountChip } from './CountChip.js';

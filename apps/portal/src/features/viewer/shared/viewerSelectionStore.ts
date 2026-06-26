@@ -46,7 +46,7 @@ export const useViewerSelectionStore = create<ViewerSelectionState>()(
       setTarget: (projectId, target) => set((s) => ({ byProject: { ...s.byProject, [projectId]: target } })),
     }),
     {
-      name: 'bimstitch.viewerSelection',
+      name: 'bimdossier.viewerSelection',
       storage: createJSONStorage(() => safeSessionStorage),
       // Manual rehydrate (see useViewerSelectionHydrated) so the server and the
       // first client render always agree on the default — avoids hydration

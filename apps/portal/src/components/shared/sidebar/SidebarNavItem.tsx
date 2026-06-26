@@ -1,10 +1,10 @@
 'use client';
 
-import type { AppIcon } from '@bimstitch/ui';
+import type { AppIcon } from '@bimdossier/ui';
 import { Link } from '@/i18n/navigation';
 import type { JSX, ReactNode } from 'react';
 
-import { Tooltip, TooltipContent, TooltipTrigger, controlSizeStyles } from '@bimstitch/ui';
+import { Tooltip, TooltipContent, TooltipTrigger, controlSizeStyles } from '@bimdossier/ui';
 
 type SidebarNavItemProps = {
   label: string;

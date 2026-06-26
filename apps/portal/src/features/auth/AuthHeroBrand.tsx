@@ -7,8 +7,8 @@ import {
   LegalFooter,
   SystemStatusBadge,
   type SystemStatusValue,
-} from '@bimstitch/brand';
-import { NetherlandsMap, NL_ASPECT_RATIO_CSS, type MapMarker } from '@bimstitch/map';
+} from '@bimdossier/brand';
+import { NetherlandsMap, NL_ASPECT_RATIO_CSS, type MapMarker } from '@bimdossier/map';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
@@ -24,7 +24,7 @@ import { formatApproxCount } from '@/lib/formatting/numbers';
  * and the legal footer.
  *
  * Used by every non-dashboard auth page so they share an identical
- * left-pane experience. Lives outside `@bimstitch/ui` because it depends
+ * left-pane experience. Lives outside `@bimdossier/ui` because it depends
  * on portal-specific data hooks (system status, projects map).
  */
 export function AuthHeroBrand(): JSX.Element {
@@ -62,12 +62,12 @@ export function AuthHeroBrand(): JSX.Element {
 
       {/* Top: brand row */}
       <div className="relative flex items-center gap-3">
-        <BrandMark size={38} tone="on-dark" />
+        <BrandMark size={42} plate />
         <div>
-          <div className="font-display text-[18px] font-semibold leading-tight tracking-tight text-white">
+          <div className="font-display text-[20px] font-semibold leading-tight tracking-tight text-white">
             BimDossier
           </div>
-          <div className="mt-0.5 text-[10.5px] font-semibold uppercase tracking-[0.10em] text-white/60">
+          <div className="mt-0.5 text-[11.5px] font-semibold uppercase tracking-[0.10em] text-white/60">
             {t('brand.tagline')}
           </div>
         </div>
@@ -151,7 +151,7 @@ export function AuthHeroBrand(): JSX.Element {
             >
               <NetherlandsMap
                 responsiveHeight="100%"
-                fill="var(--color-primary-light, #e5ecf6)"
+                fill="var(--primary-light)"
                 markers={markers}
                 animatePulse
                 ariaLabel="Live BimDossier project locations across the Netherlands"

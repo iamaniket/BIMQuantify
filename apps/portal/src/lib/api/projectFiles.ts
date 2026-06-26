@@ -2,7 +2,7 @@ import { computeFileSha256 } from '../upload/sha256';
 import { apiClient } from './client';
 import {
   InitiateUploadResponseSchema,
-  ModelSchema,
+  DocumentSchema,
   ProjectFileDownloadResponseSchema,
   ProjectFileListSchema,
   ProjectFileSchema,
@@ -10,7 +10,7 @@ import {
   ViewerBundleResponseSchema,
   type InitiateUploadRequest,
   type InitiateUploadResponse,
-  type Model,
+  type Document,
   type ProjectFile,
   type ProjectFileDownloadResponse,
   type ProjectFileList,
@@ -31,7 +31,7 @@ export async function initiateUpload(
   input: InitiateUploadRequest,
 ): Promise<InitiateUploadResponse> {
   return apiClient.post<InitiateUploadResponse>(
-    `/projects/${projectId}/models/${modelId}/files/initiate`,
+    `/projects/${projectId}/documents/${modelId}/files/initiate`,
     input,
     InitiateUploadResponseSchema,
     accessToken,
@@ -45,7 +45,7 @@ export async function completeUpload(
   fileId: string,
 ): Promise<ProjectFile> {
   return apiClient.post<ProjectFile>(
-    `/projects/${projectId}/models/${modelId}/files/${fileId}/complete`,
+    `/projects/${projectId}/documents/${modelId}/files/${fileId}/complete`,
     {},
     ProjectFileSchema,
     accessToken,
@@ -64,7 +64,7 @@ export async function listProjectFiles(
   }
   const query = params.size === 0 ? '' : `?${params.toString()}`;
   return apiClient.get<ProjectFileList>(
-    `/projects/${projectId}/models/${modelId}/files${query}`,
+    `/projects/${projectId}/documents/${modelId}/files${query}`,
     ProjectFileListSchema,
     accessToken,
   );
@@ -77,7 +77,7 @@ export async function deleteProjectFile(
   fileId: string,
 ): Promise<void> {
   return apiClient.delete(
-    `/projects/${projectId}/models/${modelId}/files/${fileId}`,
+    `/projects/${projectId}/documents/${modelId}/files/${fileId}`,
     accessToken,
   );
 }
@@ -92,11 +92,11 @@ export async function restoreModelFileVersion(
   projectId: string,
   modelId: string,
   fileId: string,
-): Promise<Model> {
-  return apiClient.post<Model>(
-    `/projects/${projectId}/models/${modelId}/files/${fileId}/restore`,
+): Promise<Document> {
+  return apiClient.post<Document>(
+    `/projects/${projectId}/documents/${modelId}/files/${fileId}/restore`,
     {},
-    ModelSchema,
+    DocumentSchema,
     accessToken,
   );
 }
@@ -108,7 +108,7 @@ export async function getDownloadUrl(
   fileId: string,
 ): Promise<ProjectFileDownloadResponse> {
   return apiClient.get<ProjectFileDownloadResponse>(
-    `/projects/${projectId}/models/${modelId}/files/${fileId}/download`,
+    `/projects/${projectId}/documents/${modelId}/files/${fileId}/download`,
     ProjectFileDownloadResponseSchema,
     accessToken,
   );
@@ -121,7 +121,7 @@ export async function getViewerBundle(
   fileId: string,
 ): Promise<ViewerBundleResponse> {
   return apiClient.get<ViewerBundleResponse>(
-    `/projects/${projectId}/models/${modelId}/files/${fileId}/viewer-bundle`,
+    `/projects/${projectId}/documents/${modelId}/files/${fileId}/viewer-bundle`,
     ViewerBundleResponseSchema,
     accessToken,
   );
@@ -150,7 +150,7 @@ export async function retryExtraction(
   fileId: string,
 ): Promise<ProjectFile> {
   return apiClient.post<ProjectFile>(
-    `/projects/${projectId}/models/${modelId}/files/${fileId}/retry-extraction`,
+    `/projects/${projectId}/documents/${modelId}/files/${fileId}/retry-extraction`,
     {},
     ProjectFileSchema,
     accessToken,

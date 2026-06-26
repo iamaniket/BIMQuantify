@@ -6,8 +6,8 @@ import { useAttachments } from '@/features/attachments/useAttachments';
 import { useCertificates } from '@/features/certificates/useCertificates';
 import { useFindings } from '@/features/findings/useFindings';
 import { useJurisdiction } from '@/features/jurisdictions/useJurisdictions';
-import { isModelViewable } from '@/features/models/modelViewability';
-import { useModelsWithVersions } from '@/features/models/useModelsWithVersions';
+import { isDocumentViewable } from '@/features/documents/documentViewability';
+import { useDocumentsWithVersions } from '@/features/documents/useDocumentsWithVersions';
 import { useProject } from '@/features/projects/useProject';
 import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 
@@ -45,7 +45,7 @@ export function useDossierCompleteness(
   // Versions are needed to know which models have a viewable/processed file
   // (what fulfils the model-backed Drawings slot). Polls while extracting so
   // the checklist flips to met without a manual refresh.
-  const modelsQuery = useModelsWithVersions(projectId, true);
+  const modelsQuery = useDocumentsWithVersions(projectId, true);
   const findingsQuery = useFindings(projectId);
   const deadlinesQuery = useDeadlines(projectId);
 
@@ -56,7 +56,7 @@ export function useDossierCompleteness(
   const models = modelsQuery.data;
   const modelCount = models?.length ?? 0;
   const viewableModelCount = useMemo(
-    () => (models ?? []).filter((m) => isModelViewable(m.versions)).length,
+    () => (models ?? []).filter((m) => isDocumentViewable(m.versions)).length,
     [models],
   );
 

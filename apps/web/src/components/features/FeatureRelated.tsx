@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { ArrowRight } from '@bimstitch/ui/icons';
+import { ArrowRight } from '@bimdossier/ui/icons';
 
 import { Reveal } from '@/components/shared/Reveal';
 import { Link } from '@/i18n/navigation';

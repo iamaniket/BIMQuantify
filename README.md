@@ -1,4 +1,4 @@
-# BIMstitch
+# BimDossier
 
 > AI-powered BIM quantity takeoff platform supporting IFC and BCF formats
 
@@ -8,14 +8,14 @@
 
 ## Overview
 
-BIMstitch is a monorepo built with [Turborepo](https://turbo.build) that provides an AI-based takeoff tool for Building Information Modeling (BIM). It parses **IFC** (Industry Foundation Classes) files and **BCF** (BIM Collaboration Format) files to automatically generate accurate material and cost takeoffs using AI.
+BimDossier is a monorepo built with [Turborepo](https://turbo.build) that provides an AI-based takeoff tool for Building Information Modeling (BIM). It parses **IFC** (Industry Foundation Classes) files and **BCF** (BIM Collaboration Format) files to automatically generate accurate material and cost takeoffs using AI.
 
 ---
 
 ## Monorepo Structure
 
 ```
-BIMstitch/
+BimDossier/
 ├── apps/
 │   ├── web/          # Next.js 14 frontend — BIM viewer & takeoff dashboard
 │   └── api/          # Fastify API server — IFC/BCF processing & AI takeoff
@@ -43,8 +43,8 @@ BIMstitch/
 
 ```bash
 # Clone the repository
-git clone https://github.com/iamaniket/BIMstitch.git
-cd BIMstitch
+git clone https://github.com/iamaniket/BimDossier.git
+cd BimDossier
 
 # Install all dependencies
 pnpm install
@@ -74,7 +74,7 @@ pnpm --filter=api dev
 pnpm build
 
 # Build a specific package
-pnpm --filter=@bimstitch/ifc-parser build
+pnpm --filter=@bimdossier/ifc-parser build
 ```
 
 ### Testing
@@ -175,7 +175,7 @@ docker compose up -d --build
 
  cd apps/api
 uv run alembic -c alembic.master.ini upgrade head
-uv run python -m bimstitch_api.seed
+uv run python -m bimdossier_api.seed
 
 viewer build
-pnpm --filter=@bimstitch/viewer build
+pnpm --filter=@bimdossier/viewer build

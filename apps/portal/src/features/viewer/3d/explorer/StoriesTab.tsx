@@ -1,6 +1,6 @@
 'use client';
 
-import { Building } from '@bimstitch/ui/icons';
+import { Building } from '@bimdossier/ui/icons';
 import {
   useState, useMemo, useCallback, type JSX,
 } from 'react';

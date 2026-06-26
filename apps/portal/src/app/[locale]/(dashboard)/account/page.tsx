@@ -1,9 +1,9 @@
 'use client';
 
-import { Camera, Check, ChevronRight, Mail, Pencil, Shield, Trash2, UserRound, Users, X } from '@bimstitch/ui/icons';
+import { Camera, Check, ChevronRight, Mail, Pencil, Shield, Trash2, UserRound, Users, X } from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 import {
   useCallback,
   useEffect,
@@ -12,6 +12,7 @@ import {
   type JSX,
 } from 'react';
 import { toast } from 'sonner';
+import * as Sentry from '@sentry/nextjs';
 
 import {
   Badge,
@@ -22,7 +23,7 @@ import {
   Eyebrow,
   Skeleton,
   TabsContent,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { HeroImage } from '@/components/shared/layout/HeroImage';
 import { HeroShell } from '@/components/shared/layout/HeroShell';
@@ -30,6 +31,7 @@ import { PageShell } from '@/components/shared/layout/PageShell';
 import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ApiError } from '@/lib/api/client';
+import { getErrorMessage } from '@/lib/api/errorMessages';
 import {
   acceptInvitation,
   declineInvitation,
@@ -84,7 +86,7 @@ function AccountHero({
           <img
             src={avatarUrl}
             alt={userName}
-            className="h-[112px] w-[160px] rounded-[10px] object-cover shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]"
+            className="h-[112px] w-[160px] rounded-[10px] object-cover shadow-hero-thumbnail"
           />
         ) : (
           <HeroImage>
@@ -514,7 +516,13 @@ export default function AccountPage(): JSX.Element {
 
   useEffect(() => {
     if (accessToken === null || !user?.avatar_url) return;
-    void getAvatarUrl(accessToken).then(setAvatarPresignedUrl).catch(() => {});
+    void getAvatarUrl(accessToken)
+      .then(setAvatarPresignedUrl)
+      .catch((err: unknown) => {
+        // Cosmetic (falls back to initials), but a persistent presign/storage
+        // outage otherwise looks identical to "no avatar" — leave a dev trace.
+        if (process.env.NODE_ENV !== 'production') console.warn('[account] avatar presign failed', err);
+      });
   }, [accessToken, user?.avatar_url]);
 
   const onAvatarPick = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
@@ -526,8 +534,9 @@ export default function AccountPage(): JSX.Element {
       await refreshMe();
       const url = await getAvatarUrl(accessToken);
       setAvatarPresignedUrl(url);
-    } catch {
-      // handled silently
+    } catch (err) {
+      Sentry.captureException(err, { tags: { feature: 'account-avatar-upload' } });
+      toast.error(getErrorMessage(err));
     } finally {
       setAvatarBusy(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -541,8 +550,9 @@ export default function AccountPage(): JSX.Element {
       await deleteAvatar(accessToken);
       await refreshMe();
       setAvatarPresignedUrl(null);
-    } catch {
-      // handled silently
+    } catch (err) {
+      Sentry.captureException(err, { tags: { feature: 'account-avatar-remove' } });
+      toast.error(getErrorMessage(err));
     } finally {
       setAvatarBusy(false);
     }
@@ -566,8 +576,9 @@ export default function AccountPage(): JSX.Element {
       await updateProfile(accessToken, trimmed ? { full_name: trimmed } : {});
       await refreshMe();
       setEditingName(false);
-    } catch {
-      // handled silently
+    } catch (err) {
+      Sentry.captureException(err, { tags: { feature: 'account-name-save' } });
+      toast.error(getErrorMessage(err));
     } finally {
       setNameBusy(false);
     }

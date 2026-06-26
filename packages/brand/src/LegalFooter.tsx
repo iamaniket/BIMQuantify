@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 export interface LegalFooterLink {
   href: string;
@@ -24,14 +24,16 @@ const DEFAULT_LINKS: readonly LegalFooterLink[] = [
 
 export function LegalFooter({
   year = new Date().getFullYear(),
-  company = 'BimDossier B.V.',
+  // Plain product name until the holding/parent entity is registered; callers
+  // can pass the registered entity (e.g. "BimDossier B.V.") once it exists.
+  company = 'BimDossier',
   tail = 'Wet kwaliteitsborging voor het bouwen (Wkb) 2026.1',
   tone = 'on-light',
   links = DEFAULT_LINKS,
   className,
 }: LegalFooterProps): JSX.Element {
-  const fg = tone === 'on-dark' ? 'rgba(255,255,255,0.55)' : 'var(--color-foreground-tertiary, #4b5563)';
-  const fgLink = tone === 'on-dark' ? 'rgba(255,255,255,0.85)' : 'var(--color-foreground-secondary, #1f2937)';
+  const fg = tone === 'on-dark' ? 'rgba(255,255,255,0.55)' : 'var(--foreground-tertiary, #4b5563)';
+  const fgLink = tone === 'on-dark' ? 'rgba(255,255,255,0.85)' : 'var(--foreground-secondary, #1f2937)';
   return (
     <div
       className={cn('flex items-center justify-between font-sans text-[11px] tracking-[0.02em]', className)}

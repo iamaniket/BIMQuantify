@@ -37,12 +37,12 @@ const TESTS_DIR = resolve(PORTAL_DIR, 'tests');
 const COMPOSE_FILE = resolve(REPO_ROOT, 'docker-compose.test.yml');
 
 const E2E_ENV = {
-  E2E_DATABASE_URL: 'postgresql+asyncpg://bim:bim@localhost:5435/bimstitch_e2e',
+  E2E_DATABASE_URL: 'postgresql+asyncpg://bim:bim@localhost:5435/bimdossier_e2e',
   E2E_REDIS_URL: 'redis://localhost:6381/0',
   E2E_MAILHOG_URL: 'http://localhost:8026',
   E2E_SMTP_PORT: '1026',
   E2E_S3_ENDPOINT: 'http://localhost:9002',
-  E2E_REDIS_CONTAINER: 'bimstitch-test-redis',
+  E2E_REDIS_CONTAINER: 'bimdossier-test-redis',
   E2E_REDIS_DB: '0',
   // The test processor (docker-compose.test.yml) is published on host 8089.
   // global-setup forwards this as PROCESSOR_URL to the spawned E2E API, so its

@@ -51,7 +51,7 @@ async def _create_project_with_dates(
 
 class TestSchemaValidation:
     def test_reminder_days_sorted_desc(self) -> None:
-        from bimstitch_api.schemas.deadline_notification_settings import (
+        from bimdossier_api.schemas.deadline_notification_settings import (
             DeadlineNotificationSettingsUpdate,
         )
 
@@ -59,7 +59,7 @@ class TestSchemaValidation:
         assert schema.reminder_days == [14, 7, 3, 1]
 
     def test_reminder_days_no_negatives(self) -> None:
-        from bimstitch_api.schemas.deadline_notification_settings import (
+        from bimdossier_api.schemas.deadline_notification_settings import (
             DeadlineNotificationSettingsUpdate,
         )
 
@@ -67,7 +67,7 @@ class TestSchemaValidation:
             DeadlineNotificationSettingsUpdate(reminder_days=[7, -1])
 
     def test_reminder_days_no_duplicates(self) -> None:
-        from bimstitch_api.schemas.deadline_notification_settings import (
+        from bimdossier_api.schemas.deadline_notification_settings import (
             DeadlineNotificationSettingsUpdate,
         )
 
@@ -75,7 +75,7 @@ class TestSchemaValidation:
             DeadlineNotificationSettingsUpdate(reminder_days=[7, 7, 3])
 
     def test_reminder_days_not_empty(self) -> None:
-        from bimstitch_api.schemas.deadline_notification_settings import (
+        from bimdossier_api.schemas.deadline_notification_settings import (
             DeadlineNotificationSettingsUpdate,
         )
 
@@ -83,7 +83,7 @@ class TestSchemaValidation:
             DeadlineNotificationSettingsUpdate(reminder_days=[])
 
     def test_recipient_roles_valid(self) -> None:
-        from bimstitch_api.schemas.deadline_notification_settings import (
+        from bimdossier_api.schemas.deadline_notification_settings import (
             DeadlineNotificationSettingsUpdate,
         )
 
@@ -93,7 +93,7 @@ class TestSchemaValidation:
         assert schema.recipient_roles == ["owner", "editor"]
 
     def test_recipient_roles_invalid_role(self) -> None:
-        from bimstitch_api.schemas.deadline_notification_settings import (
+        from bimdossier_api.schemas.deadline_notification_settings import (
             DeadlineNotificationSettingsUpdate,
         )
 
@@ -103,7 +103,7 @@ class TestSchemaValidation:
             )
 
     def test_recipient_roles_not_empty(self) -> None:
-        from bimstitch_api.schemas.deadline_notification_settings import (
+        from bimdossier_api.schemas.deadline_notification_settings import (
             DeadlineNotificationSettingsUpdate,
         )
 

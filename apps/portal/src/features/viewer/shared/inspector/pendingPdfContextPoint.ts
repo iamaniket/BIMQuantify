@@ -6,14 +6,14 @@
  * (0..1 from top-left) are stashed here so the inspector body can anchor the
  * new item to that exact location (`linked_file_type='pdf'` + page + {x,y}).
  *
- * This is separate from `bimstitch.pendingPdfPin` (the pin-mode flow) because
+ * This is separate from `bimdossier.pendingPdfPin` (the pin-mode flow) because
  * the pin-mode flow has its own file-picker triggering logic in the attachments
  * body. The context-menu path opens a different UI flow (auto-open dialog).
  *
  * It is read-and-removed (single use) so a stale point never leaks onto a later,
  * unrelated upload.
  */
-export const PENDING_PDF_CONTEXT_POINT_KEY = 'bimstitch.pendingPdfContextPoint';
+export const PENDING_PDF_CONTEXT_POINT_KEY = 'bimdossier.pendingPdfContextPoint';
 
 export type PendingPdfContextPoint = { page: number; x: number; y: number };
 

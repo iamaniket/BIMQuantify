@@ -9,11 +9,11 @@
     "predev:harness": "node scripts/copy-wasm.mjs",
     "dev:harness": "node -e \"console.log('\\n  Local viewer harness → http://localhost:5173/harness/\\n')\" && vite",
     "prebuild": "node scripts/copy-wasm.mjs",
-    "build": "pnpm --filter=@bimstitch/viewer build && vite build",
+    "build": "pnpm --filter=@bimdossier/viewer build && vite build",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@bimstitch/viewer": "workspace:*",
+    "@bimdossier/viewer": "workspace:*",
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "three": "^0.184.0"

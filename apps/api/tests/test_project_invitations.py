@@ -137,7 +137,7 @@ async def test_new_user_creates_account_and_guest_membership(
     assert body["role"] == "contractor"
 
     # Verify user was created.
-    from bimstitch_api.models.user import User
+    from bimdossier_api.models.user import User
 
     async with session_maker() as session:
         user = (await session.execute(select(User).where(User.email == email))).scalar_one()
@@ -145,7 +145,7 @@ async def test_new_user_creates_account_and_guest_membership(
         assert user.full_name == "Jan de Vries"
 
     # Verify guest org membership.
-    from bimstitch_api.models.organization_member import (
+    from bimdossier_api.models.organization_member import (
         OrganizationMember,
         OrganizationMemberStatus,
     )
@@ -165,7 +165,7 @@ async def test_new_user_creates_account_and_guest_membership(
     # The new user's org membership is still pending, so RLS on the users
     # table hides them from GET /members. Verify the project_members row
     # directly via a raw query (no RLS).
-    from bimstitch_api.models.organization import Organization
+    from bimdossier_api.models.organization import Organization
 
     async with session_maker() as session:
         org = await session.get(Organization, org_user["organization_id"])
@@ -225,7 +225,7 @@ async def test_existing_user_not_in_org_gets_guest_membership(
     assert body["user_id"] == other_org_user["id"]
 
     # Verify guest org membership in AlphaCo.
-    from bimstitch_api.models.organization_member import (
+    from bimdossier_api.models.organization_member import (
         OrganizationMember,
         OrganizationMemberStatus,
     )

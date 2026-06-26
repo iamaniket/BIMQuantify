@@ -6,12 +6,12 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from starlette.requests import Request
 
-from bimstitch_api.auth.ratelimit import UPLOAD_INITIATE_LIMITER, make_identifier
-from bimstitch_api.config import get_settings
+from bimdossier_api.auth.ratelimit import UPLOAD_INITIATE_LIMITER, make_identifier
+from bimdossier_api.config import get_settings
 from tests.conftest import (
     FakeStorage,
     _auth,
-    _create_model,
+    _create_document,
     _create_project,
     _new_hash,
 )
@@ -96,14 +96,14 @@ def _http_request_xff(
 
 
 async def test_client_ip_ignores_xff_from_untrusted_peer() -> None:
-    from bimstitch_api.auth.ratelimit import _client_ip
+    from bimdossier_api.auth.ratelimit import _client_ip
 
     # Default config has no trusted proxies → the spoofed header is ignored.
     assert _client_ip(_http_request_xff("9.9.9.9", client_host="1.2.3.4")) == "1.2.3.4"
 
 
 async def test_default_identifier_unaffected_by_rotating_xff() -> None:
-    from bimstitch_api.auth.ratelimit import default_rate_limit_identifier
+    from bimdossier_api.auth.ratelimit import default_rate_limit_identifier
 
     a = await default_rate_limit_identifier(_http_request_xff("1.1.1.1"))
     b = await default_rate_limit_identifier(_http_request_xff("2.2.2.2"))
@@ -112,7 +112,7 @@ async def test_default_identifier_unaffected_by_rotating_xff() -> None:
 
 
 async def test_who_ignores_rotating_xff_for_unauthenticated() -> None:
-    from bimstitch_api.auth.ratelimit import _who
+    from bimdossier_api.auth.ratelimit import _who
 
     a = _who(_http_request_xff("1.1.1.1"))
     b = _who(_http_request_xff("2.2.2.2"))
@@ -122,7 +122,7 @@ async def test_who_ignores_rotating_xff_for_unauthenticated() -> None:
 async def test_client_ip_honors_xff_behind_trusted_proxy(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from bimstitch_api.auth import ratelimit as ratelimit_module
+    from bimdossier_api.auth import ratelimit as ratelimit_module
 
     # When the immediate peer IS the configured trusted proxy, the right-most
     # forwarded hop (the address the proxy observed) is used.
@@ -152,10 +152,10 @@ async def limited_fake_storage_client(
     overridden). Shares the test DB/Redis so a token from `org_user` is valid."""
     from fastapi_limiter import FastAPILimiter
 
-    from bimstitch_api import db as db_module
-    from bimstitch_api.cache import client as cache_module
-    from bimstitch_api.main import create_app
-    from bimstitch_api.storage import get_storage
+    from bimdossier_api import db as db_module
+    from bimdossier_api.cache import client as cache_module
+    from bimdossier_api.main import create_app
+    from bimdossier_api.storage import get_storage
 
     db_module._engine = engine
     db_module._session_maker = session_maker
@@ -184,8 +184,8 @@ async def test_initiate_enforces_per_user_rate_limit(
     token = org_user["access_token"]
 
     project = await _create_project(client, token)
-    model = await _create_model(client, token, project["id"])
-    url = f"/projects/{project['id']}/models/{model['id']}/files/initiate"
+    model = await _create_document(client, token, project["id"])
+    url = f"/projects/{project['id']}/documents/{model['id']}/files/initiate"
 
     def _payload() -> dict[str, object]:
         return {

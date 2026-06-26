@@ -27,7 +27,7 @@
  *   X. Audit log visibility + Logout (tenant audit, global audit, sign out)
  *
  * Prerequisites: handled automatically by `globalSetup` (see global-setup.ts).
- * The setup creates an isolated `bimstitch_e2e` database, starts the API
+ * The setup creates an isolated `bimdossier_e2e` database, starts the API
  * server, and seeds test data.  Just run `pnpm test:e2e:multi:ci`.
  *
  * For fully isolated containers: `pnpm test:e2e:full` (spins up
@@ -48,7 +48,7 @@ import { state } from '../support/state';
 /** Build unique names scoped to this test run so reruns never clash. */
 const RUN = state.runId;
 
-const REDIS_CONTAINER = process.env['E2E_REDIS_CONTAINER'] ?? 'bimstitch-redis';
+const REDIS_CONTAINER = process.env['E2E_REDIS_CONTAINER'] ?? 'bimdossier-redis';
 const REDIS_DB = process.env['E2E_REDIS_DB'] ?? '2';
 
 function flushRedis(): void {
@@ -501,8 +501,10 @@ test.describe.serial('Multitenant E2E Journey', () => {
     }
 
     // Confirm the save was persisted — the invalidateQueries refetch already
-    // populated the list with the new name before we get here.
-    await expect(page.getByText(updatedName)).toBeVisible({ timeout: 10_000 });
+    // populated the list with the new name before we get here. The detail-page
+    // topbar now shows the active project name in addition to the <h1>, so a bare
+    // getByText resolves to 3 elements (strict-mode violation); target the heading.
+    await expect(page.getByRole('heading', { name: updatedName })).toBeVisible({ timeout: 10_000 });
 
     state.projectName = updatedName;
   });
@@ -2071,8 +2073,15 @@ test.describe.serial('Multitenant E2E Journey', () => {
     // violation (2 elements match: card title + dialog description).
     await expect(confirmDialog).not.toBeVisible({ timeout: 10_000 });
 
-    // Project should disappear from the list.
-    await expect(page.getByText(state.lifecycleProjectName)).not.toBeVisible({ timeout: 10_000 });
+    // Project should disappear from the list. The detail page auto-redirects to
+    // /projects on delete, but mid-redirect its topbar still shows the (now-
+    // deleted) active project name in 2 spans, which strict-mode-violates a text
+    // assertion. Navigate to the list explicitly and assert the deleted project's
+    // card link is gone.
+    await page.goto('/en/projects');
+    await expect(
+      page.locator(`a[href*="/projects/${state.lifecycleProjectId}"]`),
+    ).toHaveCount(0, { timeout: 10_000 });
   });
 
   // =========================================================================

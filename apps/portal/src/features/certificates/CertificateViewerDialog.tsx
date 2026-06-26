@@ -2,11 +2,11 @@
 
 import { useLocale, useTranslations } from 'next-intl';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 import { useCallback, type JSX } from 'react';
 import { toast } from 'sonner';
 
-import { Badge, Spinner, type BadgeVariant } from '@bimstitch/ui';
+import { Badge, Spinner, type BadgeVariant } from '@bimdossier/ui';
 
 import {
   DocumentViewerDialog,

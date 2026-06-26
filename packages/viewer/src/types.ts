@@ -38,9 +38,9 @@ export type ViewerBundle = {
   modelId?: string;
   /**
    * Precomputed floor-plan artifact (`.floorplans.bin`) for the 2D / Split
-   * views. `IfcViewer` ignores it — it's consumed by the embed host
-   * (apps/viewer-embed) which fetches + `decodeFloorPlans`-decodes it to drive
-   * `FloorPlanViewer`. Absent when the model has no generated floor plans.
+   * views. `IfcViewer` ignores it — it's fetched + `decodeFloorPlans`-decoded by
+   * the host and fed to the 2D viewer (`DocumentViewer`'s `floorPlan` prop on
+   * web). Absent when the model has no generated floor plans.
    */
   floorPlansUrl?: string;
 };
@@ -77,6 +77,17 @@ export type ShadowOptions = {
    * model rendering quality.
    */
   resolution?: number;
+  /**
+   * Silhouette source. Default `'auto'` — exact `'geometry'` bake while models
+   * are fully resident (small models, like before), switching to `'boxes'` once
+   * any model is frustum-culled (large/federated, where the un-cull would freeze
+   * the viewport for tens of seconds). `'boxes'` always rasterises per-element
+   * bounding-box footprints (worker-computed, no geometry streaming): fast
+   * everywhere, slightly blockier soft blob. `'geometry'` always streams full
+   * geometry for a pixel-accurate silhouette (~tens of seconds on large models;
+   * freezes the viewport) — an escape hatch for stills.
+   */
+  mode?: 'auto' | 'boxes' | 'geometry';
 };
 
 /**
@@ -108,8 +119,13 @@ export type IfcViewerProps = {
    * `additionalBundles` form one model set that the viewer diffs against what's
    * loaded, so changing which bundle is `bundle` adds/removes only the delta in
    * place — it never reconstructs the viewer.
+   *
+   * Optional: omit (with no `additionalBundles`) to mount a LIVE, EMPTY scene
+   * (blank canvas + ready handle). The federated viewer uses this when the user
+   * has deselected every model — the viewer still becomes ready and the host
+   * chrome stays live; models can be added later via the diff.
    */
-  bundle: ViewerBundle;
+  bundle?: ViewerBundle;
   /**
    * Extra models loaded into the SAME scene alongside `bundle` (federated
    * multi-discipline viewer). Each should carry a stable `modelId`. Together
@@ -288,6 +304,7 @@ export type {
   ViewerContext,
   ViewerEvents,
   CullingMode,
+  ShadowMode,
   MaterialLook,
   ItemId,
   Vec3,

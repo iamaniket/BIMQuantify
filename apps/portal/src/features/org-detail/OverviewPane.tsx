@@ -2,7 +2,7 @@
 
 import {
   Activity, ChevronRight, Download, Key, Settings, Shield, Trash2, UserPlus, Users,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import { useMemo, type JSX, type ReactNode } from 'react';
 
@@ -12,8 +12,8 @@ import {
   Card,
   CardBody,
   CardHeader,
-} from '@bimstitch/ui';
-import type { Locale } from '@bimstitch/i18n';
+} from '@bimdossier/ui';
+import type { Locale } from '@bimdossier/i18n';
 
 import { ChartSection } from '@/components/shared/charts/ChartSection';
 import { DonutChart, type DonutSegment } from '@/components/shared/charts/DonutChart';

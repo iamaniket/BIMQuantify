@@ -1,6 +1,6 @@
 'use client';
 
-import { Search } from '@bimstitch/ui/icons';
+import { Search } from '@bimdossier/ui/icons';
 import { Fragment, type ReactNode } from 'react';
 
 import {
@@ -12,7 +12,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 export type Column<T> = {
   header: ReactNode;

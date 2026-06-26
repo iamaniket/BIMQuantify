@@ -5,8 +5,8 @@ import json
 import httpx
 import pytest
 
-from bimstitch_api.config import get_settings
-from bimstitch_api.email.transport import PostmarkEmailTransport
+from bimdossier_api.config import get_settings
+from bimdossier_api.email.transport import PostmarkEmailTransport
 
 
 # Override conftest's DB/Redis autouse fixtures — this is a pure-unit test
@@ -34,7 +34,7 @@ def _clear_settings_cache() -> None:
 async def test_postmark_transport_posts_expected_payload(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("POSTMARK_SERVER_TOKEN", "test-token")
     monkeypatch.setenv("POSTMARK_MESSAGE_STREAM", "broadcast")
-    monkeypatch.setenv("SMTP_FROM", "alerts@bimstitch.example.com")
+    monkeypatch.setenv("SMTP_FROM", "alerts@bimdossier.example.com")
 
     captured: dict[str, object] = {}
 
@@ -64,7 +64,7 @@ async def test_postmark_transport_posts_expected_payload(monkeypatch: pytest.Mon
     assert isinstance(body, str)
     parsed = json.loads(body)
     assert parsed == {
-        "From": "alerts@bimstitch.example.com",
+        "From": "alerts@bimdossier.example.com",
         "To": "dest@example.com",
         "Subject": "Subject",
         "TextBody": "Body",

@@ -1,25 +1,25 @@
-name: bimstitch-test
+name: bimdossier-test
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: bimstitch-test-postgres
+    container_name: bimdossier-test-postgres
     environment:
       POSTGRES_USER: bim
       POSTGRES_PASSWORD: bim
-      POSTGRES_DB: bimstitch_e2e
+      POSTGRES_DB: bimdossier_e2e
     ports:
       - "5435:5432"
     # No volume — ephemeral, destroyed on `down -v`
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bim -d bimstitch_e2e"]
+      test: ["CMD-SHELL", "pg_isready -U bim -d bimdossier_e2e"]
       interval: 3s
       timeout: 3s
       retries: 10
 
   redis:
     image: redis:7-alpine
-    container_name: bimstitch-test-redis
+    container_name: bimdossier-test-redis
     command: ["redis-server", "--appendonly", "no"]
     ports:
       - "6381:6379"
@@ -31,18 +31,18 @@ services:
 
   mailhog:
     image: mailhog/mailhog
-    container_name: bimstitch-test-mailhog
+    container_name: bimdossier-test-mailhog
     ports:
       - "1026:1025"
       - "8026:8025"
 
   minio:
     image: minio/minio:latest
-    container_name: bimstitch-test-minio
+    container_name: bimdossier-test-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: bimstitch
-      MINIO_ROOT_PASSWORD: bimstitch-secret
+      MINIO_ROOT_USER: bimdossier
+      MINIO_ROOT_PASSWORD: bimdossier-secret
       # Allow any origin so the E2E portal (:3002) can fetch presigned .frag
       # bytes in-browser — the viewer spec loads converted models cross-origin
       # (portal :3002 → MinIO :9002). Mirrors docker-compose.yml; presigned URLs
@@ -66,7 +66,7 @@ services:
     build:
       context: ./apps/processor
       dockerfile: Dockerfile
-    container_name: bimstitch-test-processor
+    container_name: bimdossier-test-processor
     environment:
       # Dev posture so the production-config guard accepts the dev-default
       # shared secret + MinIO creds below (same as docker-compose.yml).
@@ -80,11 +80,11 @@ services:
       # reach it by service name on the internal SMTP port.
       SMTP_HOST: mailhog
       SMTP_PORT: "1025"
-      SMTP_FROM: no-reply@bimstitch.dev
+      SMTP_FROM: no-reply@bimdossier.dev
       S3_ENDPOINT_URL: http://minio:9000
       S3_REGION: us-east-1
-      S3_ACCESS_KEY_ID: bimstitch
-      S3_SECRET_ACCESS_KEY: bimstitch-secret
+      S3_ACCESS_KEY_ID: bimdossier
+      S3_SECRET_ACCESS_KEY: bimdossier-secret
       S3_BUCKET_IFC: ifc-files
       # The E2E API runs on the HOST (uvicorn :8010), reached from the container
       # via the gateway. Worker callbacks (extraction → ProjectFile) land here.

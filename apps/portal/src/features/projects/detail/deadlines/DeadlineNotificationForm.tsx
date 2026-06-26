@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useCallback, type JSX } from 'react';
 
-import { Badge, Button } from '@bimstitch/ui';
+import { Badge, Button } from '@bimdossier/ui';
 
 import type {
   DeadlineNotificationSettingsUpdate,

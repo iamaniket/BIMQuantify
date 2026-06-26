@@ -1,13 +1,13 @@
 'use client';
 
-import { UploadCloud } from '@bimstitch/ui/icons';
+import { UploadCloud } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useRef, useState,
   type ChangeEvent, type DragEvent, type JSX, type ReactNode,
 } from 'react';
 
-import { Button, cn } from '@bimstitch/ui';
+import { Button, cn } from '@bimdossier/ui';
 
 type Props = {
   accept: string;

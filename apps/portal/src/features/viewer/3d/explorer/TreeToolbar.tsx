@@ -3,7 +3,7 @@
 import { type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 
-import { IconButton } from '@bimstitch/ui';
+import { IconButton } from '@bimdossier/ui';
 
 import { SearchToolbar } from '@/components/shared/viewer/shared/SearchToolbar';
 

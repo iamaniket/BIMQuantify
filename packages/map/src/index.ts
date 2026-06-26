@@ -1,5 +1,5 @@
 /**
- * Public surface of `@bimstitch/map`.
+ * Public surface of `@bimdossier/map`.
  *
  * NL is the only jurisdiction implemented today; types in `./types.js`
  * and `./core/types.js` are jurisdiction-agnostic and form the surface

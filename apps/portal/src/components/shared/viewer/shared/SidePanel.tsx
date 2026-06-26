@@ -5,7 +5,7 @@ import {
   type JSX, type ReactNode, useCallback, useRef, useState,
 } from 'react';
 
-import { cn, Eyebrow } from '@bimstitch/ui';
+import { cn, Eyebrow } from '@bimdossier/ui';
 
 import type { PanelId } from '@/components/shared/viewer/shared/SideRail';
 

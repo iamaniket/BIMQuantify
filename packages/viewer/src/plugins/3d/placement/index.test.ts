@@ -27,7 +27,17 @@ function fakeModel(hit: { localId: number; point: { x: number; y: number; z: num
   };
 }
 
-function makeCtx(model: ReturnType<typeof fakeModel> | null): {
+/** A snapping plugin stub whose `resolve` returns a fixed snapped point (or null). */
+function fakeSnapping(snapPoint: { x: number; y: number; z: number } | null) {
+  return {
+    resolve: () => (snapPoint ? { point: snapPoint, snapType: 'vertex' as const } : null),
+  };
+}
+
+function makeCtx(
+  model: ReturnType<typeof fakeModel> | null,
+  snapping: ReturnType<typeof fakeSnapping> | null = null,
+): {
   ctx: ViewerContext;
   commands: CommandRegistry;
   events: EventBus<ViewerEvents>;
@@ -62,6 +72,9 @@ function makeCtx(model: ReturnType<typeof fakeModel> | null): {
     models: () => models,
     commands,
     events,
+    plugins: {
+      get: (name: string) => (name === 'snapping' ? snapping : null),
+    },
   } as unknown as ViewerContext;
 
   return { ctx, commands, events, bindCalls, clearedSelection: () => selectionCleared };
@@ -126,6 +139,44 @@ describe('placement plugin', () => {
     expect(picked[0]!.item).toEqual({ modelId: 'file-1', localId: 42 });
     // Sticky by default — still active after a pick.
     expect(plugin.isActive()).toBe(true);
+  });
+
+  it('snaps the picked point to nearby geometry when snapping resolves', async () => {
+    const { ctx, commands, events } = makeCtx(
+      fakeModel({ localId: 42, point: { x: 1, y: 2, z: 3 } }),
+      fakeSnapping({ x: 9, y: 9, z: 9 }),
+    );
+    const plugin = placementPlugin();
+    plugin.install(ctx);
+
+    const picked: Array<{ point: { x: number; y: number; z: number }; item: ItemId | null }> = [];
+    events.on('point:picked', (p) => picked.push(p));
+
+    await commands.execute('placement.enter');
+    await commands.execute('placement.pick', { ndc: { x: 0, y: 0 } });
+
+    expect(picked).toHaveLength(1);
+    // The snapped vertex replaces the raw hit point; the item is unchanged.
+    expect(picked[0]!.point).toEqual({ x: 9, y: 9, z: 9 });
+    expect(picked[0]!.item).toEqual({ modelId: 'file-1', localId: 42 });
+  });
+
+  it('uses the raw hit point when snapping returns null (disabled)', async () => {
+    const { ctx, commands, events } = makeCtx(
+      fakeModel({ localId: 42, point: { x: 1, y: 2, z: 3 } }),
+      fakeSnapping(null),
+    );
+    const plugin = placementPlugin();
+    plugin.install(ctx);
+
+    const picked: Array<{ point: { x: number; y: number; z: number }; item: ItemId | null }> = [];
+    events.on('point:picked', (p) => picked.push(p));
+
+    await commands.execute('placement.enter');
+    await commands.execute('placement.pick', { ndc: { x: 0, y: 0 } });
+
+    expect(picked).toHaveLength(1);
+    expect(picked[0]!.point).toEqual({ x: 1, y: 2, z: 3 });
   });
 
   it('auto-exits after the first successful pick in oneShot mode', async () => {

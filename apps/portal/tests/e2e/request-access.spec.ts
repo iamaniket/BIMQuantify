@@ -14,7 +14,7 @@
  * `tests/support/` (auth, mailhog, env).
  *
  * Prerequisites are handled automatically by `globalSetup` (see
- * global-setup.ts) — fresh `bimstitch_e2e` database, API on port 8000,
+ * global-setup.ts) — fresh `bimdossier_e2e` database, API on port 8000,
  * Redis and MailHog cleared.
  */
 
@@ -521,7 +521,7 @@ test.describe.serial('Request-access duplicate handling', () => {
 
     // Reject Pieter's pending request directly via the API — fastest path.
     const tokens = await page.evaluate((key: string) => window.localStorage.getItem(key),
-      'bimstitch.tokens',
+      'bimdossier.tokens',
     );
     const tokenPair = JSON.parse(tokens ?? '{}') as { access_token?: string };
     if (typeof tokenPair.access_token !== 'string') {
@@ -548,7 +548,7 @@ test.describe.serial('Request-access duplicate handling', () => {
     expect(rejectResp.status).toBe(200);
 
     // Now an anonymous resubmission with the same email must succeed.
-    await page.evaluate((key: string) => window.localStorage.removeItem(key), 'bimstitch.tokens');
+    await page.evaluate((key: string) => window.localStorage.removeItem(key), 'bimdossier.tokens');
 
     const second = await fillAndSubmit(page, {
       name: dupState.requesterName,

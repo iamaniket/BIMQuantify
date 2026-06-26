@@ -2,7 +2,7 @@
 
 import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/providers/AuthProvider";
-import { Button, Card, CardBody, CardHeader } from "@bimstitch/ui";
+import { Button, Card, CardBody, CardHeader } from "@bimdossier/ui";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 

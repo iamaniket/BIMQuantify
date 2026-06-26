@@ -29,6 +29,7 @@ import { getConfig } from '../config.js';
 import type { DetectedKind } from './classify.js';
 import { PermanentError, RetriableError } from './errors.js';
 import { UnsupportedSchemaError } from './ifc.js';
+import type { StoreyInfo } from './metadata.js';
 
 /** workerData for extraction-worker.ts, discriminated on `task`. */
 export type ExtractionTask =
@@ -63,6 +64,8 @@ export type ExtractionWorkerMessage =
       // Content-based discipline classification (from the element histogram).
       // Surfaced on the file as `detected_kind`; also gates the floor-plan cut.
       detectedKind: DetectedKind;
+      // IfcBuildingStorey list, upserted onto the model by the API callback.
+      storeys: StoreyInfo[];
       timings: { metadata: number; properties: number; walk: number };
     }
   | { type: 'error'; error: WireError };

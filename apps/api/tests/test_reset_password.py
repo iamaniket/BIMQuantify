@@ -20,8 +20,8 @@ import re
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimstitch_api.config import get_settings
-from bimstitch_api.email.transport import InMemoryEmailTransport
+from bimdossier_api.config import get_settings
+from bimdossier_api.email.transport import InMemoryEmailTransport
 from tests.conftest import _TEST_PASSWORD, make_test_user
 
 NEW_PASSWORD = "fresh-horse-staple-67"
@@ -133,7 +133,7 @@ async def test_forgot_password_inactive_user_silent(
     """Inactive users must not receive a reset email — but the API still 202s."""
     from sqlalchemy import select
 
-    from bimstitch_api.models.user import User
+    from bimdossier_api.models.user import User
 
     email = "reset-inactive@example.com"
     await make_test_user(session_maker, email=email, is_verified=True)

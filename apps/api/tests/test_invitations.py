@@ -20,7 +20,7 @@ The tests bypass the provisioning saga the same way `test_admin_seats.py`
 does — direct DB inserts so the test DB doesn't need real per-tenant
 schemas. For routes that DO go through the saga (POST /admin/organizations
 in the activation-email tests below), we monkeypatch
-`bimstitch_api.routers.admin_organizations.provision_organization` to a
+`bimdossier_api.routers.admin_organizations.provision_organization` to a
 minimal stand-in that creates the user + membership without touching the
 admin engine.
 """
@@ -37,17 +37,17 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimstitch_api.models.organization import Organization, OrganizationStatus
-from bimstitch_api.models.organization_member import (
+from bimdossier_api.models.organization import Organization, OrganizationStatus
+from bimdossier_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
 )
-from bimstitch_api.models.user import User
-from bimstitch_api.tenancy import schema_name_for
+from bimdossier_api.models.user import User
+from bimdossier_api.tenancy import schema_name_for
 from tests.conftest import _audit_rows
 
 if TYPE_CHECKING:
-    from bimstitch_api.email.transport import InMemoryEmailTransport
+    from bimdossier_api.email.transport import InMemoryEmailTransport
 
 
 PASSWORD = "correct-horse-battery"
@@ -151,9 +151,9 @@ def stub_provisioning(monkeypatch: pytest.MonkeyPatch) -> None:
     """Replace `provision_organization` in the admin router with a thin
     DB-only impl. Skips schema creation / alembic / grants so tests can
     hit the route without setting up per-tenant schemas."""
-    from bimstitch_api.admin import provisioning as prov_module
-    from bimstitch_api.db import get_session_maker
-    from bimstitch_api.routers import admin_organizations as router_module
+    from bimdossier_api.admin import provisioning as prov_module
+    from bimdossier_api.db import get_session_maker
+    from bimdossier_api.routers import admin_organizations as router_module
 
     async def _fake_provision(
         *,
@@ -597,7 +597,7 @@ async def test_verify_auto_accepts_bootstrap_pending(
     between would dispatch a confusingly-worded notification email."""
     from fastapi_users.db import SQLAlchemyUserDatabase
 
-    from bimstitch_api.auth.manager import UserManager
+    from bimdossier_api.auth.manager import UserManager
 
     user = await _make_user(session, "bootstrap@example.com", is_verified=False)
     org = await _make_org(session, "FirstHomeCo")
@@ -632,7 +632,7 @@ async def test_verify_does_not_auto_accept_when_user_has_active_orgs(
     accepted — same rationale as the login-time narrowing."""
     from fastapi_users.db import SQLAlchemyUserDatabase
 
-    from bimstitch_api.auth.manager import UserManager
+    from bimdossier_api.auth.manager import UserManager
 
     user = await _make_user(session, "already-in@example.com")
     home = await _make_org(session, "HomeC2")

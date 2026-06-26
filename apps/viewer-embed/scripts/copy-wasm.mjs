@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Copy the runtime assets @bimstitch/viewer needs into apps/viewer-embed/public/:
+ * Copy the runtime assets @bimdossier/viewer needs into apps/viewer-embed/public/:
  *   - web-ifc.wasm + web-ifc-mt.wasm   → public/web-ifc/
  *   - @thatopen/fragments worker.mjs   → public/fragments/worker.mjs
  *
@@ -31,19 +31,26 @@ async function exists(p) {
   }
 }
 
+// web-ifc.wasm is required; web-ifc-mt.wasm is the optional multi-threaded build.
+const REQUIRED_WASM = new Set(['web-ifc.wasm']);
+
 async function copyWebIfcWasm() {
   let wasmDir;
   try {
     wasmDir = dirname(require.resolve('web-ifc'));
   } catch (err) {
-    console.error('[copy-wasm] web-ifc not installed — skipping web-ifc.wasm', err);
-    return;
+    throw new Error(`[copy-wasm] web-ifc is not installed — cannot copy web-ifc.wasm: ${String(err)}`);
   }
   const targetDir = join(here, '..', 'public', 'web-ifc');
   await mkdir(targetDir, { recursive: true });
   for (const name of ['web-ifc.wasm', 'web-ifc-mt.wasm']) {
     const src = join(wasmDir, name);
-    if (!(await exists(src))) continue;
+    if (!(await exists(src))) {
+      if (REQUIRED_WASM.has(name)) {
+        throw new Error(`[copy-wasm] required asset missing: ${src}`);
+      }
+      continue;
+    }
     const dst = join(targetDir, name);
     await copyFile(src, dst);
     console.log(`[copy-wasm] ${src} → ${dst}`);
@@ -55,14 +62,12 @@ async function copyFragmentsWorker() {
   try {
     fragmentsDir = dirname(require.resolve('@thatopen/fragments'));
   } catch (err) {
-    console.error('[copy-wasm] @thatopen/fragments not installed — skipping worker', err);
-    return;
+    throw new Error(`[copy-wasm] @thatopen/fragments is not installed — cannot copy the fragments worker: ${String(err)}`);
   }
   // The worker ships at dist/Worker/worker.mjs in @thatopen/fragments.
   const src = join(fragmentsDir, 'Worker', 'worker.mjs');
   if (!(await exists(src))) {
-    console.error(`[copy-wasm] expected worker at ${src} but it is missing`);
-    return;
+    throw new Error(`[copy-wasm] required fragments worker missing at ${src}`);
   }
   const targetDir = join(here, '..', 'public', 'fragments');
   await mkdir(targetDir, { recursive: true });

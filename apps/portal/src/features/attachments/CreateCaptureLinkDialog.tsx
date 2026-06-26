@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, LinkIcon } from '@bimstitch/ui/icons';
+import { Copy, LinkIcon } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -17,7 +17,7 @@ import {
   Input,
   Label,
   Select,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { useCreateCaptureLink } from './useCreateCaptureLink';
 
@@ -49,12 +49,19 @@ export function CreateCaptureLinkDialog({
 
   const handleCreate = useCallback(() => {
     const parsed = parseInt(ttlHours, 10);
-    const maxUsesNum = maxUses === '' ? undefined : parseInt(maxUses, 10);
+    const ttl_hours = Number.isNaN(parsed) || parsed < 1 ? 72 : parsed;
+    // Capture links grant unauthenticated upload, so an invalid limit must fail
+    // CLOSED, not silently become unlimited. A blank field means "no limit"
+    // (intentional); a non-blank but unparseable value falls back to a single use.
+    const trimmedMax = maxUses.trim();
+    const maxUsesNum = trimmedMax === '' ? null : parseInt(trimmedMax, 10);
+    const max_uses =
+      maxUsesNum === null ? null : (Number.isFinite(maxUsesNum) && maxUsesNum > 0 ? maxUsesNum : 1);
     createMutation.mutate(
       {
         label: label === '' ? null : label,
-        ttl_hours: Number.isNaN(parsed) ? 72 : parsed,
-        max_uses: maxUsesNum !== undefined && !Number.isNaN(maxUsesNum) ? maxUsesNum : null,
+        ttl_hours,
+        max_uses,
       },
       {
         onSuccess: (data) => {

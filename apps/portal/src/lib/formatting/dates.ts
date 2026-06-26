@@ -1,4 +1,4 @@
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 /** Canonical date: "Jun 12, 2026" (EN) / "12 jun. 2026" (NL). */
 export function formatDate(
@@ -24,6 +24,19 @@ export function formatMonthDay(
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return placeholder;
   return new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(parsed);
+}
+
+/** Compact locale-aware "time ago" from a duration in seconds:
+ * "5 min ago" / "5 min geleden". Used for live job ages. */
+export function formatAgo(seconds: number, locale: Locale): string {
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'always', style: 'narrow' });
+  const abs = Math.max(0, Math.floor(seconds));
+  if (abs < 60) return rtf.format(-abs, 'second');
+  const mins = Math.floor(abs / 60);
+  if (mins < 60) return rtf.format(-mins, 'minute');
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return rtf.format(-hours, 'hour');
+  return rtf.format(-Math.floor(hours / 24), 'day');
 }
 
 /** Canonical date + time: "Jun 12, 2026, 02:30 PM" / "12 jun. 2026 14:30". */

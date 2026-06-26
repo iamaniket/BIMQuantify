@@ -25,7 +25,7 @@ vi.mock('@/components/shared/sidebar/SidebarContext', () => ({
   }),
 }));
 
-vi.mock('@bimstitch/ui', () => ({
+vi.mock('@bimdossier/ui', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   TooltipContent: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,

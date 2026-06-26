@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   Spinner,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 import { useTranslations } from 'next-intl';
 import { type JSX } from 'react';
 
@@ -70,7 +70,7 @@ export function ImageAnnotatorDialog({
               {editor.toolbar}
             </div>
 
-            <DialogBody className="min-h-0 flex-1 overflow-hidden bg-[#101316] p-3">
+            <DialogBody className="min-h-0 flex-1 overflow-hidden bg-[var(--viewer-canvas-bg)] p-3">
               {editor.canvas}
             </DialogBody>
 

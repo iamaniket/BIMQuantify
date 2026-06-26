@@ -12,7 +12,7 @@ import {
   Label,
   Select,
   Textarea,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { FormDialog } from '@/components/shared/FormDialog';
 import { Field } from '@/components/shared/forms/Field';
@@ -133,7 +133,7 @@ export function CertificateUploadDialog({
       valid_until: values.valid_until === '' ? null : values.valid_until,
       description: values.description === '' ? null : values.description,
       linked_element_global_id: linkedElementGlobalId ?? null,
-      linked_model_id: linkedModelId ?? null,
+      linked_document_id: linkedModelId ?? null,
       linked_file_id: linkedFileId ?? null,
       ...anchorFieldsFromPoint(linkedFileType, linkedPoint),
       supersedes_id: supersedesId,

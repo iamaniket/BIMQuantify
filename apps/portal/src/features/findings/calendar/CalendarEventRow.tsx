@@ -3,7 +3,7 @@
 import {
   ExternalLink,
   Move,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX, ReactNode } from 'react';
 
@@ -12,7 +12,7 @@ import { Link } from '@/i18n/navigation';
 import { formatDate } from '@/lib/formatting/dates';
 import type { Finding } from '@/lib/api/schemas';
 import type { Deadline } from '@/lib/api/schemas/deadlines';
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import {
   eventDateString,

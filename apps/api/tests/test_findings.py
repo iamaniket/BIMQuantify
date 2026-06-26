@@ -20,7 +20,7 @@ from tests.conftest import (
     _audit_rows,
     _auth,
     _create_attachment_row,
-    _create_model,
+    _create_document,
     _create_project,
 )
 
@@ -39,7 +39,7 @@ async def _create_ready_file(
     fake: FakeStorage,
     token: str,
     project_id: str,
-    model_id: str,
+    document_id: str,
 ) -> str:
     """Create an IFC file through the two-phase upload. Returns file_id.
 
@@ -53,7 +53,7 @@ async def _create_ready_file(
     sha = hashlib.sha256(content).hexdigest()
     init = (
         await client.post(
-            f"/projects/{project_id}/models/{model_id}/files/initiate",
+            f"/projects/{project_id}/documents/{document_id}/files/initiate",
             json={
                 "filename": f"elem-{_file_counter}.ifc",
                 "size_bytes": len(content),
@@ -65,7 +65,7 @@ async def _create_ready_file(
     ).json()
     fake.objects[init["storage_key"]] = content
     complete = await client.post(
-        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        f"/projects/{project_id}/documents/{document_id}/files/{init['file_id']}/complete",
         headers=_auth(token),
     )
     assert complete.status_code == 200, complete.text
@@ -1183,7 +1183,7 @@ async def test_create_finding_with_element_link(
     client, fake = fake_storage_client
     token = org_user["access_token"]
     project = await _create_project(client, token)
-    model = await _create_model(client, token, project["id"])
+    model = await _create_document(client, token, project["id"])
     file_id = await _create_ready_file(client, fake, token, project["id"], model["id"])
 
     resp = await client.post(
@@ -1204,7 +1204,7 @@ async def test_patch_finding_link_then_unlink(
     client, fake = fake_storage_client
     token = org_user["access_token"]
     project = await _create_project(client, token)
-    model = await _create_model(client, token, project["id"])
+    model = await _create_document(client, token, project["id"])
     file_id = await _create_ready_file(client, fake, token, project["id"], model["id"])
 
     created = (
@@ -1244,7 +1244,7 @@ async def test_list_findings_filter_by_element(
     client, fake = fake_storage_client
     token = org_user["access_token"]
     project = await _create_project(client, token)
-    model = await _create_model(client, token, project["id"])
+    model = await _create_document(client, token, project["id"])
     file_id = await _create_ready_file(client, fake, token, project["id"], model["id"])
 
     await client.post(
@@ -1281,7 +1281,7 @@ async def test_list_findings_filter_unlinked(
     client, fake = fake_storage_client
     token = org_user["access_token"]
     project = await _create_project(client, token)
-    model = await _create_model(client, token, project["id"])
+    model = await _create_document(client, token, project["id"])
     file_id = await _create_ready_file(client, fake, token, project["id"], model["id"])
 
     await client.post(
@@ -1318,7 +1318,7 @@ async def test_finding_follows_element_across_versions(
     client, fake = fake_storage_client
     token = org_user["access_token"]
     project = await _create_project(client, token)
-    model = await _create_model(client, token, project["id"])
+    model = await _create_document(client, token, project["id"])
     file_v1 = await _create_ready_file(client, fake, token, project["id"], model["id"])
     file_v2 = await _create_ready_file(client, fake, token, project["id"], model["id"])
 
@@ -1326,21 +1326,21 @@ async def test_finding_follows_element_across_versions(
         await client.post(
             f"/projects/{project['id']}/findings",
             json=_payload(
-                linked_model_id=model["id"],
+                linked_document_id=model["id"],
                 linked_file_id=file_v1,
                 linked_element_global_id=ELEMENT_GLOBAL_ID,
             ),
             headers=_auth(token),
         )
     ).json()
-    assert created["linked_model_id"] == model["id"]
+    assert created["linked_document_id"] == model["id"]
     assert created["linked_file_id"] == file_v1
 
     # The viewer queries by model + GlobalId — returns the v1 finding regardless
     # of which file version is open.
     by_model = await client.get(
         f"/projects/{project['id']}/findings"
-        f"?linked_model_id={model['id']}&linked_element_global_id={ELEMENT_GLOBAL_ID}",
+        f"?linked_document_id={model['id']}&linked_element_global_id={ELEMENT_GLOBAL_ID}",
         headers=_auth(token),
     )
     assert by_model.status_code == 200, by_model.text

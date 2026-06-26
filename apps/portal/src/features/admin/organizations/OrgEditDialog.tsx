@@ -6,7 +6,7 @@ import { useEffect, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 
-import { AppDialog, Input, Select } from '@bimstitch/ui';
+import { AppDialog, Input, Select } from '@bimdossier/ui';
 
 import { Field } from '@/components/shared/forms/Field';
 import { useRegisterField } from '@/hooks/useRegisterField';

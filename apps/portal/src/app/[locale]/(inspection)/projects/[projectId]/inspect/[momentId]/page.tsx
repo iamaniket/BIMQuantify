@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useMemo, type JSX } from 'react';
 
-import { Skeleton } from '@bimstitch/ui';
+import { Skeleton } from '@bimdossier/ui';
 
 import { InspectionScreen } from '@/features/inspection/InspectionScreen';
 import { useBorgingsplan } from '@/features/borgingsplan/useBorgingsplan';

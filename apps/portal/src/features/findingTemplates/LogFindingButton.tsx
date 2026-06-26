@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus } from '@bimstitch/ui/icons';
+import { Plus } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
@@ -10,7 +10,7 @@ import {
   type ButtonVariant,
   type ControlSize,
   type SplitButtonItem,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { FindingFormDialog } from '@/features/projects/detail/FindingFormDialog';
 import type { FindingTemplate, LinkedFileTypeValue } from '@/lib/api/schemas';

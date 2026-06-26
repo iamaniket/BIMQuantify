@@ -1,9 +1,9 @@
 'use client';
 
-import { Search } from '@bimstitch/ui/icons';
+import { Search } from '@bimdossier/ui/icons';
 import type { JSX, ReactNode } from 'react';
 
-import { Input } from '@bimstitch/ui';
+import { Input } from '@bimdossier/ui';
 
 /**
  * The shared toolbar for the project-detail resource tabs (Models, Attachments,

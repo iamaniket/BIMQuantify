@@ -131,7 +131,7 @@ describe('computeDossierCompleteness', () => {
   });
 
   it('fulfils a model requirement (Drawings) only from a viewable model', () => {
-    const template = [req({ code: 'drawings', category: 'documents', source_kind: 'model', source_value: 'models' })];
+    const template = [req({ code: 'drawings', category: 'documents', source_kind: 'document', source_value: 'documents' })];
 
     // No model at all → missing.
     const empty = computeDossierCompleteness(template, [], [], { modelCount: 0, viewableModelCount: 0 });
@@ -151,7 +151,7 @@ describe('computeDossierCompleteness', () => {
   });
 
   it('does not fulfil the model-backed Drawings slot from a drawing attachment', () => {
-    const template = [req({ code: 'drawings', category: 'documents', source_kind: 'model', source_value: 'models' })];
+    const template = [req({ code: 'drawings', category: 'documents', source_kind: 'document', source_value: 'documents' })];
     // A legacy attachment tagged drawings no longer counts — Drawings is model-backed.
     const res = computeDossierCompleteness(
       template,
@@ -234,7 +234,7 @@ describe('buildCompletionSeries', () => {
   it('does not track a model-backed requirement in the completion series', () => {
     // Drawings is model-backed — it has no attachment history to replay.
     const template = [
-      req({ code: 'drawings', source_kind: 'model', source_value: 'models' }),
+      req({ code: 'drawings', source_kind: 'document', source_value: 'documents' }),
     ];
     expect(buildCompletionSeries(template, [att({ dossier_slot: 'drawings' })])).toEqual([]);
   });

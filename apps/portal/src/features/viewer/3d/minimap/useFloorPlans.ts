@@ -2,7 +2,7 @@
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
-import { decodeFloorPlans, accumulateBbox, emptyBbox } from '@bimstitch/viewer';
+import { decodeFloorPlans, accumulateBbox, emptyBbox } from '@bimdossier/viewer';
 
 /** One IfcSpace footprint on a level (geometry only — name joined later). */
 export type RawRoom = {

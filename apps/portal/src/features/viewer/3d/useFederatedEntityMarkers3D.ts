@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import type { ViewerHandle } from '@bimstitch/viewer';
+import type { ViewerHandle } from '@bimdossier/viewer';
 
 import { useFindings } from '@/features/findings/useFindings';
-import type { Finding, ProjectViewerModelEntry } from '@/lib/api/schemas';
+import type { Finding, ProjectViewerDocumentEntry } from '@/lib/api/schemas';
 import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import type { EntityMarker3D } from '../shared/entityMarkerTypes';
@@ -23,7 +23,7 @@ import { federatedModelId } from './federation/federatedModelId';
 export function useFederatedEntityMarkers3D(
   handle: ViewerHandle | null,
   projectId: string,
-  entries: ProjectViewerModelEntry[],
+  entries: ProjectViewerDocumentEntry[],
   viewerReady: boolean,
   enabled: boolean,
 ): { clickedFinding: Finding | null; clearClicked: () => void } {

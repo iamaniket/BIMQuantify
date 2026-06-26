@@ -15,9 +15,9 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from bimstitch_api.i18n.messages import en_messages, nl_messages
+from bimdossier_api.i18n.messages import en_messages, nl_messages
 
-SRC = Path(__file__).resolve().parents[1] / "src" / "bimstitch_api"
+SRC = Path(__file__).resolve().parents[1] / "src" / "bimdossier_api"
 
 
 def _code(value: str) -> str:

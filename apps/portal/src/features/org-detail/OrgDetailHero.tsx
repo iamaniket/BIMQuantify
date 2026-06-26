@@ -1,10 +1,10 @@
 'use client';
 
-import { Camera, Clock, X } from '@bimstitch/ui/icons';
+import { Camera, Clock, X } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useRef, type JSX, type ReactNode } from 'react';
 
-import { Badge } from '@bimstitch/ui';
+import { Badge } from '@bimdossier/ui';
 
 import { HeroShell } from '@/components/shared/layout/HeroShell';
 import type { AuditEntry, MemberRead } from '@/lib/api/schemas';
@@ -63,7 +63,7 @@ export function OrgDetailHero({
   return (
     <HeroShell
       image={
-        <div className="group relative h-[112px] w-[160px] overflow-hidden rounded-[10px] bg-black/5 shadow-[0_4px_14px_rgba(44,86,151,0.12)] dark:bg-white/10 dark:shadow-[0_4px_14px_rgba(0,0,0,0.30)]">
+        <div className="group relative h-[112px] w-[160px] overflow-hidden rounded-[10px] bg-black/5 shadow-hero-thumbnail dark:bg-white/10">
           {org.imageUrl ? (
             <img
               src={org.imageUrl}

@@ -1,9 +1,9 @@
 'use client';
 
-import { Card, CardBody } from '@bimstitch/ui';
+import { Card, CardBody } from '@bimdossier/ui';
 import {
   ArrowRight, Scale, ShieldCheck, Users, type AppIcon,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

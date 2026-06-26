@@ -23,7 +23,7 @@ export const FindingSchema = z.object({
   deadline_date: z.union([z.string(), z.null()]),
   bbl_article_ref: z.union([z.string(), z.null()]),
   created_by_user_id: z.string().uuid(),
-  linked_model_id: z.union([z.string().uuid(), z.null()]),
+  linked_document_id: z.union([z.string().uuid(), z.null()]),
   linked_file_id: z.union([z.string().uuid(), z.null()]),
   linked_element_global_id: z.union([z.string(), z.null()]),
   linked_file_type: z.union([z.enum(['ifc', 'pdf', 'dxf', 'dwg', 'image']), z.null()]),
@@ -47,12 +47,30 @@ export const FindingCreateSchema = z.object({
   title: z.string().trim().min(1).max(255),
   description: z.string().trim().min(1).max(4000),
   severity: FindingSeverityEnum,
-  linked_model_id: z.union([z.string().uuid(), z.null()]).optional(),
+  linked_document_id: z.union([z.string().uuid(), z.null()]).optional(),
   linked_file_id: z.union([z.string().uuid(), z.null()]).optional(),
   linked_file_type: z.union([z.enum(['ifc', 'pdf', 'dxf', 'dwg', 'image']), z.null()]).optional(),
   anchor_x: z.union([z.number(), z.null()]).optional(),
   anchor_y: z.union([z.number(), z.null()]).optional(),
   anchor_z: z.union([z.number(), z.null()]).optional(),
+  // Attachment ids of photos captured while logging the finding. The server
+  // normalizes these into finding_attachments link rows.
+  photo_ids: z.union([z.array(z.string()), z.null()]).optional(),
 });
 
 export type FindingCreateInput = z.infer<typeof FindingCreateSchema>;
+
+// Subset of the server's FindingUpdate the mobile app drives: status transitions
+// (promote/start/resolve/verify/reopen), self-assignment + deadline on promote,
+// and resolution evidence on resolve. The API gates these (legal transition map,
+// promote-requires-deadline+assignee, resolve-requires-note+evidence,
+// verify-requires-inspector).
+export const FindingUpdateSchema = z.object({
+  status: FindingStatusEnum.optional(),
+  assignee_user_id: z.union([z.string().uuid(), z.null()]).optional(),
+  deadline_date: z.union([z.string(), z.null()]).optional(),
+  resolution_note: z.union([z.string(), z.null()]).optional(),
+  resolution_evidence_ids: z.union([z.array(z.string()), z.null()]).optional(),
+});
+
+export type FindingUpdateInput = z.infer<typeof FindingUpdateSchema>;

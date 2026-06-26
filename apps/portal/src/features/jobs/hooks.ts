@@ -14,7 +14,7 @@ import {
 } from '@/lib/api/schemas/jobs';
 import { useAuthMutation, useAuthQuery } from '@/lib/query/useAuthQuery';
 
-import { modelsKey } from '../models/queryKeys';
+import { documentsKey } from '../documents/queryKeys';
 import { notificationsKey, unreadCountKey } from '../notifications/queryKeys';
 import { reportsListKey } from '../reports/queryKeys';
 import { jobKey, jobsKey } from './queryKeys';
@@ -51,7 +51,7 @@ export function useRetryJob(
     mutationFn: (accessToken, jobId) => retryJob(accessToken, jobId),
     invalidateKeys: [
       jobsKey(projectId),
-      modelsKey(projectId),
+      documentsKey(projectId),
       reportsListKey(projectId),
       notificationsKey,
       unreadCountKey,
@@ -67,7 +67,7 @@ export function useCancelJob(
     mutationFn: (accessToken, jobId) => cancelJob(accessToken, jobId),
     invalidateKeys: [
       jobsKey(projectId),
-      modelsKey(projectId),
+      documentsKey(projectId),
       reportsListKey(projectId),
       notificationsKey,
       unreadCountKey,

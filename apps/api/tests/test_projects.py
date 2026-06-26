@@ -501,7 +501,7 @@ async def test_user_without_org_forbidden(
     claim, so the request can't be routed to a tenant schema."""
     from fastapi_users.password import PasswordHelper
 
-    from bimstitch_api.models.user import User
+    from bimdossier_api.models.user import User
 
     async with session_maker() as session:
         user = User(

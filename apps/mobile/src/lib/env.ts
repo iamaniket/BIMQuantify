@@ -18,10 +18,15 @@ const EnvSchema = z.object({
   EXPO_PUBLIC_WEB_URL: z.string().url(),
 });
 
+// The LAN-IP defaults are dev convenience ONLY (gated behind __DEV__): a
+// production build with these unset must fail at import via the Zod `.url()`
+// requirement, instead of silently baking in a developer's private LAN IP.
 const parsed = EnvSchema.safeParse({
-  EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.1.251:8000',
+  EXPO_PUBLIC_API_URL:
+    process.env.EXPO_PUBLIC_API_URL ?? (__DEV__ ? 'http://192.168.1.251:8000' : undefined),
   EXPO_PUBLIC_VIEWER_EMBED_URL: process.env.EXPO_PUBLIC_VIEWER_EMBED_URL,
-  EXPO_PUBLIC_WEB_URL: process.env.EXPO_PUBLIC_WEB_URL ?? 'http://192.168.1.251:3001',
+  EXPO_PUBLIC_WEB_URL:
+    process.env.EXPO_PUBLIC_WEB_URL ?? (__DEV__ ? 'http://192.168.1.251:3001' : undefined),
 });
 
 if (!parsed.success) {

@@ -214,7 +214,11 @@ async function requestWithMeta<TResponse, TBody>(
   }
 
   const rawCount = response.headers.get('X-Total-Count');
-  const totalCount = rawCount !== null ? Number(rawCount) : null;
+  // Guard against a malformed header: Number('') / Number('abc') is NaN, which
+  // would poison pagination math (Math.ceil(NaN) → NaN). Degrade to the explicit
+  // "unknown total" null path instead.
+  const parsedCount = rawCount !== null ? Number(rawCount) : null;
+  const totalCount = parsedCount !== null && Number.isFinite(parsedCount) ? parsedCount : null;
 
   const raw: unknown = await response.json();
   const parsed = options.responseSchema.safeParse(raw);

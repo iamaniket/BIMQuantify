@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 
-import type { DisplayMode, ViewerHandle } from '@bimstitch/viewer';
+import type { DisplayMode, ViewerHandle } from '@bimdossier/viewer';
 
 /**
  * Re-applies the persisted viewer look (monochrome / clay / matcap) when the

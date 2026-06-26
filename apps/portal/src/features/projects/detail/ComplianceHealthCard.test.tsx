@@ -9,7 +9,7 @@ vi.mock('@/components/shared/BlueprintTexture', () => ({
   BlueprintTexture: () => <div data-testid="blueprint-texture" />,
 }));
 
-vi.mock('@bimstitch/ui', () => ({
+vi.mock('@bimdossier/ui', () => ({
   Progress: ({ value }: { value: number }) => (
     <div data-testid="progress" data-value={value} />
   ),

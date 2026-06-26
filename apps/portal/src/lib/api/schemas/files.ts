@@ -47,7 +47,7 @@ export type ExtractionStatusValue = z.infer<typeof ExtractionStatusEnum>;
 export const ProjectFileSchema = z.object({
   id: z.string().uuid(),
   role: ProjectFileRoleEnum,
-  model_id: z.string().uuid(),
+  document_id: z.string().uuid(),
   project_id: z.string().uuid(),
   version_number: z.number().int().positive(),
   uploaded_by_user_id: z.string().uuid(),
@@ -56,6 +56,9 @@ export const ProjectFileSchema = z.object({
   content_type: z.string(),
   content_sha256: z.union([z.string(), z.null()]),
   ifc_project_guid: z.union([z.string(), z.null()]),
+  // Page count for PDF files (stamped during metadata extraction); null for
+  // IFC/other files and PDFs extracted before the field existed.
+  page_count: z.number().int().nullable().optional(),
   file_type: FileTypeEnum,
   ifc_schema: z.union([IfcSchemaEnum, z.null()]),
   status: ProjectFileStatusEnum,
@@ -115,9 +118,9 @@ export const ViewerBundleResponseSchema = z.object({
 
 export type ViewerBundleResponse = z.infer<typeof ViewerBundleResponseSchema>;
 
-// One model in a project's federated viewer manifest: the latest ready IFC
-// file for a model plus its presigned artifact URLs and discipline metadata.
-export const ProjectViewerModelEntrySchema = z.object({
+// One document in a project's federated viewer manifest: the latest ready IFC
+// file for a document plus its presigned artifact URLs and discipline metadata.
+export const ProjectViewerDocumentEntrySchema = z.object({
   file_id: z.string().uuid(),
   model_id: z.string().uuid(),
   model_name: z.string(),
@@ -131,11 +134,11 @@ export const ProjectViewerModelEntrySchema = z.object({
   floor_plans_url: z.union([z.string().url(), z.null()]),
 });
 
-export type ProjectViewerModelEntry = z.infer<typeof ProjectViewerModelEntrySchema>;
+export type ProjectViewerDocumentEntry = z.infer<typeof ProjectViewerDocumentEntrySchema>;
 
 export const ProjectViewerManifestResponseSchema = z.object({
   expires_in: z.number().int().positive(),
-  models: z.array(ProjectViewerModelEntrySchema),
+  models: z.array(ProjectViewerDocumentEntrySchema),
 });
 
 export type ProjectViewerManifestResponse = z.infer<typeof ProjectViewerManifestResponseSchema>;

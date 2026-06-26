@@ -193,8 +193,8 @@ async def test_failed_login_records_into_platform_schema(
 
     from sqlalchemy import select
 
-    from bimstitch_api.models.audit_log import AuditLog
-    from bimstitch_api.tenancy import schema_name_for
+    from bimdossier_api.models.audit_log import AuditLog
+    from bimdossier_api.tenancy import schema_name_for
 
     bogus = f"nobody-{uuid.uuid4().hex[:8]}@example.com"
     resp = await client.post(

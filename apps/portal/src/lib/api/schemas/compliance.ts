@@ -78,9 +78,9 @@ export type ComplianceFramework = z.infer<typeof ComplianceFrameworkEnum>;
 export const ProjectComplianceReportItemSchema = z.object({
   job_id: z.string().uuid(),
   file_id: z.string().uuid(),
-  model_id: z.string().uuid(),
-  model_name: z.string(),
-  model_discipline: z.string(),
+  document_id: z.string().uuid(),
+  document_name: z.string(),
+  document_discipline: z.string(),
   file_name: z.string(),
   file_version: z.number().int(),
   framework: ComplianceFrameworkEnum,

@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import type { LegalDocument } from '@bimstitch/i18n';
+import type { LegalDocument } from '@bimdossier/i18n';
 
 type Props = {
   doc: LegalDocument;

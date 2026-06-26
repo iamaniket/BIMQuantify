@@ -1,10 +1,10 @@
 'use client';
 
-import { CalendarDays, ChevronDown, ChevronRight, Clock } from '@bimstitch/ui/icons';
+import { ArrowRight, CalendarDays, Clock } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { Skeleton } from '@bimstitch/ui';
+import { Button, Skeleton } from '@bimdossier/ui';
 
 import { Link } from '@/i18n/navigation';
 
@@ -21,16 +21,16 @@ type Props = {
   projectId: string;
 };
 
-// Rendered as its own card on the project-detail page (directly below the
-// "Quality & documents" launcher): a collapsible "Deadlines" header + compact
-// DeadlineRow items. The card chrome is provided by the caller (RightColumnTabs).
+// Rendered inside the project-detail right column's lower-panel "Deadlines" tab
+// (alongside Containers and Readiness): a met/total summary + calendar link above
+// a list of compact DeadlineRow items. The card chrome is provided by the caller
+// (RightColumnTabs).
 export function DeadlinesSection({ projectId }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs');
   const deadlinesQuery = useDeadlines(projectId);
   const settingsQuery = useProjectDeadlineSettings(projectId);
   const fileMutation = useFileDeadline(projectId);
   const [filingDeadline, setFilingDeadline] = useState<{ deadline: Deadline; label: string } | null>(null);
-  const [collapsed, setCollapsed] = useState(false);
 
   const deadlines = deadlinesQuery.data ?? [];
   const settings = settingsQuery.data ?? [];
@@ -66,52 +66,40 @@ export function DeadlinesSection({ projectId }: Props): JSX.Element {
 
   return (
     <section>
-      <div className="mb-2 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => { setCollapsed((prev) => !prev); }}
-          className="flex flex-1 items-center gap-1.5 text-body3 font-semibold text-foreground-secondary hover:text-foreground"
-        >
-          {collapsed ? (
-            <ChevronRight className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronDown className="h-3.5 w-3.5" />
-          )}
-          {t('deadlines.heading')}
-          <span className="ml-1 text-caption tabular-nums text-foreground-tertiary">
-            {metCount}/{deadlines.length}
-          </span>
-        </button>
-        <Link
-          href="/calendar"
-          className="inline-flex shrink-0 items-center gap-1 text-caption font-medium text-primary hover:underline"
-        >
-          <CalendarDays className="h-3.5 w-3.5" aria-hidden />
-          {t('deadlines.viewOnCalendar')}
-        </Link>
+      {/* This renders inside the "Deadlines" tab, so no heading/collapse here —
+          just a met/total summary and the calendar link above the full list. */}
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-caption tabular-nums text-foreground-tertiary">
+          {metCount}/{deadlines.length}
+        </span>
+        <Button variant="ghost" size="sm" className="shrink-0" asChild>
+          <Link href="/calendar">
+            <CalendarDays className="mr-1 h-3.5 w-3.5" aria-hidden />
+            {t('deadlines.viewOnCalendar')}
+            <ArrowRight className="ml-1 h-3.5 w-3.5" />
+          </Link>
+        </Button>
       </div>
 
-      {!collapsed && (
-        <ul className="space-y-1.5">
-          {deadlines.map((dl) => {
-            const meta = labelMap.get(dl.deadline_type);
-            const dlLabel = meta !== undefined ? meta.label : dl.deadline_type;
-            const ref = meta !== undefined ? meta.legal_reference : null;
-            return (
-              <DeadlineRow
-                key={dl.id}
-                deadline={dl}
-                label={dlLabel}
-                legalReference={ref}
-                canMarkMet={dl.status === 'pending'}
-                isPending={fileMutation.isPending}
-                onMarkMet={() => { fileMutation.mutate({ deadlineId: dl.id }); }}
-                onFile={() => { setFilingDeadline({ deadline: dl, label: dlLabel }); }}
-              />
-            );
-          })}
-        </ul>
-      )}
+      <ul className="space-y-1.5">
+        {deadlines.map((dl) => {
+          const meta = labelMap.get(dl.deadline_type);
+          const dlLabel = meta !== undefined ? meta.label : dl.deadline_type;
+          const ref = meta !== undefined ? meta.legal_reference : null;
+          return (
+            <DeadlineRow
+              key={dl.id}
+              deadline={dl}
+              label={dlLabel}
+              legalReference={ref}
+              canMarkMet={dl.status === 'pending'}
+              isPending={fileMutation.isPending}
+              onMarkMet={() => { fileMutation.mutate({ deadlineId: dl.id }); }}
+              onFile={() => { setFilingDeadline({ deadline: dl, label: dlLabel }); }}
+            />
+          );
+        })}
+      </ul>
 
       {filingDeadline !== null && (
         <FilingDialog

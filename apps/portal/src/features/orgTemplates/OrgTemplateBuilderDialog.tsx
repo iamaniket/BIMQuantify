@@ -12,7 +12,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { Wizard } from '@/components/shared/wizard/Wizard';
 

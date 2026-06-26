@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 
-import type { DecodedFloorPlans } from '@bimstitch/viewer';
+import type { DecodedFloorPlans } from '@bimdossier/viewer';
 
 import { collectSpatialNames } from '@/features/viewer/3d/minimap/spatialNames';
 import { useFloorPlans } from '@/features/viewer/3d/minimap/useFloorPlans';

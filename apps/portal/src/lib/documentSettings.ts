@@ -1,7 +1,7 @@
 // Settings for the PDF (DocumentViewer) toolbar — kept entirely separate
 // from `viewerSettings.ts` so changes to one cannot affect the other.
 
-const STORAGE_KEY = 'bimstitch.documentSettings.v1';
+const STORAGE_KEY = 'bimdossier.documentSettings.v1';
 
 /** Logical actions the PDF viewer exposes. */
 export type DocumentAction =

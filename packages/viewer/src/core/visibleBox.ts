@@ -12,6 +12,19 @@ import type * as FRAGS from '@thatopen/fragments';
 
 import type { ItemId, ViewerContext } from './types.js';
 
+const _tmpSize = new THREE.Vector3();
+
+/**
+ * Per-model cache of every element's local id and (parallel) world-space AABB,
+ * from `getBoxes`. Boxes are immutable for a model's lifetime, so this is queried
+ * once per model and reused across bakes — visibility/x-ray re-bakes only change
+ * which cached boxes are rasterised, never the boxes themselves.
+ */
+export interface ShadowBoxCacheEntry {
+  ids: number[];
+  boxes: THREE.Box3[];
+}
+
 /**
  * World-space AABB of the currently *visible solid* elements — every loaded
  * item minus the `hidden` and `xrayed` sets.
@@ -74,4 +87,88 @@ export async function computeVisibleSolidBox(
   }
 
   return out;
+}
+
+/**
+ * Per-element world-space AABBs of the currently *visible solid* set, plus their
+ * union — the inputs the box-silhouette contact-shadow bake rasterises. Unlike
+ * {@link computeVisibleSolidBox} (which only needs the union), this returns every
+ * surviving element box so the baker can draw each footprint.
+ *
+ * Sourced from `getBoxes` (worker-computed, NO geometry streaming) and cached in
+ * `boxCache` — the first call per model pays one `getLocalIds` + `getBoxes`; every
+ * later call (visibility / x-ray change) is a pure in-memory filter. Returned
+ * boxes are the cached references (read-only — the baker never mutates them).
+ *
+ * `model.box` is the tight geometry AABB; element boxes that poke outside it are
+ * the same spurious origin-anchored spatial elements the merged-box clamp strips,
+ * so they're dropped here too (otherwise they smear the silhouette / balloon the
+ * framing box). When `model.box` is unavailable (very early, pre-stream), every
+ * non-empty box is kept.
+ *
+ * **Coordinate frame**: `getBoxes` returns boxes already in the coordinated
+ * (autoCoordinate) world frame — the same frame `getMergedBox` /
+ * `computeWorldSceneBox` use, and the OPPOSITE of raw `getPositions` / edge
+ * buffers (local space). Do NOT apply the model world matrix here; doing so would
+ * double-offset non-first federated models.
+ */
+export async function collectVisibleSolidBoxes(
+  ctx: ViewerContext,
+  opts: {
+    hidden: ItemId[];
+    xrayed: ItemId[];
+    boxCache: Map<string, ShadowBoxCacheEntry>;
+  },
+): Promise<{ boxes: THREE.Box3[]; framingBox: THREE.Box3 }> {
+  const boxes: THREE.Box3[] = [];
+  const framingBox = new THREE.Box3();
+
+  const excludedByModel = new Map<string, Set<number>>();
+  for (const item of [...opts.hidden, ...opts.xrayed]) {
+    let set = excludedByModel.get(item.modelId);
+    if (!set) {
+      set = new Set();
+      excludedByModel.set(item.modelId, set);
+    }
+    set.add(item.localId);
+  }
+
+  for (const [modelId, model] of ctx.models()) {
+    let entry = opts.boxCache.get(modelId);
+    if (!entry) {
+      try {
+        const ids = [
+          ...(await (
+            model as unknown as { getLocalIds(): Promise<Iterable<number>> }
+          ).getLocalIds()),
+        ];
+        const got = await (model as FRAGS.FragmentsModel).getBoxes(ids);
+        entry = { ids, boxes: got };
+        opts.boxCache.set(modelId, entry);
+      } catch {
+        continue;
+      }
+    }
+
+    const excluded = excludedByModel.get(modelId);
+    const modelBox = model.box;
+    let bounds: THREE.Box3 | null = null;
+    if (modelBox && !modelBox.isEmpty()) {
+      const eps = modelBox.getSize(_tmpSize).length() * 1e-3 + 1e-3;
+      bounds = modelBox.clone().expandByScalar(eps);
+    }
+
+    const n = Math.min(entry.ids.length, entry.boxes.length);
+    for (let i = 0; i < n; i++) {
+      const id = entry.ids[i] as number;
+      if (excluded?.has(id)) continue;
+      const b = entry.boxes[i];
+      if (!b || b.isEmpty()) continue;
+      if (bounds !== null && !bounds.containsBox(b)) continue;
+      boxes.push(b);
+      framingBox.union(b);
+    }
+  }
+
+  return { boxes, framingBox };
 }

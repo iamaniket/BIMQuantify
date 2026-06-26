@@ -7,8 +7,8 @@ and reads `my_role` off each project to decide which controls to show.
 
 from httpx import AsyncClient
 
-from bimstitch_api.auth.permissions import serialize_matrix
-from bimstitch_api.models.project_member import ProjectRole
+from bimdossier_api.auth.permissions import serialize_matrix
+from bimdossier_api.models.project_member import ProjectRole
 
 
 def _auth(token: str) -> dict[str, str]:

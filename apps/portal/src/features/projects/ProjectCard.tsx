@@ -1,24 +1,24 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { Building2, CalendarDays, FileText, Layers, MapPin, RefreshCw, Ruler, Truck } from '@bimstitch/ui/icons';
+import { Building2, CalendarDays, FileText, Layers, MapPin, RefreshCw, Ruler, Truck } from '@bimdossier/ui/icons';
 import { Link } from '@/i18n/navigation';
 import { useCallback, useEffect, useState, type JSX } from 'react';
 
 import {
   Card, CardBody, CardFooter, Icon,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { AvatarStack } from '@/components/shared/AvatarStack';
 import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
-import { listModels } from '@/lib/api/models';
+import { listDocuments } from '@/lib/api/documents';
 import { getProject } from '@/lib/api/projects';
 import { listDeadlines } from '@/lib/api/deadlines';
 import { listAttachments } from '@/lib/api/attachments';
 import { listFindings } from '@/lib/api/findings';
 import { listCertificates } from '@/lib/api/certificates';
 import type { Project, ProjectMember } from '@/lib/api/schemas';
-import { modelsKey } from '@/features/models/queryKeys';
+import { documentsKey } from '@/features/documents/queryKeys';
 import { attachmentsKey } from '@/features/attachments/queryKeys';
 import { findingsKey } from '@/features/findings/queryKeys';
 import { certificatesKey } from '@/features/certificates/queryKeys';
@@ -26,7 +26,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 import { useLocale, useTranslations } from 'next-intl';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { projectKey, projectDeadlinesKey } from './queryKeys';
 
@@ -108,8 +108,8 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
       .catch(swallow);
     queryClient
       .prefetchQuery({
-        queryKey: modelsKey(id),
-        queryFn: () => listModels(accessToken, id),
+        queryKey: documentsKey(id),
+        queryFn: () => listDocuments(accessToken, id),
         staleTime: 30_000,
       })
       .catch(swallow);

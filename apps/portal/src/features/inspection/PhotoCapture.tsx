@@ -1,11 +1,11 @@
 'use client';
 
-import { Camera, X } from '@bimstitch/ui/icons';
+import { Camera, X } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
-import { Button } from '@bimstitch/ui';
+import { Button } from '@bimdossier/ui';
 
 import { useAttachmentViewUrl } from '@/features/attachments/useAttachmentViewUrl';
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';

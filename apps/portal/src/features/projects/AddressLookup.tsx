@@ -1,12 +1,12 @@
 'use client';
 
-import { MapPin, Search } from '@bimstitch/ui/icons';
+import { MapPin, Search } from '@bimdossier/ui/icons';
 import {
   useEffect, useId, useRef, useState, type JSX,
 } from 'react';
 import { useTranslations } from 'next-intl';
 
-import { Input, Label, Spinner } from '@bimstitch/ui';
+import { Input, Label, Spinner } from '@bimdossier/ui';
 
 import {
   lookupAddress, suggestAddresses, type AddressSuggestion, type ResolvedAddress,

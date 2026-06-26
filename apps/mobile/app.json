@@ -8,14 +8,14 @@
     "scheme": "mobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.bimstitch.mobile",
+      "bundleIdentifier": "com.bimdossier.mobile",
       "supportsTablet": true
     },
     "android": {
-      "package": "com.bimstitch.mobile",
+      "package": "com.bimdossier.mobile",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
-        "backgroundColor": "#2c5697",
+        "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -31,14 +31,29 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#2c5697",
+          "backgroundColor": "#ffffff",
           "android": {
             "image": "./assets/images/splash-icon.png",
             "imageWidth": 76
           }
         }
       ],
-      "./plugins/withViewerEmbed"
+      "./plugins/withViewerEmbed",
+      "expo-sqlite",
+      "expo-localization",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "BimDossier needs photo access so you can attach images to snags.",
+          "cameraPermission": "BimDossier needs camera access so you can photograph snags."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "BimDossier can tag snag photos with the location where they were taken."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

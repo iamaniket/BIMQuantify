@@ -7,7 +7,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { PanelHeading } from '@/components/shared/PanelHeading';
 import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';

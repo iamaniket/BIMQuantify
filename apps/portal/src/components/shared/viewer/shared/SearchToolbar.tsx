@@ -1,9 +1,9 @@
 'use client';
 
-import { ChevronDown, ChevronUp, Search, X } from '@bimstitch/ui/icons';
+import { ChevronDown, ChevronUp, Search, X } from '@bimdossier/ui/icons';
 import { type JSX, type ReactNode } from 'react';
 
-import { IconButton, Input } from '@bimstitch/ui';
+import { IconButton, Input } from '@bimdossier/ui';
 
 export type SearchToolbarProps = {
   query: string;

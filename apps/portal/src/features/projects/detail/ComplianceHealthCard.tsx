@@ -1,7 +1,7 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Eyebrow } from '@bimstitch/ui';
+import { Eyebrow } from '@bimdossier/ui';
 
 import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
 import type { ComplianceSummary } from '@/features/compliance/types';

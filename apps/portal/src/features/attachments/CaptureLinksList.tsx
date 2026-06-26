@@ -1,11 +1,11 @@
 'use client';
 
-import { LinkIcon, XCircle } from '@bimstitch/ui/icons';
+import { LinkIcon, XCircle } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, type JSX } from 'react';
 import { toast } from 'sonner';
 
-import { Button, Skeleton } from '@bimstitch/ui';
+import { Button, Skeleton } from '@bimdossier/ui';
 
 import type { CaptureLink } from '@/lib/api/schemas';
 

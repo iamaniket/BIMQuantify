@@ -1,6 +1,6 @@
 'use client';
 
-import { Info } from '@bimstitch/ui/icons';
+import { Info } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useMemo, useState, type JSX,

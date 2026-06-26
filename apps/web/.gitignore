@@ -6,6 +6,5 @@ dist
 .env*.local
 playwright-report
 test-results
-# Viewer runtime assets copied by scripts/copy-wasm.mjs (predev/prebuild)
-public/web-ifc
+# Viewer runtime asset copied by scripts/copy-wasm.mjs (predev/prebuild)
 public/fragments

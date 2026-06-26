@@ -67,7 +67,7 @@ function resolveFulfillment(
       });
       return { fulfilled: matching.length > 0, count: matching.length, hasExpiredCert };
     }
-    case 'model': {
+    case 'document': {
       // Drawings: satisfied by a viewable/processed model (ready+extracted IFC
       // or ready PDF) — the geometry the per-storey 2D plans derive from. A
       // model that exists but is still processing does not count.

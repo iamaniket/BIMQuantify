@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from bimstitch_api.jobs import set_job_canceller
+from bimdossier_api.jobs import set_job_canceller
 from tests.conftest import FakeStorage, _auth
 from tests.test_project_files_extraction import _bearer, _ready_file
 
@@ -30,7 +30,7 @@ async def test_cancel_pending_job(
     job_cancel_calls: list[dict[str, object]],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, _file_id = await _ready_file(client, fake, org_user, name="c1.ifc")
+    project_id, document_id, _file_id = await _ready_file(client, fake, org_user, name="c1.ifc")
     job = await _latest_job(client, org_user["access_token"], project_id)
     assert job["status"] == "pending"
 
@@ -47,7 +47,7 @@ async def test_cancel_pending_job(
 
     # The linked file leaves its non-terminal state with a CANCELLED marker.
     listing = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files?status=all",
+        f"/projects/{project_id}/documents/{document_id}/files?status=all",
         headers=_auth(org_user["access_token"]),
     )
     [row] = listing.json()
@@ -61,7 +61,7 @@ async def test_cancel_running_job_rejected(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, _model_id, file_id = await _ready_file(client, fake, org_user, name="c2.ifc")
+    project_id, _document_id, file_id = await _ready_file(client, fake, org_user, name="c2.ifc")
     job = await _latest_job(client, org_user["access_token"], project_id)
 
     running = await client.post(
@@ -91,7 +91,7 @@ async def test_cancel_terminal_job_rejected(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, _model_id, file_id = await _ready_file(client, fake, org_user, name="c3.ifc")
+    project_id, _document_id, file_id = await _ready_file(client, fake, org_user, name="c3.ifc")
     job = await _latest_job(client, org_user["access_token"], project_id)
 
     cb = await client.post(
@@ -121,7 +121,7 @@ async def test_cancel_already_running_on_processor(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, _model_id, _file_id = await _ready_file(client, fake, org_user, name="c4.ifc")
+    project_id, _document_id, _file_id = await _ready_file(client, fake, org_user, name="c4.ifc")
     job = await _latest_job(client, org_user["access_token"], project_id)
 
     async def _already_running(_job_id: object, _settings: object) -> str:

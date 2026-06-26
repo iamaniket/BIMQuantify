@@ -1,4 +1,4 @@
-import type { BadgeVariant } from '@bimstitch/ui';
+import type { BadgeVariant } from '@bimdossier/ui';
 
 import type { FindingSeverityValue, FindingStatusValue } from '@/lib/api/schemas';
 

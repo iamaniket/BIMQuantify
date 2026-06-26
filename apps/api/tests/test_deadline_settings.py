@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from bimstitch_api.schemas.deadline_notification_settings import (
+from bimdossier_api.schemas.deadline_notification_settings import (
     DeadlineNotificationSettingsUpdate,
 )
 

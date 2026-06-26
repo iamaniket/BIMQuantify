@@ -26,6 +26,7 @@
  */
 
 import { pick } from '../../../core/Raycaster.js';
+import { verror } from '../../../core/debugLog.js';
 import type { ItemId, Plugin, ViewerContext } from '../../../core/types.js';
 import { createExceptionManager, normalizeType } from './exceptionManager.js';
 import { createModelHider, type ModelHider } from './modelHider.js';
@@ -155,7 +156,12 @@ export function visibilityPlugin(
     // Rebuild the authoritative hidden set from actual model state.
     hiddenSet.clear();
     hiddenItemMap.clear();
-    const hiddenMap = await hider.getVisibilityMap(false).catch(() => ({}));
+    const hiddenMap = await hider.getVisibilityMap(false).catch((err: unknown) => {
+      // Don't silently forget the hidden set — a failed read can otherwise leave
+      // geometry stuck invisible after show-all. Surface it (always-on verror).
+      verror('visibility', 'getVisibilityMap failed during hidden-set rebuild', err);
+      return {};
+    });
     for (const [modelId, ids] of Object.entries(hiddenMap)) {
       if (!ids) continue;
       for (const localId of ids) {
@@ -225,7 +231,12 @@ export function visibilityPlugin(
     // Rebuild tracking from actual model state.
     hiddenSet.clear();
     hiddenItemMap.clear();
-    const hiddenMap = await hider.getVisibilityMap(false).catch(() => ({}));
+    const hiddenMap = await hider.getVisibilityMap(false).catch((err: unknown) => {
+      // Don't silently forget the hidden set — a failed read can otherwise leave
+      // geometry stuck invisible after show-all. Surface it (always-on verror).
+      verror('visibility', 'getVisibilityMap failed during hidden-set rebuild', err);
+      return {};
+    });
     for (const [modelId, ids] of Object.entries(hiddenMap)) {
       if (!ids) continue;
       for (const localId of ids) {
@@ -266,24 +277,31 @@ export function visibilityPlugin(
   // Double-click handler bound to `doubleclick:left` by default. Raycast
   // under the cursor and branch:
   //   - hit, and that element is already the sole isolated one → show all;
-  //   - hit, otherwise → isolate that element;
-  //   - miss (empty space) → leave isolation untouched.
+  //   - hit, otherwise → isolate that element, then frame it;
+  //   - miss (empty space) → leave isolation untouched and gently recenter the
+  //     model (the recovery gesture — preserves the viewing angle instead of the
+  //     jarring iso-snap fit). Falls back to frameVisible if recenter is absent.
   const isolateAtPointer = async (args: unknown): Promise<void> => {
     if (!ctxRef || !enabled) return;
     const ndc = ndcOf(args as PickArgs);
-    if (ndc) {
-      const hit = await pick(ctxRef, ndc);
-      if (hit) {
-        const alreadySoleIsolated =
-          isolationActive && isolatedSet.size === 1 && isolatedSet.has(itemKey(hit.item));
-        if (alreadySoleIsolated) {
-          await showAll();
-        } else {
-          await applyIsolation([hit.item]);
-        }
+    const hit = ndc ? await pick(ctxRef, ndc) : null;
+    if (hit) {
+      const alreadySoleIsolated =
+        isolationActive && isolatedSet.size === 1 && isolatedSet.has(itemKey(hit.item));
+      if (alreadySoleIsolated) {
+        await showAll();
+      } else {
+        await applyIsolation([hit.item]);
       }
+      if (ctxRef.commands.has('camera.frameVisible')) {
+        await ctxRef.commands.execute('camera.frameVisible').catch(() => undefined);
+      }
+      return;
     }
-    if (ctxRef.commands.has('camera.frameVisible')) {
+    // Empty-space double-click — bring a lost model back, gently.
+    if (ctxRef.commands.has('camera.recenter')) {
+      await ctxRef.commands.execute('camera.recenter').catch(() => undefined);
+    } else if (ctxRef.commands.has('camera.frameVisible')) {
       await ctxRef.commands.execute('camera.frameVisible').catch(() => undefined);
     }
   };

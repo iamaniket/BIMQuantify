@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { BrandMark } from '@bimstitch/brand';
+import { BrandMark } from '@bimdossier/brand';
 
 import { Link } from '@/i18n/navigation';
 import { env } from '@/lib/env';
@@ -87,8 +87,8 @@ export function Footer(): JSX.Element {
         >
           <div className="col-span-2 flex flex-col gap-3 sm:col-span-1">
             <div className="flex items-center gap-2 text-primary">
-              <BrandMark size={28} variant="glyph-mono" />
-              <span className="text-title3 font-semibold">
+              <BrandMark size={31} />
+              <span className="text-title2 font-semibold">
                 {tHeader('brand')}
               </span>
             </div>

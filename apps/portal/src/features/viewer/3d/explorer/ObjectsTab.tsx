@@ -1,6 +1,6 @@
 'use client';
 
-import { FolderOpen } from '@bimstitch/ui/icons';
+import { FolderOpen } from '@bimdossier/ui/icons';
 import {
   useState, useMemo, useCallback, type JSX,
 } from 'react';

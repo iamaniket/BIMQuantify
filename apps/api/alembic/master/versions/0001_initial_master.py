@@ -8,6 +8,12 @@ per-org schemas managed by the tenant chain. The former 0002 (users.locale) and
 0003 (blog_posts) deltas were folded in here; blog tags are normalized into the
 `blog_post_tags` table (no JSONB).
 
+A later squash folded in the former 0002 (organizations.active_storage_limit_gb)
+and 0003 (users.tokens_valid_after, the per-user token epoch / sign-out-everywhere
+column) deltas. Because the upgrade is driven by `create_all` over the live
+models, those columns are emitted automatically — there was nothing to add here
+beyond deleting the now-redundant delta revisions.
+
 Revision ID: 0001_master
 Revises:
 Create Date: 2026-06-02
@@ -27,14 +33,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    from bimstitch_api._rls_sql import (
+    from bimdossier_api._rls_sql import (
         create_app_role_statements,
         enable_rls_statements,
     )
-    from bimstitch_api.db import Base, is_master_table
+    from bimdossier_api.db import Base, is_master_table
     # Import every model so they register with Base.metadata, then filter
     # down to the master-side tables only.
-    from bimstitch_api.models import (  # noqa: F401
+    from bimdossier_api.models import (  # noqa: F401
         AccessRequest,
         AuditLog,
         BlogPost,
@@ -44,8 +50,8 @@ def upgrade() -> None:
         ChecklistItem,
         ChecklistItemResult,
         Deadline,
+        Document,
         Job,
-        Model,
         Notification,
         NotificationUserState,
         Organization,
@@ -83,9 +89,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    from bimstitch_api._rls_sql import disable_rls_statements
-    from bimstitch_api.db import Base, is_master_table
-    from bimstitch_api.models import (  # noqa: F401
+    from bimdossier_api._rls_sql import disable_rls_statements
+    from bimdossier_api.db import Base, is_master_table
+    from bimdossier_api.models import (  # noqa: F401
         AccessRequest,
         AuditLog,
         BlogPost,
@@ -95,8 +101,8 @@ def downgrade() -> None:
         ChecklistItem,
         ChecklistItemResult,
         Deadline,
+        Document,
         Job,
-        Model,
         Notification,
         NotificationUserState,
         Organization,

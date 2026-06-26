@@ -336,7 +336,7 @@ async def test_create_report_dispatch_failure_marks_failed(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
-    from bimstitch_api.jobs import DispatchJobError, set_job_dispatcher
+    from bimdossier_api.jobs import DispatchJobError, set_job_dispatcher
 
     async def _boom(*_args: object, **_kwargs: object) -> None:
         raise DispatchJobError("worker unreachable")

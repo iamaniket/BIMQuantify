@@ -17,9 +17,9 @@ from uuid import UUID
 
 from sqlalchemy import select, text
 
-from bimstitch_api.models.job import Job, JobStatus, JobType
-from bimstitch_api.models.project_file import ExtractionStatus, ProjectFile
-from bimstitch_api.models.report import Report, ReportStatus, ReportType
+from bimdossier_api.models.job import Job, JobStatus, JobType
+from bimdossier_api.models.project_file import ExtractionStatus, ProjectFile
+from bimdossier_api.models.report import Report, ReportStatus, ReportType
 from tests.conftest import FakeStorage, _auth, _create_project
 from tests.test_jobs import _ready_ifc
 
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
 
 def _org_schema(org_user: dict[str, str]) -> str:
-    from bimstitch_api.tenancy import schema_name_for
+    from bimdossier_api.tenancy import schema_name_for
 
     return schema_name_for(UUID(org_user["organization_id"]))
 
@@ -166,10 +166,10 @@ async def test_stuck_job_force_failed_with_file_cascade(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     """A job stuck past the timeout is failed, and its file extraction too."""
-    from bimstitch_api.jobs.reconcile import sweep_all_orgs
+    from bimdossier_api.jobs.reconcile import sweep_all_orgs
 
     client, fake = fake_storage_client
-    _project_id, _model_id, file_id = await _ready_ifc(client, fake, org_user, name="stuck.ifc")
+    _project_id, _document_id, file_id = await _ready_ifc(client, fake, org_user, name="stuck.ifc")
     schema = _org_schema(org_user)
 
     job_id = (
@@ -200,7 +200,7 @@ async def test_fresh_job_not_reaped(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     """A job younger than the timeout is left in its current state."""
-    from bimstitch_api.jobs.reconcile import sweep_all_orgs
+    from bimdossier_api.jobs.reconcile import sweep_all_orgs
 
     client, fake = fake_storage_client
     await _ready_ifc(client, fake, org_user, name="fresh.ifc")
@@ -224,7 +224,7 @@ async def test_stuck_report_force_failed(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     """A report stuck in `running` past the timeout is force-failed."""
-    from bimstitch_api.jobs.reconcile import sweep_all_orgs
+    from bimdossier_api.jobs.reconcile import sweep_all_orgs
 
     client, _fake = fake_storage_client
     project = await _create_project(client, org_user["access_token"], name="report-stuck")
@@ -249,7 +249,7 @@ async def test_reconcile_is_idempotent(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     """A second sweep does not re-touch an already-failed job."""
-    from bimstitch_api.jobs.reconcile import sweep_all_orgs
+    from bimdossier_api.jobs.reconcile import sweep_all_orgs
 
     schema = _org_schema(org_user)
     job_id = await _insert_job(

@@ -3,8 +3,8 @@
 import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { cn } from '@bimstitch/ui';
-import type { Locale } from '@bimstitch/i18n';
+import { cn } from '@bimdossier/ui';
+import type { Locale } from '@bimdossier/i18n';
 
 import { formatDate } from '@/lib/formatting/dates';
 import type { BcfTopicSummary } from '@/lib/api/schemas/bcf';

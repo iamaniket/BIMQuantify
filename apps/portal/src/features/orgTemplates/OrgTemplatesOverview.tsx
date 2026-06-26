@@ -7,11 +7,11 @@ import {
   LayoutGrid,
   ListTree,
   SlidersHorizontal,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useMemo, type JSX } from 'react';
 
-import { Badge } from '@bimstitch/ui';
+import { Badge } from '@bimdossier/ui';
 
 import { BarChartMini } from '@/components/shared/charts/BarChartMini';
 import { ChartBarRow } from '@/components/shared/charts/ChartBarRow';

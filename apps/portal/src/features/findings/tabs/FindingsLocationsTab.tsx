@@ -1,13 +1,13 @@
 'use client';
 
-import { ArrowRight, MapPin } from '@bimstitch/ui/icons';
+import { ArrowRight, MapPin } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useMemo, useState, type JSX } from 'react';
 
-import { Badge } from '@bimstitch/ui';
+import { Badge } from '@bimdossier/ui';
 
 import { Link } from '@/i18n/navigation';
-import { useModels } from '@/features/models/useModels';
+import { useDocuments } from '@/features/documents/useDocuments';
 import { setViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
 import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
 import { severityBadgeVariant, statusBadgeVariant } from '@/features/projects/detail/findingBadges';
@@ -20,7 +20,7 @@ type Props = {
 
 /** A finding can be opened at its location only when both a model and a file are linked. */
 function isPlaced(f: Finding): boolean {
-  return f.linked_model_id !== null && f.linked_file_id !== null;
+  return f.linked_document_id !== null && f.linked_file_id !== null;
 }
 
 function locationSummary(f: Finding): string | null {
@@ -33,7 +33,7 @@ export function FindingsLocationsTab({ projectId, findings }: Props): JSX.Elemen
   const t = useTranslations('findingsBoard.locations');
   const tStatus = useTranslations('findingsBoard.columns');
   const tSeverity = useTranslations('findings.severity');
-  const modelsQuery = useModels(projectId);
+  const modelsQuery = useDocuments(projectId);
   const [selected, setSelected] = useState<Finding | null>(null);
 
   const modelName = useMemo(() => {
@@ -48,7 +48,7 @@ export function FindingsLocationsTab({ projectId, findings }: Props): JSX.Elemen
     const rest: Finding[] = [];
     for (const f of findings) {
       if (isPlaced(f)) {
-        const key = f.linked_model_id!;
+        const key = f.linked_document_id!;
         const list = byModel.get(key) ?? [];
         list.push(f);
         byModel.set(key, list);
@@ -110,7 +110,7 @@ export function FindingsLocationsTab({ projectId, findings }: Props): JSX.Elemen
                     onClick={() => {
                       setViewerTarget(projectId, {
                         kind: 'single',
-                        modelId: f.linked_model_id!,
+                        modelId: f.linked_document_id!,
                         fileId: f.linked_file_id!,
                         findingId: f.id,
                       });

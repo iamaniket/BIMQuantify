@@ -63,7 +63,7 @@
 
 import { useEffect } from 'react';
 
-import type { ItemId, ViewerHandle } from '@bimstitch/viewer';
+import type { ItemId, ViewerHandle } from '@bimdossier/viewer';
 
 import {
   toEntityKey,

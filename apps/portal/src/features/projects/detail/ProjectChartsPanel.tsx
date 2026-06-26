@@ -9,7 +9,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { DrilldownDonut, type DonutWedge } from '@/components/shared/charts/DrilldownDonut';
 import { STATUS_COLORS, STATUS_ORDER } from '@/features/findings/findingChartConstants';

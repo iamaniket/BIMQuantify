@@ -1,4 +1,4 @@
-"""Tests for GET /projects/{p}/models/{m}/files/{f}/compliance/export.csv.
+"""Tests for GET /projects/{p}/documents/{m}/files/{f}/compliance/export.csv.
 
 Seeds a succeeded compliance Job (via raw SQL, bypassing RLS) tied to a
 project_file, then hits the endpoint and asserts on the CSV body.
@@ -19,7 +19,7 @@ from tests.conftest import (
     VALID_IFC_HEADER,
     FakeStorage,
     _auth,
-    _create_model,
+    _create_document,
     _create_project,
 )
 
@@ -117,12 +117,12 @@ async def _ready_file(
     org_user: dict[str, str],
     name: str = "csv.ifc",
 ) -> tuple[str, str, str]:
-    """Create a project + model + complete a file. Returns (project_id, model_id, file_id)."""
+    """Create a project + model + complete a file. Returns (project_id, document_id, file_id)."""
     project = await _create_project(client, org_user["access_token"], name=name + "-p")
-    model = await _create_model(client, org_user["access_token"], project["id"], name=name + "-m")
+    model = await _create_document(client, org_user["access_token"], project["id"], name=name + "-m")
     init = (
         await client.post(
-            f"/projects/{project['id']}/models/{model['id']}/files/initiate",
+            f"/projects/{project['id']}/documents/{model['id']}/files/initiate",
             json={
                 "filename": name,
                 "size_bytes": len(VALID_IFC_HEADER),
@@ -136,7 +136,7 @@ async def _ready_file(
     ).json()
     fake.objects[init["storage_key"]] = VALID_IFC_HEADER
     complete = await client.post(
-        f"/projects/{project['id']}/models/{model['id']}/files/{init['file_id']}/complete",
+        f"/projects/{project['id']}/documents/{model['id']}/files/{init['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
     assert complete.status_code == 200, complete.text
@@ -209,7 +209,7 @@ async def test_export_csv_returns_text_csv_with_expected_rows(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(client, fake, org_user, name="ok.ifc")
+    project_id, document_id, file_id = await _ready_file(client, fake, org_user, name="ok.ifc")
 
     details = [
         _detail(rule_id="R-1", element_name="Wall-A"),
@@ -225,7 +225,7 @@ async def test_export_csv_returns_text_csv_with_expected_rows(
     )
 
     resp = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/compliance/export.csv",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/compliance/export.csv",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200, resp.text
@@ -254,12 +254,12 @@ async def test_export_csv_404_when_no_succeeded_job(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(
+    project_id, document_id, file_id = await _ready_file(
         client, fake, org_user, name="empty.ifc"
     )
 
     resp = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/compliance/export.csv",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/compliance/export.csv",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 404
@@ -279,7 +279,7 @@ async def test_export_csv_non_member_returns_404(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(
+    project_id, document_id, file_id = await _ready_file(
         client, fake, org_user, name="rls.ifc"
     )
     await _seed_compliance_job(
@@ -292,7 +292,7 @@ async def test_export_csv_non_member_returns_404(
 
     # User from a different org cannot see the project; expect 404, not 403.
     resp = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/compliance/export.csv",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/compliance/export.csv",
         headers=_auth(other_org_user["access_token"]),
     )
     assert resp.status_code == 404
@@ -310,7 +310,7 @@ async def test_export_csv_framework_filter_returns_only_matching_job(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(
+    project_id, document_id, file_id = await _ready_file(
         client, fake, org_user, name="frmk.ifc"
     )
 
@@ -332,7 +332,7 @@ async def test_export_csv_framework_filter_returns_only_matching_job(
     )
 
     wkb = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}"
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}"
         "/compliance/export.csv?framework=wkb",
         headers=_auth(org_user["access_token"]),
     )
@@ -342,7 +342,7 @@ async def test_export_csv_framework_filter_returns_only_matching_job(
     assert f'filename="compliance-wkb-{file_id}.csv"' in wkb.headers["content-disposition"]
 
     bbl = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}"
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}"
         "/compliance/export.csv?framework=bbl",
         headers=_auth(org_user["access_token"]),
     )
@@ -363,7 +363,7 @@ async def test_export_rules_csv_returns_rule_summary_rows(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(
+    project_id, document_id, file_id = await _ready_file(
         client, fake, org_user, name="rules.ifc"
     )
 
@@ -391,7 +391,7 @@ async def test_export_rules_csv_returns_rule_summary_rows(
     )
 
     resp = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}"
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}"
         "/compliance/export-rules.csv",
         headers=_auth(org_user["access_token"]),
     )
@@ -419,12 +419,12 @@ async def test_export_rules_csv_404_when_no_succeeded_job(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(
+    project_id, document_id, file_id = await _ready_file(
         client, fake, org_user, name="rules-empty.ifc"
     )
 
     resp = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}"
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}"
         "/compliance/export-rules.csv",
         headers=_auth(org_user["access_token"]),
     )
@@ -439,7 +439,7 @@ async def test_export_rules_csv_framework_filter(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(
+    project_id, document_id, file_id = await _ready_file(
         client, fake, org_user, name="rules-frmk.ifc"
     )
 
@@ -461,7 +461,7 @@ async def test_export_rules_csv_framework_filter(
     )
 
     wkb = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}"
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}"
         "/compliance/export-rules.csv?framework=wkb",
         headers=_auth(org_user["access_token"]),
     )
@@ -485,7 +485,7 @@ async def test_compliance_check_rejected_when_project_archived(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(
+    project_id, document_id, file_id = await _ready_file(
         client, fake, org_user, name="arch.ifc"
     )
 
@@ -496,7 +496,7 @@ async def test_compliance_check_rejected_when_project_archived(
     assert archive.status_code == 200
 
     resp = await client.post(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/compliance/check",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/compliance/check",
         json={"framework": "bbl"},
         headers=_auth(org_user["access_token"]),
     )
@@ -511,7 +511,7 @@ async def test_compliance_export_allowed_when_project_archived(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_file(
+    project_id, document_id, file_id = await _ready_file(
         client, fake, org_user, name="arch-read.ifc"
     )
     await _seed_compliance_job(
@@ -528,7 +528,7 @@ async def test_compliance_export_allowed_when_project_archived(
     assert archive.status_code == 200
 
     resp = await client.get(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/compliance/export.csv",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/compliance/export.csv",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200
@@ -560,7 +560,7 @@ async def test_latest_does_not_leak_sibling_project_file(
 
     # Project A's path + project B's file_id → must not surface B's results.
     leaked = await client.get(
-        f"/projects/{a_pid}/models/{a_mid}/files/{b_fid}/compliance/latest",
+        f"/projects/{a_pid}/documents/{a_mid}/files/{b_fid}/compliance/latest",
         headers=_auth(org_user["access_token"]),
     )
     assert leaked.status_code == 404, leaked.text
@@ -568,7 +568,7 @@ async def test_latest_does_not_leak_sibling_project_file(
 
     # Sanity: the correct project B path still returns the results.
     ok = await client.get(
-        f"/projects/{b_pid}/models/{b_mid}/files/{b_fid}/compliance/latest",
+        f"/projects/{b_pid}/documents/{b_mid}/files/{b_fid}/compliance/latest",
         headers=_auth(org_user["access_token"]),
     )
     assert ok.status_code == 200, ok.text
@@ -592,7 +592,7 @@ async def test_export_csv_does_not_leak_sibling_project_file(
     )
 
     leaked = await client.get(
-        f"/projects/{a_pid}/models/{a_mid}/files/{b_fid}/compliance/export.csv",
+        f"/projects/{a_pid}/documents/{a_mid}/files/{b_fid}/compliance/export.csv",
         headers=_auth(org_user["access_token"]),
     )
     assert leaked.status_code == 404, leaked.text

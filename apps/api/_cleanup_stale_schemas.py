@@ -12,7 +12,7 @@ import asyncpg
 
 async def main() -> None:
     conn = await asyncpg.connect(
-        "postgresql://bim:bim@localhost:5434/bimstitch_test"
+        "postgresql://bim:bim@localhost:5434/bimdossier_test"
     )
     try:
         rows = await conn.fetch(

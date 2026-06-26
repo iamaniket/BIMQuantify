@@ -1,7 +1,7 @@
 'use client';
 
-import { cn, type AppIcon } from '@bimstitch/ui';
-import { Check, X, Minus } from '@bimstitch/ui/icons';
+import { cn, type AppIcon } from '@bimdossier/ui';
+import { Check, X, Minus } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

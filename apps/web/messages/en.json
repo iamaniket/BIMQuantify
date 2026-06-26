@@ -1,28 +1,54 @@
 {
   "metadata": {
     "title": "BimDossier",
-    "defaultTitle": "BimDossier · the Wkb dossier platform for Dutch contractors",
-    "description": "The Wkb dossier platform for Dutch contractors, built on your model and made for the Wet kwaliteitsborging voor het bouwen. Pin snags in 3D, let deadlines track themselves, and walk into gereedmelding with the dossier already done. EU-hosted."
+    "defaultTitle": "BimDossier · snagging and quality control, built on your model",
+    "description": "Pin snags on your 3D model or a PDF floor plan, follow them through to fixed with photos as proof, and export a clean report. Built in the Netherlands, with a full Wkb dossier when you need one."
   },
   "header": {
     "brand": "BimDossier",
     "features": "Features",
+    "faq": "FAQ",
     "blog": "Blog",
     "requestAccess": "Request access",
     "contactSales": "Contact sales"
   },
   "hero": {
-    "badge": "Private pilot · limited spots for Dutch aannemers",
-    "headline": "The Wkb dossier platform, built on your model.",
-    "subtitle": "Built only for the Wet kwaliteitsborging voor het bouwen. Pin every finding on your 3D BIM model. No model yet? Pin it straight onto a PDF floor plan. Deadlines track themselves from bouwmelding to gereedmelding, so your dossier is always ready for the kwaliteitsborger and bevoegd gezag instead of scattered across folders and spreadsheets.",
-    "trust": "In private pilot with Dutch aannemers · EU-hosted, DPA included · Works alongside any kwaliteitsborger and instrument",
+    "badge": "Private pilot · a few open spots for Dutch contractors",
+    "headline": "The construction quality platform, built on your model. From first snag to final dossier.",
+    "subtitle": "Pin every snag on your 3D model, or on a PDF floor plan if you don't have a model yet. Add photos, assign the fix, and follow it through to done. Deadlines track themselves, so your Wkb dossier stays ready from bouwmelding to gereedmelding.",
+    "trust": "In private pilot with Dutch contractors · EU-hosted, DPA included · Works alongside any kwaliteitsborger and instrument",
     "ctaPrimary": "Request early access",
     "ctaDemo": "See it on the model"
   },
   "features": {
     "eyebrow": "Capabilities",
-    "headline": "Your whole Wkb dossier, built on your model",
-    "subtitle": "From bouwmelding to gereedmelding, your whole Wkb dossier runs in one place: snags pinned on the model, certificates kept up to date, deadlines worked out for you, and everything filed on time."
+    "headline": "Everything you need to run quality on your model",
+    "subtitle": "Snagging, inspections, photos, certificates and reports all sit on the same model. When you need it, the full Wkb dossier is there too, from bouwmelding to gereedmelding.",
+    "readMore": "Read more"
+  },
+  "useCases": {
+    "eyebrow": "Who it's for",
+    "headline": "Same tool, different jobs",
+    "subtitle": "Whatever you came for, it runs on the same model.",
+    "flagship": "Built for this",
+    "items": {
+      "snagging": {
+        "title": "Snagging",
+        "body": "Pin a snag on the model, send it to whoever fixes it, and check it off with a photo."
+      },
+      "inspections": {
+        "title": "Inspections",
+        "body": "Walk the site, log what you find, and turn the round into a PDF report."
+      },
+      "handover": {
+        "title": "Handover",
+        "body": "Hand the client a full record of the work, with every snag and photo in place."
+      },
+      "wkb": {
+        "title": "Wkb dossier",
+        "body": "The whole Wkb dossier, from bouwmelding to gereedmelding, kept up to date for you."
+      }
+    }
   },
   "featureDetail": {
     "backToFeatures": "Back to features",
@@ -79,8 +105,8 @@
     }
   },
   "cta": {
-    "headline": "Stop chasing documents. File a dossier that holds up.",
-    "subtitle": "Run your entire Wkb dossier on the platform built for it. Join the private pilot and walk into your next gereedmelding already done.",
+    "headline": "Stop chasing paperwork. Prove the work was done right.",
+    "subtitle": "Snagging, inspections and your Wkb dossier, all on your model. Join the private pilot and walk into your next gereedmelding already done.",
     "button": "Request early access"
   },
   "footer": {
@@ -136,8 +162,8 @@
     "subtitle": "Drag to rotate the model. Snags are flagged right on it as inspectors find and fix them.",
     "cta": "Request early access",
     "hintDrag": "Drag to rotate",
-    "hintWatch": "Each pin flags a real Wkb snag",
-    "learnMoreBlog": "Learn how Wkb borging works on the blog",
+    "hintWatch": "Each pin flags a real snag",
+    "learnMoreBlog": "See how snagging works on the blog",
     "fallbackTitle": "Interactive 3D snag inspection",
     "fallbackBody": "Your browser can't show the live 3D model, but here are the snags it carries:",
     "fallbackAlt": "Interactive 3D building model with quality-assurance snags",
@@ -223,9 +249,9 @@
   },
   "brandPanel": {
     "brand": "BimDossier",
-    "eyebrow": "Platform for the Wet kwaliteitsborging voor het bouwen (Wkb)",
+    "eyebrow": "Construction quality, built on your model",
     "statusReady": "Wkb {version} ready",
-    "headline": "Your <em>models</em>, <em>findings</em> and <em>dossier</em> in one Wkb record.",
+    "headline": "Keep every <em>snag</em>, <em>photo</em> and <em>certificate</em> on the model.",
     "body": "Pin findings on your model, track every deadline, and keep the dossier ready for the kwaliteitsborger and bevoegd gezag. Built for the Wet kwaliteitsborging voor het bouwen (Wkb).",
     "status": {
       "normal": "Normal",

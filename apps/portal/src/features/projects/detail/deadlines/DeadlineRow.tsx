@@ -1,11 +1,11 @@
 'use client';
 
-import { AlertTriangle, Check, Clock, FileText, Minus } from '@bimstitch/ui/icons';
+import { AlertTriangle, Check, Clock, FileText, Minus } from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Button } from '@bimstitch/ui';
-import type { Locale } from '@bimstitch/i18n';
+import { Button } from '@bimdossier/ui';
+import type { Locale } from '@bimdossier/i18n';
 
 import { formatDate } from '@/lib/formatting/dates';
 import type { Deadline } from '@/lib/api/schemas/deadlines';

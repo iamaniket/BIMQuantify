@@ -11,8 +11,15 @@ const EnvSchema = z.object({
   NEXT_PUBLIC_E2E: z.string().optional(),
 });
 
+// Dev convenience only. In production a missing NEXT_PUBLIC_API_URL must fail
+// the build via the Zod `.url()` requirement, rather than silently pointing the
+// client at localhost. (POSTHOG_HOST keeps its public default — eu.i.posthog.com
+// is a valid prod endpoint, not a dev-only value, and is unused without a key.)
+const isDev = process.env.NODE_ENV !== 'production';
+
 const parsed = EnvSchema.safeParse({
-  NEXT_PUBLIC_API_URL: process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:8000',
+  NEXT_PUBLIC_API_URL:
+    process.env['NEXT_PUBLIC_API_URL'] ?? (isDev ? 'http://localhost:8000' : undefined),
   NEXT_PUBLIC_MARKETING_URL: process.env['NEXT_PUBLIC_MARKETING_URL'],
   NEXT_PUBLIC_POSTHOG_KEY: process.env['NEXT_PUBLIC_POSTHOG_KEY'],
   NEXT_PUBLIC_POSTHOG_HOST: process.env['NEXT_PUBLIC_POSTHOG_HOST'] ?? 'https://eu.i.posthog.com',

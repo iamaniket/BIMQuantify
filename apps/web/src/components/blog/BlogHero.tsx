@@ -1,7 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import type { JSX } from 'react';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { HeroPill } from '@/components/sections/HeroPill';
 import { HeroShell } from '@/components/sections/HeroShell';

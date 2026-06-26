@@ -8,11 +8,11 @@ import { SideRail, type RailBadge } from './SideRail';
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
 }));
-// Keep the test hermetic (no dependency on the built @bimstitch/ui dist).
-vi.mock('@bimstitch/ui', () => ({
+// Keep the test hermetic (no dependency on the built @bimdossier/ui dist).
+vi.mock('@bimdossier/ui', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }));
-vi.mock('@bimstitch/ui/icons', () => ({
+vi.mock('@bimdossier/ui/icons', () => ({
   Flag: () => null,
   Info: () => null,
   ListTree: () => null,

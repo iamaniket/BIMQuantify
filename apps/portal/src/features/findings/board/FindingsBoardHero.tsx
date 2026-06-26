@@ -1,10 +1,10 @@
 'use client';
 
-import { ClipboardCheck } from '@bimstitch/ui/icons';
+import { ClipboardCheck } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useMemo, type JSX } from 'react';
 
-import { Badge } from '@bimstitch/ui';
+import { Badge } from '@bimdossier/ui';
 
 import { HeroImage } from '@/components/shared/layout/HeroImage';
 import { HeroShell, type KpiItem } from '@/components/shared/layout/HeroShell';

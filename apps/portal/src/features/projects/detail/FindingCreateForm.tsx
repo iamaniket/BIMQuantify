@@ -6,9 +6,9 @@ import { useState, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 
-import { Button, Input, Label, Select, Textarea } from '@bimstitch/ui';
+import { Button, Input, Label, Select, Textarea } from '@bimdossier/ui';
 
-import type { DocumentViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import type { DocumentViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import { Field } from '@/components/shared/forms/Field';
 import { renderFieldInput } from '@/features/findingTemplates/fieldTypes';
@@ -137,7 +137,7 @@ export function FindingCreateForm({
       values,
       { photoIds, referenceAttachmentIds, customValues, template },
       {
-        linkedModelId: pinAnchor?.linked_model_id ?? linkedModelId,
+        linkedModelId: pinAnchor?.linked_document_id ?? linkedModelId,
         linkedFileId: pinAnchor?.linked_file_id ?? linkedFileId,
         linkedElementGlobalId: pinAnchor?.linkedElementGlobalId ?? linkedElementGlobalId,
         linkedPoint: anchorPoint,

@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { PageHeader } from '@bimstitch/ui';
+import { PageHeader } from '@bimdossier/ui';
 
 import { SearchInput, TableToolbar } from '@/components/shared/PageTable';
 import { TablePaginationFooter } from '@/components/shared/TablePaginationFooter';

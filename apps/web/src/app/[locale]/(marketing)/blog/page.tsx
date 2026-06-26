@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import type { JSX } from 'react';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { BlogHero } from '@/components/blog/BlogHero';
 import { BlogPostCard } from '@/components/blog/BlogPostCard';

@@ -18,8 +18,8 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@bimstitch/ui';
-import { Settings } from '@bimstitch/ui/icons';
+} from '@bimdossier/ui';
+import { Settings } from '@bimdossier/ui/icons';
 
 import type {
   DeadlineNotificationSettingsUpdate,

@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from 'react';
 
-import { ColorInput, Slider, Switch } from '@bimstitch/ui';
+import { ColorInput, Slider, Switch } from '@bimdossier/ui';
 
 export function Section({ title, note, children }: {
   title: string;

@@ -6,7 +6,7 @@
  * plain browser during development:
  *
  *   native → web : react-native-webview's `injectJavaScript` calls the global
- *                  `window.__bimstitchViewerReceive(json)`. In a browser, a
+ *                  `window.__bimdossierViewerReceive(json)`. In a browser, a
  *                  `postMessage` to this window is accepted too.
  *   web → native : `window.ReactNativeWebView.postMessage(json)`. In a browser
  *                  it falls back to `window.parent.postMessage` + a console log.
@@ -22,7 +22,7 @@ import type {
   ItemId,
   Vec3,
   ViewerBundle,
-} from '@bimstitch/viewer';
+} from '@bimdossier/viewer';
 
 /** The viewer layout the host can request. */
 export type ViewMode = '3d' | '2d' | 'split';
@@ -66,7 +66,7 @@ export type ClientMessage =
   | { type: 'annotationsChanged'; annotations: Annotation2D[] }
   | { type: 'annotationExport'; dataUrl: string };
 
-const RECEIVE_GLOBAL = '__bimstitchViewerReceive';
+const RECEIVE_GLOBAL = '__bimdossierViewerReceive';
 
 declare global {
   interface Window {

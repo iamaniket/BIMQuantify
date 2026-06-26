@@ -1,27 +1,56 @@
-import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors } from '@/theme';
+import { useT } from '@/i18n';
+import type { Locale } from '@/i18n';
+import { colors, radii } from '@/theme';
 
-/** Placeholder — a real settings/profile screen lands later. */
+/** Settings: manual NL/EN language override (persisted; otherwise the app follows
+ * the device locale, falling back to Dutch). */
 export default function SettingsScreen() {
+  const { t, locale, setLocale } = useT();
+
+  const options: { value: Locale; label: string }[] = [
+    { value: 'nl', label: t('settings.languageDutch') },
+    { value: 'en', label: t('settings.languageEnglish') },
+  ];
+
   return (
     <View style={styles.root}>
-      <Ionicons name="construct-outline" size={40} color={colors.textMuted} />
-      <Text style={styles.title}>Settings</Text>
-      <Text style={styles.muted}>Coming soon.</Text>
+      <Text style={styles.sectionLabel}>{t('settings.language')}</Text>
+      <View style={styles.segmented}>
+        {options.map((opt) => {
+          const active = opt.value === locale;
+          return (
+            <Pressable
+              key={opt.value}
+              style={[styles.segment, active && styles.segmentActive]}
+              onPress={() => { setLocale(opt.value); }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+            >
+              <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{opt.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  root: { flex: 1, padding: 20, gap: 10, backgroundColor: colors.background },
+  sectionLabel: { fontSize: 13, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' },
+  segmented: { flexDirection: 'row', gap: 8 },
+  segment: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: colors.background,
+    paddingVertical: 12,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  title: { fontSize: 20, fontWeight: '700', color: colors.text },
-  muted: { fontSize: 15, color: colors.textMuted },
+  segmentActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  segmentText: { fontSize: 15, fontWeight: '600', color: colors.textMuted },
+  segmentTextActive: { color: colors.onPrimary },
 });

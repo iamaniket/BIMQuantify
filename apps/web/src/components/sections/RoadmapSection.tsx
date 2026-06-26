@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Badge, Card, CardBody } from '@bimstitch/ui';
+import { Badge, Card, CardBody } from '@bimdossier/ui';
 
 import { Reveal } from '@/components/shared/Reveal';
 import { SectionHeading } from '@/components/shared/SectionHeading';

@@ -1,6 +1,7 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
+import * as Sentry from '@sentry/nextjs';
 import {
   createContext,
   useCallback,
@@ -25,7 +26,7 @@ import {
   type TokenPair,
 } from '@/lib/api/schemas';
 
-const STORAGE_KEY = 'bimstitch.tokens';
+const STORAGE_KEY = 'bimdossier.tokens';
 
 type AuthState = {
   tokens: TokenPair | null;
@@ -35,6 +36,11 @@ type AuthState = {
    * before the first /auth/me response; consumers should treat that as
    * "loading" rather than "no memberships". */
   me: AuthMeResponse | null;
+  /** Set when a non-401 /auth/me fetch fails (5xx, network, validation). Lets
+   * layouts distinguish "still loading" (`me === null && meError === null`)
+   * from "the profile fetch failed" and surface a retry instead of silently
+   * rendering a stale/empty org + role. Cleared on the next successful fetch. */
+  meError: Error | null;
   /** Force a re-fetch of /auth/me. Useful right after invite acceptance,
    * org switch, or membership changes elsewhere in the app. */
   refreshMe: () => Promise<void>;
@@ -80,6 +86,7 @@ export function AuthProvider({ children }: Props): JSX.Element {
   const [tokens, setTokensState] = useState<TokenPair | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [me, setMe] = useState<AuthMeResponse | null>(null);
+  const [meError, setMeError] = useState<Error | null>(null);
   const tokensRef = useRef<TokenPair | null>(null);
 
   useEffect(() => {
@@ -93,17 +100,20 @@ export function AuthProvider({ children }: Props): JSX.Element {
     const current = tokensRef.current;
     if (current === null) {
       setMe(null);
+      setMeError(null);
       return;
     }
     try {
       const next = await getAuthMe(current.access_token);
       setMe(next);
+      setMeError(null);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         try {
           const newToken = await tokenManager.refresh();
           const next = await getAuthMe(newToken);
           setMe(next);
+          setMeError(null);
           await queryClient.invalidateQueries();
         } catch {
           // Refresh failed — tokenManager already called setTokens(null),
@@ -111,7 +121,13 @@ export function AuthProvider({ children }: Props): JSX.Element {
         }
         return;
       }
-      // Network blip or other error — leave existing snapshot.
+      // Non-401 (5xx / network / validation): keep the previous snapshot so a
+      // transient blip doesn't blow away org context, but record the error so
+      // it isn't silent — layouts read `meError` to surface a retry, and after
+      // an org switch a failed re-fetch is no longer an invisible stale-org bug.
+      const err = error instanceof Error ? error : new Error(String(error));
+      setMeError(err);
+      Sentry.captureException(err, { tags: { source: 'auth.refreshMe' } });
     }
   }, [queryClient]);
 
@@ -163,11 +179,12 @@ export function AuthProvider({ children }: Props): JSX.Element {
       setTokens,
       hasHydrated,
       me,
+      meError,
       refreshMe,
       activeMembership,
       switchOrganization,
     }),
-    [tokens, setTokens, hasHydrated, me, refreshMe, activeMembership, switchOrganization],
+    [tokens, setTokens, hasHydrated, me, meError, refreshMe, activeMembership, switchOrganization],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -12,8 +12,8 @@
  *   Esc / the banner × button → `entity-marker-2d.endPlace`, tear down overlay,
  *     emit `interaction:cancelled`.
  *
- * Registered on both `DocumentViewer` (PDF) and `FloorPlanViewer` (floor plans),
- * which share the `DocumentContext` engine and both seed `entity-marker-2d`.
+ * Registered by `DocumentViewer` for both PDF and floor-plan sources, which
+ * share the `DocumentContext` engine and both seed `entity-marker-2d`.
  */
 
 import type {

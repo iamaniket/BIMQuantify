@@ -2,7 +2,7 @@
 
 import type { JSX } from 'react';
 
-import { Skeleton, Spinner } from '@bimstitch/ui';
+import { Skeleton, Spinner } from '@bimdossier/ui';
 
 /**
  * Shown instantly by Next.js during the route transition from dashboard → viewer.

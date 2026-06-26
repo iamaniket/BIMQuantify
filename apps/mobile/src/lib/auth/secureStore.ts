@@ -3,8 +3,8 @@ import * as SecureStore from 'expo-secure-store';
 import { TokenPairSchema, type TokenPair } from '@/lib/api/schemas/auth';
 
 // expo-secure-store replaces the portal's localStorage. Same logical key; keys
-// may contain only [A-Za-z0-9._-], which "bimstitch.tokens" satisfies.
-const STORAGE_KEY = 'bimstitch.tokens';
+// may contain only [A-Za-z0-9._-], which "bimdossier.tokens" satisfies.
+const STORAGE_KEY = 'bimdossier.tokens';
 
 export async function readStoredTokens(): Promise<TokenPair | null> {
   try {

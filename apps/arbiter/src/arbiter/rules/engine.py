@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from datetime import datetime, timezone
 from typing import Any, Literal
@@ -7,7 +8,6 @@ from typing import Any, Literal
 from pydantic import BaseModel
 
 from arbiter.rules.canonical import (
-    FORMAT_RICHNESS,
     SourceFormat,
     format_supports,
 )
@@ -19,6 +19,17 @@ from arbiter.rules.schema import (
     RuleDefinition,
     Severity,
 )
+
+logger = logging.getLogger("arbiter")
+
+
+class UnitConversionError(ValueError):
+    """A numeric value needs unit conversion but the model's unit is unmapped.
+
+    Raised by ``convert_to_rule_unit`` so the caller can record a ``status=error``
+    CheckResult instead of silently comparing an unconverted (e.g. 1000x-off)
+    magnitude against the rule threshold.
+    """
 
 
 _OPERATOR_SYMBOL: dict[Operator, str] = {
@@ -160,6 +171,22 @@ _UNIT_TO_M2: dict[str, float] = {
     "ft²": 0.092903,
 }
 
+# Common IFC length-unit spellings normalised to the keys in _UNIT_TO_MM, so a
+# model that declares "millimetre"/"feet"/etc. still converts instead of silently
+# falling through unconverted.
+_LENGTH_UNIT_ALIASES: dict[str, str] = {
+    "millimetre": "mm", "millimeter": "mm", "millimetres": "mm", "millimeters": "mm",
+    "centimetre": "cm", "centimeter": "cm", "centimetres": "cm", "centimeters": "cm",
+    "metre": "m", "meter": "m", "metres": "m", "meters": "m",
+    "foot": "ft", "feet": "ft",
+    "inches": "in",
+}
+
+
+def _normalize_length_unit(unit: str) -> str:
+    key = unit.strip().lower()
+    return _LENGTH_UNIT_ALIASES.get(key, key)
+
 
 def convert_to_rule_unit(
     value: float,
@@ -170,19 +197,28 @@ def convert_to_rule_unit(
         return value
 
     rule_unit_lower = rule_unit.lower()
-    model_unit_lower = model_length_unit.lower()
+    model_unit_lower = _normalize_length_unit(model_length_unit)
 
     if rule_unit_lower == "mm":
         factor = _UNIT_TO_MM.get(model_unit_lower)
-        if factor is not None:
-            return value * factor
-    elif rule_unit_lower in ("m2", "m²"):
+        if factor is None:
+            # Fail closed: comparing an unconverted length value against a mm
+            # threshold would be silently 1000x off. Let the caller mark this an
+            # error rather than emit a bogus pass/fail.
+            raise UnitConversionError(
+                f"no mm conversion for model length unit {model_length_unit!r}"
+            )
+        return value * factor
+    if rule_unit_lower in ("m2", "m²"):
+        # Area values are extracted already in m²; the model's *length* unit is
+        # not an area unit, so a miss here is the expected case and means "no
+        # conversion needed" (pass through), not a magnitude error.
         factor = _UNIT_TO_M2.get(model_unit_lower)
         if factor is not None:
             return value * factor
-    elif rule_unit_lower == "min":
         return value
 
+    # rule_unit is "min" or a unit that needs no length/area conversion: pass through.
     return value
 
 
@@ -202,7 +238,10 @@ def _evaluate_check(
     if prop_name == "fire_rating" and isinstance(value, str):
         parsed = parse_fire_rating_minutes(value)
         if parsed is None:
-            return False
+            # Unparseable rating (e.g. "REI", "see spec") is a data-quality issue,
+            # not a genuine non-compliance — raise so the caller records a distinct
+            # `error` verdict instead of a bare `fail`.
+            raise ValueError(f"fire_rating {value!r} has no parseable minutes")
         value = parsed
 
     if isinstance(threshold, str) and check.operator in (
@@ -213,14 +252,14 @@ def _evaluate_check(
     ):
         try:
             threshold = float(threshold)
-        except ValueError:
-            return False
+        except ValueError as exc:
+            raise ValueError(f"non-numeric threshold {threshold!r}") from exc
 
     if isinstance(value, str) and isinstance(threshold, float | int):
         try:
             value = float(value)
-        except ValueError:
-            return False
+        except ValueError as exc:
+            raise ValueError(f"non-numeric value {value!r} for a numeric check") from exc
 
     if check.operator == Operator.gte:
         return float(value) >= float(threshold)  # type: ignore[arg-type]
@@ -258,7 +297,14 @@ def _filter_passes(
     )
     try:
         return _evaluate_check(raw, proxy)
-    except Exception:
+    except (TypeError, ValueError) as exc:
+        # An expected comparison failure (bad type/value) means "not applicable",
+        # but log it so a systematically-broken filter isn't a silent exclusion.
+        # Any other exception propagates (a real bug should fail the run loudly).
+        logger.warning(
+            "applicability filter could not be evaluated (property=%s): %s",
+            flt.property, exc,
+        )
         return False
 
 
@@ -277,7 +323,10 @@ def _metadata_filter_passes(metadata: dict[str, Any], flt: MetadataFilter) -> bo
     proxy = PropertyCheck(property=flt.path, operator=flt.operator, threshold=flt.value)
     try:
         return _evaluate_check(value, proxy)
-    except Exception:
+    except (TypeError, ValueError) as exc:
+        logger.warning(
+            "metadata filter could not be evaluated (path=%s): %s", flt.path, exc,
+        )
         return False
 
 
@@ -355,21 +404,48 @@ def evaluate(
         else None
     )
 
-    source_format = (
-        metadata.get("source_format", "ifc")
-        if isinstance(metadata, dict)
-        else "ifc"
+    raw_source_format = (
+        metadata.get("source_format") if isinstance(metadata, dict) else None
     )
+    if raw_source_format is None:
+        # Fail closed: assume the LEAST-rich format so IFC-only rules are skipped
+        # rather than run against data a thin source can't carry. (Was "ifc", the
+        # richest — which silently ran every rule against an absent source_format.)
+        logger.warning(
+            "metadata for file %s has no source_format; assuming least-rich 'pdf'",
+            file_id,
+        )
+        source_format = SourceFormat.pdf.value
+    else:
+        try:
+            source_format = SourceFormat(raw_source_format).value
+        except ValueError:
+            # Also guards format_supports() from raising on an unknown member.
+            logger.warning(
+                "metadata for file %s has unknown source_format %r; assuming least-rich 'pdf'",
+                file_id, raw_source_format,
+            )
+            source_format = SourceFormat.pdf.value
 
     if isinstance(metadata, dict) and "building" not in metadata:
         bbox = metadata.get("bbox")
         if isinstance(bbox, dict):
-            z_max = bbox.get("max", [0, 0, 0])[2]
-            z_min = bbox.get("min", [0, 0, 0])[2]
-            height_mm = z_max - z_min
-            unit = (model_length_unit or "mm").lower()
-            height_m = height_mm if unit == "m" else height_mm / 1000.0
-            metadata["building"] = {"height_m": height_m}
+            bmax = bbox.get("max")
+            bmin = bbox.get("min")
+            if (
+                isinstance(bmax, list) and len(bmax) >= 3
+                and isinstance(bmin, list) and len(bmin) >= 3
+            ):
+                height_mm = bmax[2] - bmin[2]
+                unit = _normalize_length_unit(model_length_unit) if model_length_unit else "mm"
+                height_m = height_mm if unit == "m" else height_mm / 1000.0
+                metadata["building"] = {"height_m": height_m}
+            else:
+                logger.warning(
+                    "metadata for file %s has a bbox without length-3 min/max; "
+                    "skipping synthetic building height",
+                    file_id,
+                )
 
     all_results: list[CheckResult] = []
     rule_summaries: list[RuleSummary] = []
@@ -473,15 +549,41 @@ def evaluate(
                     and check.unit is not None
                     and check.unit.lower() != "min"
                 ):
-                    actual_value = convert_to_rule_unit(
-                        float(raw_value), check.unit, model_length_unit
-                    )
+                    try:
+                        actual_value = convert_to_rule_unit(
+                            float(raw_value), check.unit, model_length_unit
+                        )
+                    except UnitConversionError as exc:
+                        errors += 1
+                        logger.warning(
+                            "unit conversion failed (rule=%s element=%s): %s",
+                            rule.id, element_gid, exc,
+                        )
+                        all_results.append(
+                            CheckResult(
+                                rule_id=rule.id,
+                                article=rule.article,
+                                element_global_id=element_gid,
+                                element_type=element_type,
+                                status="error",
+                                message=f"Unit conversion failed: {exc}",
+                                actual_value=str(raw_value),
+                                expected_value=str(check.threshold),
+                                property_path=check.property,
+                                severity=rule.severity,
+                            )
+                        )
+                        continue
                     converted_for_unit = True
 
                 try:
                     check_ok = _evaluate_check(actual_value, check)
-                except Exception:
+                except (TypeError, ValueError) as exc:
                     errors += 1
+                    logger.warning(
+                        "check evaluation error (rule=%s element=%s prop=%s): %s",
+                        rule.id, element_gid, check.property, exc,
+                    )
                     all_results.append(
                         CheckResult(
                             rule_id=rule.id,
@@ -489,7 +591,7 @@ def evaluate(
                             element_global_id=element_gid,
                             element_type=element_type,
                             status="error",
-                            message="Evaluation error",
+                            message=f"Evaluation error: {exc}",
                             actual_value=str(raw_value),
                             expected_value=str(check.threshold),
                             property_path=check.property,

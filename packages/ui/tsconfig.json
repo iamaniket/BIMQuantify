@@ -1,5 +1,5 @@
 {
-  "extends": "@bimstitch/tsconfig/base.json",
+  "extends": "@bimdossier/tsconfig/base.json",
   "compilerOptions": {
     "jsx": "react-jsx",
     "outDir": "./dist",

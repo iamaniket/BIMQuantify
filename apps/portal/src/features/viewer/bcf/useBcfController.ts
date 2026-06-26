@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 
-import type { DocumentViewerHandle, MarkupDraft, MarkupTool, ViewerHandle } from '@bimstitch/viewer';
+import type { DocumentViewerHandle, MarkupDraft, MarkupTool, ViewerHandle } from '@bimdossier/viewer';
 
 import type { BcfViewpointCreateInput, BcfViewpointRead } from '@/lib/api/schemas/bcf';
 

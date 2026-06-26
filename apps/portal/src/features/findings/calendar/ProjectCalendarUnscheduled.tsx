@@ -4,11 +4,11 @@ import {
   ChevronDown,
   ChevronUp,
   Move,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX, ReactNode } from 'react';
 
-import { CountChip } from '@bimstitch/ui';
+import { CountChip } from '@bimdossier/ui';
 
 import { type CalendarEvent } from './calendarEvents';
 import { DroppableUnscheduled } from './dnd/calendarDnd';

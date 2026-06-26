@@ -1,21 +1,26 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import type React from 'react';
 import { type JSX } from 'react';
 
-import { Skeleton } from '@bimstitch/ui';
-import type { FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import { Skeleton } from '@bimdossier/ui';
+import { Crosshair } from '@bimdossier/ui/icons';
+import type { DocumentViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import { FloorPlanPane } from '@/features/viewer/2d/FloorPlanPane';
+import { ModelOutOfViewIndicator } from '@/features/viewer/3d/ModelOutOfViewIndicator';
 import { type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import type { Finding } from '@/lib/api/schemas';
+
+import { CalibrationPane } from './CalibrationPane';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 import type { ViewerSettings } from '@/lib/viewerSettings';
 import type { ViewerScope } from '@/features/viewer/shared/useViewerScope';
 
 const IfcViewer = dynamic(
-  () => import('@bimstitch/viewer').then((m) => m.IfcViewer),
+  () => import('@bimdossier/viewer').then((m) => m.IfcViewer),
   { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
 );
 
@@ -43,15 +48,24 @@ export interface IfcViewerCanvasProps {
   onDividerPointerUp: (e: React.PointerEvent<HTMLDivElement>) => void;
   hasFloorPlans: boolean;
   viewerReady: boolean;
+  /** Suppress the "model out of view" pill (during load / alignment / edit). */
+  outOfViewSuppressed: boolean;
   planMetadata: ModelMetadata | undefined;
   projectId: string;
   fileId: string;
   onFindingClick: (finding: Finding) => void;
   onRequestFloorPlanFindings: (view: 'findings') => void;
-  /** Surface the floor-plan handle up so the Findings panel can pin on the plan (2D). */
-  onFpHandle?: ((handle: FloorPlanViewerHandle | null) => void) | undefined;
+  /** Surface the active 2D handle (floor-plan OR aligned-sheet PDF) up so the Findings panel can pin on it (2D). */
+  onFpHandle?: ((handle: DocumentViewerHandle | null) => void) | undefined;
   /** Report the active storey elevation for the plan-pick → world conversion. */
   onFpActiveElevationChange?: ((elevation: number | null) => void) | undefined;
+  /** The plan model's API UUID (owns storeys) — for the calibration pane + sheet substitution. */
+  planApiModelId: string | null;
+  /** Leave calibration mode (back to a normal view mode). */
+  onViewModeChange: (mode: ViewMode) => void;
+  /** Offer the "Align" (PDF↔model calibration) entry. Editor-gated by the page;
+   * only meaningful when a PDF model exists. Surfaced as a tab on the split divider. */
+  canCalibrate: boolean;
 }
 
 export function IfcViewerCanvas({
@@ -78,6 +92,7 @@ export function IfcViewerCanvas({
   onDividerPointerUp,
   hasFloorPlans,
   viewerReady,
+  outOfViewSuppressed,
   planMetadata,
   projectId,
   fileId,
@@ -85,12 +100,21 @@ export function IfcViewerCanvas({
   onRequestFloorPlanFindings,
   onFpHandle,
   onFpActiveElevationChange,
+  planApiModelId,
+  onViewModeChange,
+  canCalibrate,
 }: IfcViewerCanvasProps): JSX.Element {
+  const tVm = useTranslations('viewer.viewMode');
+  // Calibration mode reuses the split layout (3D live left, chosen PDF right).
+  const isSplitLike = viewMode === 'split' || viewMode === 'calibration';
   const ifcViewerEl = (
     <IfcViewer
       key={`${scope.sceneKey}:${viewerEpoch}`}
       ref={viewerHandleRef}
-      bundle={scope.primaryBundle!}
+      // Omit `bundle` entirely when there's no primary (live-empty federated
+      // scene) — exactOptionalPropertyTypes forbids passing an explicit
+      // `undefined` to the now-optional prop.
+      {...(scope.primaryBundle ? { bundle: scope.primaryBundle } : {})}
       additionalBundles={scope.additionalBundles}
       viewCube={{
         enabled: settings.viewCube.enabled,
@@ -98,6 +122,7 @@ export function IfcViewerCanvas({
       }}
       shadows={{
         enabled: settings.shadows.enabled,
+        mode: settings.shadows.mode,
       }}
       background={{ color: settings.background.color }}
       effects={settings.effects}
@@ -149,21 +174,21 @@ export function IfcViewerCanvas({
   const threeDPaneClass =
     viewMode === '2d'
       ? 'hidden'
-      : viewMode === 'split'
+      : isSplitLike
         ? 'absolute inset-x-0 top-0 h-1/2 overflow-hidden md:inset-y-0 md:right-auto md:h-full'
         : 'absolute inset-0 overflow-hidden';
   const planPaneClass =
     viewMode === '2d'
       ? 'absolute inset-0 overflow-hidden'
-      : viewMode === 'split'
+      : isSplitLike
         ? 'absolute inset-x-0 bottom-0 h-1/2 overflow-hidden border-t border-border md:inset-y-0 md:right-0 md:left-auto md:h-full md:border-t-0'
         : 'absolute inset-0 overflow-hidden';
 
   // Desktop inline styles drive the dynamic split ratio; mobile uses h-1/2 class.
   const threeDSplitStyle =
-    viewMode === 'split' && !isMobile ? { width: `${splitRatio * 100}%` } : undefined;
+    isSplitLike && !isMobile ? { width: `${splitRatio * 100}%` } : undefined;
   const planSplitStyle =
-    viewMode === 'split' && !isMobile ? { width: `${(1 - splitRatio) * 100}%` } : undefined;
+    isSplitLike && !isMobile ? { width: `${(1 - splitRatio) * 100}%` } : undefined;
 
   return (
     <div
@@ -172,19 +197,41 @@ export function IfcViewerCanvas({
     >
       <div ref={threeDPaneRef} className={threeDPaneClass} style={threeDSplitStyle}>
         {ifcViewerEl}
+        {/* "Model out of view" recovery pill — scoped to the 3D pane, hidden in
+            pure 2D and while another overlay owns the canvas. */}
+        <ModelOutOfViewIndicator
+          handle={viewerHandleRef.current}
+          viewerReady={viewerReady}
+          active={viewMode !== '2d' && !outOfViewSuppressed}
+        />
       </div>
 
-      {/* Draggable divider — desktop split mode only */}
-      {viewMode === 'split' && !isMobile && (
+      {/* Draggable divider — desktop split/calibration mode only */}
+      {isSplitLike && !isMobile && (
         <div
           ref={dividerRef}
-          className="absolute inset-y-0 z-20 flex w-2 cursor-col-resize touch-none select-none flex-col items-center justify-center"
+          className="absolute inset-y-0 z-30 flex w-2 cursor-col-resize touch-none select-none flex-col items-center justify-center"
           style={{ left: `calc(${splitRatio * 100}% - 4px)` }}
           onPointerDown={onDividerPointerDown}
           onPointerMove={onDividerPointerMove}
           onPointerUp={onDividerPointerUp}
           onPointerCancel={onDividerPointerUp}
         >
+          {/* "Align" entry — a tab centered on the dragger (the 3D/2D seam). Lives
+              inside the divider so it tracks the imperative drag updates for free.
+              Split mode only: calibration mode hands the UI to CalibrationPane. */}
+          {viewMode === 'split' && canCalibrate && (
+            <button
+              type="button"
+              title={tVm('calibrateTooltip')}
+              onPointerDown={(e) => { e.stopPropagation(); }}
+              onClick={() => { onViewModeChange('calibration'); }}
+              className="pointer-events-auto absolute left-1/2 top-3 z-10 flex -translate-x-1/2 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-surface-low px-3 py-1.5 text-body3 font-medium text-foreground shadow-sm transition-colors hover:bg-background-hover"
+            >
+              <Crosshair className="h-4 w-4" />
+              {tVm('calibrate')}
+            </button>
+          )}
           {/* Thin visual bar */}
           <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border" />
           {/* Drag pip */}
@@ -194,7 +241,19 @@ export function IfcViewerCanvas({
         </div>
       )}
 
-      {hasFloorPlans && viewMode !== '3d' && scope.planFloorPlansUrl ? (
+      {viewMode === 'calibration' ? (
+        <div ref={planPaneRef} className={planPaneClass} style={planSplitStyle}>
+          <CalibrationPane
+            projectId={projectId}
+            planApiModelId={planApiModelId}
+            viewerHandle={viewerHandleRef.current}
+            viewerReady={viewerReady}
+            metadata={planMetadata}
+            floorPlansUrl={scope.planFloorPlansUrl}
+            onExit={() => { onViewModeChange('2d'); }}
+          />
+        </div>
+      ) : hasFloorPlans && viewMode !== '3d' && scope.planFloorPlansUrl ? (
         <div ref={planPaneRef} className={planPaneClass} style={planSplitStyle}>
           <FloorPlanPane
             handle={viewerHandleRef.current}
@@ -203,6 +262,7 @@ export function IfcViewerCanvas({
             metadata={planMetadata}
             projectId={projectId}
             fileId={scope.planFileId ?? fileId}
+            planModelId={planApiModelId}
             viewMode={viewMode}
             onFindingClick={onFindingClick}
             onRequestFindings={onRequestFloorPlanFindings}

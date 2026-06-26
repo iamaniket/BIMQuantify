@@ -6,6 +6,7 @@
  * count via `search:matchCount`. Ported from the old DocumentViewer.
  */
 
+import { verror } from '../../../core/debugLog.js';
 import type {
   DocumentContext,
   DocumentPlugin,
@@ -38,9 +39,13 @@ export function searchPlugin(): DocumentPlugin {
             .join(' ')
             .toLowerCase();
           pageTextCache.set(i, pageText);
-        } catch {
-          pageText = '';
-          pageTextCache.set(i, pageText);
+        } catch (err) {
+          // Do NOT cache '' for a page whose text extraction threw — caching it
+          // makes the miss sticky (0 hits for that page for the document's
+          // lifetime). Skip the page this round and surface it so a broken page
+          // is observable; the next search retries it.
+          verror('search', `text extraction failed for page ${String(i)} — skipping`, err);
+          continue;
         }
       }
       if (pageText.length === 0) continue;

@@ -1,9 +1,9 @@
 /**
  * Shared 2D bbox math for the floor-plan artifact — used by both the portal's
  * `useFloorPlans` (per-level extents for the canvas minimap) and the
- * `FloorPlanEngine` (the union extent that becomes the 2D viewer's synthetic
- * "page box"). Kept here next to the codec so the two consumers agree on how
- * plan coords map to an axis-aligned box.
+ * `DocumentEngine` floor-plan mode (the union extent that becomes the 2D
+ * viewer's synthetic "page box"). Kept here next to the codec so the two
+ * consumers agree on how plan coords map to an axis-aligned box.
  */
 
 import type { FloorPlanLevel } from './floorplan-codec.js';
@@ -48,9 +48,9 @@ export function levelBbox(level: FloorPlanLevel): PlanBbox {
 
 /**
  * Union extent across all levels. Returns null when there is no geometry. The
- * `FloorPlanEngine` uses this as a STABLE page box so plan↔world is a single
- * constant offset (`world = plan − min`) that doesn't shift when switching
- * levels.
+ * engine's floor-plan mode uses this as a STABLE page box so plan↔world is a
+ * single constant offset (`world = plan − min`) that doesn't shift when
+ * switching levels.
  */
 export function unionBbox(levels: readonly FloorPlanLevel[]): PlanBbox | null {
   const acc = emptyBbox();

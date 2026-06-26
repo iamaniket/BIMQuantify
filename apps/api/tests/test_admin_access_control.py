@@ -25,14 +25,14 @@ from fastapi_users.password import PasswordHelper
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimstitch_api.auth.tokens import create_token
-from bimstitch_api.models.organization import Organization, OrganizationStatus
-from bimstitch_api.models.organization_member import (
+from bimdossier_api.auth.tokens import create_token
+from bimdossier_api.models.organization import Organization, OrganizationStatus
+from bimdossier_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
 )
-from bimstitch_api.models.user import User
-from bimstitch_api.tenancy import schema_name_for
+from bimdossier_api.models.user import User
+from bimdossier_api.tenancy import schema_name_for
 from tests.conftest import _audit_rows
 
 
@@ -421,7 +421,7 @@ async def test_member_suspension_does_not_remove_seat(
 ) -> None:
     """Suspended members still occupy a seat — confirms the seat helper
     matches `count_consumed_seats` semantics."""
-    from bimstitch_api.admin.seats import count_consumed_seats
+    from bimdossier_api.admin.seats import count_consumed_seats
 
     org = await _make_org(session, "SeatHoldCo")
     user = await _make_user(session, "held@example.com")

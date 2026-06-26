@@ -1,5 +1,5 @@
 {
-  "name": "@bimstitch/tailwind-config",
+  "name": "@bimdossier/tailwind-config",
   "version": "0.0.1",
   "private": true,
   "main": "./index.cjs",

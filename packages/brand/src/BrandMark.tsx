@@ -1,102 +1,72 @@
 import type { CSSProperties, JSX } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
-import {
-  BRAND_GLYPH_BLUE_DATA_URI,
-  BRAND_GLYPH_MASK_DATA_URI,
-  BRAND_GLYPH_WHITE_DATA_URI,
-  BRAND_MARK_DATA_URI,
-} from './brandMarkAsset.js';
-
-export type BrandMarkTone = 'on-dark' | 'on-light';
-
-/**
- * Which artwork to render:
- * - `square` (default): the full blue-square chip — reads on any surface.
- * - `glyph-blue`: the transparent blue "BD" letters — for light surfaces.
- * - `glyph-white`: the transparent white "BD" letters — for blue/dark surfaces.
- * - `glyph-mono`: the shadowless "BD" silhouette filled with `currentColor`, so
- *   it inherits the parent's text color (e.g. `text-primary`). Transparent, no
- *   drop shadow — for placing the mark inline with a wordmark.
- */
-export type BrandMarkVariant = 'square' | 'glyph-blue' | 'glyph-white' | 'glyph-mono';
-
-const ASSET_BY_VARIANT: Record<BrandMarkVariant, string> = {
-  square: BRAND_MARK_DATA_URI,
-  'glyph-blue': BRAND_GLYPH_BLUE_DATA_URI,
-  'glyph-white': BRAND_GLYPH_WHITE_DATA_URI,
-  'glyph-mono': BRAND_GLYPH_MASK_DATA_URI,
-};
+import { BRAND_LOGO_DATA_URI } from './brandMarkAsset.js';
 
 export interface BrandMarkProps {
   size?: number;
-  variant?: BrandMarkVariant;
-  /**
-   * Retained for API compatibility. The canonical blue-square mark reads on
-   * both light and dark surfaces, so it no longer switches the artwork.
-   */
-  tone?: BrandMarkTone;
   className?: string;
   style?: CSSProperties;
+  /**
+   * Render the mark on a light rounded "plate" so the blue folder logo stays
+   * legible on surfaces whose background is the same primary blue as the logo
+   * (the brand hero panels). Off by default — on white/light chrome (the
+   * marketing header & footer) the bare mark already has enough contrast.
+   */
+  plate?: boolean;
 }
 
 /**
- * The BimDossier "BD" brand mark — by default the blue square logo rendered as
- * a rounded chip. The glyph variants render the transparent "BD" letters
- * (no chip) for placement directly on a light or dark surface.
+ * The BimDossier brand logo — the full-colour "A"-folder mark, rendered at `size`.
+ * One image for every surface (marketing header/footer, hero panes, the portal
+ * sidebar chip). The browser-tab favicon is a separate flat "A" mark.
+ *
+ * On dark/primary backgrounds the blue mark blends in; pass `plate` to seat it
+ * on a small white rounded tile so it stands out.
  */
 export function BrandMark({
   size = 32,
-  variant = 'square',
   className,
   style,
+  plate = false,
 }: BrandMarkProps): JSX.Element {
-  const isSquare = variant === 'square';
-  const asset = ASSET_BY_VARIANT[variant];
+  const mark = (
+    <span
+      aria-hidden
+      className={cn('inline-block', plate ? undefined : className)}
+      style={{
+        width: size,
+        height: size,
+        backgroundImage: `url(${BRAND_LOGO_DATA_URI})`,
+        backgroundSize: 'contain',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        flexShrink: 0,
+        ...(plate ? undefined : style),
+      }}
+    />
+  );
 
-  // `glyph-mono` is a CSS-masked silhouette filled with the inherited text
-  // color, so it tracks `text-primary` (and theme changes) and carries no
-  // baked-in tint or shadow. Other variants paint the raster art directly.
-  if (variant === 'glyph-mono') {
-    return (
-      <span
-        aria-hidden
-        className={cn('inline-block', className)}
-        style={{
-          width: size,
-          height: size,
-          backgroundColor: 'currentColor',
-          maskImage: `url(${asset})`,
-          WebkitMaskImage: `url(${asset})`,
-          maskSize: 'contain',
-          WebkitMaskSize: 'contain',
-          maskPosition: 'center',
-          WebkitMaskPosition: 'center',
-          maskRepeat: 'no-repeat',
-          WebkitMaskRepeat: 'no-repeat',
-          flexShrink: 0,
-          ...style,
-        }}
-      />
-    );
+  if (!plate) {
+    return mark;
   }
 
   return (
     <span
       aria-hidden
-      className={cn('inline-block', className)}
+      className={cn(
+        'inline-flex items-center justify-center bg-white shadow-sm',
+        className,
+      )}
       style={{
-        width: size,
-        height: size,
-        borderRadius: isSquare ? 7 : 0,
-        backgroundImage: `url(${asset})`,
-        backgroundSize: isSquare ? 'cover' : 'contain',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
+        padding: Math.round(size * 0.16),
+        borderRadius: Math.round(size * 0.24),
         flexShrink: 0,
         ...style,
       }}
-    />
+    >
+      {mark}
+    </span>
   );
 }

@@ -18,8 +18,16 @@ import { runCompletionDeclarationReport } from '../pipeline/report/verklaring.js
 import { captureException } from '../sentry.js';
 import { getRedis, type ProgressReporter, type WorkerJob } from './queue.js';
 
-const pickStr = (payload: Record<string, unknown>, key: string): string =>
-  typeof payload[key] === 'string' ? (payload[key] as string) : '';
+const pickStr = (payload: Record<string, unknown>, key: string): string => {
+  const value = payload[key];
+  if (typeof value === 'string') return value;
+  // A missing routing id means the terminal-failure callback can't target the
+  // real API row (it would POST an empty id), so the row stays non-terminal and
+  // the UI spins. Log it so that exact failure mode is diagnosable rather than
+  // silent. (The reconcile sweeper is the eventual backstop.)
+  logger.error({ key, jobType: payload['job_type'] }, 'notifyTerminalFailure: payload is missing a string routing id');
+  return '';
+};
 
 /**
  * Last-resort failed callback once BullMQ has exhausted all retries.

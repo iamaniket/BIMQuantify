@@ -18,7 +18,7 @@ Requires Node >=20 and pnpm >=9 (`engines` in `package.json`). Package manager p
 - `pnpm install` — bootstrap the workspace.
 - `pnpm --filter=web dev` — web only (Next.js, port 3000).
 - `pnpm --filter=portal dev` — portal only (Next.js, port 3001). WASM and fragments worker are auto-copied via the `predev` hook.
-- `pnpm --filter=@bimstitch/<pkg> build` — build a single package. Apps use bare names (`web`, `portal`); internal packages use the `@bimstitch/*` scope.
+- `pnpm --filter=@bimdossier/<pkg> build` — build a single package. Apps use bare names (`web`, `portal`); internal packages use the `@bimdossier/*` scope.
 - `pnpm build` / `pnpm lint` / `pnpm type-check` / `pnpm test` — turbo-coordinated across the TS graph.
 
 ### Processor worker
@@ -44,14 +44,14 @@ docker compose up -d                 # all services (postgres, mailhog, redis, m
 cp .env.example .env
 uv sync
 uv run alembic -c alembic.master.ini upgrade head   # master chain → public schema
-uv run python -m bimstitch_api.seed                 # platform + Acme + Beta orgs, dev users
+uv run python -m bimdossier_api.seed                 # platform + Acme + Beta orgs, dev users
                                                     # (provisions per-org schemas via the tenant chain)
 # Seed user credentials live in apps/api/.env (template in .env.example, keys
 # SEED_SUPERADMIN_*, SEED_ACME_*, SEED_BETA_*, SEED_CROSS_*). The script fails
 # with a pydantic ValidationError if any of those env vars are missing.
 
 # dev server
-uv run uvicorn bimstitch_api.main:app --reload --port 8000
+uv run uvicorn bimdossier_api.main:app --reload --port 8000
 
 # migrations
 uv run alembic revision --autogenerate -m "message"
@@ -69,7 +69,7 @@ uv run ruff format .
 uv run mypy src
 ```
 
-**Test database**: `tests/conftest.py` points at `bimstitch_test` on `localhost:5434` (or `TEST_DATABASE_URL`). The `_ensure_test_db` fixture auto-creates the database if it doesn't exist — no manual `docker exec` needed. The conftest does `create_all`/`drop_all` per session and truncates tables between tests — no migrations in the test loop.
+**Test database**: `tests/conftest.py` points at `bimdossier_test` on `localhost:5434` (or `TEST_DATABASE_URL`). The `_ensure_test_db` fixture auto-creates the database if it doesn't exist — no manual `docker exec` needed. The conftest does `create_all`/`drop_all` per session and truncates tables between tests — no migrations in the test loop.
 
 ### E2E Testing (Playwright)
 
@@ -86,23 +86,23 @@ pnpm --filter=portal test:e2e:full       # starts docker-compose.test.yml, runs 
 ```
 
 **How it works**:
-- `global-setup.ts` creates an ephemeral `bimstitch_e2e` database, runs migrations + seed, starts a dedicated API process on port 8000.
+- `global-setup.ts` creates an ephemeral `bimdossier_e2e` database, runs migrations + seed, starts a dedicated API process on port 8000.
 - `global-teardown.ts` kills the API process after tests complete.
 - `run-e2e.mjs` (Option B) orchestrates separate test containers (`docker-compose.test.yml`) on different ports to avoid conflicts with dev services.
 
 **Database isolation summary**:
 | Database | Purpose | Port | Redis DB |
 |----------|---------|------|----------|
-| `bimstitch` | Development | 5434 | 0 |
-| `bimstitch_test` | API pytest | 5434 | 1 |
-| `bimstitch_e2e` | E2E (dev containers) | 5434 | 2 |
-| `bimstitch_e2e` | E2E (test containers) | 5435 | 0 |
+| `bimdossier` | Development | 5434 | 0 |
+| `bimdossier_test` | API pytest | 5434 | 1 |
+| `bimdossier_e2e` | E2E (dev containers) | 5434 | 2 |
+| `bimdossier_e2e` | E2E (test containers) | 5435 | 0 |
 
 **Environment variables**: E2E config is driven by `E2E_*` env vars (documented in `apps/api/.env.example` and `apps/portal/.env.example`). Defaults point at dev containers; `run-e2e.mjs` overrides them for test containers.
 
 ## Architecture — Python API
 
-**Package**: `src/bimstitch_api/` (src layout). Entry point: `bimstitch_api.main:app`.
+**Package**: `src/bimdossier_api/` (src layout). Entry point: `bimdossier_api.main:app`.
 
 ### Auth stack
 
@@ -111,7 +111,7 @@ FastAPI Users handles registration, verification, password reset, and the `/user
 1. `auth/routes.py::login` overrides `/auth/jwt/login` to return **both** access + refresh tokens (FastAPI Users' built-in login only returns access). Uses `OAuth2PasswordRequestForm`, gates on `is_verified`, responds with `TokenPair`.
 2. `auth/refresh.py` exposes `POST /auth/jwt/refresh` — decodes the refresh JWT, verifies `typ=refresh`, issues a fresh access token.
 
-**Token separation** (`auth/tokens.py`): access and refresh tokens share the same secret/algorithm but use **different audiences** (`"fastapi-users:auth"` vs `"bimstitch:refresh"`). FastAPI Users' default `JWTStrategy` is pinned to the access audience, so presenting a refresh token at `/users/me` yields 401 — this is the only thing stopping refresh tokens from being accepted as access. Both tokens also carry a `typ` claim, which `decode_token` checks defensively.
+**Token separation** (`auth/tokens.py`): access and refresh tokens share the same secret/algorithm but use **different audiences** (`"fastapi-users:auth"` vs `"bimdossier:refresh"`). FastAPI Users' default `JWTStrategy` is pinned to the access audience, so presenting a refresh token at `/users/me` yields 401 — this is the only thing stopping refresh tokens from being accepted as access. Both tokens also carry a `typ` claim, which `decode_token` checks defensively.
 
 **Logout** (`auth/logout.py`): `POST /auth/logout` decodes both access and refresh tokens, writes their JTIs into Redis (`cache/blocklist.py`, prefix `blk:jti:`) with TTL matching each token's remaining lifetime. The blocklist is checked on every authenticated request.
 
@@ -144,13 +144,13 @@ Isolation is **schema-per-tenant**: each org gets its own Postgres schema `org_<
 
 ### Data model and routers
 
-**Model hierarchy**: `Organization` -> `Project` -> `Model` -> `ProjectFile`. Projects also have a `ProjectMember` join table (user + role: owner/editor/viewer). Each `Project` carries a `country` (ISO 3166-1 alpha-2, defaults to `NL`) that anchors it to a jurisdiction.
+**Document hierarchy**: `Organization` -> `Project` -> `Document` -> `ProjectFile`. A `Document` is the viewable project artifact — it folds both 3D IFC models and 2D PDF drawings into one container (renamed from the legacy `Model` entity; the 3D-viewer's own `modelId` / geometry terminology is a separate concept and is unchanged). Projects also have a `ProjectMember` join table (user + role: owner/editor/viewer). Each `Project` carries a `country` (ISO 3166-1 alpha-2, defaults to `NL`) that anchors it to a jurisdiction.
 
-**Routers**: `health`, auth (built by `build_auth_router()`), `projects`, `models`, `project_files`, `jobs_internal`, `reports`, `compliance`, `jurisdictions`.
+**Routers**: `health`, auth (built by `build_auth_router()`), `projects`, `documents`, `project_files`, `jobs_internal`, `reports`, `compliance`, `jurisdictions`.
 
 ### Jurisdictions (NL-first, EU-ready)
 
-`bimstitch_api/jurisdictions/` is the single source of truth for what countries the app can serve. Each jurisdiction registers a `Jurisdiction` dataclass with its frameworks (e.g. NL → `bbl`, `wkb`), default + supported locales, address-format hints. NL is registered in `jurisdictions/nl.py`; adding DE = sibling module that calls `register(...)` — no schema changes.
+`bimdossier_api/jurisdictions/` is the single source of truth for what countries the app can serve. Each jurisdiction registers a `Jurisdiction` dataclass with its frameworks (e.g. NL → `bbl`, `wkb`), default + supported locales, address-format hints. NL is registered in `jurisdictions/nl.py`; adding DE = sibling module that calls `register(...)` — no schema changes.
 
 **Hard rule**: `Project.country` and `Job.payload["framework"]` are the only places jurisdiction/framework live. The `JobType` enum collapsed `bbl_compliance_check` and `wkb_compliance_check` into a single `compliance_check` — framework is data, not schema. Adding a third country never touches a Postgres enum.
 
@@ -169,11 +169,11 @@ Isolation is **schema-per-tenant**: each org gets its own Postgres schema `org_<
 Postgres `Enum` types are **redefined inside every tenant schema**, so changing one is a per-schema fan-out: `ALTER TYPE ... ADD VALUE` (or a drop/recreate for a rename/removal) has to run against every `org_*` schema, the same as any tenant migration. The `JobType` collapse of `bbl_compliance_check`/`wkb_compliance_check` into a single `compliance_check` was driven by exactly this cost — **framework is data, not schema**.
 
 Forward convention for new fields:
-- A field whose value set is likely to **grow** (statuses, types, categories, phases, severities, disciplines) → prefer `String` + a `CHECK` constraint, or app-level validation, over a Postgres `Enum`. If you do use an `Enum`, know that adding a value is a tenant-fan-out migration — run it via `uv run python -m bimstitch_api.scripts.migrate_all` (parallel, state-tracked fan-out; `--check` reports drift).
+- A field whose value set is likely to **grow** (statuses, types, categories, phases, severities, disciplines) → prefer `String` + a `CHECK` constraint, or app-level validation, over a Postgres `Enum`. If you do use an `Enum`, know that adding a value is a tenant-fan-out migration — run it via `uv run python -m bimdossier_api.scripts.migrate_all` (parallel, state-tracked fan-out; `--check` reports drift).
 - Enum **values stay language-neutral** (see the rule above); localized labels live in the jurisdiction registry / i18n catalogs.
 - **Never** encode jurisdiction or framework into an enum — it's data (`Project.country`, `Job.payload["framework"]`).
 
-This applies to *new* fields and the next few migrations; the existing ~30 enums are not being rewritten. Rough split — likely-to-grow (lean toward `String`+`CHECK` if reworked): `FindingSeverity`/`FindingStatus`, `RiskCategory`, `ProjectPhase`/`ProjectLifecycleState`, `BuildingType`, `FileType`, `IfcSchema`, `JobType`, `ChecklistItemType`, `EvidenceType`, `AttachmentCategory`, `DossierSlot`, `CertificateType`, `ReportType`, `NotificationEventType`, `BorgingsmomentPhase`, `ProjectRole`. Stable (fine as enums): the terminal-state status sets, `RiskLevel`, `ModelDiscipline`, `InspectionVerdict`, org/member statuses.
+This applies to *new* fields and the next few migrations; the existing ~30 enums are not being rewritten. Rough split — likely-to-grow (lean toward `String`+`CHECK` if reworked): `FindingSeverity`/`FindingStatus`, `RiskCategory`, `ProjectPhase`/`ProjectLifecycleState`, `BuildingType`, `FileType`, `IfcSchema`, `JobType`, `ChecklistItemType`, `EvidenceType`, `AttachmentCategory`, `DossierSlot`, `CertificateType`, `ReportType`, `NotificationEventType`, `BorgingsmomentPhase`, `ProjectRole`. Stable (fine as enums): the terminal-state status sets, `RiskLevel`, `DocumentDiscipline`, `InspectionVerdict`, org/member statuses.
 
 ### Bilingual (NL + EN) rule
 
@@ -182,7 +182,7 @@ This applies to *new* fields and the next few migrations; the existing ~30 enums
 Where each kind of string lives:
 
 - **Static UI chrome** (button labels, headings, tab names, table columns, placeholders, error messages, validation messages): add the key to **both** `apps/portal/messages/en.json` and `apps/portal/messages/nl.json` and read it with `useTranslations()`. Never hardcode a Dutch placeholder like `"bv. 4.51"` in a `.tsx` file — that's the smell that started this rule. Whenever you add a new key to one file, add it to the other in the same commit; the two files must stay structurally identical.
-- **Jurisdiction-stored labels** (anything on `Jurisdiction`, `RiskTemplate`, `BorgingsmomentTemplate`, `ChecklistItemTemplate` in `apps/api/src/bimstitch_api/jurisdictions/`): every label is a `LocaleMap = dict[str, str]` (locale → label). Provide **both** `"nl"` and `"en"` entries. The `/jurisdictions?locale=` endpoint flattens these via `pick_label()` / `localize_map()`; the portal passes its current `useLocale()` to the query so EN and NL cached separately. Adding a new label field to a Jurisdiction means also bumping the response model in `routers/jurisdictions.py` and threading it through `useWizardOptions.ts` / consumers if it drives UI.
+- **Jurisdiction-stored labels** (anything on `Jurisdiction`, `RiskTemplate`, `BorgingsmomentTemplate`, `ChecklistItemTemplate` in `apps/api/src/bimdossier_api/jurisdictions/`): every label is a `LocaleMap = dict[str, str]` (locale → label). Provide **both** `"nl"` and `"en"` entries. The `/jurisdictions?locale=` endpoint flattens these via `pick_label()` / `localize_map()`; the portal passes its current `useLocale()` to the query so EN and NL cached separately. Adding a new label field to a Jurisdiction means also bumping the response model in `routers/jurisdictions.py` and threading it through `useWizardOptions.ts` / consumers if it drives UI.
 - **DB rows seeded from jurisdiction templates** (`borgingsmomenten.name`, `checklist_items.description`, etc., populated by `_build_plan_from_templates`): pick the locale at seed time from the project's jurisdiction `default_locale`. These rows are single-language by design — regeneration is the way to switch a plan's content language. Don't add bilingual columns to these tables.
 - **User-entered content** (custom risks, custom moments, project name/description, notes): single-language. Whatever the user typed.
 
@@ -190,7 +190,7 @@ When you add a new label, template field, or jurisdiction entry: write the `nl` 
 
 ### API i18n catalog
 
-`apps/api/src/bimstitch_api/i18n/` is the single source of truth for every user-visible string the API itself emits (email subjects/bodies, in-app notification titles/bodies). Mirrors the frontend pattern (`packages/i18n/src/shared/`) on the Python side.
+`apps/api/src/bimdossier_api/i18n/` is the single source of truth for every user-visible string the API itself emits (email subjects/bodies, in-app notification titles/bodies). Mirrors the frontend pattern (`packages/i18n/src/shared/`) on the Python side.
 
 Public surface:
 - `t(key, locale, **vars)` — single-locale lookup with `{var}` interpolation. Falls back to `PLATFORM_DEFAULT_LOCALE` if a key is missing in the requested locale (parity tests prevent this in practice).
@@ -254,20 +254,20 @@ Next.js 16 with App Router, React 19, Tailwind CSS, port 3001.
 
 **API client**: `lib/api/client.ts` — typed fetch wrapper. Every response is validated through a Zod schema. Throws `ApiError` on non-2xx. `putRaw` for presigned URL uploads omits the auth header (it would break the S3 signature).
 
-**Auth**: `providers/AuthProvider.tsx` stores tokens in `localStorage` under `bimstitch.tokens`. `useAuth()` returns `{ tokens, setTokens, hasHydrated }`. Hydration is deferred to avoid SSR/client mismatch.
+**Auth**: `providers/AuthProvider.tsx` stores tokens in `localStorage` under `bimdossier.tokens`. `useAuth()` returns `{ tokens, setTokens, hasHydrated }`. Hydration is deferred to avoid SSR/client mismatch.
 
 **Forms**: React Hook Form + `@hookform/resolvers/zod`. Schemas in `projectFormSchema.ts`, `modelFormSchema.ts`.
 
 **Shared component rule**: `components/shared/` contains store-agnostic UI skeletons — data flows in via props only. A component that imports from a zustand store, React Query hook, or a feature-level hook is feature-specific and belongs in the matching `features/<domain>/` directory, not `components/shared/`. Viewer components that access `useViewerEntityStore` live in `features/viewer/`; toolbar primitives, panel shells, and settings dialogs (all pure props) stay in `components/shared/viewer/`.
 
-**Styling rule — tokens via Tailwind classes, never ad-hoc inline styles**: every color, font, size, and radius must come from the design system. The pipeline is `@bimstitch/design-tokens` (CSS variables) → `packages/tailwind-config/index.cjs` (maps them to utilities) → Tailwind classes in components. So you write `className="font-sans text-body3 text-foreground-tertiary tabular-nums bg-surface-low"`, **not** `style={{ fontFamily: ..., color: ..., background: ... }}`. All 30 `@bimstitch/ui` components follow this — match it.
+**Styling rule — tokens via Tailwind classes, never ad-hoc inline styles**: every color, font, size, and radius must come from the design system. The pipeline is `@bimdossier/design-tokens` (CSS variables) → `packages/tailwind-config/index.cjs` (maps them to utilities) → Tailwind classes in components. So you write `className="font-sans text-body3 text-foreground-tertiary tabular-nums bg-surface-low"`, **not** `style={{ fontFamily: ..., color: ..., background: ... }}`. All 30 `@bimdossier/ui` components follow this — match it.
 
 Hard rules:
 - **Never invent CSS-variable names.** Only the long names defined in `tokens.css` exist (`--foreground`, `--foreground-secondary`, `--foreground-tertiary`, `--foreground-disabled`, `--background-hover`, `--surface-low/main/...`, `--primary*`, `--success`, `--border`, …). Short aliases like `--mono`, `--sans`, `--fg`, `--fg-2`, `--fg-3`, `--bg-hover` **do not exist** — referencing them in `var(...)` silently resolves to invalid and inherits the wrong font/color. Prefer the Tailwind class (`font-sans`, `text-foreground-tertiary`, `bg-background-hover`); if you must use `var()`, use the full token name.
 - **No raw hex / rgb / font-family literals** in `.tsx` for themed UI. If a tone isn't in the tokens, add it to the token layer first. Exception: OG/icon routes (`app/apple-icon.tsx`) where Satori needs a literal `system-ui`. Skeuomorphic art (`components/shared/viewer/shared/settings/VisualKeyboard.tsx`, `MouseDiagram.tsx`) may keep raw *color* hexes for the photoreal look, but its fonts must still use the system sans stack (`var(--font-sans)`).
 - **One text font — system sans-serif.** The whole app uses the platform's native sans-serif via `font-sans` (`ui-sans-serif, system-ui, -apple-system, sans-serif`). There is no custom webfont for body text. The `font-mono` utility and `--font-mono` var still exist but are **aliased to the same system sans stack** — do not write new `font-mono`; use `font-sans` (pair with `tabular-nums` when you need aligned figures). Fraunces (the display serif, `font-display` → `--font-display`) is the **only** other family and is **reserved for the login/auth experience** (`features/auth/*`, plus the brand pieces rendered there — `packages/brand/KpiStrip`, `RequestAccessSuccess`). Do **not** use `font-display` in dashboard/viewer/marketing chrome — use `font-sans`. Never hardcode any other family name (no `"Saira Condensed"`, `"DM Sans"`, etc.). For unavoidable inline/SVG `style` font references, use `var(--font-sans)` (defined in each app's `globals.css`); the short aliases `--mono` / `--sans` / `--fg*` still do not exist.
 - **`style={{}}` is only for genuinely dynamic values** the class system can't express — runtime grid templates, transforms, per-row colors from data, virtualized-row geometry. Everything static is a class.
-- **Recurring style clusters become shared primitives** in `@bimstitch/ui` (e.g. `Eyebrow` = uppercase section label, `CountChip` = tabular numeric pill, `Badge`). Extract once a cluster repeats across ≥3 files; one-offs stay as inline classes. Off-scale sizes snap to the nearest token (`text-caption` 10 / `text-body3` 12 / `text-[13px]` only when no token fits).
+- **Recurring style clusters become shared primitives** in `@bimdossier/ui` (e.g. `Eyebrow` = uppercase section label, `CountChip` = tabular numeric pill, `Badge`). Extract once a cluster repeats across ≥3 files; one-offs stay as inline classes. Off-scale sizes snap to the nearest token (`text-caption` 10 / `text-body3` 12 / `text-[13px]` only when no token fits).
 
 **Environment**: Single var `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:8000`), validated by Zod at import time (`lib/env.ts`).
 
@@ -320,20 +320,20 @@ Portal reads: `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:8000`).
 
 The API itself runs on the host (`uv run uvicorn ...`), not in Docker.
 
-- `postgres` — Postgres 16, host port **5434**. User `bim`, password `bim`, database `bimstitch`.
+- `postgres` — Postgres 16, host port **5434**. User `bim`, password `bim`, database `bimdossier`.
 - `mailhog` — SMTP on 1025, web UI at http://localhost:8025.
 - `redis` — Redis 7, host port **6380**. Used for rate limiting, JWT blocklist, and BullMQ job queue.
-- `minio` — S3-compatible storage, API on port **9000**, console at **9001**. Root credentials: `bimstitch` / `bimstitch-secret`.
+- `minio` — S3-compatible storage, API on port **9000**, console at **9001**. Root credentials: `bimdossier` / `bimdossier-secret`.
 - `processor` — built from `apps/processor/Dockerfile`, host port **8088**. Reaches API via `host.docker.internal:8000`. Auth: `PROCESSOR_SHARED_SECRET`. Generic Node.js worker for all background jobs (IFC extraction, PDF extraction, PDF report generation).
 
 ### Test stack — `docker-compose.test.yml` (repo root)
 
-Ephemeral, no volumes. Used by `pnpm --filter=portal test:e2e:full`. Project name `bimstitch-test` prevents container collisions with dev.
+Ephemeral, no volumes. Used by `pnpm --filter=portal test:e2e:full`. Project name `bimdossier-test` prevents container collisions with dev.
 
-- `postgres` — port **5435**, container `bimstitch-test-postgres`
-- `redis` — port **6381**, container `bimstitch-test-redis`
-- `mailhog` — SMTP **1026**, HTTP **8026**, container `bimstitch-test-mailhog`
-- `minio` — API **9002**, console **9003**, container `bimstitch-test-minio`
+- `postgres` — port **5435**, container `bimdossier-test-postgres`
+- `redis` — port **6381**, container `bimdossier-test-redis`
+- `mailhog` — SMTP **1026**, HTTP **8026**, container `bimdossier-test-mailhog`
+- `minio` — API **9002**, console **9003**, container `bimdossier-test-minio`
 
 Lifecycle: `docker compose -f docker-compose.test.yml up -d --wait` / `down -v`. The `run-e2e.mjs` script manages this automatically.
 

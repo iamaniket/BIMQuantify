@@ -11,8 +11,8 @@ import {
 } from 'react';
 import { useTranslations } from 'next-intl';
 
-import { Select } from '@bimstitch/ui';
-import type { ViewerHandle } from '@bimstitch/viewer';
+import { Select } from '@bimdossier/ui';
+import type { ViewerHandle } from '@bimdossier/viewer';
 
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 

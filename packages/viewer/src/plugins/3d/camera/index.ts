@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import type * as FRAGS from '@thatopen/fragments';
 
+import { verror } from '../../../core/debugLog.js';
 import { frameView } from '../../../core/framing.js';
 import { computeVisibleSolidBox } from '../../../core/visibleBox.js';
 import type { ItemId, Plugin, Vec3, ViewerContext } from '../../../core/types.js';
@@ -236,6 +237,51 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
         { title: 'Fly to point' },
       );
 
+      // Gently bring the model back into view WITHOUT yanking to an iso view or
+      // changing projection / nav mode — the target for the portal's "Recenter"
+      // pill and the empty-space double-click. Unlike `zoomExtents`/`home` (which
+      // snap to iso, exiting a first-person walkthrough), this preserves the
+      // current viewing angle and re-aims at the model center.
+      //
+      // The root cause of the model sliding out of frame in first-person/split is
+      // accumulated truck/pan `focalOffset`, which `setLookAt` does NOT clear — so
+      // we reset it first, then re-center.
+      commands.register(
+        'camera.recenter',
+        async () => {
+          const box = computeSceneBox(ctx);
+          if (box.isEmpty()) return;
+          const center = box.getCenter(new THREE.Vector3());
+          const sphere = box.getBoundingSphere(new THREE.Sphere());
+          ctx.cameraControls.setFocalOffset(0, 0, 0, false);
+          const pos = new THREE.Vector3();
+          const tgt = new THREE.Vector3();
+          ctx.cameraControls.getPosition(pos);
+          ctx.cameraControls.getTarget(tgt);
+          const dir = pos.sub(tgt); // current view direction × distance
+          let dist = dir.length();
+          if (!(dist > 1e-4)) {
+            dir.set(0, 0, 1);
+            dist = 1;
+          }
+          dir.normalize();
+          // Keep the viewing angle; sanity-clamp distance so the model is neither
+          // a speck nor clipped (perspective). Harmless in ortho (size is zoom-driven).
+          const r = Math.max(sphere.radius, 1e-3);
+          dir.multiplyScalar(THREE.MathUtils.clamp(dist, r * 0.8, r * 12));
+          await ctx.cameraControls.setLookAt(
+            center.x + dir.x,
+            center.y + dir.y,
+            center.z + dir.z,
+            center.x,
+            center.y,
+            center.z,
+            true,
+          );
+        },
+        { title: 'Recenter on model' },
+      );
+
       // Read the current camera pose so the minimap can draw "you are here"
       // before the first camera:change event fires.
       commands.register(
@@ -251,6 +297,42 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
           };
         },
         { title: 'Get camera pose' },
+      );
+
+      // Current projection mode of the OrthoPerspective rig. Used by callers that
+      // switch to orthographic temporarily (e.g. calibration's top-down plan view)
+      // so they can restore the prior mode on exit.
+      commands.register(
+        'camera.getProjection',
+        () => ctx.obcCamera.projection.current,
+        { title: 'Get camera projection' },
+      );
+
+      // Switch the camera projection (perspective ↔ orthographic). Orthographic is
+      // a true flat plan — used by calibration so the 3D pane matches the 2D PDF.
+      // Switching swaps the active three camera instance, so we must re-bind the
+      // fragments LOD/culling to it (otherwise streaming targets the stale camera
+      // → holes), and re-assert maxDistance (OrbitMode reverts it to 300 on switch).
+      commands.register(
+        'camera.setProjection',
+        async (args) => {
+          const a = args as { mode?: 'Orthographic' | 'Perspective' } | undefined;
+          const mode = a?.mode;
+          if (mode !== 'Orthographic' && mode !== 'Perspective') return;
+          if (ctx.obcCamera.projection.current === mode) return;
+          await ctx.obcCamera.projection.set(mode);
+          for (const model of ctx.models().values()) {
+            (model as FRAGS.FragmentsModel).useCamera(ctx.camera);
+          }
+          ctx.cameraControls.maxDistance = Infinity;
+          // OBC keeps the ortho frustum aspect via a size-delta; a switch that
+          // coincides with the calibration pane resize desyncs it from the
+          // canvas (horizontal squeeze). Re-derive it absolutely as the last
+          // write (no-op when switching to Perspective).
+          ctx.syncOrthoAspect();
+          ctx.requestRender();
+        },
+        { title: 'Set camera projection' },
       );
 
       // Model world-space AABB, used by the minimap to calibrate the IFC↔viewer
@@ -325,5 +407,11 @@ async function computeSelectionBox(
 function sceneOrFallbackBox(ctx: ViewerContext): THREE.Box3 {
   const box = computeSceneBox(ctx);
   if (!box.isEmpty()) return box;
+  // An empty box with models LOADED means bounds failed to compute (not merely
+  // an empty scene) — the ±5 fallback would then frame the wrong place. Log only
+  // that anomaly; a genuinely empty scene is expected and stays silent.
+  if (ctx.models().size > 0) {
+    verror('camera', 'scene box empty despite loaded models — using ±5 fallback frame');
+  }
   return new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5));
 }

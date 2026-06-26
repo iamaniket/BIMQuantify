@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Check, CheckCircle2, X } from '@bimstitch/ui/icons';
+import { AlertTriangle, Check, CheckCircle2, X } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
@@ -18,7 +18,7 @@ import {
   Label,
   Skeleton,
   Textarea,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import type { Deadline } from '@/lib/api/schemas/deadlines';
 

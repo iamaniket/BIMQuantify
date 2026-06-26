@@ -13,9 +13,11 @@ import {
   View,
 } from 'react-native';
 
+import { useT } from '@/i18n';
 import { useCreateFindingMutation } from '@/features/findings/queries';
+import { PhotoStrip } from '@/features/photos/PhotoStrip';
+import { usePhotoCapture } from '@/features/photos/usePhotoCapture';
 import type { FindingSeverityValue } from '@/lib/api/schemas/findings';
-import { humanize } from '@/lib/format';
 import { useAuth } from '@/providers/AuthProvider';
 import { colors, radii } from '@/theme';
 
@@ -31,6 +33,7 @@ function severityColor(s: FindingSeverityValue): string {
 
 export default function FindingCreateScreen() {
   const router = useRouter();
+  const { t } = useT();
   const { tokens } = useAuth();
   const params = useLocalSearchParams<{
     projectId: string;
@@ -48,6 +51,7 @@ export default function FindingCreateScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState<FindingSeverityValue>('medium');
+  const photos = usePhotoCapture(projectId ?? '');
 
   const anchorX = params.anchorX != null ? parseFloat(params.anchorX) : null;
   const anchorY = params.anchorY != null ? parseFloat(params.anchorY) : null;
@@ -58,41 +62,43 @@ export default function FindingCreateScreen() {
 
   const handleSave = useCallback(() => {
     if (!title.trim()) {
-      Alert.alert('Title required', 'Please enter a title for the finding.');
+      Alert.alert(t('findings.create.titleRequired'), t('findings.create.titleRequiredBody'));
       return;
     }
     if (!description.trim()) {
-      Alert.alert('Description required', 'Please enter a description.');
+      Alert.alert(t('findings.create.descriptionRequired'), t('findings.create.descriptionRequiredBody'));
       return;
     }
 
+    const photoIds = photos.photoIds();
     mutation.mutate(
       {
         title: title.trim(),
         description: description.trim(),
         severity,
-        linked_model_id: params.modelId ?? null,
+        linked_document_id: params.modelId ?? null,
         linked_file_id: params.fileId ?? null,
         linked_file_type: fileType ?? null,
         anchor_x: anchorX,
         anchor_y: anchorY,
         anchor_z: anchorZ,
+        photo_ids: photoIds.length > 0 ? photoIds : null,
       },
       {
         onSuccess: () => { router.back(); },
         onError: (err) => {
-          Alert.alert('Error', err.message);
+          Alert.alert(t('common.error'), err.message);
         },
       },
     );
-  }, [title, description, severity, params, fileType, anchorX, anchorY, anchorZ, mutation, router]);
+  }, [title, description, severity, params, fileType, anchorX, anchorY, anchorZ, photos, mutation, router, t]);
 
   if (tokens === null) return <Redirect href="/login" />;
   if (!projectId) return <Redirect href="/projects" />;
 
   return (
     <View style={styles.flex}>
-      <Stack.Screen options={{ title: 'New Finding' }} />
+      <Stack.Screen options={{ title: t('findings.create.title') }} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -105,20 +111,22 @@ export default function FindingCreateScreen() {
               <Text style={styles.pinIcon}>📍</Text>
               <Text style={styles.pinText}>
                 {fileType === 'pdf' && anchorPage != null
-                  ? `Pinned to PDF Page ${String(anchorPage)}`
-                  : `Pinned to 3D (${anchorX!.toFixed(1)}, ${anchorY!.toFixed(1)}, ${anchorZ?.toFixed(1) ?? '–'})`}
+                  ? t('findings.create.pinnedPdf', { page: anchorPage })
+                  : t('findings.create.pinned3d', {
+                      coords: `${anchorX!.toFixed(1)}, ${anchorY!.toFixed(1)}, ${anchorZ?.toFixed(1) ?? '–'}`,
+                    })}
               </Text>
             </View>
           ) : null}
 
           {/* Title */}
           <View style={styles.field}>
-            <Text style={styles.label}>Title</Text>
+            <Text style={styles.label}>{t('findings.create.titleLabel')}</Text>
             <TextInput
               style={styles.input}
               value={title}
               onChangeText={setTitle}
-              placeholder="Short description of the issue"
+              placeholder={t('findings.create.titlePlaceholder')}
               placeholderTextColor={colors.placeholder}
               maxLength={255}
               returnKeyType="next"
@@ -127,12 +135,12 @@ export default function FindingCreateScreen() {
 
           {/* Description */}
           <View style={styles.field}>
-            <Text style={styles.label}>Description</Text>
+            <Text style={styles.label}>{t('findings.create.descriptionLabel')}</Text>
             <TextInput
               style={[styles.input, styles.multiline]}
               value={description}
               onChangeText={setDescription}
-              placeholder="Detailed description"
+              placeholder={t('findings.create.descriptionPlaceholder')}
               placeholderTextColor={colors.placeholder}
               maxLength={4000}
               multiline
@@ -142,7 +150,7 @@ export default function FindingCreateScreen() {
 
           {/* Severity */}
           <View style={styles.field}>
-            <Text style={styles.label}>Severity</Text>
+            <Text style={styles.label}>{t('findings.create.severityLabel')}</Text>
             <View style={styles.segmented}>
               {SEVERITIES.map((s) => {
                 const active = s === severity;
@@ -156,7 +164,7 @@ export default function FindingCreateScreen() {
                     onPress={() => { setSeverity(s); }}
                   >
                     <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-                      {humanize(s)}
+                      {t(`findings.severity.${s}`)}
                     </Text>
                   </Pressable>
                 );
@@ -164,16 +172,22 @@ export default function FindingCreateScreen() {
             </View>
           </View>
 
+          {/* Photos */}
+          <View style={styles.field}>
+            <Text style={styles.label}>{t('findings.create.photosLabel')}</Text>
+            <PhotoStrip photos={photos.photos} onAdd={photos.add} onRemove={photos.remove} />
+          </View>
+
           {/* Save */}
           <Pressable
-            style={[styles.saveBtn, mutation.isPending && styles.saveBtnDisabled]}
-            disabled={mutation.isPending}
+            style={[styles.saveBtn, (mutation.isPending || photos.isBusy) && styles.saveBtnDisabled]}
+            disabled={mutation.isPending || photos.isBusy}
             onPress={handleSave}
           >
             {mutation.isPending ? (
               <ActivityIndicator color={colors.onPrimary} size="small" />
             ) : (
-              <Text style={styles.saveBtnText}>Save Finding</Text>
+              <Text style={styles.saveBtnText}>{t('findings.create.save')}</Text>
             )}
           </Pressable>
         </ScrollView>

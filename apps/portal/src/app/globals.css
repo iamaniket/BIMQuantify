@@ -1,10 +1,18 @@
-@import '@bimstitch/design-tokens/tokens.css';
+@import '@bimdossier/design-tokens/tokens.css';
 
 /* Brand identity tokens. Owned by the design-tokens package conceptually,
    declared here until they migrate into the shared token bundle. */
 :root {
   --brand-gradient-start: #2c5697;
   --brand-gradient-end: #224579;
+
+  /* Always-dark canvas backdrop for the image annotator/viewer (theme-independent,
+     like a photo editor). */
+  --viewer-canvas-bg: #101316;
+
+  /* Hero thumbnail elevation (112x160 project/org/account thumbnails). Light uses
+     a brand-blue-tinted drop; the dark variant is overridden below. */
+  --shadow-hero-thumbnail: 0 4px 14px rgba(44, 86, 151, 0.12);
 
   /* Sidebar is an always-dark surface, independent of the light/dark theme.
      These stay constant across themes by design. */
@@ -69,6 +77,8 @@
   --brand-gradient-start: #1e3e72;
   --brand-gradient-end: #16315e;
 
+  --shadow-hero-thumbnail: 0 4px 14px rgba(0, 0, 0, 0.30);
+
   --disc-architectural-bg: rgba(122, 90, 200, 0.18);
   --disc-architectural-fg: #b9a4ec;
   --disc-structural-bg: rgba(60, 110, 200, 0.18);
@@ -111,12 +121,16 @@
   }
 }
 
-/* PDF text layer — invisible text for selection + search highlights */
+/* PDF text layer — invisible text backing the search highlights. Inert by
+   design: this is a navigation surface, so a drag pans the camera instead of
+   selecting text (see the tools plugin in @bimdossier/viewer). */
 .bq-text-layer {
   position: absolute;
   inset: 0;
   overflow: hidden;
   line-height: 1;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .bq-text-layer span,
 .bq-text-layer br {
@@ -124,9 +138,6 @@
   position: absolute;
   white-space: pre;
   transform-origin: 0% 0%;
-}
-.bq-text-layer ::selection {
-  background: rgba(0, 100, 255, 0.3);
 }
 .bq-text-layer mark.bq-highlight {
   color: transparent;
@@ -142,33 +153,59 @@
 @media (prefers-contrast: more) {
   :root {
     --foreground: #000000;
+    --foreground-rgb: 0 0 0;
     --foreground-secondary: #111111;
+    --foreground-secondary-rgb: 17 17 17;
     --foreground-tertiary: #222222;
+    --foreground-tertiary-rgb: 34 34 34;
     --foreground-disabled: #555555;
+    --foreground-disabled-rgb: 85 85 85;
     --border: #000000;
+    --border-rgb: 0 0 0;
     --border-hover: #000000;
+    --border-hover-rgb: 0 0 0;
     --background-secondary: #f0f0f0;
+    --background-secondary-rgb: 240 240 240;
     --success: #006600;
+    --success-rgb: 0 102 0;
     --success-lighter: #ccffcc;
+    --success-lighter-rgb: 204 255 204;
     --error: #cc0000;
+    --error-rgb: 204 0 0;
     --error-lighter: #ffcccc;
+    --error-lighter-rgb: 255 204 204;
     --warning: #996600;
+    --warning-rgb: 153 102 0;
     --warning-lighter: #fff0cc;
+    --warning-lighter-rgb: 255 240 204;
   }
 }
 
 [data-high-contrast='true'] {
   --foreground: #000000;
+  --foreground-rgb: 0 0 0;
   --foreground-secondary: #111111;
+  --foreground-secondary-rgb: 17 17 17;
   --foreground-tertiary: #222222;
+  --foreground-tertiary-rgb: 34 34 34;
   --foreground-disabled: #555555;
+  --foreground-disabled-rgb: 85 85 85;
   --border: #000000;
+  --border-rgb: 0 0 0;
   --border-hover: #000000;
+  --border-hover-rgb: 0 0 0;
   --background-secondary: #f0f0f0;
+  --background-secondary-rgb: 240 240 240;
   --success: #006600;
+  --success-rgb: 0 102 0;
   --success-lighter: #ccffcc;
+  --success-lighter-rgb: 204 255 204;
   --error: #cc0000;
+  --error-rgb: 204 0 0;
   --error-lighter: #ffcccc;
+  --error-lighter-rgb: 255 204 204;
   --warning: #996600;
+  --warning-rgb: 153 102 0;
   --warning-lighter: #fff0cc;
+  --warning-lighter-rgb: 255 240 204;
 }

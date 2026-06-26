@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 const SIZE_CLASSES = {
   sm: 'h-6 w-6 text-[9px]',
@@ -32,6 +32,8 @@ type Props = {
   src?: string | null;
   size?: Size;
   className?: string;
+  /** Override the hover tooltip; defaults to the resolved display name. */
+  title?: string | undefined;
 };
 
 export function UserAvatar({
@@ -40,16 +42,19 @@ export function UserAvatar({
   src,
   size = 'md',
   className,
+  title,
 }: Props): JSX.Element {
   const sizeClass = SIZE_CLASSES[size];
   const initials = toInitials(name, email);
   const displayName = name.trim() || email || 'User';
+  const tooltip = title ?? displayName;
 
   if (src !== null && src !== undefined) {
     return (
       <img
         src={src}
         alt={displayName}
+        title={tooltip}
         className={cn('rounded-full object-cover', sizeClass, className)}
       />
     );
@@ -57,7 +62,7 @@ export function UserAvatar({
 
   return (
     <div
-      title={displayName}
+      title={tooltip}
       className={cn(
         'grid shrink-0 place-items-center rounded-full bg-primary-light font-extrabold text-primary',
         sizeClass,

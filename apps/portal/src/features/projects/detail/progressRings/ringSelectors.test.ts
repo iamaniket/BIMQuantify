@@ -25,7 +25,7 @@ function finding(overrides: Partial<Finding> = {}): Finding {
     created_by_user_id: '00000000-0000-0000-0000-000000000001',
     source_checklist_item_id: null,
     borgingsmoment_id: null,
-    linked_model_id: null,
+    linked_document_id: null,
     linked_file_id: null,
     linked_element_global_id: null,
     linked_file_type: null,
@@ -96,7 +96,7 @@ describe('findingEntityKind precedence', () => {
       findingEntityKind(
         finding({
           linked_element_global_id: 'abc',
-          linked_model_id: '00000000-0000-0000-0000-0000000000aa',
+          linked_document_id: '00000000-0000-0000-0000-0000000000aa',
           linked_file_id: '00000000-0000-0000-0000-0000000000bb',
         }),
       ),
@@ -108,7 +108,7 @@ describe('findingEntityKind precedence', () => {
       findingEntityKind(
         finding({
           linked_element_global_id: null,
-          linked_model_id: '00000000-0000-0000-0000-0000000000aa',
+          linked_document_id: '00000000-0000-0000-0000-0000000000aa',
           linked_file_id: '00000000-0000-0000-0000-0000000000bb',
         }),
       ),
@@ -145,7 +145,7 @@ describe('selectFindingsBreakdown', () => {
   it('buckets severity and entity kind', () => {
     const b = selectFindingsBreakdown([
       finding({ severity: 'high', linked_element_global_id: 'e1' }),
-      finding({ severity: 'high', linked_model_id: '00000000-0000-0000-0000-0000000000aa' }),
+      finding({ severity: 'high', linked_document_id: '00000000-0000-0000-0000-0000000000aa' }),
       finding({ severity: 'low' }),
     ]);
     expect(b.bySeverity).toEqual({ high: 2, medium: 0, low: 1 });

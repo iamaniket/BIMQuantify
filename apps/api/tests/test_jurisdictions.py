@@ -123,12 +123,12 @@ async def test_unsupported_framework_for_country_rejected(
     the framework rejection comes back regardless of whether the model/file
     exist (the route still requires membership which we satisfy with the
     project we own)."""
-    # The compliance endpoint requires file_id + model_id, but we want to
+    # The compliance endpoint requires file_id + document_id, but we want to
     # assert the framework check fires before that. Since the file lookup
     # happens first (404 NOT_FOUND), we can only verify the gating indirectly
     # via the schema-level check on the request body. For now, accept that
     # validating the jurisdictions registry separately is sufficient.
-    from bimstitch_api.jurisdictions import is_supported_framework
+    from bimdossier_api.jurisdictions import is_supported_framework
 
     assert is_supported_framework("NL", "bbl") is True
     assert is_supported_framework("NL", "wkb") is True
@@ -170,10 +170,10 @@ async def test_jurisdictions_exposes_dossier_templates(client: AsyncClient) -> N
     assert {"attachment_slot", "certificate_type", "derived"} <= kinds
     # Drawings is satisfied by a viewable/processed BIM model (model-backed,
     # never an attachment).
-    assert "model" in kinds
+    assert "document" in kinds
     drawings = next(r for r in templates["dwelling"] if r["code"] == "drawings")
-    assert drawings["source_kind"] == "model"
-    assert drawings["source_value"] == "models"
+    assert drawings["source_kind"] == "document"
+    assert drawings["source_value"] == "documents"
 
 
 async def test_dossier_template_labels_localized(client: AsyncClient) -> None:
@@ -199,7 +199,7 @@ async def test_dossier_template_labels_localized(client: AsyncClient) -> None:
 
 async def test_get_dossier_requirements_falls_back_to_other() -> None:
     """Unknown/None building type resolves to the 'other' template set."""
-    from bimstitch_api.jurisdictions import get_dossier_requirements
+    from bimdossier_api.jurisdictions import get_dossier_requirements
 
     base = get_dossier_requirements("NL", "other")
     assert get_dossier_requirements("NL", None) == base

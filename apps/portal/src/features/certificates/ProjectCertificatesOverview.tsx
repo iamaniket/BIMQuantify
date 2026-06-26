@@ -8,12 +8,12 @@ import {
   Clock,
   FileBadge,
   Layers,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import { useMemo, type JSX } from 'react';
 
-import { Badge, type BadgeVariant } from '@bimstitch/ui';
-import type { Locale } from '@bimstitch/i18n';
+import { Badge, type BadgeVariant } from '@bimdossier/ui';
+import type { Locale } from '@bimdossier/i18n';
 
 import { BarChartMini } from '@/components/shared/charts/BarChartMini';
 import { ChartSection } from '@/components/shared/charts/ChartSection';

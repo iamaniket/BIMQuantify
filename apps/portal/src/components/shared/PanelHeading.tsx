@@ -1,4 +1,4 @@
-import { Eyebrow } from '@bimstitch/ui';
+import { Eyebrow } from '@bimdossier/ui';
 import type { ReactNode } from 'react';
 
 type Props = {

@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { formatMonthDay } from '@/lib/formatting/dates';
 

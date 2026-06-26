@@ -6,11 +6,11 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Button, CountChip, IconButton } from '@bimstitch/ui';
+import { Button, CountChip, IconButton } from '@bimdossier/ui';
 
 import { TONE_STYLES } from '@/components/shared/calendar/CalendarEventChip';
 

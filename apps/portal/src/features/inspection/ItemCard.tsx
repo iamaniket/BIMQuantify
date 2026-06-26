@@ -1,11 +1,11 @@
 'use client';
 
-import { Mic } from '@bimstitch/ui/icons';
+import { Mic } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
-import { Badge, Button } from '@bimstitch/ui';
+import { Badge, Button } from '@bimdossier/ui';
 
 import type {
   ChecklistItem,

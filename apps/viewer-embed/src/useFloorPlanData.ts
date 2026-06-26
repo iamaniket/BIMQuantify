@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 
 // Runtime value from the no-pdfjs entry; the type is erased so it's free from
 // the barrel.
-import { decodeFloorPlans } from '@bimstitch/viewer/viewer-3d';
-import type { DecodedFloorPlans } from '@bimstitch/viewer';
+import { decodeFloorPlans } from '@bimdossier/viewer/viewer-3d';
+import type { DecodedFloorPlans } from '@bimdossier/viewer';
 
 /** One storey for the level picker (display name + isolation key). */
 export type FloorPlanLevelInfo = {
@@ -151,8 +151,11 @@ export function useFloorPlanData(
               collectNames(json.spatialTree ?? null, storeyNames, spaceNames);
               membership = buildStoreyMembership(json.spatialTree, json.elements);
             }
-          } catch {
-            // Names are optional — fall back to generated "Level N".
+          } catch (err) {
+            // Names are optional (fall back to generated "Level N"), but this
+            // catch ALSO abandons buildStoreyMembership — which silently disables
+            // 3D storey isolation. Log it so a metadata outage is traceable.
+            console.warn('[viewer-embed] storey/room metadata fetch failed; names + 3D isolation degraded', err);
           }
           if (cancelled) return;
         }
@@ -170,8 +173,14 @@ export function useFloorPlanData(
           name: storeyNames.get(lv.storeyExpressID) ?? `Level ${String(i)}`,
         }));
         setResult({ data, levels, roomNames: spaceNames, storeyMembership: membership, status: 'ready' });
-      } catch {
-        if (!cancelled) setResult({ ...EMPTY, status: 'error' });
+      } catch (err) {
+        // Log the cause: a broken/corrupt artifact (e.g. MinIO CORS) otherwise
+        // looks identical to "this model has no 2D plan" when the host falls
+        // back to 3D. console.error is forwarded to the native host.
+        if (!cancelled) {
+          console.error('[viewer-embed] floor-plan load/decode failed', err);
+          setResult({ ...EMPTY, status: 'error' });
+        }
       }
     })();
 

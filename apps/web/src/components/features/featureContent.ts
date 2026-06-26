@@ -1,4 +1,4 @@
-import type { AppIcon } from '@bimstitch/ui/icons';
+import type { AppIcon } from '@bimdossier/ui/icons';
 
 import { AVAILABLE_FEATURES, type FeatureItem } from '@/components/sections/featureCatalog';
 

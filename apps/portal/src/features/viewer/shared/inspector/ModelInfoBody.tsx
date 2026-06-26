@@ -1,6 +1,6 @@
 'use client';
 
-import { Eyebrow } from '@bimstitch/ui';
+import { Eyebrow } from '@bimdossier/ui';
 import { useTranslations } from 'next-intl';
 import { useMemo, useState, type JSX } from 'react';
 

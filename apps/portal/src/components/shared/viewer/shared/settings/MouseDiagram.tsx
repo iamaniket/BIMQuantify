@@ -148,7 +148,7 @@ export function MouseDiagram({
               {/* Wordmark */}
               <text x="100" y="240" textAnchor="middle"
                 style={{ fontFamily: 'var(--font-sans, monospace)', fontSize: 6, fill: '#a7adb6', letterSpacing: 2, fontWeight: 600 }}>
-                BIMSTITCH
+                BIMDOSSIER
               </text>
             </g>
           </svg>

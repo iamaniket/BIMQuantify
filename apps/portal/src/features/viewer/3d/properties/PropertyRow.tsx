@@ -1,10 +1,10 @@
 'use client';
 
-import { Copy } from '@bimstitch/ui/icons';
+import { Copy } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { type JSX, useCallback } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 import type { PropertyValue } from '@/lib/api/viewerTypes';
 import { MIXED_VALUE } from '@/features/viewer/shared/inspector/useMultiSelectedProperties';

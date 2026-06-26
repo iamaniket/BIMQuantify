@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Eyebrow } from '@bimstitch/ui';
+import { Button, Eyebrow } from '@bimdossier/ui';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useEffect, useState, type JSX } from 'react';

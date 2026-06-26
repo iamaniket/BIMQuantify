@@ -17,14 +17,15 @@ from httpx import AsyncClient
 from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimstitch_api.auth.tokens import ALGORITHM, REFRESH_AUDIENCE, decode_token_full
-from bimstitch_api.config import get_settings
-from bimstitch_api.models.organization import Organization, OrganizationStatus
-from bimstitch_api.models.user import User
-from bimstitch_api.tenancy import schema_name_for
+from bimdossier_api.auth.tokens import ALGORITHM, REFRESH_AUDIENCE, decode_token_full
+from bimdossier_api.config import get_settings
+from bimdossier_api.models.organization import Organization, OrganizationStatus
+from bimdossier_api.models.user import User
+from bimdossier_api.tenancy import schema_name_for
 from tests.conftest import _audit_rows
 
 PASSWORD = "correct-horse-battery"
+REASON = "reproducing a customer support ticket"
 
 
 def _auth(token: str) -> dict[str, str]:
@@ -98,7 +99,7 @@ async def test_super_admin_impersonates_regular_user(
 
     resp = await client.post(
         f"/admin/impersonate/{target.id}",
-        json={},
+        json={"reason": REASON},
         headers=_auth(superadmin["token"]),
     )
     assert resp.status_code == 200, resp.text
@@ -124,7 +125,7 @@ async def test_impersonation_token_authenticates_as_target(
     target = await _make_user(session, "alice@example.com")
     resp = await client.post(
         f"/admin/impersonate/{target.id}",
-        json={},
+        json={"reason": REASON},
         headers=_auth(superadmin["token"]),
     )
     imp_token = resp.json()["access_token"]
@@ -149,7 +150,7 @@ async def test_cannot_impersonate_super_admin(
     )
     resp = await client.post(
         f"/admin/impersonate/{other_super.id}",
-        json={},
+        json={"reason": REASON},
         headers=_auth(superadmin["token"]),
     )
     assert resp.status_code == 403
@@ -162,7 +163,7 @@ async def test_cannot_impersonate_self(
 ) -> None:
     resp = await client.post(
         f"/admin/impersonate/{superadmin['user_id']}",
-        json={},
+        json={"reason": REASON},
         headers=_auth(superadmin["token"]),
     )
     assert resp.status_code == 400
@@ -177,7 +178,7 @@ async def test_cannot_impersonate_inactive_user(
     target = await _make_user(session, "alice@example.com", is_active=False)
     resp = await client.post(
         f"/admin/impersonate/{target.id}",
-        json={},
+        json={"reason": REASON},
         headers=_auth(superadmin["token"]),
     )
     assert resp.status_code == 403
@@ -192,7 +193,7 @@ async def test_cannot_impersonate_unverified_user(
     target = await _make_user(session, "alice@example.com", is_verified=False)
     resp = await client.post(
         f"/admin/impersonate/{target.id}",
-        json={},
+        json={"reason": REASON},
         headers=_auth(superadmin["token"]),
     )
     assert resp.status_code == 403
@@ -209,7 +210,7 @@ async def test_target_not_in_specified_org(
 
     resp = await client.post(
         f"/admin/impersonate/{target.id}",
-        json={"organization_id": str(other_org.id)},
+        json={"reason": REASON, "organization_id": str(other_org.id)},
         headers=_auth(superadmin["token"]),
     )
     assert resp.status_code == 400
@@ -231,7 +232,7 @@ async def test_non_super_admin_cannot_impersonate(
 
     resp = await client.post(
         f"/admin/impersonate/{target.id}",
-        json={},
+        json={"reason": REASON},
         headers=_auth(tokens["access_token"]),
     )
     assert resp.status_code == 403
@@ -254,7 +255,7 @@ async def test_ttl_request_above_ceiling_is_clamped(
 
     resp = await client.post(
         f"/admin/impersonate/{target.id}",
-        json={"ttl_seconds": ceiling * 10},
+        json={"reason": REASON, "ttl_seconds": ceiling * 10},
         headers=_auth(superadmin["token"]),
     )
     assert resp.status_code == 200, resp.text
@@ -272,7 +273,7 @@ async def test_ttl_request_below_floor_is_rejected(
     target = await _make_user(session, "alice@example.com")
     resp = await client.post(
         f"/admin/impersonate/{target.id}",
-        json={"ttl_seconds": 30},  # < 60 floor
+        json={"reason": REASON, "ttl_seconds": 30},  # < 60 floor
         headers=_auth(superadmin["token"]),
     )
     assert resp.status_code == 422, resp.text
@@ -328,7 +329,7 @@ async def test_audit_records_impersonate_start_event(
     target = await _make_user(session, "alice@example.com")
     resp = await client.post(
         f"/admin/impersonate/{target.id}",
-        json={},
+        json={"reason": REASON},
         headers=_auth(superadmin["token"]),
     )
     assert resp.status_code == 200
@@ -346,6 +347,7 @@ async def test_audit_records_impersonate_start_event(
     assert row.after is not None
     assert row.after["target_email"] == target.email
     assert row.after["jti"] == minted_jti
+    assert row.after["reason"] == REASON
 
 
 async def test_mutations_during_impersonation_record_impersonator(
@@ -364,7 +366,7 @@ async def test_mutations_during_impersonation_record_impersonator(
     # below is authorized.
     impersonate = await client.post(
         f"/admin/impersonate/{org_user['id']}",
-        json={"organization_id": org_user["organization_id"]},
+        json={"reason": REASON, "organization_id": org_user["organization_id"]},
         headers=_auth(superadmin["token"]),
     )
     assert impersonate.status_code == 200, impersonate.text
@@ -387,3 +389,119 @@ async def test_mutations_during_impersonation_record_impersonator(
     assert str(row.user_id) == org_user["id"]
     # And the impersonator column points at the super admin.
     assert str(row.impersonator_user_id) == superadmin["user_id"]
+
+
+# ---------------------------------------------------------------------------
+# Mandatory reason
+# ---------------------------------------------------------------------------
+
+
+async def test_impersonate_requires_reason(
+    client: AsyncClient,
+    session: AsyncSession,
+    superadmin: dict[str, str],
+) -> None:
+    target = await _make_user(session, "alice@example.com")
+    resp = await client.post(
+        f"/admin/impersonate/{target.id}",
+        json={},  # reason omitted
+        headers=_auth(superadmin["token"]),
+    )
+    assert resp.status_code == 422, resp.text
+
+
+async def test_impersonate_rejects_blank_reason(
+    client: AsyncClient,
+    session: AsyncSession,
+    superadmin: dict[str, str],
+) -> None:
+    target = await _make_user(session, "alice@example.com")
+    resp = await client.post(
+        f"/admin/impersonate/{target.id}",
+        json={"reason": "   "},  # whitespace-only — must be rejected
+        headers=_auth(superadmin["token"]),
+    )
+    assert resp.status_code == 422, resp.text
+
+
+# ---------------------------------------------------------------------------
+# Stop impersonation
+# ---------------------------------------------------------------------------
+
+
+async def test_stop_impersonation_revokes_token(
+    client: AsyncClient,
+    session: AsyncSession,
+    superadmin: dict[str, str],
+) -> None:
+    target = await _make_user(session, "alice@example.com")
+    start = await client.post(
+        f"/admin/impersonate/{target.id}",
+        json={"reason": REASON},
+        headers=_auth(superadmin["token"]),
+    )
+    assert start.status_code == 200, start.text
+    imp_token = start.json()["access_token"]
+
+    # The impersonation token works before stopping.
+    me = await client.get("/users/me", headers=_auth(imp_token))
+    assert me.status_code == 200, me.text
+
+    stop = await client.post("/admin/impersonate/stop", headers=_auth(imp_token))
+    assert stop.status_code == 200, stop.text
+    body = stop.json()
+    assert body["stopped"] is True
+    assert body["impersonated_user_id"] == str(target.id)
+    assert body["impersonator_user_id"] == superadmin["user_id"]
+
+    # And is dead immediately afterwards — no waiting for TTL expiry.
+    me_after = await client.get("/users/me", headers=_auth(imp_token))
+    assert me_after.status_code == 401
+
+
+async def test_stop_rejects_non_impersonation_token(
+    client: AsyncClient,
+    superadmin: dict[str, str],
+) -> None:
+    # The super admin's own token carries no `imp` claim — nothing to stop.
+    resp = await client.post(
+        "/admin/impersonate/stop", headers=_auth(superadmin["token"])
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "NOT_AN_IMPERSONATION_SESSION"
+
+
+async def test_stop_without_bearer_is_rejected(client: AsyncClient) -> None:
+    resp = await client.post("/admin/impersonate/stop")
+    assert resp.status_code == 401
+
+
+async def test_stop_records_audit_event(
+    client: AsyncClient,
+    session: AsyncSession,
+    session_maker: async_sessionmaker[AsyncSession],
+    superadmin: dict[str, str],
+) -> None:
+    target = await _make_user(session, "alice@example.com")
+    start = await client.post(
+        f"/admin/impersonate/{target.id}",
+        json={"reason": REASON},
+        headers=_auth(superadmin["token"]),
+    )
+    assert start.status_code == 200, start.text
+    imp_token = start.json()["access_token"]
+    minted_jti = decode_token_full(imp_token, "access").jti
+
+    stop = await client.post("/admin/impersonate/stop", headers=_auth(imp_token))
+    assert stop.status_code == 200, stop.text
+
+    rows = await _audit_rows(session_maker, "auth.impersonate.stop")
+    assert len(rows) == 1
+    row = rows[0]
+    # Both the actor and the impersonator column point at the super admin who
+    # ran the session — symmetric with the start event.
+    assert str(row.user_id) == superadmin["user_id"]
+    assert str(row.impersonator_user_id) == superadmin["user_id"]
+    assert row.resource_id == str(target.id)
+    assert row.after is not None
+    assert row.after["jti"] == minted_jti

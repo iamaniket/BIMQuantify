@@ -1,13 +1,13 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Camera, Trash2 } from '@bimstitch/ui/icons';
+import { Camera, Trash2 } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 
-import { AppDialog, Button, Input, Label } from '@bimstitch/ui';
+import { AppDialog, Button, Input, Label } from '@bimdossier/ui';
 
 import { Field } from '@/components/shared/forms/Field';
 import { useRegisterField } from '@/hooks/useRegisterField';

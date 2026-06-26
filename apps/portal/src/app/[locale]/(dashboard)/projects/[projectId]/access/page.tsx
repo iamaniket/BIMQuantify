@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronRight, Eye, LayoutGrid, Plus, Search, Shield, UserPlus, Users } from '@bimstitch/ui/icons';
+import { ChevronRight, Eye, LayoutGrid, Plus, Search, Shield, UserPlus, Users } from '@bimdossier/ui/icons';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useMemo, useState, type JSX } from 'react';
@@ -16,7 +16,7 @@ import {
   Select,
   Skeleton,
   TabsContent,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 
 import { HeroImage } from '@/components/shared/layout/HeroImage';

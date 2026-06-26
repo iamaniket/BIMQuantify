@@ -8,11 +8,12 @@ import type {
   InteractivePerformanceOptions,
   MouseBindingMap,
   OutlinePluginOptions,
+  ShadowMode,
   ShortcutMap,
   ZoomOptions,
-} from '@bimstitch/viewer';
+} from '@bimdossier/viewer';
 
-const STORAGE_KEY = 'bimstitch.viewerSettings.v2';
+const STORAGE_KEY = 'bimdossier.viewerSettings.v2';
 
 export type EffectsSettings = Required<EffectsOptions>;
 
@@ -38,7 +39,7 @@ export type CameraFlySettings = {
 
 export type ViewerSettings = {
   viewCube: { enabled: boolean };
-  shadows: { enabled: boolean };
+  shadows: { enabled: boolean; mode: ShadowMode };
   background: { color: number };
   effects: EffectsSettings;
   /** Build-once geometry outline drawn on the idle frame. */
@@ -182,7 +183,7 @@ export const DEFAULT_INTERACTIVE_PERFORMANCE: InteractivePerformanceSettings = {
 
 export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   viewCube: { enabled: true },
-  shadows: { enabled: true },
+  shadows: { enabled: true, mode: 'auto' },
   background: { color: 0xffffff },
   effects: DEFAULT_EFFECTS,
   outline: DEFAULT_OUTLINE,
@@ -208,7 +209,7 @@ function mergeWithDefaults(p: Partial<ViewerSettings>): ViewerSettings {
   const d = structuredClone(DEFAULT_VIEWER_SETTINGS);
   return {
     viewCube: p.viewCube ?? d.viewCube,
-    shadows: p.shadows ?? d.shadows,
+    shadows: { ...d.shadows, ...(p.shadows ?? {}) },
     background: p.background ?? d.background,
     effects: { ...d.effects, ...(p.effects ?? {}) },
     outline: { ...d.outline, ...(p.outline ?? {}) },

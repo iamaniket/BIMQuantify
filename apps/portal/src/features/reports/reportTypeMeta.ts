@@ -1,7 +1,7 @@
 import {
   ClipboardCheck, Flag, FolderOpen, PenLine, ShieldCheck,
-} from '@bimstitch/ui/icons';
-import type { AppIcon } from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
+import type { AppIcon } from '@bimdossier/ui/icons';
 
 import type { ReportStatus, ReportType } from '@/lib/api/schemas/reports';
 

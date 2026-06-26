@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import type { EntityAppearance } from '@bimstitch/viewer';
+import type { EntityAppearance } from '@bimdossier/viewer';
 
 export type { EntityAppearance };
 

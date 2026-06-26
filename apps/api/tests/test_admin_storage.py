@@ -19,13 +19,13 @@ from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimstitch_api.models.organization import Organization, OrganizationStatus
-from bimstitch_api.models.organization_member import (
+from bimdossier_api.models.organization import Organization, OrganizationStatus
+from bimdossier_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
 )
-from bimstitch_api.models.user import User
-from bimstitch_api.tenancy import schema_name_for
+from bimdossier_api.models.user import User
+from bimdossier_api.tenancy import schema_name_for
 from tests.conftest import _audit_rows
 
 PASSWORD = "correct-horse-battery"
@@ -249,7 +249,7 @@ async def test_compute_empty_returns_zero(
     session: AsyncSession,
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
-    from bimstitch_api.admin.storage import compute_active_storage_gb
+    from bimdossier_api.admin.storage import compute_active_storage_gb
 
     org = await _make_org(session, name="EmptyOrg")
     result = await compute_active_storage_gb(session_maker, org.schema_name)
@@ -261,7 +261,7 @@ async def test_compute_sums_ready_files(
     session_maker: async_sessionmaker[AsyncSession],
     owner: User,
 ) -> None:
-    from bimstitch_api.admin.storage import compute_active_storage_gb
+    from bimdossier_api.admin.storage import compute_active_storage_gb
 
     org = await _make_org(session, name="SumOrg")
     pid = await _make_project(session, owner.id)
@@ -280,7 +280,7 @@ async def test_compute_excludes_deleted_files(
     session_maker: async_sessionmaker[AsyncSession],
     owner: User,
 ) -> None:
-    from bimstitch_api.admin.storage import compute_active_storage_gb
+    from bimdossier_api.admin.storage import compute_active_storage_gb
 
     org = await _make_org(session, name="DelOrg")
     pid = await _make_project(session, owner.id)
@@ -298,7 +298,7 @@ async def test_compute_excludes_non_ready_files(
     session_maker: async_sessionmaker[AsyncSession],
     owner: User,
 ) -> None:
-    from bimstitch_api.admin.storage import compute_active_storage_gb
+    from bimdossier_api.admin.storage import compute_active_storage_gb
 
     org = await _make_org(session, name="PendingOrg")
     pid = await _make_project(session, owner.id)
@@ -318,7 +318,7 @@ async def test_compute_reports_with_null_byte_size_ignored(
     session_maker: async_sessionmaker[AsyncSession],
     owner: User,
 ) -> None:
-    from bimstitch_api.admin.storage import compute_active_storage_gb
+    from bimdossier_api.admin.storage import compute_active_storage_gb
 
     org = await _make_org(session, name="NullReportOrg")
     pid = await _make_project(session, owner.id)
@@ -340,7 +340,7 @@ async def test_assert_storage_limit_raises_when_below_usage(
 ) -> None:
     from fastapi import HTTPException
 
-    from bimstitch_api.admin.storage import assert_storage_limit_not_below_usage
+    from bimdossier_api.admin.storage import assert_storage_limit_not_below_usage
 
     org = await _make_org(session, name="OverOrg", active_storage_limit_gb=10)
     pid = await _make_project(session, owner.id)
@@ -357,7 +357,7 @@ async def test_assert_storage_limit_passes_when_above_usage(
     session_maker: async_sessionmaker[AsyncSession],
     owner: User,
 ) -> None:
-    from bimstitch_api.admin.storage import assert_storage_limit_not_below_usage
+    from bimdossier_api.admin.storage import assert_storage_limit_not_below_usage
 
     org = await _make_org(session, name="OkOrg", active_storage_limit_gb=10)
     pid = await _make_project(session, owner.id)

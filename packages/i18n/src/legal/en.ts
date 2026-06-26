@@ -24,7 +24,7 @@ export const legalEnContent: LegalContent = {
       },
       {
         title: 'Your rights',
-        body: 'You have the right to access, correction, restriction of processing, data portability and (within the limits of statutory retention) deletion. Requests can be sent to privacy@bimstitch.example. Complaints can also be filed with the Dutch Data Protection Authority.',
+        body: 'You have the right to access, correction, restriction of processing, data portability and (within the limits of statutory retention) deletion. Requests can be sent to info@bimdossier.nl. Complaints can also be filed with the Dutch Data Protection Authority.',
       },
       {
         title: 'Hosting and sub-processors',
@@ -78,11 +78,11 @@ export const legalEnContent: LegalContent = {
       },
       {
         title: 'Security measures',
-        body: 'We apply appropriate technical and organisational measures, including encryption in transit and at rest, least-privilege access control, audit logging and periodic backups to a separate EU region.',
+        body: 'We apply appropriate technical and organisational measures, including encryption in transit and at rest, least-privilege access control, audit logging and regular backups.',
       },
       {
         title: 'Data breaches',
-        body: 'If we suspect a data breach we notify the controller within 24 hours of discovery, with the information known so far and an initial assessment of impact and mitigation.',
+        body: 'If we suspect a data breach we notify the controller without undue delay after discovery, with the information known so far and an initial assessment of impact and mitigation.',
       },
       {
         title: 'Rights of data subjects',

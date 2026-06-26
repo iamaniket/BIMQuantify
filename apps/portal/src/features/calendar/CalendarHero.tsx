@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarDays } from '@bimstitch/ui/icons';
+import { CalendarDays } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

@@ -12,7 +12,7 @@ export async function getComplianceLatest(
   modelId: string,
   fileId: string,
 ): Promise<ComplianceCheckResponse> {
-  const path = `/projects/${projectId}/models/${modelId}/files/${fileId}/compliance/latest`;
+  const path = `/projects/${projectId}/documents/${modelId}/files/${fileId}/compliance/latest`;
   return apiClient.get(path, ComplianceCheckResponseSchema, accessToken);
 }
 
@@ -23,7 +23,7 @@ export async function triggerComplianceCheck(
   fileId: string,
   buildingType?: string,
 ): Promise<ComplianceCheckResponse> {
-  const path = `/projects/${projectId}/models/${modelId}/files/${fileId}/compliance/check`;
+  const path = `/projects/${projectId}/documents/${modelId}/files/${fileId}/compliance/check`;
   // Omit building_type unless an explicit override is given — the API then
   // derives it from the project's building type for rule filtering.
   return apiClient.post(
@@ -52,7 +52,7 @@ export async function downloadComplianceCsv(
   fileId: string,
   framework: 'bbl' | 'wkb' = 'bbl',
 ): Promise<{ blob: Blob; filename: string | null }> {
-  const path = `/projects/${projectId}/models/${modelId}/files/${fileId}/compliance/export.csv?framework=${framework}`;
+  const path = `/projects/${projectId}/documents/${modelId}/files/${fileId}/compliance/export.csv?framework=${framework}`;
   return apiClient.getBlob(path, accessToken);
 }
 
@@ -63,6 +63,6 @@ export async function downloadComplianceRulesCsv(
   fileId: string,
   framework: 'bbl' | 'wkb' = 'bbl',
 ): Promise<{ blob: Blob; filename: string | null }> {
-  const path = `/projects/${projectId}/models/${modelId}/files/${fileId}/compliance/export-rules.csv?framework=${framework}`;
+  const path = `/projects/${projectId}/documents/${modelId}/files/${fileId}/compliance/export-rules.csv?framework=${framework}`;
   return apiClient.getBlob(path, accessToken);
 }

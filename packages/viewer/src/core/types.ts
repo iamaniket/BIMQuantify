@@ -43,6 +43,19 @@ export interface Vec3 {
 export type CullingMode = 'auto' | 'on' | 'off';
 
 /**
+ * Contact-shadow silhouette source (driven live by the `shadows.setMode`
+ * command; initial value from `ShadowOptions.mode`).
+ *  - `'auto'`     — exact `'geometry'` bake while every model is fully resident
+ *                   (small models), `'boxes'` once any model is frustum-culled
+ *                   (large/federated). The default.
+ *  - `'boxes'`    — rasterise per-element bounding-box footprints (worker-side,
+ *                   no geometry streaming). Fast everywhere, slightly blockier.
+ *  - `'geometry'` — stream full geometry and bake the exact silhouette. Slow on
+ *                   large models (freezes the viewport); an escape hatch.
+ */
+export type ShadowMode = 'auto' | 'boxes' | 'geometry';
+
+/**
  * Whole-model "look" applied at the material level (see {@link ViewerContext.setActiveLook}).
  *  - `'normal'`     — untouched materials.
  *  - `'monochrome'` — desaturate the final shaded colour (keeps value, drops hue).
@@ -93,6 +106,26 @@ export interface ViewerEvents {
     allSelected: boolean;
   };
   'camera:change': { position: Vec3; target: Vec3 };
+  /**
+   * Framing-watch plugin: whether the loaded model is currently inside the 3D
+   * camera's view, emitted on a state transition only (rAF-coalesced; never
+   * wakes the renderer). The portal shows a "model out of view" recovery pill
+   * from this. `reason`:
+   *  - `'in-view'` — framed normally (`inView: true`).
+   *  - `'tiny'`    — in the frustum but a speck far away (`inView: true`; a
+   *                  softer "zoom to fit" hint, not a hard loss).
+   *  - `'outside'` — fully outside the frustum laterally/vertically (`inView: false`).
+   *  - `'behind'`  — entirely behind the camera (`inView: false`).
+   *  - `'empty'`   — no model / no computable bounds (`inView: false`; the host
+   *                  should treat this as "nothing loaded", not "lost the model").
+   * `coverage` is the model's apparent size as a fraction (0..1) of the smaller
+   * half-frustum dimension.
+   */
+  'camera:framing': {
+    inView: boolean;
+    reason: 'in-view' | 'behind' | 'outside' | 'tiny' | 'empty';
+    coverage: number;
+  };
   'viewer:idle': undefined;
   /** The frustum-culling policy changed (see {@link ViewerContext.setCullingMode}). */
   'culling:change': { mode: CullingMode };
@@ -207,6 +240,16 @@ export interface ViewerContext {
    * interaction. Idempotent and cheap; safe to call every animation frame.
    */
   requestRender: () => void;
+  /**
+   * Re-derive the orthographic camera's frustum aspect from the live canvas
+   * size. ThatOpen keeps the ortho frustum in sync via a fragile size-delta
+   * (no absolute recompute), so a projection switch coinciding with a container
+   * resize — entering calibration's top-down split — can desync the frustum
+   * aspect from the canvas and squeeze the model. Plugins that switch to
+   * orthographic (`camera.setProjection`) call this as the last write to correct
+   * it. No-op in perspective; idempotent.
+   */
+  syncOrthoAspect: () => void;
   /**
    * Precomputed-outline supply handed to `loadFragments` for this model, if
    * any. Resolves to the compressed artifact bytes, or null when the fetch

@@ -25,6 +25,7 @@ export type {
   ViewerContext,
   ViewerEvents,
   CullingMode,
+  ShadowMode,
   MaterialLook,
   ItemId,
   Vec3,
@@ -172,16 +173,16 @@ export type {
 } from './plugins/2d/entity-marker/index.js';
 export { interaction2DPlugin } from './plugins/2d/interaction/index.js';
 export type { Interaction2DRequestArgs } from './plugins/2d/interaction/index.js';
+// Aligned-sheet 2D→3D linking: page picks + you-are-here marker (opt-in via the
+// DocumentViewer `linkPicks` prop). Exported so the `document:pick` event
+// augmentation is visible to consumers.
+export { documentPickPlugin } from './plugins/2d/document-pick/index.js';
+export { documentCameraPosePlugin } from './plugins/2d/camera-pose/index.js';
+export type { DocumentCameraPose } from './plugins/2d/camera-pose/index.js';
 
-// Floor-plan 2D viewer — reuses the world-space 2D engine to render a decoded
-// BIMFPLN2 plan (sibling to the PDF `DocumentViewer`).
-export { FloorPlanViewer } from './FloorPlanViewer.js';
-export type {
-  FloorPlanViewerProps,
-  FloorPlanViewerHandle,
-  FloorPlanActiveTool,
-} from './FloorPlanViewer.js';
-export { FloorPlanEngine } from './floorplan-core/FloorPlanEngine.js';
+// Floor-plan rendering is handled by `DocumentViewer` (pass the `floorPlan`
+// prop); the standalone `FloorPlanViewer` + `FloorPlanEngine` were removed. The
+// `floorplan` plugin draws the decoded BIMFPLN2 line work in the shared 2D scene.
 export { floorPlanPlugin } from './plugins/2d/floorplan/index.js';
 export type {
   FloorPlanPluginAPI,
@@ -193,6 +194,8 @@ export type {
 // built-in (by passing `viewCube: { enabled: false }`) and re-add it
 // elsewhere, or compose them with custom ones.
 export { cameraPlugin } from './plugins/3d/camera/index.js';
+export { framingWatchPlugin } from './plugins/3d/framing-watch/index.js';
+export type { FramingState, FramingReason } from './plugins/3d/framing-watch/classify.js';
 export { hoverHighlightPlugin } from './plugins/3d/hover-highlight/index.js';
 export { selectionPlugin } from './plugins/3d/selection/index.js';
 export { keyboardShortcutsPlugin } from './plugins/3d/keyboard-shortcuts/index.js';

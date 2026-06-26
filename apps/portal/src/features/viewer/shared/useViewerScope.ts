@@ -5,12 +5,12 @@ import {
   useCallback, useEffect, useMemo, useState,
 } from 'react';
 
-import type { ViewerBundle } from '@bimstitch/viewer';
+import type { ViewerBundle } from '@bimdossier/viewer';
 
 import { federatedModelId } from '@/features/viewer/3d/federation/federatedModelId';
 import { ApiError } from '@/lib/api/client';
 import { getProjectViewerBundle, getViewerBundle } from '@/lib/api/projectFiles';
-import type { ProjectViewerModelEntry, ViewerBundleResponse } from '@/lib/api/schemas';
+import type { ProjectViewerDocumentEntry, ViewerBundleResponse } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { viewerKeys } from './queryKeys';
@@ -37,8 +37,14 @@ export type ViewerScope = {
   isError: boolean;
   /** Single-bundle load error (404 "not processed", etc.), already humanized. */
   errorMessage: string | null;
-  /** Multi-model with zero ready models. */
+  /** Multi-model, project genuinely has NO processed models (nothing to load). */
   isEmpty: boolean;
+  /**
+   * Multi-model, project HAS models but the user has deselected them all (zero
+   * selected). The viewer renders a live, empty scene instead of the
+   * "no models" panel so models can be re-added from the dropdown.
+   */
+  emptyScene: boolean;
 
   // What `IfcViewer` loads (IFC only; null for a single non-IFC file).
   primaryBundle: ViewerBundle | null;
@@ -59,9 +65,12 @@ export type ViewerScope = {
   planMetadataUrl: string | null;
   planViewerModelId: string | null;
   planFileId: string | null;
+  /** The plan model's API UUID (distinct from `planViewerModelId` = `file-<id>`).
+   * Used to query storeys + aligned sheets for the floor-plan / calibration UI. */
+  planModelId: string | null;
 
   // Multi-model only.
-  entries: ProjectViewerModelEntry[];
+  entries: ProjectViewerDocumentEntry[];
   /** Set the active model from a selected element's viewer model id. */
   setActiveByViewerModelId: (viewerModelId: string) => void;
   /** Set the active model from an API model UUID (layer-panel row click). */
@@ -99,7 +108,7 @@ function singlePrimaryBundle(
 }
 
 /** IFC `ViewerBundle` (load input) for a manifest entry. */
-function entryToBundle(entry: ProjectViewerModelEntry): ViewerBundle {
+function entryToBundle(entry: ProjectViewerDocumentEntry): ViewerBundle {
   const out: ViewerBundle = {
     fragmentsUrl: entry.fragments_url!,
     modelId: federatedModelId(entry.file_id),
@@ -113,7 +122,7 @@ function entryToBundle(entry: ProjectViewerModelEntry): ViewerBundle {
 
 /** Synthesize the panel-facing bundle for a manifest entry (always IFC). */
 function entryToBundleResponse(
-  entry: ProjectViewerModelEntry,
+  entry: ProjectViewerDocumentEntry,
   expiresIn: number,
 ): ViewerBundleResponse {
   return {
@@ -160,7 +169,7 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
   });
 
   // ── Multi-model entry set (filtered to the explicit subset for kind 'models') ──
-  const entries = useMemo<ProjectViewerModelEntry[]>(() => {
+  const entries = useMemo<ProjectViewerDocumentEntry[]>(() => {
     if (isSingle) return [];
     const all = manifestQuery.data?.models ?? [];
     if (target.kind === 'models') {
@@ -233,6 +242,7 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
       isError: singleQuery.isError,
       errorMessage: bundleErrorMessage(singleQuery.error),
       isEmpty: false,
+      emptyScene: false,
       primaryBundle:
         activeBundle !== null && isIfc
           ? singlePrimaryBundle(activeBundle, singleFileId)
@@ -247,6 +257,7 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
       planMetadataUrl: isIfc ? activeBundle.metadata_url : null,
       planViewerModelId: null, // single model — minimap targets the lone model
       planFileId: isIfc ? singleFileId : null,
+      planModelId: isIfc ? singleModelId : null,
       entries: [],
       setActiveByViewerModelId,
       setActiveByModelId,
@@ -257,6 +268,11 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
   // Multi-model.
   const expiresIn = manifestQuery.data?.expires_in ?? 0;
   const activeBundle = activeEntry !== null ? entryToBundleResponse(activeEntry, expiresIn) : null;
+  // Manifest loaded cleanly (not loading, not errored). The two "no visible
+  // model" states are split off this: a genuinely empty PROJECT vs. a user who
+  // cleared the selection. Errors fall through to errorMessage, not either flag.
+  const manifestModels = manifestQuery.data?.models ?? [];
+  const manifestLoadedOk = !manifestQuery.isLoading && !manifestQuery.isError;
   return {
     ready,
     mode: 'multi',
@@ -265,9 +281,11 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
     // Surface manifest failures (was hardcoded null, which rendered the silent
     // empty-state — a failed federated load looked identical to "no models").
     errorMessage: bundleErrorMessage(manifestQuery.error),
-    // "Empty" means loaded-OK-but-zero-models, NOT errored — else an error would
-    // show the empty-state instead of the error banner.
-    isEmpty: !manifestQuery.isLoading && !manifestQuery.isError && entries.length === 0,
+    // Genuinely empty PROJECT: nothing has been processed → "no models" panel.
+    isEmpty: manifestLoadedOk && manifestModels.length === 0,
+    // Cleared selection: the project HAS models but none are selected → render a
+    // live, empty viewer (handled by the page) instead of the panel.
+    emptyScene: manifestLoadedOk && manifestModels.length > 0 && entries.length === 0,
     primaryBundle: primary !== null ? entryToBundle(primary) : null,
     additionalBundles: entries
       .filter((_, i) => i !== primaryIndex)
@@ -287,6 +305,7 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
     planMetadataUrl: planEntry?.metadata_url ?? null,
     planViewerModelId: planEntry ? federatedModelId(planEntry.file_id) : null,
     planFileId: planEntry?.file_id ?? null,
+    planModelId: planEntry?.model_id ?? null,
     entries,
     setActiveByViewerModelId,
     setActiveByModelId,

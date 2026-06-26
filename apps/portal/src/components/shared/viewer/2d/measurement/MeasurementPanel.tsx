@@ -1,9 +1,9 @@
 'use client';
 
-import { DraftingCompass, Ruler, Square } from '@bimstitch/ui/icons';
+import { DraftingCompass, Ruler, Square } from '@bimdossier/ui/icons';
 import type { JSX } from 'react';
 
-import type { DocumentViewerHandle, PdfMeasurement } from '@bimstitch/viewer';
+import type { DocumentViewerHandle, PdfMeasurement } from '@bimdossier/viewer';
 
 import {
   MeasurementPanel as SharedMeasurementPanel,

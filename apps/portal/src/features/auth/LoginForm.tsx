@@ -3,13 +3,13 @@
 import { AuthFormIntro } from '@/features/auth/AuthFormIntro';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from '@/i18n/navigation';
-import { ArrowRight, Eye, EyeOff, Lock, Mail } from '@bimstitch/ui/icons';
+import { ArrowRight, Eye, EyeOff, Lock, Mail } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useId, useMemo, useState, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 
-import { Button, FormField, Input } from '@bimstitch/ui';
+import { Button, FormField, Input } from '@bimdossier/ui';
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 

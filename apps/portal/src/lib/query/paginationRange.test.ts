@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { paginationRange } from '@bimstitch/ui';
+import { paginationRange } from '@bimdossier/ui';
 
 describe('paginationRange', () => {
   it('lists every page when the count fits without eliding', () => {

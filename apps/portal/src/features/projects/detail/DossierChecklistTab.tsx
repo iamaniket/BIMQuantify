@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Box, Check, ChevronDown, ChevronRight, FileText, Link2, Plus, ShieldCheck, SlidersHorizontal, Upload } from '@bimstitch/ui/icons';
+import { AlertTriangle, Box, Check, ChevronDown, ChevronRight, FileText, Link2, Plus, ShieldCheck, SlidersHorizontal, Upload } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
   Skeleton,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import type { CertificateTypeValue, DossierSlotValue } from '@/lib/api/schemas';
 import { useUnslottedDocuments } from '@/features/attachments/useAttachments';
@@ -37,7 +37,7 @@ const SOURCE_ICONS: Record<DossierRequirementResult['sourceKind'], typeof Check>
   attachment_slot: FileText,
   certificate_type: ShieldCheck,
   derived: SlidersHorizontal,
-  model: Box,
+  document: Box,
 };
 
 const OFFICE_ACCEPT = '.pdf,.docx,.xlsx,.pptx,.txt';
@@ -281,7 +281,7 @@ function DossierRow({
       {/* Drawings is model-backed: a button only when no model exists yet —
           it hands off to the Models tab to create one and upload files. Once
           any model is present the row just reflects met/processing state. */}
-      {req.sourceKind === 'model' && !req.fulfilled && !hasAnyModel && (
+      {req.sourceKind === 'document' && !req.fulfilled && !hasAnyModel && (
         <Button
           variant="primary"
           size="md"

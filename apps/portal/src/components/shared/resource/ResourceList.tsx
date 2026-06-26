@@ -1,6 +1,6 @@
 'use client';
 
-import { Skeleton } from '@bimstitch/ui';
+import { Skeleton } from '@bimdossier/ui';
 import type { JSX, ReactNode } from 'react';
 
 import { LoadMoreButton } from './LoadMoreButton';

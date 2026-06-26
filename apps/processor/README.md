@@ -1,6 +1,6 @@
 # processor
 
-Generic Node.js worker that handles all of BIMstitch's heavy / async work
+Generic Node.js worker that handles all of BimDossier's heavy / async work
 queued out of the API: IFC parsing, PDF metadata extraction, and (added in
 the PDF Generation milestone) PDF report generation. The same Fastify producer
 + BullMQ worker shape is reused for every job type; the worker dispatches

@@ -4,7 +4,7 @@ import { useId, type JSX } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useTranslations } from 'next-intl';
 
-import { Input, Label, Select } from '@bimstitch/ui';
+import { Input, Label, Select } from '@bimdossier/ui';
 
 import { useRegisterField } from '@/hooks/useRegisterField';
 import type { ProjectFormValues } from '../projectFormSchema';

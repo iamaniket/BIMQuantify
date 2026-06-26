@@ -1,27 +1,47 @@
-import { listModelsWithVersions } from '@/lib/api/models';
-import { listProjects } from '@/lib/api/projects';
-import { useAuthQuery } from '@/lib/query/useAuthQuery';
+import { listDocumentsWithVersions } from '@/lib/api/documents';
+import { getProject, listProjects } from '@/lib/api/projects';
+import { useOfflineItemQuery, useOfflineListQuery } from '@/lib/query/useOfflineQuery';
+import type { DocumentWithVersions } from '@/lib/api/schemas/documents';
 import type { ProjectFile } from '@/lib/api/schemas/files';
-import type { ModelWithVersions } from '@/lib/api/schemas/models';
-import type { ProjectList } from '@/lib/api/schemas/projects';
+import type { Project } from '@/lib/api/schemas/projects';
 
 export function useProjects() {
-  return useAuthQuery<ProjectList>(['projects'], (token) => listProjects(token));
+  return useOfflineListQuery<Project>(
+    ['projects'],
+    'project',
+    'all',
+    (token) => listProjects(token),
+  );
 }
 
-export function useProjectModels(projectId: string) {
-  return useAuthQuery<ModelWithVersions[]>(
-    ['projects', projectId, 'models'],
-    (token) => listModelsWithVersions(token, projectId),
+/** Single project (for my_role — gates the inspector-only Verify action).
+ * Cached offline under the 'project' entity keyed by id. */
+export function useProject(projectId: string) {
+  return useOfflineItemQuery<Project>(
+    ['projects', projectId, 'detail'],
+    'project',
+    'all',
+    projectId,
+    (token) => getProject(token, projectId),
     { enabled: projectId.length > 0 },
   );
 }
 
-/** Latest ready file for a model (highest version_number with status 'ready'),
+export function useProjectDocuments(projectId: string) {
+  return useOfflineListQuery<DocumentWithVersions>(
+    ['projects', projectId, 'documents'],
+    'document',
+    projectId,
+    (token) => listDocumentsWithVersions(token, projectId),
+    { enabled: projectId.length > 0 },
+  );
+}
+
+/** Latest ready file for a document (highest version_number with status 'ready'),
  * or null if none is viewable yet. */
-export function latestReadyFile(model: ModelWithVersions): ProjectFile | null {
+export function latestReadyFile(document: DocumentWithVersions): ProjectFile | null {
   return (
-    model.versions
+    document.versions
       .filter((v) => v.status === 'ready')
       .sort((a, b) => b.version_number - a.version_number)[0] ?? null
   );

@@ -16,8 +16,8 @@ from uuid import uuid4
 import pytest
 from fastapi import HTTPException
 
-from bimstitch_api.finding_custom_values import build_custom_values
-from bimstitch_api.org_templates.registry import REPORT_TEMPLATE_TYPES, valid_section_keys
+from bimdossier_api.finding_custom_values import build_custom_values
+from bimdossier_api.org_templates.registry import REPORT_TEMPLATE_TYPES, valid_section_keys
 from tests.conftest import _auth, _create_project
 
 if TYPE_CHECKING:

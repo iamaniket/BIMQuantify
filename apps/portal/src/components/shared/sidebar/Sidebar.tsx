@@ -2,8 +2,8 @@
 
 import type { JSX } from 'react';
 
-import { X } from '@bimstitch/ui/icons';
-import { TooltipProvider } from '@bimstitch/ui';
+import { X } from '@bimdossier/ui/icons';
+import { TooltipProvider } from '@bimdossier/ui';
 
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { DossierLogo } from '@/components/shared/charts/StitchLogo';

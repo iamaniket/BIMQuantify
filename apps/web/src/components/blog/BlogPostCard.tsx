@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import { Badge } from '@bimstitch/ui';
+import { Badge } from '@bimdossier/ui';
 
 import { BlogCardThumbnail } from '@/components/blog/BlogCardThumbnail';
 import { Link } from '@/i18n/navigation';

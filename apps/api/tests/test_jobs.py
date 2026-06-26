@@ -6,13 +6,13 @@ from uuid import uuid4
 
 from httpx import AsyncClient
 
-from bimstitch_api.jobs import DispatchJobError, set_job_dispatcher
+from bimdossier_api.jobs import DispatchJobError, set_job_dispatcher
 from tests.conftest import (
     VALID_IFC_HEADER,
     FakeStorage,
     _add_member,
     _auth,
-    _create_model,
+    _create_document,
     _create_project,
 )
 
@@ -31,10 +31,10 @@ async def _ready_ifc(
     name: str = "job.ifc",
 ) -> tuple[str, str, str]:
     project = await _create_project(client, org_user["access_token"], name=name + "-p")
-    model = await _create_model(client, org_user["access_token"], project["id"], name=name + "-m")
+    model = await _create_document(client, org_user["access_token"], project["id"], name=name + "-m")
     init = (
         await client.post(
-            f"/projects/{project['id']}/models/{model['id']}/files/initiate",
+            f"/projects/{project['id']}/documents/{model['id']}/files/initiate",
             json={
                 "filename": name,
                 "size_bytes": len(VALID_IFC_HEADER),
@@ -46,7 +46,7 @@ async def _ready_ifc(
     ).json()
     fake.objects[init["storage_key"]] = VALID_IFC_HEADER
     await client.post(
-        f"/projects/{project['id']}/models/{model['id']}/files/{init['file_id']}/complete",
+        f"/projects/{project['id']}/documents/{model['id']}/files/{init['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
     return project["id"], model["id"], init["file_id"]
@@ -59,10 +59,10 @@ async def _ready_pdf(
     name: str = "job.pdf",
 ) -> tuple[str, str, str]:
     project = await _create_project(client, org_user["access_token"], name=name + "-p")
-    model = await _create_model(client, org_user["access_token"], project["id"], name=name + "-m")
+    model = await _create_document(client, org_user["access_token"], project["id"], name=name + "-m")
     init = (
         await client.post(
-            f"/projects/{project['id']}/models/{model['id']}/files/initiate",
+            f"/projects/{project['id']}/documents/{model['id']}/files/initiate",
             json={
                 "filename": name,
                 "size_bytes": len(VALID_PDF_BYTES),
@@ -74,7 +74,7 @@ async def _ready_pdf(
     ).json()
     fake.objects[init["storage_key"]] = VALID_PDF_BYTES
     await client.post(
-        f"/projects/{project['id']}/models/{model['id']}/files/{init['file_id']}/complete",
+        f"/projects/{project['id']}/documents/{model['id']}/files/{init['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
     return project["id"], model["id"], init["file_id"]
@@ -104,7 +104,7 @@ async def test_ifc_complete_creates_job(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, _model_id, file_id = await _ready_ifc(client, fake, org_user, name="ifc-job.ifc")
+    project_id, _document_id, file_id = await _ready_ifc(client, fake, org_user, name="ifc-job.ifc")
 
     resp = await client.get("/jobs", headers=_auth(org_user["access_token"]))
     assert resp.status_code == 200
@@ -123,7 +123,7 @@ async def test_pdf_complete_creates_job(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, _model_id, file_id = await _ready_pdf(client, fake, org_user, name="pdf-job.pdf")
+    project_id, _document_id, file_id = await _ready_pdf(client, fake, org_user, name="pdf-job.pdf")
 
     resp = await client.get("/jobs", headers=_auth(org_user["access_token"]))
     assert resp.status_code == 200
@@ -174,7 +174,7 @@ async def test_callback_updates_job_to_running(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    _project_id, _model_id, file_id = await _ready_ifc(client, fake, org_user, name="run-job.ifc")
+    _project_id, _document_id, file_id = await _ready_ifc(client, fake, org_user, name="run-job.ifc")
 
     list_resp = await client.get("/jobs", headers=_auth(org_user["access_token"]))
     job_id = list_resp.json()["items"][0]["id"]
@@ -203,7 +203,7 @@ async def test_callback_updates_job_to_succeeded(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, _model_id, file_id = await _ready_ifc(
+    project_id, _document_id, file_id = await _ready_ifc(
         client, fake, org_user, name="succeed-job.ifc"
     )
 
@@ -241,7 +241,7 @@ async def test_callback_updates_job_to_failed(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    _project_id, _model_id, file_id = await _ready_ifc(
+    _project_id, _document_id, file_id = await _ready_ifc(
         client, fake, org_user, name="fail-job.ifc"
     )
 
@@ -275,7 +275,7 @@ async def test_callback_without_job_id_still_updates_file(
 ) -> None:
     """Backward compat: old extractor (no job_id) still updates ProjectFile."""
     client, fake = fake_storage_client
-    project_id, model_id, file_id = await _ready_ifc(
+    project_id, document_id, file_id = await _ready_ifc(
         client, fake, org_user, name="no-jobid.ifc"
     )
 
@@ -298,7 +298,7 @@ async def test_callback_terminal_job_is_idempotent(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    _project_id, _model_id, file_id = await _ready_ifc(
+    _project_id, _document_id, file_id = await _ready_ifc(
         client, fake, org_user, name="idem-job.ifc"
     )
 
@@ -521,10 +521,10 @@ async def test_dispatch_failure_creates_failed_job(
 
     client, fake = fake_storage_client
     project = await _create_project(client, org_user["access_token"], name="fail-dispatch-p")
-    model = await _create_model(client, org_user["access_token"], project["id"], name="fail-dispatch-m")
+    model = await _create_document(client, org_user["access_token"], project["id"], name="fail-dispatch-m")
     init = (
         await client.post(
-            f"/projects/{project['id']}/models/{model['id']}/files/initiate",
+            f"/projects/{project['id']}/documents/{model['id']}/files/initiate",
             json={
                 "filename": "fail.ifc",
                 "size_bytes": len(VALID_IFC_HEADER),
@@ -536,7 +536,7 @@ async def test_dispatch_failure_creates_failed_job(
     ).json()
     fake.objects[init["storage_key"]] = VALID_IFC_HEADER
     await client.post(
-        f"/projects/{project['id']}/models/{model['id']}/files/{init['file_id']}/complete",
+        f"/projects/{project['id']}/documents/{model['id']}/files/{init['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
 

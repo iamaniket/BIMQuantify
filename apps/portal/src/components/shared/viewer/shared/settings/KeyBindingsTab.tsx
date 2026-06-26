@@ -7,8 +7,8 @@ import {
 
 import {
   Select, Tabs, TabsContent, TabsList, TabsTrigger,
-} from '@bimstitch/ui';
-import type { ViewerHandle } from '@bimstitch/viewer';
+} from '@bimdossier/ui';
+import type { ViewerHandle } from '@bimdossier/viewer';
 
 import {
   controlsFrom3D,

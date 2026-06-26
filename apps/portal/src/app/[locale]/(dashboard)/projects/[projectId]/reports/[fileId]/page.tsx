@@ -1,12 +1,12 @@
 'use client';
 
-import { ArrowLeft, Download } from '@bimstitch/ui/icons';
+import { ArrowLeft, Download } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useMemo, useState, type JSX } from 'react';
 
-import { Badge, Button, Eyebrow, Skeleton } from '@bimstitch/ui';
+import { Badge, Button, Eyebrow, Skeleton } from '@bimdossier/ui';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 
 import { ComplianceByDomainCard } from '@/features/projects/detail/ComplianceByDomainCard';
@@ -21,7 +21,7 @@ import {
   useComplianceSummary,
   useProjectReports,
 } from '@/features/compliance/hooks';
-import { useModels } from '@/features/models/useModels';
+import { useDocuments } from '@/features/documents/useDocuments';
 import { useProject } from '@/features/projects/useProject';
 import { triggerBrowserDownload } from '@/lib/api/client';
 import { downloadComplianceCsv, downloadComplianceRulesCsv } from '@/lib/api/compliance';
@@ -35,7 +35,7 @@ export default function ReportDetailPage(): JSX.Element {
   const modelIdFromQuery = search.get('modelId') ?? undefined;
 
   const projectQuery = useProject(projectId);
-  const modelsQuery = useModels(projectId);
+  const modelsQuery = useDocuments(projectId);
   const reportsQuery = useProjectReports(projectId, framework);
   const { tokens } = useAuth();
 
@@ -43,7 +43,7 @@ export default function ReportDetailPage(): JSX.Element {
   const modelId = useMemo(() => {
     if (modelIdFromQuery) return modelIdFromQuery;
     const match = reportsQuery.data?.find((r) => r.file_id === fileId);
-    return match?.model_id;
+    return match?.document_id;
   }, [modelIdFromQuery, reportsQuery.data, fileId]);
 
   const summaryQuery = useComplianceSummary(projectId, fileId, modelId);
@@ -130,7 +130,7 @@ export default function ReportDetailPage(): JSX.Element {
               </Badge>
               {reportMeta !== undefined && (
                 <span className="text-body3 font-semibold">
-                  {reportMeta.model_name} · {reportMeta.file_name} (v
+                  {reportMeta.document_name} · {reportMeta.file_name} (v
                   {String(reportMeta.file_version).padStart(2, '0')})
                 </span>
               )}
@@ -155,6 +155,10 @@ export default function ReportDetailPage(): JSX.Element {
               embedded
             />
           </>
+        ) : summaryQuery.isError ? (
+          <div className="px-4 py-10 text-center">
+            <ErrorBanner message={t('loadFailed')} tone="soft" className="text-body2" />
+          </div>
         ) : (
           <div className="px-4 py-10 text-center text-body3 text-foreground-tertiary">
             {t('loadingResults')}

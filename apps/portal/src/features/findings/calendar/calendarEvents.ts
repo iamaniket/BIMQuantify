@@ -1,6 +1,6 @@
-import { Clock, Flag, ShieldCheck } from '@bimstitch/ui/icons';
+import { Clock, Flag, ShieldCheck } from '@bimdossier/ui/icons';
 
-import type { AppIcon } from '@bimstitch/ui';
+import type { AppIcon } from '@bimdossier/ui';
 
 import { isoDay, parseDayKey, toDayKey } from '@/components/shared/calendar/monthGrid';
 import type { CalendarTone } from '@/components/shared/calendar/types';

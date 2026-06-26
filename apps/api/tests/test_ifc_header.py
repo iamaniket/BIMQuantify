@@ -2,8 +2,8 @@
 
 No DB, no I/O — fast unit tests."""
 
-from bimstitch_api.ifc.header import HeaderRejection, parse_ifc_header
-from bimstitch_api.models.project_file import IfcSchema
+from bimdossier_api.ifc.header import HeaderRejection, parse_ifc_header
+from bimdossier_api.models.project_file import IfcSchema
 
 
 def _wrap(schema_token: str) -> bytes:

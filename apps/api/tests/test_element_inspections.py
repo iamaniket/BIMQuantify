@@ -20,7 +20,7 @@ from tests.conftest import (
     VALID_IFC_HEADER,
     FakeStorage,
     _auth,
-    _create_model,
+    _create_document,
     _create_project,
     _provision_user_in_org,
 )
@@ -59,7 +59,7 @@ async def _create_ready_file(
     fake: FakeStorage,
     token: str,
     project_id: str,
-    model_id: str,
+    document_id: str,
     *,
     content: bytes = VALID_IFC_HEADER,
 ) -> str:
@@ -69,7 +69,7 @@ async def _create_ready_file(
     filename = f"test-{_file_counter}.ifc"
     sha = hashlib.sha256(content).hexdigest()
     init_resp = await client.post(
-        f"/projects/{project_id}/models/{model_id}/files/initiate",
+        f"/projects/{project_id}/documents/{document_id}/files/initiate",
         json={
             "filename": filename,
             "size_bytes": len(content),
@@ -82,7 +82,7 @@ async def _create_ready_file(
     init = init_resp.json()
     fake.objects[init["storage_key"]] = content
     complete = await client.post(
-        f"/projects/{project_id}/models/{model_id}/files/{init['file_id']}/complete",
+        f"/projects/{project_id}/documents/{document_id}/files/{init['file_id']}/complete",
         headers=_auth(token),
     )
     assert complete.status_code == 200, complete.text
@@ -135,7 +135,7 @@ async def test_returns_empty_when_no_items_linked(
     )
     token = user["access_token"]
     project = await _create_project(client, token)
-    model = await _create_model(client, token, project["id"])
+    model = await _create_document(client, token, project["id"])
     file_id = await _create_ready_file(client, fake, token, project["id"], model["id"])
 
     # Generate a borgingsplan (creates moments + items) but don't link any.
@@ -164,7 +164,7 @@ async def test_returns_linked_items_with_results(
     )
     token = user["access_token"]
     project = await _create_project(client, token)
-    model = await _create_model(client, token, project["id"])
+    model = await _create_document(client, token, project["id"])
     file_id = await _create_ready_file(client, fake, token, project["id"], model["id"])
     plan = await _generate_borgingsplan(client, token, project["id"])
 
@@ -215,7 +215,7 @@ async def test_returns_linked_items_without_results(
     )
     token = user["access_token"]
     project = await _create_project(client, token)
-    model = await _create_model(client, token, project["id"])
+    model = await _create_document(client, token, project["id"])
     file_id = await _create_ready_file(client, fake, token, project["id"], model["id"])
     plan = await _generate_borgingsplan(client, token, project["id"])
 
@@ -248,7 +248,7 @@ async def test_filters_by_file_id(
     )
     token = user["access_token"]
     project = await _create_project(client, token)
-    model = await _create_model(client, token, project["id"])
+    model = await _create_document(client, token, project["id"])
     file_id_a = await _create_ready_file(client, fake, token, project["id"], model["id"])
     file_id_b = await _create_ready_file(
         client, fake, token, project["id"], model["id"],
@@ -285,7 +285,7 @@ async def test_filters_by_global_id(
     )
     token = user["access_token"]
     project = await _create_project(client, token)
-    model = await _create_model(client, token, project["id"])
+    model = await _create_document(client, token, project["id"])
     file_id = await _create_ready_file(client, fake, token, project["id"], model["id"])
     plan = await _generate_borgingsplan(client, token, project["id"])
 
@@ -319,7 +319,7 @@ async def test_non_member_gets_404(
         client, session_maker, engine, email="outsider@test.nl",
     )
     project = await _create_project(client, owner["access_token"])
-    model = await _create_model(client, owner["access_token"], project["id"])
+    model = await _create_document(client, owner["access_token"], project["id"])
     file_id = await _create_ready_file(
         client, fake, owner["access_token"], project["id"], model["id"],
     )

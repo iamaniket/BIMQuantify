@@ -5,18 +5,20 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   unionBbox,
   type DecodedFloorPlans,
+  type DocumentViewerHandle,
   type EntityMarker2DData,
-  type FloorPlanViewerHandle,
   type ViewerHandle,
-} from '@bimstitch/viewer';
+} from '@bimdossier/viewer';
 
 import { useFileFindings } from '@/features/findings/useFindings';
 import { useModelFindingMarkers } from '@/features/viewer/shared/useEntityMarkers';
 import type { Finding } from '@/lib/api/schemas';
 import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 
+import { elevationBand } from './elevationBand';
+
 interface FloorPlanFindingMarkersOptions {
-  fpHandle: FloorPlanViewerHandle | null;
+  fpHandle: DocumentViewerHandle | null;
   viewerHandle: ViewerHandle | null;
   viewerReady: boolean;
   projectId: string;
@@ -29,18 +31,6 @@ interface FloorPlanFindingMarkersOptions {
 }
 
 type Projected = { x: number; y: number; elevation: number } | null;
-
-/** Half-band (model units) for assigning a finding to a level by elevation. */
-function elevationBand(levels: { elevation: number }[], index: number): number {
-  const e = levels[index]?.elevation;
-  if (e == null) return 1.5;
-  let nearest = Infinity;
-  levels.forEach((lv, i) => {
-    if (i === index) return;
-    nearest = Math.min(nearest, Math.abs(lv.elevation - e));
-  });
-  return Number.isFinite(nearest) ? Math.max(nearest / 2, 0.5) : 1.5;
-}
 
 /**
  * Project IFC-anchored findings onto the 2D plan and feed them to the floor

@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Monitor, Moon, SlidersHorizontal, Sun, UserRound } from '@bimstitch/ui/icons';
+import { Check, Monitor, Moon, SlidersHorizontal, Sun, UserRound } from '@bimdossier/ui/icons';
 import { useTheme } from 'next-themes';
 import { useEffect, useState, useTransition, type JSX } from 'react';
 
@@ -11,9 +11,9 @@ import {
   isLocale,
   supportedLocales,
   type Locale,
-} from '@bimstitch/i18n';
+} from '@bimdossier/i18n';
 
-import { Button, Card, CardBody, CardHeader, PageHeader } from '@bimstitch/ui';
+import { Button, Card, CardBody, CardHeader, PageHeader } from '@bimdossier/ui';
 
 import { usePathname, useRouter } from '@/i18n/navigation';
 

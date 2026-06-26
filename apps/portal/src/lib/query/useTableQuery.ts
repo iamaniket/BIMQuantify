@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import type { SortDirection } from '@bimstitch/ui';
+import type { SortDirection } from '@bimdossier/ui';
 
 import { ApiError, type PaginatedResponse } from '@/lib/api/client';
 import { tokenManager } from '@/lib/auth/tokenManager';

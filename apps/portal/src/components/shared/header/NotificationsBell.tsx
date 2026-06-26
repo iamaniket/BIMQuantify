@@ -1,7 +1,7 @@
 'use client';
 
-import { IconButton } from '@bimstitch/ui';
-import { AlertTriangle, Bell, Check, CheckCircle2, Clock, Loader2, Mail, RefreshCw, Search, Trash2, UserPlus, X, XCircle } from '@bimstitch/ui/icons';
+import { IconButton } from '@bimdossier/ui';
+import { AlertTriangle, Bell, Check, CheckCircle2, Clock, Loader2, Mail, RefreshCw, Search, Trash2, UserPlus, X, XCircle } from '@bimdossier/ui/icons';
 import {
   useEffect, useRef, useState, type JSX,
 } from 'react';

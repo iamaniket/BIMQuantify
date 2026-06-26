@@ -10,16 +10,16 @@ import asyncio
 
 import pytest
 
-from bimstitch_api.background.concurrency import map_bounded
-from bimstitch_api.background.locks import advisory_lock
-from bimstitch_api.background.periodic import PeriodicSweeper
+from bimdossier_api.background.concurrency import map_bounded
+from bimdossier_api.background.locks import advisory_lock
+from bimdossier_api.background.periodic import PeriodicSweeper
 
 
 @pytest.fixture
 def wired_engine(engine, session_maker):
     """Point db.get_engine()/get_session_maker() at the test engine for the
     duration of a test (advisory_lock and the guarded loop call get_engine())."""
-    from bimstitch_api import db as db_module
+    from bimdossier_api import db as db_module
 
     prev_engine = db_module._engine
     prev_maker = db_module._session_maker

@@ -1,10 +1,10 @@
 'use client';
 
-import { Plus } from '@bimstitch/ui/icons';
+import { Plus } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { Button } from '@bimstitch/ui';
+import { Button } from '@bimdossier/ui';
 
 import { ProjectFormDialog } from './ProjectFormDialog';
 

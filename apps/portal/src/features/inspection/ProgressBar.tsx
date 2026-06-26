@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Progress } from '@bimstitch/ui';
+import { Progress } from '@bimdossier/ui';
 
 type Props = {
   completed: number;

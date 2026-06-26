@@ -13,7 +13,8 @@ import React, {
   type JSX,
 } from 'react';
 
-import { Skeleton } from '@bimstitch/ui';
+import { Skeleton } from '@bimdossier/ui';
+import { X } from '@bimdossier/ui/icons';
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import type {
@@ -21,10 +22,9 @@ import type {
   DocumentActiveTool,
   DocumentRotation,
   DocumentViewerHandle,
-  FloorPlanViewerHandle,
   MarkupTool,
   ViewerHandle,
-} from '@bimstitch/viewer';
+} from '@bimdossier/viewer';
 
 import { useAppHeader } from '@/components/shared/header/AppHeaderContext';
 import { DocumentToolbar } from '@/components/shared/viewer/2d/DocumentToolbar';
@@ -41,6 +41,8 @@ import { useBcfMarkup2d } from '@/features/viewer/bcf/useBcfMarkup2d';
 import { bcfKeys } from '@/features/viewer/bcf/queryKeys';
 import { MarkupToolbar } from '@/components/shared/viewer/2d/MarkupToolbar';
 import { ContextMenu } from '@/features/viewer/3d/ContextMenu';
+import { useDocuments } from '@/features/documents/useDocuments';
+import { useProjectPermissions } from '@/features/permissions/useProjectPermissions';
 import { type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import { ModelExplorer, ExplorerCounter } from '@/features/viewer/3d/explorer/ModelExplorer';
 import { useExplorerModels } from '@/features/viewer/3d/explorer/useExplorerModels';
@@ -96,7 +98,7 @@ import { ViewerLoadingOverlay } from './components/ViewerLoadingOverlay';
 import { ViewerMobileBanner } from './components/ViewerMobileBanner';
 
 const DocumentViewer = dynamic(
-  () => import('@bimstitch/viewer').then((m) => m.DocumentViewer),
+  () => import('@bimdossier/viewer').then((m) => m.DocumentViewer),
   { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
 );
 
@@ -147,6 +149,16 @@ export default function ViewerPage(): JSX.Element {
   // Viewport layout for IFC models: 3D only / Split (3D + plan) / 2D (plan).
   const [viewMode, setViewMode] = useState<ViewMode>('3d');
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
+  // "Align" (PDF→model calibration) is a focused, multi-step task. While it's on
+  // we lock the surrounding chrome (toolbar, side rail, side panels) so the user
+  // must finish or explicitly exit the alignment before navigating elsewhere.
+  const isAligning = viewMode === 'calibration';
+  // Dismiss state for the "no models loaded" hint shown over the live-empty
+  // scene; re-shown whenever the scene goes empty again.
+  const [emptyHintDismissed, setEmptyHintDismissed] = useState(false);
+  useEffect(() => {
+    if (!scope.emptyScene) setEmptyHintDismissed(false);
+  }, [scope.emptyScene]);
 
   // PDF-mode state — owned here so the toolbar, pages panel, status bar, and
   // DocumentViewer all read/write the same source of truth.
@@ -159,12 +171,14 @@ export default function ViewerPage(): JSX.Element {
   const [documentHandle, setDocumentHandle] = useState<DocumentViewerHandle | null>(null);
   // Floor-plan handle + active storey elevation, surfaced from the plan pane so
   // the inspector's "update pin" can pick on the plan (2D mode) and lift the
-  // picked point to a 3D world anchor at the right floor.
-  const [fpHandle, setFpHandle] = useState<FloorPlanViewerHandle | null>(null);
+  // picked point to a 3D world anchor at the right floor. The handle is a
+  // DocumentViewer in either the generated-plan OR aligned-PDF-sheet source;
+  // both emit `interaction:resolved {kind:'page'}`, and the converter dispatches.
+  const [fpHandle, setFpHandle] = useState<DocumentViewerHandle | null>(null);
   const [fpElevation, setFpElevation] = useState<number | null>(null);
   const [mobileBannerDismissed, setMobileBannerDismissed] = useState(() => {
     if (typeof window === 'undefined') return true;
-    return sessionStorage.getItem('bimstitch.viewerMobileBanner') === 'dismissed';
+    return sessionStorage.getItem('bimdossier.viewerMobileBanner') === 'dismissed';
   });
   // Marker / deep-link click → expand that finding's row in the inspector
   // (replacing the old floating detail modal). `nonce` re-fires on repeat clicks.
@@ -194,7 +208,7 @@ export default function ViewerPage(): JSX.Element {
   const pdfInitializedRef = useRef<string | null>(null);
 
   // ── Draggable split divider ───────────────────────────────────────────────
-  const SPLIT_RATIO_KEY = 'bimstitch.splitRatio';
+  const SPLIT_RATIO_KEY = 'bimdossier.splitRatio';
   const SPLIT_MIN = 0.2;
   const SPLIT_MAX = 0.8;
   const isMobile = useIsMobile();
@@ -241,24 +255,36 @@ export default function ViewerPage(): JSX.Element {
   // ─────────────────────────────────────────────────────────────────────────
 
   const togglePanel = useCallback((id: PanelId) => {
+    // Side rail is locked while aligning — ignore toggles defensively.
+    if (isAligning) return;
     setActivePanel((prev) => (prev === id ? null : id));
-  }, []);
+  }, [isAligning]);
+
+  // Entering alignment closes any open side panel so the dimmed inspector can't
+  // sit on top of the CalibrationPane in the right pane.
+  useEffect(() => {
+    if (isAligning) setActivePanel(null);
+  }, [isAligning]);
 
   // Auto-open section panel when entering section placement mode
   useEffect(() => {
     const handle = viewerHandleRef.current;
     if (!handle) return undefined;
     return handle.events.on('mode:enter', ({ toolName }) => {
+      if (isAligning) return;
       if (toolName === 'section.place') {
         setActivePanel('section');
       }
     });
-  }, [viewerReady]);
+  }, [viewerReady, isAligning]);
 
   useEffect(() => {
     const handle = viewerHandleRef.current;
     if (!handle) return undefined;
     return handle.events.on('inspect:request', ({ view }) => {
+      // A model pick during alignment can keep a selection; don't let it re-open
+      // the inspector behind the lock scrim.
+      if (isAligning) return;
       if (view === 'properties') {
         setActivePanel('explorer');
         setPropertiesExpanded(true);
@@ -267,7 +293,7 @@ export default function ViewerPage(): JSX.Element {
         setFindingsRequest((prev) => ({ view: 'findings', nonce: (prev?.nonce ?? 0) + 1 }));
       }
     });
-  }, [viewerReady]);
+  }, [viewerReady, isAligning]);
 
   useViewerBridge(viewerHandleRef.current, viewerReady);
 
@@ -432,6 +458,15 @@ export default function ViewerPage(): JSX.Element {
   // Split / 2D modes (and the view switcher) require a floor-plan artifact.
   const hasFloorPlans = Boolean(isIfc && scope.planFloorPlansUrl);
 
+  // "Align" (PDF↔model calibration) is offered to editors when the project has
+  // at least one PDF model to pin onto the active IFC model.
+  const perms = useProjectPermissions(projectId);
+  const projectModels = useDocuments(projectId);
+  const hasPdfModel = (projectModels.data ?? []).some(
+    (m) => m.primary_file_type === 'pdf',
+  );
+  const canCalibrate = isIfc && hasPdfModel && !perms.isLoading && perms.can('document', 'update');
+
   // Finding-pin layer visibility (persisted) drives the side-rail Findings
   // count pill; re-asserted onto the entity-marker plugin on mount/change.
   const onToggleFindingPins = useCallback(() => {
@@ -479,7 +514,9 @@ export default function ViewerPage(): JSX.Element {
     isDrawing ? (bundle?.metadata_url ?? null) : null,
   );
   const drawingPage = isDrawing ? (pdfGeometry?.p[0] ?? null) : null;
-  const shellReady = bundle !== null && error === null;
+  // The IFC shell (toolbar etc.) is ready when a model bundle is loaded OR we're
+  // intentionally showing a live, empty federated scene (user deselected all).
+  const shellReady = (bundle !== null || scope.emptyScene) && error === null;
   const ifcShellReady = shellReady && isIfc && viewerReady;
   const pdfShellReady = shellReady && isPdf;
 
@@ -576,8 +613,8 @@ export default function ViewerPage(): JSX.Element {
   useEffect(() => {
     if (clickedFinding) {
       // Federated: focus the finding's model so the inspector scopes to it.
-      if (scope.mode === 'multi' && clickedFinding.linked_model_id !== null) {
-        scope.setActiveByModelId(clickedFinding.linked_model_id);
+      if (scope.mode === 'multi' && clickedFinding.linked_document_id !== null) {
+        scope.setActiveByModelId(clickedFinding.linked_document_id);
       }
       openFindingInPanel(clickedFinding);
       clearClicked();
@@ -704,24 +741,33 @@ export default function ViewerPage(): JSX.Element {
     setFindingsRequest((prev) => ({ view, nonce: (prev?.nonce ?? 0) + 1, surface: 'floorplan' }));
   }, []);
 
-  // Lift a normalized plan point (from a 2D guided pick) to a 3D world anchor:
-  // plan-point via the floor-plan engine, then world via the minimap calibration
-  // at the active storey elevation. Mirrors FloorPlanPane.handleAddFinding.
+  // Lift a normalized plan point (from a 2D guided pick) to a 3D world anchor.
+  // Generated plan: resolve the plan point via the floor-plan engine, then world
+  // via the minimap. Aligned PDF sheet: the sheet transform is active on the
+  // minimap, so `minimap.planToWorld` accepts the normalized PDF page point
+  // directly (it inverts through the transform). Dispatch on which surface the
+  // handle is — only the floor-plan source exposes `floorplan.planPointAtNorm`.
   const convertFloorPlanPoint = useCallback(
     async (norm: { x: number; y: number }): Promise<{ x: number; y: number; z: number } | null> => {
       const vh = viewerHandleRef.current;
       if (!fpHandle || !vh) return null;
-      const plan = await fpHandle.commands
-        .execute<{ planX: number; planY: number } | null>('floorplan.planPointAtNorm', {
-          nx: norm.x,
-          ny: norm.y,
-        })
-        .catch(() => null);
-      if (!plan) return null;
+      let planX = norm.x;
+      let planY = norm.y;
+      if (fpHandle.commands.has('floorplan.planPointAtNorm')) {
+        const plan = await fpHandle.commands
+          .execute<{ planX: number; planY: number } | null>('floorplan.planPointAtNorm', {
+            nx: norm.x,
+            ny: norm.y,
+          })
+          .catch(() => null);
+        if (!plan) return null;
+        planX = plan.planX;
+        planY = plan.planY;
+      }
       const world = await vh.commands
         .execute<{ x: number; y: number; z: number } | null>('minimap.planToWorld', {
-          planX: plan.planX,
-          planY: plan.planY,
+          planX,
+          planY,
           elevation: fpElevation ?? 0,
         })
         .catch(() => null);
@@ -767,26 +813,21 @@ export default function ViewerPage(): JSX.Element {
       <ErrorBanner message={error} tone="soft" className="m-6 text-body2" />
     );
   } else if (scope.isEmpty) {
+    // Genuinely empty project — nothing has been processed. No "load all"
+    // affordance here: there is nothing to load.
     canvas = (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
         <p className="text-body2 font-semibold text-foreground">{tFed('empty')}</p>
         <p className="max-w-sm text-body3 text-foreground-secondary">{tFed('emptyHint')}</p>
-        <button
-          type="button"
-          onClick={loadAllModels}
-          className="inline-flex h-8 items-center rounded-md border border-border bg-surface-low px-3 text-body3 font-medium text-foreground hover:bg-background-hover"
-        >
-          {tFed('loadAll')}
-        </button>
       </div>
     );
-  } else if (bundle === null) {
+  } else if (bundle === null && !scope.emptyScene) {
     canvas = <Skeleton className="absolute inset-0" />;
-  } else if (isDrawing) {
+  } else if (bundle !== null && isDrawing) {
     canvas = drawingPage !== null
       ? <DrawingCanvas page={drawingPage} />
       : <Skeleton className="absolute inset-0" />;
-  } else if (isPdf) {
+  } else if (bundle !== null && isPdf) {
     canvas = (
       <DocumentViewer
         ref={setDocumentHandle}
@@ -841,6 +882,7 @@ export default function ViewerPage(): JSX.Element {
         onDividerPointerUp={handleDividerPointerUp}
         hasFloorPlans={hasFloorPlans}
         viewerReady={viewerReady}
+        outOfViewSuppressed={loadingActive || overlayFading || isAligning || isEditMode}
         planMetadata={planMetadata}
         projectId={projectId}
         fileId={fileId}
@@ -848,6 +890,9 @@ export default function ViewerPage(): JSX.Element {
         onRequestFloorPlanFindings={handleFloorPlanFindings}
         onFpHandle={setFpHandle}
         onFpActiveElevationChange={setFpElevation}
+        planApiModelId={scope.planModelId}
+        onViewModeChange={setViewMode}
+        canCalibrate={canCalibrate}
       />
     );
   }
@@ -857,7 +902,7 @@ export default function ViewerPage(): JSX.Element {
       {!mobileBannerDismissed && (
         <ViewerMobileBanner
           onDismiss={() => {
-            sessionStorage.setItem('bimstitch.viewerMobileBanner', 'dismissed');
+            sessionStorage.setItem('bimdossier.viewerMobileBanner', 'dismissed');
             setMobileBannerDismissed(true);
           }}
         />
@@ -876,6 +921,34 @@ export default function ViewerPage(): JSX.Element {
       <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
         {canvas}
 
+        {/* Live-empty federated scene: non-blocking hint so the user can bring
+            models back (the dropdown stays in the header). Dismissible. */}
+        {scope.emptyScene && !emptyHintDismissed ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-6 z-40 flex justify-center px-4">
+            <div className="pointer-events-auto flex max-w-md items-center gap-3 rounded-lg border border-border bg-surface-low px-4 py-3 shadow-md">
+              <div className="min-w-0">
+                <p className="text-body3 font-semibold text-foreground">{tFed('cleared')}</p>
+                <p className="text-caption text-foreground-secondary">{tFed('clearedHint')}</p>
+              </div>
+              <button
+                type="button"
+                onClick={loadAllModels}
+                className="inline-flex h-8 shrink-0 items-center rounded-md bg-primary px-3 text-body3 font-medium text-primary-foreground hover:bg-primary-hover"
+              >
+                {tFed('loadAll')}
+              </button>
+              <button
+                type="button"
+                aria-label={tFed('dismiss')}
+                onClick={() => { setEmptyHintDismissed(true); }}
+                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-foreground-tertiary hover:bg-background-hover hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {(loadingActive || overlayFading) ? (
           <ViewerLoadingOverlay
             progress={progress}
@@ -891,6 +964,7 @@ export default function ViewerPage(): JSX.Element {
         {isPdf ? <DocumentContextMenu handle={documentHandle} onRequestFindings={handleDocContextMenuFindings} shortcuts={pdfSettings.shortcuts} ready={pdfFirstPageRendered} /> : null}
 
         {showChrome ? (
+          <div className={isAligning ? 'pointer-events-none opacity-40 transition-opacity duration-200' : 'transition-opacity duration-200'}>
             <SidePanel
               activePanel={activePanel}
               findingsContent={
@@ -972,6 +1046,7 @@ export default function ViewerPage(): JSX.Element {
               headerExpanded={modelTreeExpanded}
               onHeaderToggle={() => { setModelTreeExpanded((prev) => !prev); }}
             />
+          </div>
         ) : null}
 
         {showToolbarPlaceholder ? (
@@ -982,7 +1057,7 @@ export default function ViewerPage(): JSX.Element {
         ) : null}
 
         {ifcShellReady ? (
-          <div className={isEditMode ? 'pointer-events-none opacity-40 transition-opacity duration-200' : 'transition-opacity duration-200'}>
+          <div className={isEditMode || isAligning ? 'pointer-events-none opacity-40 transition-opacity duration-200' : 'transition-opacity duration-200'}>
             <Toolbar
               handle={viewerHandleRef.current}
               settings={settings}
@@ -1068,12 +1143,18 @@ export default function ViewerPage(): JSX.Element {
 
       </div>
       {showChrome && bundle !== null ? (
-        <SideRail
-          format={format}
-          activePanel={activePanel}
-          onTogglePanel={togglePanel}
-          badges={railBadges}
-        />
+        // `flex shrink-0` keeps the rail a full-height flex child: its root
+        // div stretches to fill the viewer row so the brand gradient runs
+        // top-to-bottom. A plain block wrapper here collapses the rail to its
+        // tab-content height and leaves a white strip below it.
+        <div className={isAligning ? 'flex shrink-0 pointer-events-none opacity-40 transition-opacity duration-200' : 'flex shrink-0 transition-opacity duration-200'}>
+          <SideRail
+            format={format}
+            activePanel={activePanel}
+            onTogglePanel={togglePanel}
+            badges={railBadges}
+          />
+        </div>
       ) : null}
       </div>
     </main>

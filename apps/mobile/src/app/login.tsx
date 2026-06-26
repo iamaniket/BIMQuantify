@@ -14,6 +14,7 @@ import {
 } from '@/features/auth/loginLayouts';
 import { useProjectsMap } from '@/features/auth/useProjectsMap';
 import { useSystemStatus } from '@/features/auth/useSystemStatus';
+import { useT } from '@/i18n';
 import { login } from '@/lib/api/auth';
 import { ApiError } from '@/lib/api/client';
 import { env } from '@/lib/env';
@@ -27,6 +28,7 @@ const TABLET_MIN_SIDE = 600;
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { t, locale } = useT();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const { setTokens } = useAuth();
@@ -55,8 +57,8 @@ export default function LoginScreen() {
     } catch (e) {
       setError(
         e instanceof ApiError && e.status === 400
-          ? 'Invalid email or password.'
-          : `Sign in failed: ${e instanceof Error ? e.message : String(e)}`,
+          ? t('login.error.invalidCredentials')
+          : t('login.error.signInFailed', { message: e instanceof Error ? e.message : String(e) }),
       );
     } finally {
       setSubmitting(false);
@@ -74,7 +76,12 @@ export default function LoginScreen() {
     { label: 'IFC', value: sys?.ifc_version ?? '4.3' },
     {
       label: 'STATUS',
-      value: status === 'degraded' ? 'Degraded' : status === 'down' ? 'Down' : 'Normal',
+      value:
+        status === 'degraded'
+          ? t('login.status.degraded')
+          : status === 'down'
+            ? t('login.status.down')
+            : t('login.status.normal'),
       valueColor:
         status === 'down' ? colors.error : status === 'degraded' ? colors.warning : brand.mint,
     },
@@ -83,14 +90,14 @@ export default function LoginScreen() {
     status === 'down' ? colors.error : status === 'degraded' ? colors.warning : colors.success;
   const statusLabel =
     status === 'down'
-      ? 'Service disruption'
+      ? t('login.statusRow.disruption')
       : status === 'degraded'
-        ? 'Degraded performance'
-        : 'All systems normal';
+        ? t('login.statusRow.degraded')
+        : t('login.statusRow.normal');
 
   // The mobile app has no forgot-password / request-access screens (sign-in is
-  // invite-only), so those links open the web portal. Routes are locale-prefixed.
-  const webBase = `${env.EXPO_PUBLIC_WEB_URL}/en`;
+  // invite-only), so those links open the web portal in the app's language.
+  const webBase = `${env.EXPO_PUBLIC_WEB_URL}/${locale}`;
 
   const form: LoginFormProps = {
     email,

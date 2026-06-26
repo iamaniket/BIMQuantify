@@ -1,13 +1,13 @@
 'use client';
 
-import { X } from '@bimstitch/ui/icons';
+import { X } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX, ReactNode } from 'react';
 
-import { IconButton } from '@bimstitch/ui';
+import { IconButton } from '@bimdossier/ui';
 
 import { dayHeading } from '@/components/shared/calendar/monthGrid';
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { type CalendarEvent } from './calendarEvents';
 

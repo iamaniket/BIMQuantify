@@ -2,8 +2,8 @@
 
 import { type JSX, type ReactNode } from 'react';
 
-import { ThemeToggle } from '@bimstitch/ui';
-import { Menu } from '@bimstitch/ui/icons';
+import { ThemeToggle } from '@bimdossier/ui';
+import { Menu } from '@bimdossier/ui/icons';
 
 import { Link } from '@/i18n/navigation';
 

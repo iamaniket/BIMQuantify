@@ -2,7 +2,7 @@
 
 import type { JSX } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 import type { DrawingMetadata } from '@/lib/api/schemas/geometry';
 import type { ModelMetadata, SpatialNode } from '@/lib/api/viewerTypes';

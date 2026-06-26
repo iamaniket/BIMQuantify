@@ -14,11 +14,17 @@
  * UP-AXIS IS DETECTED, NOT ASSUMED. web-ifc returns each model's raw authored
  * coordinates, whose vertical axis varies (IFC is nominally Z-up, but many models
  * are Y-up). Cutting at a fixed Z on a Y-up model yields a vertical section (an
- * elevation, not a plan). We detect the up-axis per model from an area-weighted
- * histogram of triangle normals — floors/ceilings/slabs/roofs concentrate normals
- * on the vertical axis — then cut perpendicular to it and emit the two horizontal
- * axes. The horizontal axis indices are stored in the artifact so the viewer can
- * map its (Y-up, recentered) camera onto the plan.
+ * elevation, not a plan). We detect the up-axis per model with a layered resolver
+ * (`resolveUpAxis`): storeys stack along the up-axis (so their per-axis geometry
+ * minima separate vertically and cluster horizontally), the IfcBuildingStorey
+ * Elevation attribute fits the up-axis as a near-constant floor offset, and an
+ * area-weighted triangle-normal histogram is the last-resort fallback. The normal
+ * histogram alone is ambiguous — a wall facing +X puts as much area on X as a
+ * floor does in an X-up model — so on facade/tower/MEP-heavy models it mis-elects
+ * a horizontal axis and the plan reads as a side elevation; the stacking and
+ * elevation signals fix that. We then cut perpendicular to the up-axis and emit
+ * the two horizontal axes. The horizontal axis indices are stored in the artifact
+ * so the viewer can map its (Y-up, recentered) camera onto the plan.
  *
  * The per-storey floor level is derived from the lowest world coordinate (along
  * the up-axis) of the physical elements contained in that storey (the
@@ -51,9 +57,14 @@
  */
 
 import { gunzipSync, gzipSync } from 'fflate';
-import { IFCBUILDINGSTOREY, IFCSPACE, type IfcAPI } from 'web-ifc';
+import {
+  IFCBUILDINGSTOREY,
+  IFCGEOMETRICREPRESENTATIONCONTEXT,
+  IFCSPACE,
+  type IfcAPI,
+} from 'web-ifc';
 
-import type { Logger } from '../log.js';
+import { logger, type Logger } from '../log.js';
 import { numberValue } from './attributes.js';
 
 /** One IfcSpace footprint on a level: cut segments + centroid (label anchor). */
@@ -108,7 +119,11 @@ export function metresPerUnit(lengthUnit: string | null): number {
   if (u.includes('KILO')) return 1000;
   if (u.includes('FOOT') || u.includes('FEET')) return 0.3048;
   if (u.includes('INCH')) return 0.0254;
-  return 1; // METRE or unrecognised
+  if (u.includes('METR')) return 1; // METRE / METER
+  // Non-empty but unrecognised unit: defaulting to metres can cut a mislabeled
+  // millimetre model at ~1.2 mm (a degenerate, near-floor plan) with no signal.
+  logger.warn({ lengthUnit }, 'metresPerUnit: unrecognised length unit; assuming metres');
+  return 1;
 }
 
 /**
@@ -184,9 +199,164 @@ export type GeometryScan = {
   spaceIds: Set<number>;
 };
 
+/** How `resolveUpAxis` decided — surfaced in the scan log for diagnosis. */
+type UpAxisMethod = 'consensus' | 'stacking' | 'elevation' | 'histogram';
+
+/** A `[min,max]` range per axis for the storeys that carry indexed geometry. */
+type StoreyRange = { min: [number, number, number]; max: [number, number, number] };
+
 /**
- * Single-pass geometry scan. Detects the up-axis (area-weighted triangle-normal
- * histogram), each storey's floor level (lowest contained-element coordinate
+ * Storey-stacking signal: storeys share a footprint but stack vertically, so on
+ * the up-axis their `[min,max]` bands barely overlap while on the horizontal
+ * axes they overlap almost completely. Crucially this is robust to setbacks /
+ * podium+tower / wings / balconies — a smaller upper footprint still sits WITHIN
+ * the lower one, so the horizontal bands keep overlapping (unlike the per-storey
+ * *minima spread*, which a setback inflates on a horizontal axis and so misfires).
+ * Returns the least-overlapping axis when it is decisively separated, else null.
+ */
+function stackingAxis(ranges: StoreyRange[]): { axis: number; overlaps: [number, number, number] } | null {
+  if (ranges.length < 2) return null;
+  const overlaps = [0, 1, 2].map((k) => {
+    const bands = ranges.map((r) => [r.min[k]!, r.max[k]!] as [number, number]).sort((p, q) => p[0] - q[0]);
+    let unionLo = Infinity;
+    let unionHi = -Infinity;
+    for (const [lo, hi] of bands) {
+      if (lo < unionLo) unionLo = lo;
+      if (hi > unionHi) unionHi = hi;
+    }
+    const ext = unionHi - unionLo;
+    if (!(ext > 0)) return 1; // a zero-extent axis is fully "overlapping" (no separation)
+    let overlapSum = 0;
+    for (let i = 1; i < bands.length; i += 1) {
+      overlapSum += Math.max(0, Math.min(bands[i - 1]![1], bands[i]![1]) - bands[i]![0]);
+    }
+    return overlapSum / ((bands.length - 1) * ext); // ≈0 stacked, ≈1 co-located
+  }) as [number, number, number];
+  const order = [0, 1, 2].sort((p, q) => overlaps[p]! - overlaps[q]!);
+  const best = order[0]!;
+  const second = order[1]!;
+  // The up-axis bands must be clearly the least-overlapping (well under half,
+  // and at most half the runner-up's overlap).
+  if (overlaps[best]! < 0.5 && overlaps[best]! <= 0.5 * overlaps[second]!) {
+    return { axis: best, overlaps };
+  }
+  return null;
+}
+
+/**
+ * Elevation-attribute signal: on the up-axis a storey's lowest geometry sits a
+ * near-constant floor offset below its declared IfcBuildingStorey.Elevation, so
+ * `min[k] − elevation` has low variance there and high variance on a horizontal
+ * axis (which tracks the footprint). Returns the smallest-residual-variance axis
+ * when it is a clear winner, else null. Needs ≥2 storeys with both values and a
+ * non-degenerate elevation span.
+ */
+function elevationAxis(
+  storeyMin: Map<number, [number, number, number]>,
+  elevationAttr: Map<number, number>,
+): number | null {
+  const paired: { min: [number, number, number]; elev: number }[] = [];
+  for (const [id, m] of storeyMin) {
+    const elev = elevationAttr.get(id);
+    if (elev !== undefined && Number.isFinite(elev) && m.every(Number.isFinite)) {
+      paired.push({ min: m, elev });
+    }
+  }
+  if (paired.length < 2) return null;
+  const elevs = paired.map((p) => p.elev);
+  if (Math.max(...elevs) - Math.min(...elevs) <= 0) return null;
+  const resVar = [0, 1, 2].map((k) => {
+    const r = paired.map((p) => p.min[k]! - p.elev);
+    const mean = r.reduce((s, b) => s + b, 0) / r.length;
+    return r.reduce((s, b) => s + (b - mean) ** 2, 0) / r.length;
+  });
+  const order = [0, 1, 2].sort((p, q) => resVar[p]! - resVar[q]!);
+  const best = order[0]!;
+  const second = order[1]!;
+  // Reject a non-discriminating tie (e.g. both ≈0) rather than picking index 0.
+  if (resVar[second]! <= 0) return null;
+  return resVar[best]! <= 0.25 * resVar[second]! ? best : null;
+}
+
+/**
+ * Resolve the model's up-axis (0=x, 1=y, 2=z). The normal histogram alone is
+ * ambiguous — a wall facing +X concentrates as much area on X as a floor does in
+ * an X-up model — so on facade/tower/sparse-slab models it mis-elects a
+ * horizontal axis, cutting an elevation instead of a plan. We combine three
+ * signals by CONSENSUS rather than trusting any one in isolation:
+ *
+ *   • histogram  — argmax of Σ area-weighted |normal| per axis (default Z on tie).
+ *   • stacking   — least inter-storey band overlap (see `stackingAxis`).
+ *   • elevation  — best fit of storey minima to the Elevation attr (`elevationAxis`).
+ *
+ * If any axis wins ≥2 of the available votes, take it (the two signals fail in
+ * different directions, so agreement is strong evidence). Otherwise prefer the
+ * most physically-grounded available signal: elevation → stacking → histogram.
+ * This fixes the regression where a lone stacking vote (or a lone histogram
+ * vote) could override the others and silently produce a side elevation.
+ */
+export function resolveUpAxis(
+  upBins: number[],
+  storeyMin: Map<number, [number, number, number]>,
+  storeyMax: Map<number, [number, number, number]>,
+  elevationAttr: Map<number, number>,
+  _bbox: GeometryScan['bbox'],
+): {
+  upAxis: number;
+  method: UpAxisMethod;
+  /** Per-axis vote of each signal (null = signal abstained). */
+  votes: { histogram: number | null; stacking: number | null; elevation: number | null };
+  /** Per-axis inter-storey band overlap (the stacking metric), if computed. */
+  overlaps: [number, number, number] | null;
+  /** Storeys whose geometry ranges were available to the stacking signal. */
+  finiteStoreys: number;
+} {
+  const anyGeom = upBins[0]! > 0 || upBins[1]! > 0 || upBins[2]! > 0;
+  const histogram = anyGeom
+    ? (() => {
+        let up = 2; // default Z (IFC nominal up) on a tie
+        if (upBins[0]! > upBins[1]! && upBins[0]! > upBins[2]!) up = 0;
+        else if (upBins[1]! > upBins[0]! && upBins[1]! > upBins[2]!) up = 1;
+        return up;
+      })()
+    : null;
+
+  // Storeys with a fully-finite [min,max] range on every axis.
+  const ranges: StoreyRange[] = [];
+  for (const [id, min] of storeyMin) {
+    const max = storeyMax.get(id);
+    if (max && min.every(Number.isFinite) && max.every(Number.isFinite)) {
+      ranges.push({ min, max });
+    }
+  }
+  const stack = stackingAxis(ranges);
+  const stacking = stack?.axis ?? null;
+  const elevation = elevationAxis(storeyMin, elevationAttr);
+
+  const votes = { histogram, stacking, elevation };
+  const base = {
+    votes,
+    overlaps: stack?.overlaps ?? null,
+    finiteStoreys: ranges.length,
+  };
+
+  // Consensus: any axis backed by ≥2 of the (up to three) available votes.
+  const tally = [0, 0, 0];
+  for (const v of [histogram, stacking, elevation]) if (v !== null) tally[v]! += 1;
+  const top = tally.indexOf(Math.max(...tally));
+  if (tally[top]! >= 2) return { upAxis: top, method: 'consensus', ...base };
+
+  // No agreement → trust the most physically-grounded available signal.
+  if (elevation !== null) return { upAxis: elevation, method: 'elevation', ...base };
+  if (stacking !== null) return { upAxis: stacking, method: 'stacking', ...base };
+  if (histogram !== null) return { upAxis: histogram, method: 'histogram', ...base };
+  return { upAxis: 2, method: 'histogram', ...base }; // degenerate / no geometry → Z
+}
+
+/**
+ * Single-pass geometry scan. Detects the up-axis (layered resolver — storey
+ * stacking → elevation fit → normal-histogram fallback, see `resolveUpAxis`),
+ * each storey's floor level (lowest contained-element coordinate
  * along the up-axis, falling back to the Elevation attribute), AND the global
  * axis-aligned bounding box — all from ONE `StreamAllMeshes` sweep.
  *
@@ -248,10 +418,13 @@ export function scanModelGeometry(
     if (storey !== undefined) elementToStorey.set(el.expressID, storey);
   }
 
-  // One sweep: global bbox (every vertex), up-axis histogram + per-storey min
-  // (indexed geometry only). upBins = Σ|n.x|, Σ|n.y|, Σ|n.z| (n = 2·area normal).
+  // One sweep: global bbox (every vertex), up-axis histogram + per-storey
+  // min/max range (indexed geometry only). upBins = Σ|n.x|, Σ|n.y|, Σ|n.z|
+  // (n = 2·area normal). The per-storey [min,max] range per axis feeds the
+  // stacking signal (storeys overlap horizontally, separate vertically).
   const upBins = [0, 0, 0];
   const storeyMin = new Map<number, [number, number, number]>();
+  const storeyMax = new Map<number, [number, number, number]>();
   const a: [number, number, number] = [0, 0, 0];
   let minX = Infinity;
   let minY = Infinity;
@@ -299,11 +472,17 @@ export function scanModelGeometry(
       const wy = new Float64Array(vCount);
       const wz = new Float64Array(vCount);
       let min: [number, number, number] | undefined;
+      let max: [number, number, number] | undefined;
       if (storeyId !== undefined) {
         min = storeyMin.get(storeyId);
         if (min === undefined) {
           min = [Infinity, Infinity, Infinity];
           storeyMin.set(storeyId, min);
+        }
+        max = storeyMax.get(storeyId);
+        if (max === undefined) {
+          max = [-Infinity, -Infinity, -Infinity];
+          storeyMax.set(storeyId, max);
         }
       }
       for (let v = 0; v < vCount; v += 1) {
@@ -313,10 +492,13 @@ export function scanModelGeometry(
         wy[v] = a[1];
         wz[v] = a[2];
         growBbox();
-        if (min) {
+        if (min && max) {
           if (a[0] < min[0]) min[0] = a[0];
           if (a[1] < min[1]) min[1] = a[1];
           if (a[2] < min[2]) min[2] = a[2];
+          if (a[0] > max[0]) max[0] = a[0];
+          if (a[1] > max[1]) max[1] = a[1];
+          if (a[2] > max[2]) max[2] = a[2];
         }
       }
       // Area-weighted normal histogram: |cross(v1-v0, v2-v0)| per axis.
@@ -333,10 +515,16 @@ export function scanModelGeometry(
     }
   });
 
-  // up-axis = the axis the most (horizontal-surface) normals point along.
-  let upAxis = 2; // default Z when geometry is degenerate / absent
-  if (upBins[0]! >= upBins[1]! && upBins[0]! >= upBins[2]!) upAxis = 0;
-  else if (upBins[1]! >= upBins[0]! && upBins[1]! >= upBins[2]!) upAxis = 1;
+  const bbox: GeometryScan['bbox'] = touched
+    ? { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] }
+    : null;
+
+  // Up-axis by consensus of histogram + storey-stacking + elevation signals
+  // (see `resolveUpAxis`). No single signal is trusted alone — the histogram is
+  // ambiguous on facade/tower models, and minima-based stacking misfires on
+  // setbacks — so a model would otherwise be cut as a side elevation.
+  const upAxisResult = resolveUpAxis(upBins, storeyMin, storeyMax, elevationAttr, bbox);
+  const { upAxis, method: upAxisMethod } = upAxisResult;
   const hX = upAxis === 0 ? 1 : 0;
   const hY = upAxis === 2 ? 1 : 2;
 
@@ -354,14 +542,18 @@ export function scanModelGeometry(
   }
   storeys.sort((s1, s2) => s1.elevation - s2.elevation);
 
-  const bbox: GeometryScan['bbox'] = touched
-    ? { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] }
-    : null;
-
   logger?.info(
     {
       stage: 'geometryScan',
       upAxis: ['x', 'y', 'z'][upAxis],
+      upAxisMethod,
+      // Diagnostics so a future axis misfire is debuggable from the logs: the
+      // normal histogram (Σ|n| per axis), each signal's vote, the inter-storey
+      // band overlaps (the stacking metric), and how many storeys fed it.
+      upBins: upBins.map((b) => Math.round(b)),
+      votes: upAxisResult.votes,
+      storeyOverlaps: upAxisResult.overlaps,
+      finiteStoreys: upAxisResult.finiteStoreys,
       storeys: storeys.length,
       hasBbox: bbox !== null,
     },
@@ -369,6 +561,57 @@ export function scanModelGeometry(
   );
 
   return { bbox, planAxisX: hX, planAxisY: hY, upAxis, storeys, spaceIds };
+}
+
+/**
+ * Read the building's true north from `IfcGeometricRepresentationContext.TrueNorth`
+ * and express it as a bearing in the floor-plan frame: radians CLOCKWISE from
+ * plan-up (+planAxisY). Returns null when the model declares no TrueNorth, when
+ * the direction is degenerate, or when the plan isn't drawn in the world XY plane
+ * (non-standard up-axis) — the viewer then shows no north compass.
+ *
+ * TrueNorth is a 2D `IfcDirection` in the context's XY plane (the world
+ * horizontal plane for a standard Z-up model). The walk worker reads native,
+ * un-converted geometry, so TrueNorth shares the frame the plan segments are
+ * sliced in. We treat it as a horizontal 3-vector [x, y, 0], project onto the
+ * plan's two horizontal world axes, and take `atan2(x, y)` — the same convention
+ * the 2D scene uses (plan +Y is screen-up, no flip), so the angle feeds the
+ * compass dial directly.
+ */
+export function extractTrueNorth(
+  api: IfcAPI,
+  modelID: number,
+  planAxisX: number,
+  planAxisY: number,
+): number | null {
+  // TrueNorth lives in the world XY plane; only meaningful when the plan's two
+  // axes are exactly world X/Y (standard Z-up). Otherwise we can't map it.
+  if (planAxisX > 1 || planAxisY > 1) return null;
+
+  const ids = api.GetLineIDsWithType(modelID, IFCGEOMETRICREPRESENTATIONCONTEXT);
+  for (let i = 0; i < ids.size(); i += 1) {
+    let ctx: Record<string, unknown>;
+    try {
+      ctx = api.GetLine(modelID, ids.get(i), true) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+    const tn = ctx['TrueNorth'];
+    if (tn === null || typeof tn !== 'object') continue;
+    const ratios = (tn as Record<string, unknown>)['DirectionRatios'];
+    if (!Array.isArray(ratios) || ratios.length < 2) continue;
+    const wx = numberValue(ratios[0]);
+    const wy = numberValue(ratios[1]);
+    if (wx === null || wy === null) continue;
+    // TrueNorth is horizontal, so its world up-component is 0.
+    const world = [wx, wy, 0];
+    const px = world[planAxisX] ?? 0;
+    const py = world[planAxisY] ?? 0;
+    if (px === 0 && py === 0) continue; // degenerate direction
+    // Bearing clockwise from plan-up (+planAxisY): (0,1) → 0, (1,0) → +90°.
+    return Math.atan2(px, py);
+  }
+  return null;
 }
 
 /**

@@ -1,6 +1,6 @@
 'use client';
 
-import { AuthShell } from '@bimstitch/brand';
+import { AuthShell } from '@bimdossier/brand';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

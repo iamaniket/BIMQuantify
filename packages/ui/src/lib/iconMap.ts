@@ -72,6 +72,7 @@ export { EyeSlash as EyeOff } from '@phosphor-icons/react';
 
 /* ── F ──────────────────────────────────────────────────────────── */
 export { FileAudio } from '@phosphor-icons/react';
+export { FileDashed } from '@phosphor-icons/react';
 export { Certificate as FileBadge } from '@phosphor-icons/react';
 export { FileText as FileSignature } from '@phosphor-icons/react';
 export { FileText } from '@phosphor-icons/react';

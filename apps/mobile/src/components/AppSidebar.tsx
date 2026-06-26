@@ -5,6 +5,7 @@ import { type ComponentProps, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useT } from '@/i18n';
 import { Avatar, initialsFrom } from '@/components/Avatar';
 import { BlueGradient } from '@/components/BlueGradient';
 import { BrandMark } from '@/components/BrandMark';
@@ -48,6 +49,7 @@ function TenantMark({ name, size = 32, dark = false }: { name: string; size?: nu
  */
 export function AppSidebar(props: DrawerContentComponentProps) {
   const router = useRouter();
+  const { t } = useT();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { me, activeMembership, switchOrganization, setTokens } = useAuth();
@@ -84,8 +86,8 @@ export function AppSidebar(props: DrawerContentComponentProps) {
     activeMembership == null
       ? ''
       : activeMembership.seat_limit != null
-        ? `${activeMembership.seat_count_used}/${activeMembership.seat_limit} seats`
-        : `${activeMembership.seat_count_used} seats`;
+        ? t('nav.seatsLimit', { used: activeMembership.seat_count_used, limit: activeMembership.seat_limit })
+        : t('nav.seats', { used: activeMembership.seat_count_used });
 
   return (
     <View style={styles.root}>
@@ -97,17 +99,17 @@ export function AppSidebar(props: DrawerContentComponentProps) {
           <Avatar name={me?.user.full_name} email={me?.user.email} size={36} />
           <View style={styles.userText}>
             <Text style={styles.userName} numberOfLines={1}>
-              {me?.user.full_name ?? me?.user.email ?? 'Signed in'}
+              {me?.user.full_name ?? me?.user.email ?? t('nav.signedIn')}
             </Text>
             <Text style={styles.userRoleText} numberOfLines={1}>
-              {activeMembership?.is_org_admin ? 'Admin' : 'Member'}
+              {activeMembership?.is_org_admin ? t('nav.admin') : t('nav.member')}
             </Text>
           </View>
         </View>
 
         {activeMembership != null ? (
           <View style={styles.tenantWrap}>
-            <Text style={styles.kicker}>Tenant</Text>
+            <Text style={styles.kicker}>{t('nav.tenant')}</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ expanded: tenantOpen, disabled: single }}
@@ -139,7 +141,7 @@ export function AppSidebar(props: DrawerContentComponentProps) {
                   <Pressable
                     key={m.organization_id}
                     accessibilityRole="button"
-                    accessibilityLabel={`Switch to ${m.organization_name}`}
+                    accessibilityLabel={t('nav.switchTo', { name: m.organization_name })}
                     disabled={switching !== null}
                     onPress={() => {
                       void pickOrg(m.organization_id);
@@ -152,7 +154,9 @@ export function AppSidebar(props: DrawerContentComponentProps) {
                         {m.organization_name}
                       </Text>
                       <Text style={styles.tenantListPlan} numberOfLines={1}>
-                        {m.seat_limit != null ? `${m.seat_count_used}/${m.seat_limit} seats` : `${m.seat_count_used} seats`}
+                        {m.seat_limit != null
+                          ? t('nav.seatsLimit', { used: m.seat_count_used, limit: m.seat_limit })
+                          : t('nav.seats', { used: m.seat_count_used })}
                       </Text>
                     </View>
                     {switching === m.organization_id ? <ActivityIndicator size="small" color={colors.primary} /> : null}
@@ -166,7 +170,7 @@ export function AppSidebar(props: DrawerContentComponentProps) {
 
       {/* Workspace nav (scrollable middle) */}
       <ScrollView style={styles.nav} contentContainerStyle={styles.navContent} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.kicker, styles.navKicker]}>Workspace</Text>
+        <Text style={[styles.kicker, styles.navKicker]}>{t('nav.workspace')}</Text>
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ selected: projectsActive }}
@@ -175,7 +179,7 @@ export function AppSidebar(props: DrawerContentComponentProps) {
         >
           {projectsActive ? <View style={styles.navActiveBar} /> : null}
           <Ionicons name="grid-outline" size={20} color={ON} />
-          <Text style={styles.navLabel}>Projects</Text>
+          <Text style={styles.navLabel}>{t('nav.projects')}</Text>
           {projectsCount > 0 ? (
             <View style={[styles.navBadge, projectsActive ? styles.navBadgeActive : null]}>
               <Text style={[styles.navBadgeText, projectsActive ? styles.navBadgeTextActive : null]}>{projectsCount}</Text>
@@ -186,13 +190,13 @@ export function AppSidebar(props: DrawerContentComponentProps) {
 
       {/* Footer actions + brand (fixed bottom) */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}>
-        <FooterAction icon="settings-outline" label="Settings" onPress={() => go('/settings')} />
-        <FooterAction icon="log-out-outline" label="Sign out" onPress={() => setTokens(null)} />
+        <FooterAction icon="settings-outline" label={t('nav.settings')} onPress={() => go('/settings')} />
+        <FooterAction icon="log-out-outline" label={t('nav.signOut')} onPress={() => setTokens(null)} />
         <View style={styles.brand}>
           <BrandMark size={34} />
           <View style={styles.brandText}>
             <Text style={styles.wordmark}>BimDossier</Text>
-            <Text style={styles.tagline}>BIMstitch Platform</Text>
+            <Text style={styles.tagline}>BimDossier Platform</Text>
           </View>
         </View>
       </View>

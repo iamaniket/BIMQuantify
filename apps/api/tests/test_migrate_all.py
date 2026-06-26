@@ -9,7 +9,7 @@ migrations out of the per-test cycle).
 
 from __future__ import annotations
 
-from bimstitch_api.scripts import migrate_all as m
+from bimdossier_api.scripts import migrate_all as m
 
 
 def test_classify_splits_by_head() -> None:

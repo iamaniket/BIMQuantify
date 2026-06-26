@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import type { MapMarker } from '@bimstitch/map';
+import type { MapMarker } from '@bimdossier/map';
 import { z } from 'zod';
 
 import { apiClient } from '@/lib/api/client';

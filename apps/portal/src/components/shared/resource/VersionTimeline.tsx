@@ -1,10 +1,10 @@
 'use client';
 
-import { Skeleton } from '@bimstitch/ui';
+import { Skeleton } from '@bimdossier/ui';
 import { useLocale, useTranslations } from 'next-intl';
 import type { JSX, ReactNode } from 'react';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import { formatDate } from '@/lib/formatting/dates';
 import { formatFileSize } from '@/lib/formatting/files';

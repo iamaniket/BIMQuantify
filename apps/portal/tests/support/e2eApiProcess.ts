@@ -13,7 +13,7 @@ import { execSync } from 'child_process';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
-export const PID_FILE = join(tmpdir(), 'bimstitch-e2e-api.pid');
+export const PID_FILE = join(tmpdir(), 'bimdossier-e2e-api.pid');
 
 /**
  * Mutex marker for globalSetup. Playwright `--ui` starts globalSetup more than
@@ -21,7 +21,7 @@ export const PID_FILE = join(tmpdir(), 'bimstitch-e2e-api.pid');
  * first (atomic `wx` write) owns the one real DB reset + API spawn; the others
  * wait for that API and reuse it, instead of each racing to drop the database.
  */
-export const SETUP_LOCK = join(tmpdir(), 'bimstitch-e2e-setup.lock');
+export const SETUP_LOCK = join(tmpdir(), 'bimdossier-e2e-setup.lock');
 
 /** Force-kill whatever process is listening on `port` (best effort). */
 export function killProcessOnPort(port: string): void {

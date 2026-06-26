@@ -1,5 +1,5 @@
 import type { Attachment } from '@/lib/api/schemas';
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 import { formatDateTime } from '@/lib/formatting/dates';
 
 export function formatSize(bytes: number): string {

@@ -4,7 +4,7 @@ export type Locale = (typeof supportedLocales)[number];
 
 export const defaultLocale: Locale = 'nl';
 
-export const localeStorageKey = 'bimstitch.locale';
+export const localeStorageKey = 'bimdossier.locale';
 
 export function isLocale(value: string): value is Locale {
   return supportedLocales.includes(value as Locale);

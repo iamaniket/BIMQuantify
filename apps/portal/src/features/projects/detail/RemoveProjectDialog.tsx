@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 type Props = {
   open: boolean;

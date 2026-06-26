@@ -1,4 +1,4 @@
-const DB_NAME = 'bimstitch-viewer';
+const DB_NAME = 'bimdossier-viewer';
 const STORE_NAME = 'fragments';
 const DB_VERSION = 1;
 const MAX_TOTAL_BYTES = 500 * 1024 * 1024; // 500 MB

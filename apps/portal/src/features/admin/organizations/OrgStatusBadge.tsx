@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Badge, type BadgeVariant } from '@bimstitch/ui';
+import { Badge, type BadgeVariant } from '@bimdossier/ui';
 
 type Props = { status: string };
 

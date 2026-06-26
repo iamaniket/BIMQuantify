@@ -15,12 +15,12 @@ from uuid import UUID
 import pytest
 from sqlalchemy import text
 
-import bimstitch_api.routers.compliance as compliance_router
+import bimdossier_api.routers.compliance as compliance_router
 from tests.conftest import (
     VALID_IFC_HEADER,
     FakeStorage,
     _auth,
-    _create_model,
+    _create_document,
 )
 
 if TYPE_CHECKING:
@@ -39,7 +39,7 @@ async def _ready_extracted_file(
 ) -> tuple[str, str, str]:
     """Create project (optionally typed) + model + a succeeded-extraction file.
 
-    Returns (project_id, model_id, file_id).
+    Returns (project_id, document_id, file_id).
     """
     body: dict[str, object] = {"name": name + "-p"}
     if building_type is not None:
@@ -47,10 +47,10 @@ async def _ready_extracted_file(
     project = (
         await client.post("/projects", json=body, headers=_auth(org_user["access_token"]))
     ).json()
-    model = await _create_model(client, org_user["access_token"], project["id"], name=name + "-m")
+    model = await _create_document(client, org_user["access_token"], project["id"], name=name + "-m")
     init = (
         await client.post(
-            f"/projects/{project['id']}/models/{model['id']}/files/initiate",
+            f"/projects/{project['id']}/documents/{model['id']}/files/initiate",
             json={
                 "filename": name,
                 "size_bytes": len(VALID_IFC_HEADER),
@@ -64,7 +64,7 @@ async def _ready_extracted_file(
     ).json()
     fake.objects[init["storage_key"]] = VALID_IFC_HEADER
     complete = await client.post(
-        f"/projects/{project['id']}/models/{model['id']}/files/{init['file_id']}/complete",
+        f"/projects/{project['id']}/documents/{model['id']}/files/{init['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
     assert complete.status_code == 200, complete.text
@@ -108,9 +108,9 @@ def stub_arbiter(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
 async def _check(
     client: AsyncClient, org_user: dict[str, str], ids: tuple[str, str, str], json: dict
 ) -> Any:
-    project_id, model_id, file_id = ids
+    project_id, document_id, file_id = ids
     return await client.post(
-        f"/projects/{project_id}/models/{model_id}/files/{file_id}/compliance/check",
+        f"/projects/{project_id}/documents/{document_id}/files/{file_id}/compliance/check",
         json=json,
         headers=_auth(org_user["access_token"]),
     )

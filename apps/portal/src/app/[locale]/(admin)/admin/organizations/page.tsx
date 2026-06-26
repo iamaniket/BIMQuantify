@@ -2,10 +2,10 @@
 
 import {
   Activity, BookOpen, Building2, ChevronRight, Download, Inbox, LayoutGrid, Plus, Table2, Users,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
@@ -15,7 +15,7 @@ import {
   Select,
   Skeleton,
   TabsContent,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { HeroImage } from '@/components/shared/layout/HeroImage';
@@ -37,6 +37,7 @@ import { OrgCreateDialog } from '@/features/admin/organizations/OrgCreateDialog'
 import { OrgTable } from '@/features/admin/organizations/OrgTable';
 import { adminOrganizationsListKey } from '@/features/admin/organizations/queryKeys';
 import { useAdminOrganizations } from '@/features/admin/organizations/useAdminOrganizations';
+import { ProcessorPane } from '@/features/admin/processor/ProcessorPane';
 import {
   exportAccessRequests,
   listAccessRequestsPage,
@@ -291,7 +292,7 @@ function OverviewPane({
       </div>
 
       {/* Recently created */}
-      <div className="rounded-lg border border-border bg-surface-low p-5 xl:col-span-2">
+      <div className="rounded-lg border border-border bg-surface-low p-5">
         <h3 className="mb-4 text-body2 font-bold">{t('recentTitle')}</h3>
         {recentOrgs.length === 0 ? (
           <p className="text-body3 text-foreground-tertiary">{t('noTenants')}</p>
@@ -318,7 +319,7 @@ function OverviewPane({
       </div>
 
       {/* Quick actions */}
-      <div className="rounded-lg border border-border bg-surface-low p-5 xl:col-span-2">
+      <div className="rounded-lg border border-border bg-surface-low p-5">
         <h3 className="mb-3 text-body2 font-bold">{t('quickActionsTitle')}</h3>
         <div className="space-y-0.5">
           <button
@@ -363,6 +364,7 @@ export default function AdminOrganizationsPage(): JSX.Element {
   const t = useTranslations('admin.organizations');
   const tReq = useTranslations('admin.accessRequests');
   const tBlog = useTranslations('admin.blog');
+  const tProc = useTranslations('admin.processor');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [createOpen, setCreateOpen] = useState(false);
@@ -538,6 +540,11 @@ export default function AdminOrganizationsPage(): JSX.Element {
       title: tBlog('panel.title', { count: blogTable.total }),
       sub: '',
     },
+    processor: {
+      eyebrow: tProc('panel.eyebrow'),
+      title: tProc('panel.title'),
+      sub: tProc('panel.sub'),
+    },
   }[tab] ?? { eyebrow: '', title: '', sub: '' };
 
   const toolbar = tab === 'organizations' ? (
@@ -604,12 +611,13 @@ export default function AdminOrganizationsPage(): JSX.Element {
         { value: 'organizations', label: t('tabs.organizations'), icon: <Table2 className="h-4 w-4" />, badge: <Badge variant="primary" size="md" bordered={false}>{orgTable.total}</Badge> },
         { value: 'requests', label: t('tabs.requests'), icon: <Inbox className="h-4 w-4" />, badge: pendingRequestCount > 0 ? <Badge variant="primary" size="md" bordered={false}>{pendingRequestCount}</Badge> : undefined },
         { value: 'blog', label: tBlog('tab'), icon: <BookOpen className="h-4 w-4" />, badge: <Badge variant="default" size="md" bordered={false}>{blogTable.total}</Badge> },
+        { value: 'processor', label: tProc('tab'), icon: <Activity className="h-4 w-4" /> },
       ]}
       activeTab={tab}
       onTabChange={setTab}
       panelHeading={panelHeading}
       toolbar={toolbar}
-      fillContent={tab === 'organizations' || tab === 'requests' || tab === 'blog'}
+      fillContent={tab === 'organizations' || tab === 'requests' || tab === 'blog' || tab === 'processor'}
       afterTabs={
         <>
           <OrgCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
@@ -658,6 +666,10 @@ export default function AdminOrganizationsPage(): JSX.Element {
           table={reqTable}
           className="shrink-0 border-t border-border px-5 py-2.5"
         />
+      </TabsContent>
+
+      <TabsContent value="processor" className="mt-0 flex min-h-0 flex-1 flex-col">
+        <ProcessorPane />
       </TabsContent>
     </TabbedPageShell>
   );

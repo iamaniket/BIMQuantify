@@ -1,6 +1,6 @@
 'use client';
 
-import { ImagePlus, X } from '@bimstitch/ui/icons';
+import { ImagePlus, X } from '@bimdossier/ui/icons';
 import {
   useId,
   useRef,
@@ -13,7 +13,7 @@ import { useFormContext } from 'react-hook-form';
 
 import {
   Button, Input, Label, Textarea,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { useRegisterField } from '@/hooks/useRegisterField';
 import type { ProjectFormValues } from '../projectFormSchema';

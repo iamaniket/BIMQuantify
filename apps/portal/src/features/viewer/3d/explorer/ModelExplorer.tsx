@@ -1,6 +1,6 @@
 'use client';
 
-import { Box } from '@bimstitch/ui/icons';
+import { Box } from '@bimdossier/ui/icons';
 import { useState, type JSX } from 'react';
 
 import type { ModelMetadata, ModelProperties } from '@/lib/api/viewerTypes';

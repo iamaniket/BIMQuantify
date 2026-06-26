@@ -14,6 +14,7 @@ import { ApiError } from '@/lib/api/client';
 import { getAuthMe, switchOrganization as switchOrgApi } from '@/lib/api/auth';
 import { tokenManager } from '@/lib/api/tokenManager';
 import { readStoredTokens, writeStoredTokens } from '@/lib/auth/secureStore';
+import { wipeAllOfflineData } from '@/lib/offline/db';
 import type {
   AuthMeResponse,
   OrgMembershipBrief,
@@ -95,6 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tokensRef.current = next;
     void writeStoredTokens(next);
     setTokensState(next);
+    // Logout wipes all offline data — a shared, multi-tenant device must not
+    // keep one user's cached snags/findings into the next session.
+    if (next === null) {
+      void wipeAllOfflineData();
+    }
   }, []);
 
   useEffect(() => {
@@ -109,6 +115,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Cannot switch organization without an active session');
       }
       const nextTokens = await switchOrgApi(organizationId, current.access_token);
+      // Clear the previous org's cached data before adopting the new tenant
+      // context — the offline cache isn't org-scoped, so a switch must reset it.
+      await wipeAllOfflineData();
       setTokens(nextTokens);
       await queryClient.invalidateQueries();
       // /auth/me re-fetches via the effect watching `tokens`.

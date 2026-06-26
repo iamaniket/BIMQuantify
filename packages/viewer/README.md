@@ -1,4 +1,4 @@
-# @bimstitch/viewer
+# @bimdossier/viewer
 
 Minimal React component for rendering ThatOpen `.frag` bundles.
 
@@ -15,7 +15,7 @@ changes — every consumer keeps working.
 import dynamic from 'next/dynamic';
 
 const IfcViewer = dynamic(
-  () => import('@bimstitch/viewer').then((m) => m.IfcViewer),
+  () => import('@bimdossier/viewer').then((m) => m.IfcViewer),
   { ssr: false },
 );
 

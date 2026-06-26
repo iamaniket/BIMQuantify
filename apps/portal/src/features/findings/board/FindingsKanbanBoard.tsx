@@ -1,12 +1,12 @@
 'use client';
 
-import { Search } from '@bimstitch/ui/icons';
+import { Search } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
-import { Input, Select, type KanbanColumnDef } from '@bimstitch/ui';
-import { KanbanBoard } from '@bimstitch/ui';
+import { Input, Select, type KanbanColumnDef } from '@bimdossier/ui';
+import { KanbanBoard } from '@bimdossier/ui';
 
 import { AssigneeFilterChips, UNASSIGNED_FILTER } from '@/features/findings/AssigneeFilterChips';
 import { FindingsExportActions } from '@/features/findings/FindingsExportActions';

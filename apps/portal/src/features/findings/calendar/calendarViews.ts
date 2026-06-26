@@ -2,9 +2,9 @@ import {
   Columns3,
   LayoutGrid,
   Square,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 
-import type { AppIcon } from '@bimstitch/ui';
+import type { AppIcon } from '@bimdossier/ui';
 
 import type { Deadline } from '@/lib/api/schemas/deadlines';
 

@@ -3,7 +3,7 @@
 import { useLocale } from 'next-intl';
 import { useEffect } from 'react';
 
-import { isLocale, localeStorageKey, type Locale } from '@bimstitch/i18n';
+import { isLocale, localeStorageKey, type Locale } from '@bimdossier/i18n';
 
 import { setApiLocale } from '@/lib/api/client';
 import { usePathname, useRouter } from '@/i18n/navigation';

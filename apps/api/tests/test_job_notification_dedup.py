@@ -8,7 +8,7 @@ from tests.conftest import (
     VALID_IFC_HEADER,
     FakeStorage,
     _auth,
-    _create_model,
+    _create_document,
     _create_project,
 )
 
@@ -29,15 +29,15 @@ async def _ready_file(
     name: str = "dedup.ifc",
 ) -> tuple[str, str, str]:
     """Create project + model + initiate + complete a file.
-    Returns (project_id, model_id, file_id).
+    Returns (project_id, document_id, file_id).
     """
     project = await _create_project(client, org_user["access_token"], name=name + "-p")
-    model = await _create_model(
+    model = await _create_document(
         client, org_user["access_token"], project["id"], name=name + "-m"
     )
     init = (
         await client.post(
-            f"/projects/{project['id']}/models/{model['id']}/files/initiate",
+            f"/projects/{project['id']}/documents/{model['id']}/files/initiate",
             json={
                 "filename": name,
                 "size_bytes": len(VALID_IFC_HEADER),
@@ -49,7 +49,7 @@ async def _ready_file(
     ).json()
     fake.objects[init["storage_key"]] = VALID_IFC_HEADER
     complete = await client.post(
-        f"/projects/{project['id']}/models/{model['id']}/files/{init['file_id']}/complete",
+        f"/projects/{project['id']}/documents/{model['id']}/files/{init['file_id']}/complete",
         headers=_auth(org_user["access_token"]),
     )
     assert complete.status_code == 200, complete.text
@@ -73,7 +73,7 @@ async def test_extraction_running_then_succeeded_produces_one_notification(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, _model_id, file_id = await _ready_file(
+    project_id, _document_id, file_id = await _ready_file(
         client, fake, org_user, name="dedup-ok.ifc"
     )
 
@@ -135,7 +135,7 @@ async def test_extraction_running_then_failed_produces_one_notification(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    _project_id, _model_id, file_id = await _ready_file(
+    _project_id, _document_id, file_id = await _ready_file(
         client, fake, org_user, name="dedup-fail.ifc"
     )
 
@@ -182,7 +182,7 @@ async def test_upsert_clears_read_state_on_update(
     """When a job_started notification is read and the job then completes,
     the updated notification should resurface as unread."""
     client, fake = fake_storage_client
-    project_id, _model_id, file_id = await _ready_file(
+    project_id, _document_id, file_id = await _ready_file(
         client, fake, org_user, name="dedup-read.ifc"
     )
 
@@ -244,7 +244,7 @@ async def test_upsert_clears_dismissal_on_update(
 ) -> None:
     """A dismissed job_started notification should reappear when the job completes."""
     client, fake = fake_storage_client
-    project_id, _model_id, file_id = await _ready_file(
+    project_id, _document_id, file_id = await _ready_file(
         client, fake, org_user, name="dedup-dismiss.ifc"
     )
 

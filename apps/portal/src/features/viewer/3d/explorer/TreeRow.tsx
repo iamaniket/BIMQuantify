@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { useTranslations } from 'next-intl';
 
-import { cn, CountChip } from '@bimstitch/ui';
+import { cn, CountChip } from '@bimdossier/ui';
 import { useShallow } from 'zustand/react/shallow';
 
 import { useViewerEntityStore, type EntityKey } from '@/stores/viewerEntityStore';

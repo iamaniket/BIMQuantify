@@ -1,10 +1,10 @@
 'use client';
 
-import { FolderKanban } from '@bimstitch/ui/icons';
+import { FolderKanban } from '@bimdossier/ui/icons';
 import { useMemo, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 
-import { Badge } from '@bimstitch/ui';
+import { Badge } from '@bimdossier/ui';
 
 import { HeroImage } from '@/components/shared/layout/HeroImage';
 import { HeroShell } from '@/components/shared/layout/HeroShell';

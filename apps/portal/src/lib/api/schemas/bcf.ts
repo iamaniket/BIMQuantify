@@ -36,7 +36,7 @@ export const BcfMeasurementSchema = z.object({
 
 // 2D PDF markup annotation — mirrors the viewer's `Annotation2D` type. Stored
 // inside a 2D viewpoint's `view_state_2d.annotations`. The tool union is the
-// wide `MarkupTool` (single source of truth in `@bimstitch/annotation`): the
+// wide `MarkupTool` (single source of truth in `@bimdossier/annotation`): the
 // PDF tools implement only `rect|arrow|cloud|freehand|text`, but the forward-
 // compatible `ellipse|line|blur` must round-trip (an unimplemented tool renders
 // nothing rather than erroring) — keep in sync with that union.
@@ -115,7 +115,7 @@ export const BcfTopicReadSchema = z.object({
   modified_author: z.union([z.string(), z.null()]),
   modified_date: z.union([z.string(), z.null()]),
   linked_finding_id: z.union([z.string().uuid(), z.null()]),
-  linked_model_id: z.union([z.string().uuid(), z.null()]),
+  linked_document_id: z.union([z.string().uuid(), z.null()]),
   linked_file_id: z.union([z.string().uuid(), z.null()]),
   is_2d: z.boolean(),
   // Derived from the linked model version (ProjectFile) for display.
@@ -143,7 +143,7 @@ export const BcfTopicSummarySchema = z.object({
   creation_author: z.string(),
   creation_date: z.string(),
   linked_finding_id: z.union([z.string().uuid(), z.null()]),
-  linked_model_id: z.union([z.string().uuid(), z.null()]).optional(),
+  linked_document_id: z.union([z.string().uuid(), z.null()]).optional(),
   linked_file_id: z.union([z.string().uuid(), z.null()]).optional(),
   is_2d: z.boolean(),
   model_version: z.union([z.number(), z.null()]).optional(),
@@ -204,7 +204,7 @@ export const BcfTopicCreateSchema = z.object({
   labels: z.array(z.string()).default([]),
   due_date: z.union([z.string(), z.null()]).optional(),
   linked_finding_id: z.union([z.string().uuid(), z.null()]).optional(),
-  linked_model_id: z.union([z.string().uuid(), z.null()]).optional(),
+  linked_document_id: z.union([z.string().uuid(), z.null()]).optional(),
   linked_file_id: z.union([z.string().uuid(), z.null()]).optional(),
   is_2d: z.boolean().optional(),
   viewpoint: BcfViewpointCreateSchema.optional(),
@@ -223,7 +223,7 @@ export const BcfTopicUpdateSchema = z.object({
   labels: z.union([z.array(z.string()), z.null()]).optional(),
   due_date: z.union([z.string(), z.null()]).optional(),
   linked_finding_id: z.union([z.string().uuid(), z.null()]).optional(),
-  linked_model_id: z.union([z.string().uuid(), z.null()]).optional(),
+  linked_document_id: z.union([z.string().uuid(), z.null()]).optional(),
   linked_file_id: z.union([z.string().uuid(), z.null()]).optional(),
   is_2d: z.boolean().optional(),
 });

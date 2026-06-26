@@ -15,9 +15,9 @@ from fastapi import HTTPException
 from fastapi_users.password import PasswordHelper
 from sqlalchemy import select
 
-from bimstitch_api.models.access_request import AccessRequest, AccessRequestStatus
-from bimstitch_api.models.user import User
-from bimstitch_api.pagination import SortParams, apply_sort
+from bimdossier_api.models.access_request import AccessRequest, AccessRequestStatus
+from bimdossier_api.models.user import User
+from bimdossier_api.pagination import SortParams, apply_sort
 
 if TYPE_CHECKING:
     from httpx import AsyncClient

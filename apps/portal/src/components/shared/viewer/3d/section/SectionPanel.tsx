@@ -1,13 +1,13 @@
 'use client';
 
-import { Crosshair, Eraser, Eye, EyeOff, FlipVertical, Move, RotateCw, Trash2 } from '@bimstitch/ui/icons';
+import { Crosshair, Eraser, Eye, EyeOff, FlipVertical, Move, RotateCw, Trash2 } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useEffect, useRef, useState, type JSX,
 } from 'react';
 
-import { ConfirmDialog, Slider, cn } from '@bimstitch/ui';
-import type { SectionPlane, ViewerHandle } from '@bimstitch/viewer';
+import { ConfirmDialog, Slider, cn } from '@bimdossier/ui';
+import type { SectionPlane, ViewerHandle } from '@bimdossier/viewer';
 
 import { PanelButton } from '@/components/shared/viewer/shared/PanelButton';
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';

@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import type { AppIcon } from '@bimstitch/ui';
+import type { AppIcon } from '@bimdossier/ui';
 
 import type { CalendarTone } from './types';
 

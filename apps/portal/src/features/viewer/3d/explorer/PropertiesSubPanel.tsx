@@ -1,7 +1,7 @@
 'use client';
 
-import { cn, CountChip, Eyebrow } from '@bimstitch/ui';
-import { Info } from '@bimstitch/ui/icons';
+import { cn, CountChip, Eyebrow } from '@bimdossier/ui';
+import { Info } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useRef, useState, type JSX,

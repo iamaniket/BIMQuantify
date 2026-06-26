@@ -1,12 +1,12 @@
 'use client';
 
-import { Unlink } from '@bimstitch/ui/icons';
+import { Unlink } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useId, type JSX } from 'react';
 
-import { Button, FormField, Input, Select, Textarea } from '@bimstitch/ui';
+import { Button, FormField, Input, Select, Textarea } from '@bimdossier/ui';
 
-import type { DocumentViewerHandle, FloorPlanViewerHandle, ViewerHandle } from '@bimstitch/viewer';
+import type { DocumentViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import { allowedMoveTargets } from '@/features/findings/board/kanbanTransitions';
 import type { ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
@@ -32,8 +32,8 @@ type Props = {
   resolvePickedGlobalId?: ((item: { modelId: string; localId: number } | null) => string | null) | undefined;
   /** Current viewport layout — routes IFC picks to the floor-plan in 2D mode. */
   viewMode?: ViewMode | undefined;
-  /** Floor-plan handle (2D plan surface) for picking in 2D mode. */
-  floorPlanHandle?: FloorPlanViewerHandle | null | undefined;
+  /** Active 2D pick surface (generated floor plan OR aligned PDF) for picking in 2D mode. */
+  floorPlanHandle?: DocumentViewerHandle | null | undefined;
   /** Convert a normalized plan point to a 3D world anchor. */
   convertFloorPlanPoint?: ConvertFloorPlanPoint | undefined;
 };
@@ -89,7 +89,7 @@ export function FindingDetailFields({
           anchor_y: anchor.anchor_y,
           anchor_z: anchor.anchor_z,
           anchor_page: anchor.anchor_page,
-          linked_model_id: anchor.linked_model_id,
+          linked_document_id: anchor.linked_document_id,
           linked_file_id: anchor.linked_file_id,
           linked_element_global_id: anchor.linkedElementGlobalId,
         });

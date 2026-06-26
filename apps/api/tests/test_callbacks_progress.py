@@ -28,7 +28,7 @@ async def test_running_callback_records_progress(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, _model_id, file_id = await _ready_file(client, fake, org_user, name="prog1.ifc")
+    project_id, _document_id, file_id = await _ready_file(client, fake, org_user, name="prog1.ifc")
     job = await _latest_job(client, org_user["access_token"], project_id)
     assert job["progress"] == 0
 
@@ -56,7 +56,7 @@ async def test_succeeded_callback_sets_progress_complete(
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
     client, fake = fake_storage_client
-    project_id, _model_id, file_id = await _ready_file(client, fake, org_user, name="prog2.ifc")
+    project_id, _document_id, file_id = await _ready_file(client, fake, org_user, name="prog2.ifc")
     job = await _latest_job(client, org_user["access_token"], project_id)
 
     succeeded = await client.post(

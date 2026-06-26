@@ -33,7 +33,12 @@ export function SidebarUserChip(): JSX.Element {
       setAvatarSrc(null);
       return;
     }
-    void getAvatarUrl(accessToken).then(setAvatarSrc).catch(() => { setAvatarSrc(null); });
+    void getAvatarUrl(accessToken).then(setAvatarSrc).catch((err: unknown) => {
+      // Cosmetic (initials fallback); dev-trace so a systemic presign outage
+      // isn't indistinguishable from "user has no avatar".
+      if (process.env.NODE_ENV !== 'production') console.warn('[sidebar] avatar presign failed', err);
+      setAvatarSrc(null);
+    });
   }, [avatarKey, accessToken]);
 
   return (

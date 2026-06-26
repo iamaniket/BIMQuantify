@@ -1,6 +1,6 @@
 'use client';
 
-import { Flag, FrameCorners } from '@bimstitch/ui/icons';
+import { Flag, FrameCorners } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   forwardRef,
@@ -13,7 +13,7 @@ import {
   type JSX,
 } from 'react';
 
-import type { DocumentEvents, DocumentViewerHandle } from '@bimstitch/viewer';
+import type { DocumentEvents, DocumentViewerHandle } from '@bimdossier/viewer';
 
 import { prettyKey } from '@/components/shared/viewer/shared/settings/prettyKey';
 import type { DocumentShortcutMap } from '@/lib/documentSettings';
@@ -22,9 +22,9 @@ import { stashPendingPdfContextPoint } from '@/features/viewer/shared/inspector/
 type ContextMenuData = DocumentEvents['contextmenu:open'];
 
 /**
- * Minimal structural handle the menu actually drives — both `DocumentViewerHandle`
- * (PDF) and `FloorPlanViewerHandle` (Split/2D plan) satisfy this subset, so the
- * same menu serves both surfaces.
+ * Minimal structural handle the menu actually drives. Both 2D surfaces now share
+ * one `DocumentViewerHandle` (the PDF document engine renders the generated plan
+ * too), so this subset serves the aligned-sheet PDF and the generated plan alike.
  */
 type ContextMenuHandle = Pick<DocumentViewerHandle, 'fitPage' | 'commands' | 'events'>;
 

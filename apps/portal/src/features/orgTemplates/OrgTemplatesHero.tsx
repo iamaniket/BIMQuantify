@@ -1,6 +1,6 @@
 'use client';
 
-import { Layers } from '@bimstitch/ui/icons';
+import { Layers } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

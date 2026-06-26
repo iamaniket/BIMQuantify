@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import { HeroGrid } from '@bimstitch/brand';
+import { HeroGrid } from '@bimdossier/brand';
 
 import { RemoteOrLocalImage } from './RemoteOrLocalImage';
 

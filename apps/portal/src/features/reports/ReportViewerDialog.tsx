@@ -1,11 +1,11 @@
 'use client';
 
-import { Check, FileText, PenLine } from '@bimstitch/ui/icons';
+import { Check, FileText, PenLine } from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import type { JSX, ReactNode } from 'react';
 
-import type { Locale } from '@bimstitch/i18n';
-import { Badge, Button, Spinner } from '@bimstitch/ui';
+import type { Locale } from '@bimdossier/i18n';
+import { Badge, Button, Spinner } from '@bimdossier/ui';
 
 import {
   DocumentViewerDialog,

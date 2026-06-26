@@ -1,10 +1,10 @@
 'use client';
 
-import { Paperclip } from '@bimstitch/ui/icons';
+import { Paperclip } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useMemo, type JSX } from 'react';
 
-import { Badge } from '@bimstitch/ui';
+import { Badge } from '@bimdossier/ui';
 
 import { HeroImage } from '@/components/shared/layout/HeroImage';
 import { HeroShell } from '@/components/shared/layout/HeroShell';

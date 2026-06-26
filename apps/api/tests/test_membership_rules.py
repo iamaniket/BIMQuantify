@@ -16,13 +16,13 @@ from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bimstitch_api.models.organization import Organization, OrganizationStatus
-from bimstitch_api.models.organization_member import (
+from bimdossier_api.models.organization import Organization, OrganizationStatus
+from bimdossier_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
 )
-from bimstitch_api.models.user import User
-from bimstitch_api.tenancy import schema_name_for
+from bimdossier_api.models.user import User
+from bimdossier_api.tenancy import schema_name_for
 
 if TYPE_CHECKING:
     pass

@@ -13,13 +13,13 @@ from fastapi_users.password import PasswordHelper
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimstitch_api.models.organization import Organization, OrganizationStatus
-from bimstitch_api.models.organization_member import (
+from bimdossier_api.models.organization import Organization, OrganizationStatus
+from bimdossier_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
 )
-from bimstitch_api.models.user import User
-from bimstitch_api.tenancy import schema_name_for
+from bimdossier_api.models.user import User
+from bimdossier_api.tenancy import schema_name_for
 from tests.conftest import _audit_rows
 
 PASSWORD = "correct-horse-battery"

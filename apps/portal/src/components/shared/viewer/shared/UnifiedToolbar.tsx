@@ -1,6 +1,6 @@
 'use client';
 
-import type { AppIcon } from '@bimstitch/ui';
+import type { AppIcon } from '@bimdossier/ui';
 import { useTranslations } from 'next-intl';
 import { Fragment, type JSX, type ReactNode } from 'react';
 

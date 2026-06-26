@@ -30,7 +30,7 @@ async def test_system_status_reflects_deploy_env_overrides(
 ) -> None:
     monkeypatch.setenv("DEPLOY_REGION", "EU-WEST")
     monkeypatch.setenv("DEPLOY_NODE", "AMS01")
-    from bimstitch_api.config import get_settings
+    from bimdossier_api.config import get_settings
 
     get_settings.cache_clear()
     try:
@@ -49,7 +49,7 @@ async def test_system_status_reflects_deploy_env_overrides(
 async def test_system_status_degrades_when_redis_fails(
     client: "AsyncClient", monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from bimstitch_api.routers import public as public_router
+    from bimdossier_api.routers import public as public_router
 
     async def _broken_check_redis() -> bool:
         return False
@@ -68,7 +68,7 @@ async def test_system_status_degrades_when_redis_fails(
 async def test_system_status_down_when_multiple_fail(
     client: "AsyncClient", monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from bimstitch_api.routers import public as public_router
+    from bimdossier_api.routers import public as public_router
 
     async def _broken() -> bool:
         return False

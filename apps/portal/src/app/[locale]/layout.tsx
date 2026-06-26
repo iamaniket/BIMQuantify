@@ -16,7 +16,7 @@ const fraunces = Fraunces({
 
 import { LocaleMigrationShim } from '@/components/LocaleMigrationShim';
 import { routing } from '@/i18n/routing';
-import { IconProvider } from '@bimstitch/ui/providers';
+import { IconProvider } from '@bimdossier/ui/providers';
 import { AuthProvider } from '@/providers/AuthProvider';
 import { PostHogProvider } from '@/providers/PostHogProvider';
 import { QueryProvider } from '@/providers/QueryProvider';

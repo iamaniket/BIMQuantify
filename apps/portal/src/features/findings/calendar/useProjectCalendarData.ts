@@ -9,7 +9,7 @@ import {
   useMemo, useState,
 } from 'react';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 
 import {
   addDays,

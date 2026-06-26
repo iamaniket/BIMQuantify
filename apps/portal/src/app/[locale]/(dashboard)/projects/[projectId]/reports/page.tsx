@@ -1,13 +1,13 @@
 'use client';
 
-import { LayoutGrid, Search, Table2 } from '@bimstitch/ui/icons';
+import { LayoutGrid, Search, Table2 } from '@bimdossier/ui/icons';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useMemo, useState, type JSX } from 'react';
 
 import {
   Badge, Input, Select, Skeleton, TabsContent,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';

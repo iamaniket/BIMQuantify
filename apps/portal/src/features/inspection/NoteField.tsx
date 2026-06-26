@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import { Label, Textarea } from '@bimstitch/ui';
+import { Label, Textarea } from '@bimdossier/ui';
 
 type Props = {
   value: string;

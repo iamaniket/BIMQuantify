@@ -13,7 +13,7 @@ type UploadVars = {
   description?: string | null;
   dossier_slot?: DossierSlotValue | null;
   linked_element_global_id?: string | null;
-  linked_model_id?: string | null;
+  linked_document_id?: string | null;
   linked_file_type?: LinkedFileTypeValue | null;
   anchor_x?: number | null;
   anchor_y?: number | null;
@@ -33,7 +33,7 @@ export function useUploadAttachment(
         description?: string | null;
         dossier_slot?: DossierSlotValue | null;
         linked_element_global_id?: string | null;
-        linked_model_id?: string | null;
+        linked_document_id?: string | null;
         linked_file_type?: LinkedFileTypeValue | null;
         anchor_x?: number | null;
         anchor_y?: number | null;
@@ -45,7 +45,7 @@ export function useUploadAttachment(
       if (vars.description !== undefined) extra.description = vars.description;
       if (vars.dossier_slot !== undefined) extra.dossier_slot = vars.dossier_slot;
       if (vars.linked_element_global_id !== undefined) extra.linked_element_global_id = vars.linked_element_global_id;
-      if (vars.linked_model_id !== undefined) extra.linked_model_id = vars.linked_model_id;
+      if (vars.linked_document_id !== undefined) extra.linked_document_id = vars.linked_document_id;
       if (vars.linked_file_type !== undefined) extra.linked_file_type = vars.linked_file_type;
       if (vars.anchor_x !== undefined) extra.anchor_x = vars.anchor_x;
       if (vars.anchor_y !== undefined) extra.anchor_y = vars.anchor_y;

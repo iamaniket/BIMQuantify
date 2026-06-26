@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 export type KpiTone = 'on-dark' | 'on-light';
 

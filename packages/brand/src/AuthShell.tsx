@@ -1,6 +1,6 @@
 import type { CSSProperties, JSX, ReactNode } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 export interface AuthShellProps {
   /** Content rendered in the left brand canvas (BrandMark + hero copy + KPI strip + optional map). */

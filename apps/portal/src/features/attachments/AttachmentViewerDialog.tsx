@@ -1,9 +1,9 @@
 'use client';
 
-import { Camera, FileAudio, FileText, FileVideo, Image, Pencil } from '@bimstitch/ui/icons';
+import { Camera, FileAudio, FileText, FileVideo, Image, Pencil } from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 
-import type { Locale } from '@bimstitch/i18n';
+import type { Locale } from '@bimdossier/i18n';
 import {
   useCallback,
   useEffect,
@@ -13,7 +13,7 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 
-import { Button, Spinner } from '@bimstitch/ui';
+import { Button, Spinner } from '@bimdossier/ui';
 
 import {
   DocumentViewerDialog,
@@ -341,7 +341,7 @@ export function AttachmentViewerDialog({
   metaGroups.push({ title: t('viewerGroupOrigin'), rows: originRows });
 
   const annotatePreview = editor.ready ? (
-    <div className="h-full w-full bg-[#101316]">{editor.canvas}</div>
+    <div className="h-full w-full bg-[var(--viewer-canvas-bg)]">{editor.canvas}</div>
   ) : (
     <div className="flex h-full items-center justify-center">
       {editor.failed ? (

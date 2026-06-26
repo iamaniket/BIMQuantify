@@ -1,10 +1,10 @@
 'use client';
 
-import { Clock, FrameCorners, Pencil, Trash2, X } from '@bimstitch/ui/icons';
+import { Clock, FrameCorners, Pencil, Trash2, X } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState, type JSX } from 'react';
 
-import { Badge, Button, IconButton, Tabs, TabsList, TabsTrigger } from '@bimstitch/ui';
+import { Badge, Button, IconButton, Tabs, TabsList, TabsTrigger } from '@bimdossier/ui';
 
 import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
 import type { Finding } from '@/lib/api/schemas';

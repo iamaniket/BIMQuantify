@@ -1,10 +1,10 @@
 'use client';
 
-import { Pencil } from '@bimstitch/ui/icons';
+import { Pencil } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 
-import { Button, Skeleton } from '@bimstitch/ui';
+import { Button, Skeleton } from '@bimdossier/ui';
 
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { useOrgAuditLog } from '@/features/admin/audit/useAuditLog';

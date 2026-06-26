@@ -4,7 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { getConfig } from '../config.js';
-import { enqueueJob, removeQueuedJob } from '../queue/queue.js';
+import { enqueueJob, getQueueStats, removeQueuedJob } from '../queue/queue.js';
 
 /**
  * Constant-time bearer-token check. A plain `auth !== expected` leaks timing on
@@ -36,6 +36,18 @@ const JobBody = z.object({
 
 export function registerRoutes(app: FastifyInstance): void {
   app.get('/healthz', async () => ({ ok: true }));
+
+  // Live BullMQ queue depth for the admin processor dashboard. The API proxies
+  // this (superuser-only) so the shared secret never reaches the browser.
+  app.get('/admin/queue-stats', async (request, reply) => {
+    const cfg = getConfig();
+    const auth = request.headers.authorization;
+    if (!isAuthorized(auth, cfg.PROCESSOR_SHARED_SECRET)) {
+      return reply.code(401).send({ error: 'UNAUTHORIZED' });
+    }
+    const counts = await getQueueStats();
+    return reply.code(200).send(counts);
+  });
 
   app.post('/jobs', async (request, reply) => {
     const cfg = getConfig();

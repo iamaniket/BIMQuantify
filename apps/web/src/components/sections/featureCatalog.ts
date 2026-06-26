@@ -16,7 +16,7 @@ import {
   Sparkles,
   Users,
   type AppIcon,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 
 /**
  * Single source of truth for the marketing feature list. `available` items

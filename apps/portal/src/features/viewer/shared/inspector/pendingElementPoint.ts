@@ -4,13 +4,13 @@
  * When a user opens an attach / finding / certificate flow from the 3D context
  * menu, the world-space point they right-clicked is stashed here so the
  * inspector body can anchor the new item to it (`linked_file_type='ifc'` +
- * `{x,y,z}`). This mirrors the PDF pin handoff (`bimstitch.pendingPdfPin`) and
+ * `{x,y,z}`). This mirrors the PDF pin handoff (`bimdossier.pendingPdfPin`) and
  * keeps the wiring inside the portal app — no viewer-package change needed.
  *
  * It is read-and-removed (single use) so a stale point never leaks onto a later,
  * unrelated upload.
  */
-export const PENDING_ELEMENT_POINT_KEY = 'bimstitch.pendingElementPoint';
+export const PENDING_ELEMENT_POINT_KEY = 'bimdossier.pendingElementPoint';
 
 export type PendingElementPoint = { x: number; y: number; z: number };
 

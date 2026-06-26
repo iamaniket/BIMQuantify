@@ -2,8 +2,8 @@
 
 import { forwardRef, type ReactNode } from 'react';
 
-import { Button, cn } from '@bimstitch/ui';
-import type { ButtonProps } from '@bimstitch/ui';
+import { Button, cn } from '@bimdossier/ui';
+import type { ButtonProps } from '@bimdossier/ui';
 
 export type PanelButtonVariant = 'primary' | 'secondary';
 

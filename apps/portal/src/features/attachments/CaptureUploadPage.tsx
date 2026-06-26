@@ -1,10 +1,10 @@
 'use client';
 
-import { Camera, CheckCircle, FileUp, XCircle } from '@bimstitch/ui/icons';
+import { Camera, CheckCircle, FileUp, XCircle } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 
-import { Button, Spinner } from '@bimstitch/ui';
+import { Button, Spinner } from '@bimdossier/ui';
 
 import { ApiError } from '@/lib/api/client';
 import { validateCaptureToken, uploadViaCaptureLink } from '@/lib/api/capturePublic';

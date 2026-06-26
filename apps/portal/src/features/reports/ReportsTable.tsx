@@ -2,12 +2,12 @@
 
 import {
   Check, Download, ExternalLink, PenLine,
-} from '@bimstitch/ui/icons';
+} from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
-import type { Locale } from '@bimstitch/i18n';
-import { Badge } from '@bimstitch/ui';
+import type { Locale } from '@bimdossier/i18n';
+import { Badge } from '@bimdossier/ui';
 
 import { DataTable } from '@/components/shared/DataTable';
 import type { Column } from '@/components/shared/PageTable';

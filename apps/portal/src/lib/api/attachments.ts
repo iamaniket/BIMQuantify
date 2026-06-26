@@ -39,7 +39,7 @@ export async function initiateAttachmentUpload(
     description?: string | null;
     dossier_slot?: DossierSlotValue | null;
     linked_element_global_id?: string | null;
-    linked_model_id?: string | null;
+    linked_document_id?: string | null;
     linked_file_type?: LinkedFileTypeValue | null;
     anchor_x?: number | null;
     anchor_y?: number | null;
@@ -95,7 +95,7 @@ export async function listAttachments(
   if (filters?.dossierSlot !== undefined) params.set('dossier_slot', filters.dossierSlot);
   if (filters?.unslotted === true) params.set('unslotted', 'true');
   if (filters?.linkedElementGlobalId !== undefined) params.set('linked_element_global_id', filters.linkedElementGlobalId);
-  if (filters?.linkedModelId !== undefined) params.set('linked_model_id', filters.linkedModelId);
+  if (filters?.linkedModelId !== undefined) params.set('linked_document_id', filters.linkedModelId);
   if (filters?.linkedFileId !== undefined) params.set('linked_file_id', filters.linkedFileId);
   if (filters?.unlinked === true) params.set('unlinked', 'true');
   if (filters?.linkedFileType !== undefined) params.set('linked_file_type', filters.linkedFileType);
@@ -168,7 +168,7 @@ export async function updateAttachment(
     description?: string | null;
     dossier_slot?: DossierSlotValue | null;
     linked_element_global_id?: string | null;
-    linked_model_id?: string | null;
+    linked_document_id?: string | null;
     linked_file_type?: LinkedFileTypeValue | null;
     anchor_x?: number | null;
     anchor_y?: number | null;
@@ -202,7 +202,7 @@ export async function uploadAttachmentEnd2End(
     description?: string | null;
     dossier_slot?: DossierSlotValue | null;
     linked_element_global_id?: string | null;
-    linked_model_id?: string | null;
+    linked_document_id?: string | null;
     linked_file_type?: LinkedFileTypeValue | null;
     anchor_x?: number | null;
     anchor_y?: number | null;

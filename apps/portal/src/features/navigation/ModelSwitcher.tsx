@@ -1,11 +1,11 @@
 'use client';
 
-import { ChevronDown } from '@bimstitch/ui/icons';
+import { ChevronDown } from '@bimdossier/ui/icons';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useMemo, useState, type JSX,
@@ -15,10 +15,10 @@ import {
   setViewerTarget,
   useViewerTarget,
 } from '@/features/viewer/shared/viewerSelectionStore';
-import type { ModelWithVersions, ProjectFile } from '@/lib/api/schemas';
+import type { DocumentWithVersions, ProjectFile } from '@/lib/api/schemas';
 import { kindForFormat, type ViewerFormat, type ViewerKind } from '@/components/shared/viewer/shared/viewerMode';
 
-import { useModelsWithVersions } from '../models/useModelsWithVersions';
+import { useDocumentsWithVersions } from '../documents/useDocumentsWithVersions';
 
 type ModelSwitcherItem = {
   id: string;
@@ -36,18 +36,23 @@ function latestViewableFile(versions: ProjectFile[]): ProjectFile | undefined {
   ));
 }
 
-function buildItems(models: ModelWithVersions[]): ModelSwitcherItem[] {
-  return models.map((m) => {
-    const viewable = latestViewableFile(m.versions);
-    const fileType = viewable?.file_type ?? m.primary_file_type ?? null;
-    const viewerKind = fileType !== null ? kindForFormat(fileType) : null;
-    return {
-      id: m.id,
-      name: m.name,
-      viewerKind,
-      loadable: viewerKind === '3d' && viewable !== undefined,
-    };
-  });
+function buildItems(models: DocumentWithVersions[]): ModelSwitcherItem[] {
+  return models
+    .map((m) => {
+      const viewable = latestViewableFile(m.versions);
+      const fileType = viewable?.file_type ?? m.primary_file_type ?? null;
+      const viewerKind = fileType !== null ? kindForFormat(fileType) : null;
+      return {
+        id: m.id,
+        name: m.name,
+        viewerKind,
+        loadable: viewerKind === '3d' && viewable !== undefined,
+      };
+    })
+    // This switcher loads 3D models into the federated scene. 2D drawings are
+    // not federatable — they live under their level (Models tab / floor-plan
+    // level switcher), so they don't belong in this list.
+    .filter((item) => item.viewerKind === '3d');
 }
 
 function KindBadge({ kind }: { kind: ViewerKind }): JSX.Element {
@@ -82,7 +87,7 @@ export function ModelSwitcher({ projectId, activeLabel }: Props): JSX.Element {
   const [open, setOpen] = useState(false);
   const target = useViewerTarget(projectId);
 
-  const modelsQuery = useModelsWithVersions(projectId);
+  const modelsQuery = useDocumentsWithVersions(projectId);
   const models = modelsQuery.data ?? [];
   const items = useMemo(() => buildItems(models), [models]);
 

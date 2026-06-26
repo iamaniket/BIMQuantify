@@ -2,7 +2,7 @@
 
 import type { JSX, ReactNode } from 'react';
 
-import { cn } from '@bimstitch/ui';
+import { cn } from '@bimdossier/ui';
 
 type PanelStatusStripProps = {
   /** Drives the status-dot colour: `active` = green/live, `idle` = grey. */

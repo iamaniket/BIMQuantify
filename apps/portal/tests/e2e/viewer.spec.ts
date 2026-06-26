@@ -35,7 +35,7 @@ async function apiFetch(
   const apiUrl = E2E_ENV.API_URL;
   return page.evaluate(
     async ([url, m, p, b]: [string, string, string, string | null]) => {
-      const tokens = JSON.parse(localStorage.getItem('bimstitch.tokens')!);
+      const tokens = JSON.parse(localStorage.getItem('bimdossier.tokens')!);
       const resp = await fetch(`${url}${p}`, {
         method: m,
         headers: {

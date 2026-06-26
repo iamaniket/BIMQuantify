@@ -1,4 +1,4 @@
-import type { ModelDisciplineValue, ModelStatusValue } from '@/lib/api/schemas';
+import type { ModelDisciplineValue, DocumentStatusValue } from '@/lib/api/schemas';
 
 export function formatDiscipline(value: ModelDisciplineValue): string {
   switch (value) {
@@ -14,7 +14,7 @@ export function formatDiscipline(value: ModelDisciplineValue): string {
   }
 }
 
-export function formatModelStatus(value: ModelStatusValue): string {
+export function formatDocumentStatus(value: DocumentStatusValue): string {
   switch (value) {
     case 'draft': return 'Draft';
     case 'active': return 'Active';
@@ -38,7 +38,7 @@ export const DISCIPLINE_OPTIONS: readonly {
 ];
 
 export const STATUS_OPTIONS: readonly {
-  value: ModelStatusValue;
+  value: DocumentStatusValue;
   label: string;
 }[] = [
   { value: 'active', label: 'Active' },

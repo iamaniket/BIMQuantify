@@ -12,7 +12,7 @@ import {
   type RefObject,
 } from 'react';
 
-import { Eyebrow } from '@bimstitch/ui';
+import { Eyebrow } from '@bimdossier/ui';
 
 /**
  * One interactive donut chart that *reshapes* in place. The overview is a single

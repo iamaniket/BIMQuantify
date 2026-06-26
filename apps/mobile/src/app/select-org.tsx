@@ -4,11 +4,13 @@ import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 import { colors, radii } from '@/theme';
 
 export default function SelectOrgScreen() {
   const router = useRouter();
+  const { t } = useT();
   const { tokens, me, switchOrganization } = useAuth();
   const [switching, setSwitching] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +26,7 @@ export default function SelectOrgScreen() {
       await switchOrganization(organizationId);
       router.replace('/');
     } catch {
-      setError('Could not switch organization. Try again.');
+      setError(t('selectOrg.error'));
       setSwitching(null);
     }
   }
@@ -34,8 +36,8 @@ export default function SelectOrgScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Text style={styles.heading}>Choose an organization</Text>
-        <Text style={styles.muted}>You belong to more than one. Pick one to continue.</Text>
+        <Text style={styles.heading}>{t('selectOrg.title')}</Text>
+        <Text style={styles.muted}>{t('selectOrg.subtitle')}</Text>
       </View>
       {error !== null ? <Text style={styles.error}>{error}</Text> : null}
       <FlatList

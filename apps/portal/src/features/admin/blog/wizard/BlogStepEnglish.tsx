@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, Upload } from '@bimstitch/ui/icons';
+import { FileText, Upload } from '@bimdossier/ui/icons';
 import {
   useCallback,
   useId,
@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 
 import {
   Input, Label, Textarea,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { useRegisterField } from '@/hooks/useRegisterField';
 

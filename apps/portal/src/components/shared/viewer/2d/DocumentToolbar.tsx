@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, House, MousePointer2, Move, Settings } from '@bimstitch/ui/icons';
+import { ChevronLeft, ChevronRight, House, MousePointer2, Move, Settings } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import {
   useEffect,
@@ -12,7 +12,7 @@ import {
 import type {
   DocumentActiveTool,
   DocumentViewerHandle,
-} from '@bimstitch/viewer';
+} from '@bimdossier/viewer';
 
 import type { DocumentSettings } from '@/lib/documentSettings';
 

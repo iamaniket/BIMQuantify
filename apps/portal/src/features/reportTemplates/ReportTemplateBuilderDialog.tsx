@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, ChevronUp, Plus, Trash2, Upload } from '@bimstitch/ui/icons';
+import { ChevronDown, ChevronUp, Plus, Trash2, Upload } from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';
@@ -21,7 +21,7 @@ import {
   Spinner,
   Switch,
   Textarea,
-} from '@bimstitch/ui';
+} from '@bimdossier/ui';
 
 import { Wizard, type WizardStep } from '@/components/shared/wizard/Wizard';
 import { ApiError } from '@/lib/api/client';

@@ -1,4 +1,4 @@
-import type { Plugin, ViewerContext } from '@bimstitch/viewer';
+import type { Plugin, ViewerContext } from '@bimdossier/viewer';
 
 /**
  * Forces the whole-model "monochrome" material look for the marketing showcase.

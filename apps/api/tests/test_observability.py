@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from bimstitch_api.observability import resolve_release
+from bimdossier_api.observability import resolve_release
 
 
 # Override conftest's autouse DB/Redis fixtures — pure unit test, no app.

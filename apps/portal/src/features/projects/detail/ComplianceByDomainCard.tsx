@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { Eyebrow, Tabs, TabsList, TabsTrigger, Progress } from '@bimstitch/ui';
+import { Eyebrow, Tabs, TabsList, TabsTrigger, Progress } from '@bimdossier/ui';
 
 import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
 import { ComplianceDonut } from '@/components/shared/charts/ComplianceDonut';
@@ -14,13 +14,13 @@ import type {
   ComplianceArticle,
   ComplianceTrend,
 } from '@/features/compliance/types';
-import type { Model } from '@/lib/api/schemas';
+import type { Document } from '@/lib/api/schemas';
 import { disciplineChipColors } from '@/lib/formatting/disciplineColors';
 
 type Props = {
   domains: ComplianceDomain[];
   articles: ComplianceArticle[];
-  models: Model[];
+  models: Document[];
   trend: ComplianceTrend;
   overallScore: number;
   totalChecks: number;

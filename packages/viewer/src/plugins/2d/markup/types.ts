@@ -4,7 +4,7 @@
  * `view_state_2d` JSONB). No three.js / DOM imports here.
  *
  * The shape model ({@link Annotation2D} / {@link MarkupTool} / {@link MarkupStyle})
- * is the SINGLE source of truth in `@bimstitch/annotation` and re-exported here
+ * is the SINGLE source of truth in `@bimdossier/annotation` and re-exported here
  * so the PDF/3D viewer, the image annotator and future mobile all speak one
  * model. The viewer's PDF tools implement only `rect|arrow|cloud|freehand|text`;
  * the wider union (incl. `ellipse|line|blur`) is forward-compatible — the markup
@@ -18,9 +18,9 @@
  * resolution-, scale- and rotation-independent.
  */
 
-import type { Annotation2D, MarkupTool } from '@bimstitch/annotation';
+import type { Annotation2D, MarkupTool } from '@bimdossier/annotation';
 
-export type { Annotation2D, MarkupStyle, MarkupTool } from '@bimstitch/annotation';
+export type { Annotation2D, MarkupStyle, MarkupTool } from '@bimdossier/annotation';
 
 /**
  * The whole markup payload for one topic's 2D viewpoint. Stored verbatim in the

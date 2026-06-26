@@ -1,11 +1,11 @@
 'use client';
 
-import { Check, ChevronDown, ChevronUp, X } from '@bimstitch/ui/icons';
+import { Check, ChevronDown, ChevronUp, X } from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-import { Badge, Button, TableCell, TableRow } from '@bimstitch/ui';
-import type { Locale } from '@bimstitch/i18n';
+import { Badge, Button, TableCell, TableRow } from '@bimdossier/ui';
+import type { Locale } from '@bimdossier/i18n';
 
 import { DataTable } from '@/components/shared/DataTable';
 import type { Column } from '@/components/shared/PageTable';

@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import { Skeleton } from '@bimstitch/ui';
+import { Skeleton } from '@bimdossier/ui';
 
 export default function DashboardLoading(): JSX.Element {
   return (

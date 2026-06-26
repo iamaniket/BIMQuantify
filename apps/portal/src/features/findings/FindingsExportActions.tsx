@@ -1,11 +1,11 @@
 'use client';
 
-import { Download, Flag } from '@bimstitch/ui/icons';
+import { Download, Flag } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useMemo, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
-import { AppDialog, Button, Select, Spinner } from '@bimstitch/ui';
+import { AppDialog, Button, Select, Spinner } from '@bimdossier/ui';
 
 import { UNASSIGNED_FILTER } from '@/features/findings/AssigneeFilterChips';
 import { useProjectPermissions } from '@/features/permissions';
