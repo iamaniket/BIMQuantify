@@ -90,20 +90,28 @@
   },
   "howItWorks": {
     "eyebrow": "Hoe het werkt",
-    "headline": "Van projectstart tot gereedmelding in vier stappen",
+    "headline": "Van projectstart tot gereedmelding in zes stappen",
     "step1": {
       "title": "Maak uw project aan",
       "body": "Voer het adres in met Nederlandse autocomplete, kies het gebouwtype en de gevolgklasse en stel uw geplande data in. De deadlines rekenen wij automatisch uit."
     },
     "step2": {
-      "title": "Upload documenten",
-      "body": "Tekeningen, certificaten, KB-documenten: upload alles op één plek. De dossier-checklist laat zien wat er nog ontbreekt."
+      "title": "Upload uw model of tekening",
+      "body": "Sleep uw IFC-model of een PDF-tekening erin. Het opent in de 3D-viewer in uw browser, klaar om doorheen te lopen en op te snaggen."
     },
     "step3": {
-      "title": "Volg bevindingen",
-      "body": "Registreer inspectiebevindingen, wijs ze toe aan uw team en upload bewijsfoto's. Elke bevinding doorloopt de volledige levenscyclus, van open tot geverifieerd."
+      "title": "Snag op het model",
+      "body": "Leg elke bevinding vast als punt op het model, wijs het toe aan uw team en onderbouw het met een foto. Elke bevinding doorloopt de volledige levenscyclus, van open tot geverifieerd."
     },
     "step4": {
+      "title": "Voeg uw documenten toe",
+      "body": "Certificaten, KB-documenten, onderliggende tekeningen: alles wat het dossier nodig heeft op één plek. De checklist laat zien wat er nog ontbreekt."
+    },
+    "step5": {
+      "title": "Genereer uw rapport",
+      "body": "Als het werk klopt, genereert u het rapport. Het bundelt uw bevindingen, bewijs en certificaten in één bestand."
+    },
+    "step6": {
       "title": "Dien op tijd in",
       "body": "E-mailherinneringen vóór elke deadline. Als het zover is, downloadt u het volledige dossierpakket en dient u uw gereedmelding in bij het Omgevingsloket."
     }
@@ -178,16 +186,16 @@
       "verified": "Geverifieerd"
     },
     "snags": {
-      "wall": "Woningscheidende wand onvoldoende brandwerend",
-      "cover": "Betondekking beneden minimum",
-      "pipe": "Doorvoering leiding niet afgewerkt",
+      "wall": "Brandwerendheid niet gehaald",
+      "cover": "Dekkingsdiepte onder minimum",
+      "pipe": "Doorvoering niet afgewerkt",
       "airtight": "Luchtdichtheidsmeting uitgesteld",
-      "insulation": "Isolatiewaarde dak niet gehaald",
-      "glazing": "U-waarde beglazing boven norm",
-      "drainage": "Afvoercapaciteit dak onvoldoende",
+      "insulation": "Isolatiewaarde niet gehaald",
+      "glazing": "U-waarde boven norm",
+      "drainage": "Afvoercapaciteit onvoldoende",
       "ventilation": "Ventilatiedebiet onder eis",
-      "balustrade": "Balustradehoogte onder minimum",
-      "rebar": "Wapeningsafstand buiten tolerantie"
+      "balustrade": "Vereiste hoogte onder minimum",
+      "rebar": "Tussenafstand buiten tolerantie"
     },
     "rooms": {
       "living": "Woonkamer",

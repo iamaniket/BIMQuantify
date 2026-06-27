@@ -447,6 +447,11 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
 
       const onPointerDown = (ev: PointerEvent): void => {
         if (!enabled) return;
+        // Mouse-only: our capture-phase interception + synthetic re-dispatch is a
+        // mouse-precision feature. On touch it would hijack single-finger orbit and
+        // break two-finger pinch (we track only one pointer), so we stand aside and
+        // let camera-controls' native touch state machine handle it (see Viewer.ts).
+        if (ev.pointerType !== 'mouse') return;
         const buttonName = BUTTON_NAME[ev.button];
         if (!buttonName) return;
         const action = controls.mouseButtons[buttonName];
@@ -501,6 +506,7 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
       // by re-dispatching the original pointerdown synthetically.
       const onDragMove = (ev: PointerEvent): void => {
         if (!enabled) return;
+        if (ev.pointerType !== 'mouse') return; // touch handled by camera-controls
         if (gestureButton < 0) return;
         if (pivotApplied) return;
 

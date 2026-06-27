@@ -108,6 +108,15 @@ export interface ControlsOptions {
   middle?: CameraAction;
   right?: CameraAction;
   wheel?: CameraAction;
+  /**
+   * Orbit/pan damping in seconds (camera-controls `smoothTime` /
+   * `draggingSmoothTime`). Lower = snappier, higher = more inertial. Left
+   * undefined inherits camera-controls' library defaults (0.25 / 0.125). The
+   * portal maps a single "Responsiveness" slider onto both; can also be retuned
+   * live via the `camera.setDamping` command.
+   */
+  smoothTime?: number;
+  draggingSmoothTime?: number;
 }
 
 export interface ZoomOptions {
@@ -633,6 +642,34 @@ export class Viewer {
     // the lower end is the fly-through threshold (see infinityDolly above).
     world.camera.controls.minDistance = this.zoomInDistance;
     world.camera.controls.maxDistance = Infinity;
+
+    // Touch gestures: one-finger orbit, two-finger pinch-dolly+truck, three-finger
+    // pan. These are camera-controls' perspective defaults, but set them
+    // explicitly so the 3D rig matches the 2D viewer (plugins/2d/camera) and isn't
+    // silently changed if a library default flips. The ACTION enum is reached via
+    // the controls' constructor to avoid a direct `camera-controls` dependency in
+    // this package (same idiom as applyControls). The pivot-rotate plugin ignores
+    // non-mouse pointers, so these native touch actions drive orbit/pinch directly.
+    {
+      const ctor = world.camera.controls.constructor as { ACTION?: Record<string, number> };
+      const action = ctor.ACTION;
+      if (action) {
+        const touches = world.camera.controls.touches;
+        if (action.TOUCH_ROTATE !== undefined) touches.one = action.TOUCH_ROTATE as typeof touches.one;
+        if (action.TOUCH_DOLLY_TRUCK !== undefined) touches.two = action.TOUCH_DOLLY_TRUCK as typeof touches.two;
+        if (action.TOUCH_TRUCK !== undefined) touches.three = action.TOUCH_TRUCK as typeof touches.three;
+      }
+    }
+
+    // Orbit/pan damping. Left at camera-controls' library defaults (0.25 / 0.125)
+    // unless the host configures it; the portal drives a "Responsiveness" slider
+    // onto both and can retune live via `camera.setDamping`.
+    if (this.options.controls?.smoothTime !== undefined) {
+      world.camera.controls.smoothTime = this.options.controls.smoothTime;
+    }
+    if (this.options.controls?.draggingSmoothTime !== undefined) {
+      world.camera.controls.draggingSmoothTime = this.options.controls.draggingSmoothTime;
+    }
 
     this.applyControls(world);
     this.applyBackground(world);

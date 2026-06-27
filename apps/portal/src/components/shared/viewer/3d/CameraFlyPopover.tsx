@@ -7,6 +7,8 @@ import {
   ArrowUp,
   ChevronsDown,
   ChevronsUp,
+  Minus,
+  Plus,
   RotateCcw,
   RotateCw,
   type AppIcon,
@@ -152,6 +154,28 @@ export function CameraFlyPopover({ handle, onClose }: Props): JSX.Element {
     >
       <ToolbarGroup>{ROW_TOP.map(renderButton)}</ToolbarGroup>
       <ToolbarGroup>{ROW_BOTTOM.map(renderButton)}</ToolbarGroup>
+      {/* Move-speed adjust. The wheel already dollies forward/back in fly mode, so
+          speed lives here (and on the = / - keys), not on the wheel. */}
+      <ToolbarGroup>
+        <ToolButton
+          aria-label={t('slower')}
+          title={t('slower')}
+          disabled={!handle}
+          data-testid="viewer-fly-slower"
+          onClick={() => { handle?.commands.execute('cameraFly.speedDown').catch(() => undefined); }}
+        >
+          <Minus className="h-[22px] w-[22px]" weight="bold" />
+        </ToolButton>
+        <ToolButton
+          aria-label={t('faster')}
+          title={t('faster')}
+          disabled={!handle}
+          data-testid="viewer-fly-faster"
+          onClick={() => { handle?.commands.execute('cameraFly.speedUp').catch(() => undefined); }}
+        >
+          <Plus className="h-[22px] w-[22px]" weight="bold" />
+        </ToolButton>
+      </ToolbarGroup>
     </div>
   );
 }

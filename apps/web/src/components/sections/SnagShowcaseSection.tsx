@@ -172,10 +172,10 @@ export function SnagShowcaseSection(): JSX.Element {
                 className="pointer-events-auto"
               >
                 <TabsList className="shadow-sm ring-1 ring-border">
-                  <TabsTrigger value="3d" size="sm">
+                  <TabsTrigger value="3d" size="md">
                     {t('tab3d')}
                   </TabsTrigger>
-                  <TabsTrigger value="2d" size="sm">
+                  <TabsTrigger value="2d" size="md">
                     {t('tab2d')}
                   </TabsTrigger>
                 </TabsList>

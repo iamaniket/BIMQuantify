@@ -11,8 +11,10 @@ import type { CameraFlyPluginOptions, CullingMode, ShadowMode, ViewerHandle, Zoo
 import {
   DEFAULT_VIEWER_SETTINGS,
   colorToHex,
+  dampingFromResponsiveness,
   hexToColor,
   loadViewerSettings,
+  responsivenessFromDamping,
   saveViewerSettings,
   type EffectsQuality,
   type InteractivePerformanceSettings,
@@ -180,6 +182,23 @@ function ControlsTab({
   const t = useTranslations('viewer.settings');
   return (
     <div className="space-y-4">
+      <Section title={t('cameraFeel')} note={t('cameraFeelHint')}>
+        <RangeField
+          label={t('responsiveness')}
+          value={responsivenessFromDamping(settings.controls.smoothTime)}
+          min={0}
+          max={1}
+          step={0.05}
+          format={(v) => `${(v * 100).toFixed(0)}%`}
+          onChange={(r) => {
+            const { smoothTime, draggingSmoothTime } = dampingFromResponsiveness(r);
+            onChange({
+              ...settings,
+              controls: { ...settings.controls, smoothTime, draggingSmoothTime },
+            });
+          }}
+        />
+      </Section>
       <Section title={t('zoomLimits')} note={t('zoomHint')}>
         <RangeField
           label={t('zoomSpeed')}
@@ -536,6 +555,18 @@ function applyLiveCommands3D(
   if (snapZoom.maxFactor !== draftZoom.maxFactor) zoomPatch.maxFactor = draftZoom.maxFactor;
   if (Object.keys(zoomPatch).length > 0) {
     handle.commands.execute('zoom.setOptions', zoomPatch).catch(() => undefined);
+  }
+
+  // Camera damping (orbit/pan responsiveness) — applies live, no remount.
+  const snapCtl = snapshot.controls;
+  const draftCtl = draft.controls;
+  const dampPatch: { smoothTime?: number; draggingSmoothTime?: number } = {};
+  if (snapCtl.smoothTime !== draftCtl.smoothTime) dampPatch.smoothTime = draftCtl.smoothTime;
+  if (snapCtl.draggingSmoothTime !== draftCtl.draggingSmoothTime) {
+    dampPatch.draggingSmoothTime = draftCtl.draggingSmoothTime;
+  }
+  if (Object.keys(dampPatch).length > 0) {
+    handle.commands.execute('camera.setDamping', dampPatch).catch(() => undefined);
   }
 
   // Contact-shadow silhouette source — re-bakes live (no remount). The on/off

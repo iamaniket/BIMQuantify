@@ -2,12 +2,13 @@
 
 import dynamic from 'next/dynamic';
 import type React from 'react';
-import { type JSX } from 'react';
+import { type JSX, useRef } from 'react';
 
 import { Skeleton } from '@bimdossier/ui';
 import type { DocumentViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import { FloorPlanPane } from '@/features/viewer/2d/FloorPlanPane';
+import { FirstPersonReticle } from '@/features/viewer/3d/FirstPersonReticle';
 import { ModelOutOfViewIndicator } from '@/features/viewer/3d/ModelOutOfViewIndicator';
 import { type ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import type { Finding } from '@/lib/api/schemas';
@@ -104,6 +105,9 @@ export function IfcViewerCanvas({
 }: IfcViewerCanvasProps): JSX.Element {
   // Calibration mode reuses the split layout (3D live left, chosen PDF right).
   const isSplitLike = viewMode === 'split' || viewMode === 'calibration';
+  // Remember which mode "Align" was launched from so exiting returns there
+  // (split → split, 2D → 2D) instead of always dropping to 2D.
+  const preCalibrationModeRef = useRef<ViewMode>('2d');
   const ifcViewerEl = (
     <IfcViewer
       key={`${scope.sceneKey}:${viewerEpoch}`}
@@ -201,6 +205,12 @@ export function IfcViewerCanvas({
           viewerReady={viewerReady}
           active={viewMode !== '2d' && !outOfViewSuppressed}
         />
+        {/* Center crosshair while walking (first-person) — scoped to the 3D pane. */}
+        <FirstPersonReticle
+          handle={viewerHandleRef.current}
+          viewerReady={viewerReady}
+          active={viewMode !== '2d'}
+        />
       </div>
 
       {/* Draggable divider — desktop split/calibration mode only */}
@@ -232,7 +242,7 @@ export function IfcViewerCanvas({
             viewerReady={viewerReady}
             metadata={planMetadata}
             floorPlansUrl={scope.planFloorPlansUrl}
-            onExit={() => { onViewModeChange('2d'); }}
+            onExit={() => { onViewModeChange(preCalibrationModeRef.current); }}
           />
         </div>
       ) : hasFloorPlans && viewMode !== '3d' && scope.planFloorPlansUrl ? (
@@ -251,7 +261,10 @@ export function IfcViewerCanvas({
             onFpHandle={onFpHandle}
             onActiveElevationChange={onFpActiveElevationChange}
             canCalibrate={canCalibrate}
-            onCalibrate={() => { onViewModeChange('calibration'); }}
+            onCalibrate={() => {
+              preCalibrationModeRef.current = viewMode;
+              onViewModeChange('calibration');
+            }}
           />
         </div>
       ) : null}

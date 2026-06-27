@@ -112,6 +112,11 @@ const TWO_PI = Math.PI * 2;
 const MIN_PITCH_ANGLE = THREE.MathUtils.degToRad(1);
 const MAX_PITCH_ANGLE = Math.PI - MIN_PITCH_ANGLE;
 
+// Move-speed clamp + per-step factor for the in-fly speed adjust (± keys / popover).
+const MOVE_FRACTION_MIN = 0.03;
+const MOVE_FRACTION_MAX = 2;
+const SPEED_STEP = 1.25;
+
 export interface CameraFlyPluginOptions {
   /**
    * Translation speed as a fraction of the scene diagonal per second.
@@ -166,6 +171,13 @@ export function cameraFlyPlugin(
   const sprintMultiplier = options.sprintMultiplier ?? 3;
   // True while Shift is held in fly mode — temporarily speeds up translation.
   let shiftHeld = false;
+
+  // Clamp + broadcast the move speed (driven by the ± commands and the popover's
+  // speed presets). Emitting `fly:speed` lets the popover reflect the live value.
+  const setMoveFraction = (v: number): void => {
+    moveFraction = Math.min(MOVE_FRACTION_MAX, Math.max(MOVE_FRACTION_MIN, v));
+    ctxRef?.events.emit('fly:speed', { moveFraction });
+  };
 
   let rafId: number | null = null;
   let lastTime = 0;
@@ -331,6 +343,9 @@ export function cameraFlyPlugin(
 
   const onPointerDown = (e: PointerEvent): void => {
     if (!active || e.button !== 0 || !ctxRef) return;
+    // Mouse-only look-drag: on touch, the on-screen look-joystick owns first-person
+    // look (a one-finger canvas drag would otherwise fight it).
+    if (e.pointerType !== 'mouse') return;
     if (e.target !== ctxRef.canvas) return;
     dragging = true;
     lastDragX = e.clientX;
@@ -587,10 +602,23 @@ export function cameraFlyPlugin(
       // is optional; only provided values are applied. turnSpeed is radians/sec.
       ctx.commands.register('cameraFly.setOptions', (args: unknown) => {
         const o = args as Partial<CameraFlyPluginOptions> | undefined;
-        if (typeof o?.moveFraction === 'number') moveFraction = o.moveFraction;
+        if (typeof o?.moveFraction === 'number') setMoveFraction(o.moveFraction);
         if (typeof o?.turnSpeed === 'number') turnSpeed = o.turnSpeed;
         if (typeof o?.lookSensitivity === 'number') lookSensitivity = o.lookSensitivity;
       }, { title: 'Set fly speed options' });
+
+      // In-fly speed adjust. The mouse wheel already dollies forward/back in fly
+      // mode, so speed is on the ± keys + the popover buttons instead. Default
+      // shortcut for "faster" is '=' — the same physical key as '+', but unshifted
+      // (a shifted '+' canonicalizes to 'Shift++' and wouldn't match). Rebindable.
+      ctx.commands.register('cameraFly.speedUp', () => setMoveFraction(moveFraction * SPEED_STEP), {
+        title: 'Fly faster',
+        defaultShortcut: '=',
+      });
+      ctx.commands.register('cameraFly.speedDown', () => setMoveFraction(moveFraction / SPEED_STEP), {
+        title: 'Fly slower',
+        defaultShortcut: '-',
+      });
 
       // One command per direction, bound to a default key. The keyboard-shortcuts
       // plugin dispatches these on keydown (= press); release happens on keyup

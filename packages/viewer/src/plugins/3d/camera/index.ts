@@ -330,9 +330,38 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
           // canvas (horizontal squeeze). Re-derive it absolutely as the last
           // write (no-op when switching to Perspective).
           ctx.syncOrthoAspect();
+          // Single source of truth for the toolbar projection toggle — calibration
+          // and the minimap also drive projection, so consumers reflect this event
+          // rather than tracking optimistic local state.
+          ctx.events.emit('camera:projection', { mode });
           ctx.requestRender();
         },
         { title: 'Set camera projection' },
+      );
+
+      // Camera responsiveness: lower smoothTime = snappier, higher = more inertial.
+      // The 3D rig otherwise inherits camera-controls' library defaults (0.25 /
+      // 0.125); the portal maps a single "Responsiveness" slider onto both. Driven
+      // live from viewer settings via applyLiveCommands3D — keep it out of
+      // needsReload so it never forces a viewer remount.
+      commands.register(
+        'camera.setDamping',
+        (args) => {
+          const a = args as
+            | { smoothTime?: number; draggingSmoothTime?: number }
+            | undefined;
+          if (!a) return;
+          const c = ctx.cameraControls as unknown as {
+            smoothTime: number;
+            draggingSmoothTime: number;
+          };
+          if (typeof a.smoothTime === 'number') c.smoothTime = Math.max(0.0001, a.smoothTime);
+          if (typeof a.draggingSmoothTime === 'number') {
+            c.draggingSmoothTime = Math.max(0.0001, a.draggingSmoothTime);
+          }
+          ctx.requestRender();
+        },
+        { title: 'Set camera damping' },
       );
 
       // Model world-space AABB, used by the minimap to calibrate the IFC↔viewer

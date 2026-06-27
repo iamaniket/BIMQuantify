@@ -52,6 +52,23 @@ const MATCAP_SHADED = `${FRAG_NORMAL}
 \t\tgl_FragColor.rgb = vec3( 0.52, 0.58, 0.68 ) * ( 0.18 + 0.82 * pow( dmF, 0.6 ) ) + vec3( 0.85, 0.90, 1.0 ) * dmRim;`;
 const MATCAP_FLAT = 'gl_FragColor.rgb = vec3( 0.55, 0.60, 0.68 );';
 
+// Toon/cel — posterize the headlight shade into a few flat bands, kept over the
+// element's own colour so materials stay distinguishable (a sketch/study look).
+const TOON_SHADED = `${FRAG_NORMAL}
+\t\tfloat dmL = clamp( dmN.z, 0.0, 1.0 );
+\t\tfloat dmBand = dmL < 0.25 ? 0.55 : ( dmL < 0.55 ? 0.78 : ( dmL < 0.82 ? 0.92 : 1.0 ) );
+\t\tgl_FragColor.rgb *= dmBand;`;
+// No view normal — can't band; leave the element colour untouched.
+const TOON_FLAT = '';
+
+// Gooch technical-illustration — cool (recessed) → warm (facing), with a faint
+// element-colour tint so distinct materials still read.
+const GOOCH_SHADED = `${FRAG_NORMAL}
+\t\tfloat dmL = clamp( dmN.z, 0.0, 1.0 );
+\t\tvec3 dmTint = gl_FragColor.rgb * 0.20;
+\t\tgl_FragColor.rgb = mix( vec3( 0.10, 0.20, 0.50 ) + dmTint, vec3( 0.80, 0.72, 0.40 ) + dmTint, dmL );`;
+const GOOCH_FLAT = 'gl_FragColor.rgb = vec3( 0.50, 0.51, 0.48 );';
+
 const NOOP: NonNullable<THREE.Material['onBeforeCompile']> = () => {
   /* restored to a no-op so the program cache key is stable */
 };
@@ -126,6 +143,13 @@ function buildOnBeforeCompile(
     } else if (look === 'matcap') {
       const shaded = injectViewNormal(shader);
       injectFinalColor(shader, shaded ? MATCAP_SHADED : MATCAP_FLAT);
+    } else if (look === 'toon') {
+      const shaded = injectViewNormal(shader);
+      if (shaded) injectFinalColor(shader, TOON_SHADED);
+      else if (TOON_FLAT) injectFinalColor(shader, TOON_FLAT);
+    } else if (look === 'gooch') {
+      const shaded = injectViewNormal(shader);
+      injectFinalColor(shader, shaded ? GOOCH_SHADED : GOOCH_FLAT);
     }
   };
 }

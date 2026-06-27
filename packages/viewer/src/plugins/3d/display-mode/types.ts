@@ -3,7 +3,7 @@
  * `display-mode` plugin. `xray` is delegated to the `xray` plugin; the other
  * non-`normal` values are {@link MaterialLook}s applied via `ctx.setActiveLook`.
  */
-export type DisplayMode = 'normal' | 'xray' | 'monochrome' | 'clay' | 'matcap';
+export type DisplayMode = 'normal' | 'xray' | 'monochrome' | 'clay' | 'matcap' | 'toon' | 'gooch';
 
 /** Every selectable mode, in cycle order (`display.cycle`). */
 export const DISPLAY_MODES: readonly DisplayMode[] = [
@@ -12,4 +12,6 @@ export const DISPLAY_MODES: readonly DisplayMode[] = [
   'monochrome',
   'clay',
   'matcap',
+  'toon',
+  'gooch',
 ] as const;

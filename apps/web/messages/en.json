@@ -90,20 +90,28 @@
   },
   "howItWorks": {
     "eyebrow": "How it works",
-    "headline": "From project start to gereedmelding in four steps",
+    "headline": "From project start to gereedmelding in six steps",
     "step1": {
       "title": "Create your project",
       "body": "Enter the address with Dutch autocomplete, pick the building type and gevolgklasse, and set your planned dates. We compute the deadlines automatically."
     },
     "step2": {
-      "title": "Upload documents",
-      "body": "Drawings, certificates, KB documents: upload everything in one place. The dossier checklist shows what's still missing."
+      "title": "Upload your model or drawing",
+      "body": "Drop in your IFC model or a PDF drawing. It opens in the 3D viewer in your browser, ready to walk through and snag on."
     },
     "step3": {
-      "title": "Track findings",
-      "body": "Log inspection findings, assign them to your team, and upload evidence photos. Each one runs its full lifecycle, from open to verified."
+      "title": "Snag on the model",
+      "body": "Log every finding as a point on the model, assign it to your team, and back it with a photo. Each one runs its full lifecycle, from open to verified."
     },
     "step4": {
+      "title": "Add your documents",
+      "body": "Certificates, KB documents, supporting drawings: everything the dossier needs in one place. The checklist shows what's still missing."
+    },
+    "step5": {
+      "title": "Generate your report",
+      "body": "When the work checks out, generate the report. It pulls your findings, evidence, and certificates into one file."
+    },
+    "step6": {
       "title": "File on time",
       "body": "Email reminders land before every deadline. When it's time, download the complete dossier package and file your gereedmelding at the Omgevingsloket."
     }
@@ -178,16 +186,16 @@
       "verified": "Verified"
     },
     "snags": {
-      "wall": "Party-wall fire rating not met",
-      "cover": "Concrete cover below minimum",
-      "pipe": "Pipe penetration not sealed",
+      "wall": "Fire rating not met",
+      "cover": "Cover depth below minimum",
+      "pipe": "Penetration not sealed",
       "airtight": "Airtightness test outstanding",
-      "insulation": "Roof insulation value not met",
-      "glazing": "Glazing U-value above limit",
-      "drainage": "Roof drainage capacity insufficient",
+      "insulation": "Insulation value not met",
+      "glazing": "U-value above limit",
+      "drainage": "Drainage capacity insufficient",
       "ventilation": "Ventilation flow below requirement",
-      "balustrade": "Balustrade height below minimum",
-      "rebar": "Rebar spacing out of tolerance"
+      "balustrade": "Required height below minimum",
+      "rebar": "Spacing out of tolerance"
     },
     "rooms": {
       "living": "Living room",

@@ -4011,6 +4011,9 @@
       "settings": "Settings",
       "spaces": "Spaces",
       "minimap": "Floor plan",
+      "projection": "Projection",
+      "projectionToOrthographic": "Switch to orthographic",
+      "projectionToPerspective": "Switch to perspective",
       "comingSoonSuffix": "{label} (coming soon)",
       "pan": "Pan",
       "panTooltip": "Pan (drag to move)",
@@ -4037,7 +4040,9 @@
       "xray": "X-Ray",
       "monochrome": "Monochrome",
       "clay": "White clay",
-      "matcap": "MatCap"
+      "matcap": "MatCap",
+      "toon": "Sketch",
+      "gooch": "Illustration"
     },
     "flyNav": {
       "title": "Fly navigation",
@@ -4048,7 +4053,9 @@
       "strafeLeft": "Move left (A)",
       "strafeRight": "Move right (D)",
       "raise": "Raise camera (R)",
-      "lower": "Lower camera (F)"
+      "lower": "Lower camera (F)",
+      "slower": "Move slower (−)",
+      "faster": "Move faster (+)"
     },
     "measurement": {
       "modeDistance": "Distance",
@@ -4150,6 +4157,9 @@
       "enableEffects": "Enable effects",
       "edgesOutline": "Edges (outline)",
       "quality": "Quality",
+      "cameraFeel": "Camera feel",
+      "cameraFeelHint": "How quickly the camera settles after you orbit or pan. Higher is snappier; lower is smoother and more inertial.",
+      "responsiveness": "Responsiveness",
       "zoomLimits": "Zoom",
       "zoomHint": "Zoom-in flies through into interiors; max zoom-out caps how far you can pull back.",
       "zoomSpeed": "Zoom speed",

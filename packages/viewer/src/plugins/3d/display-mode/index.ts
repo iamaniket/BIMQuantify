@@ -37,7 +37,13 @@ const isDisplayMode = (v: unknown): v is DisplayMode =>
 
 /** Map a display mode to the material look it applies (x-ray/normal → none). */
 const lookFor = (mode: DisplayMode): MaterialLook =>
-  mode === 'monochrome' || mode === 'clay' || mode === 'matcap' ? mode : 'normal';
+  mode === 'monochrome' ||
+  mode === 'clay' ||
+  mode === 'matcap' ||
+  mode === 'toon' ||
+  mode === 'gooch'
+    ? mode
+    : 'normal';
 
 export function displayModePlugin(): Plugin & DisplayModePluginAPI {
   let ctxRef: ViewerContext | null = null;

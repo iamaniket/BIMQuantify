@@ -1,6 +1,6 @@
 'use client';
 
-import { Blueprint, BoundingBox, Box, Eraser, Eye, Footprints, Home, Map, MousePointer2, Orbit, Settings, SquareSplitHorizontal } from '@bimdossier/ui/icons';
+import { Blueprint, BoundingBox, Box, Eraser, Eye, Footprints, Home, Map, MousePointer2, Orbit, Scan, Settings, SquareSplitHorizontal } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
@@ -61,6 +61,9 @@ export function Toolbar({
   //   action  — select ↔ erase ↔ none (at most one; forced none in first-person)
   const [navMode, setNavMode] = useState<NavMode>('orbit');
   const [action, setAction] = useState<ActionMode>('none');
+  // Live projection mode, mirrored from the viewer's `camera:projection` event so
+  // the toggle stays correct even when calibration/minimap drive projection.
+  const [projection, setProjection] = useState<'Perspective' | 'Orthographic'>('Perspective');
   const firstPerson = navMode === 'firstPerson';
 
   useEffect(() => {
@@ -68,7 +71,13 @@ export function Toolbar({
     const offNav = handle.events.on('navmode:change', ({ mode }) => { setNavMode(mode); });
     const offAction = handle.events.on('action:change', ({ action: a }) => { setAction(a); });
     const offMode = handle.events.on('display:change', ({ mode }) => { setDisplayMode(mode); });
-    return () => { offNav(); offAction(); offMode(); };
+    const offProj = handle.events.on('camera:projection', ({ mode }) => { setProjection(mode); });
+    // Seed projection — no event fires until the first switch.
+    void handle.commands
+      .execute<'Perspective' | 'Orthographic'>('camera.getProjection')
+      .then((m) => { if (m === 'Perspective' || m === 'Orthographic') setProjection(m); })
+      .catch(() => undefined);
+    return () => { offNav(); offAction(); offMode(); offProj(); };
   }, [handle]);
 
   const run = (cmd: string, args?: unknown): void => {
@@ -212,6 +221,19 @@ export function Toolbar({
         label: tMode('label'),
         isActive: modeOpen || displayMode !== 'normal',
         onClick: () => { setModeOpen((v) => !v); },
+      },
+      {
+        type: 'button',
+        id: 'projection',
+        icon: Scan,
+        label: t('projection'),
+        tooltip: projection === 'Orthographic' ? t('projectionToPerspective') : t('projectionToOrthographic'),
+        isActive: projection === 'Orthographic',
+        onClick: () => {
+          run('camera.setProjection', {
+            mode: projection === 'Orthographic' ? 'Perspective' : 'Orthographic',
+          });
+        },
       },
       {
         type: 'button',

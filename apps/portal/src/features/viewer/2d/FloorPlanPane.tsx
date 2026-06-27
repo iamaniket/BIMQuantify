@@ -467,6 +467,33 @@ export function FloorPlanPane({
     [viewMode, handle, levels],
   );
 
+  // Keyboard storey switching (Split/2D): PageUp climbs a floor, PageDown descends.
+  // `levels` is sorted top→bottom (index 0 = highest elevation), so "up" decreases
+  // the index. Window-scoped with a typing-target guard, mirroring useDocumentShortcuts.
+  useEffect(() => {
+    if (levels.length < 2) return undefined;
+    const isTyping = (el: EventTarget | null): boolean => {
+      if (!(el instanceof HTMLElement)) return false;
+      if (el.isContentEditable) return true;
+      const tag = el.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    };
+    const onKey = (ev: KeyboardEvent): void => {
+      if (ev.key !== 'PageUp' && ev.key !== 'PageDown') return;
+      if (isTyping(ev.target)) return;
+      const last = levels.length - 1;
+      const next =
+        ev.key === 'PageUp'
+          ? Math.max(0, safeLevel - 1)
+          : Math.min(last, safeLevel + 1);
+      if (next === safeLevel) return;
+      ev.preventDefault();
+      handleSelectLevel(next);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('keydown', onKey); };
+  }, [levels.length, safeLevel, handleSelectLevel]);
+
   // C3 (PDF) — 3D selection → persistent highlight on the aligned sheet + auto-
   // follow to its storey. The generated-plan counterpart lives in useFloorPlanLink
   // (fpHandle is null in pdfMode, so the two never both fire).

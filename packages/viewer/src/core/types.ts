@@ -61,10 +61,12 @@ export type ShadowMode = 'auto' | 'boxes' | 'geometry';
  *  - `'monochrome'` — desaturate the final shaded colour (keeps value, drops hue).
  *  - `'clay'`       — uniform light albedo; lighting + shadows still read the form.
  *  - `'matcap'`     — texture-free clay/ceramic shading from the view-space normal.
+ *  - `'toon'`       — posterize the headlight shade into flat bands over the element colour (cel/sketch).
+ *  - `'gooch'`      — cool→warm technical-illustration gradient by view-space normal.
  * X-ray is NOT a material look — it's per-item opacity, owned by the `xray`
  * plugin and surfaced alongside these in the `display-mode` plugin's `mode`.
  */
-export type MaterialLook = 'normal' | 'monochrome' | 'clay' | 'matcap';
+export type MaterialLook = 'normal' | 'monochrome' | 'clay' | 'matcap' | 'toon' | 'gooch';
 
 /**
  * Built-in event map. Plugins MAY emit additional events on the same bus
@@ -126,6 +128,13 @@ export interface ViewerEvents {
     reason: 'in-view' | 'behind' | 'outside' | 'tiny' | 'empty';
     coverage: number;
   };
+  /**
+   * Camera plugin: the projection mode toggled (perspective ↔ orthographic),
+   * emitted from `camera.setProjection`. The portal toolbar reflects the active
+   * mode from this rather than tracking optimistic local state — calibration and
+   * the minimap also drive projection, so a single source of truth is needed.
+   */
+  'camera:projection': { mode: 'Perspective' | 'Orthographic' };
   'viewer:idle': undefined;
   /** The frustum-culling policy changed (see {@link ViewerContext.setCullingMode}). */
   'culling:change': { mode: CullingMode };
@@ -170,7 +179,9 @@ export interface ViewerEvents {
    * `xray` is delegated to the `xray` plugin; the rest map to a
    * {@link MaterialLook} applied via {@link ViewerContext.setActiveLook}.
    */
-  'display:change': { mode: 'normal' | 'xray' | 'monochrome' | 'clay' | 'matcap' };
+  'display:change': {
+    mode: 'normal' | 'xray' | 'monochrome' | 'clay' | 'matcap' | 'toon' | 'gooch';
+  };
   'snapping:change': { enabled: boolean; snap: { point: Vec3; type: string } | null };
   'classification:change': { groups: Record<string, ItemId[]> };
   'finder:results': { query: Record<string, unknown>; results: ItemId[]; count: number };
@@ -182,6 +193,8 @@ export interface ViewerEvents {
   'eraser:change': { active: boolean };
   'navigate:change': { active: boolean };
   'navmode:change': { mode: 'orbit' | 'firstPerson' };
+  /** Camera-fly plugin: the first-person move speed changed (preset / ± keys). */
+  'fly:speed': { moveFraction: number };
   'action:change': { action: 'none' | 'select' | 'erase' };
   'screenshot:captured': { width: number; height: number };
   'colorCoding:change': { active: boolean; scheme: string | null; legend: Array<{ name: string; color: number; count: number }> };

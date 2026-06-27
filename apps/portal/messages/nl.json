@@ -4011,6 +4011,9 @@
       "settings": "Instellingen",
       "spaces": "Ruimtes",
       "minimap": "Plattegrond",
+      "projection": "Projectie",
+      "projectionToOrthographic": "Wissel naar orthografisch",
+      "projectionToPerspective": "Wissel naar perspectief",
       "comingSoonSuffix": "{label} (binnenkort beschikbaar)",
       "pan": "Verschuiven",
       "panTooltip": "Verschuiven (sleep om te verplaatsen)",
@@ -4037,7 +4040,9 @@
       "xray": "Röntgen",
       "monochrome": "Monochroom",
       "clay": "Wit klei",
-      "matcap": "MatCap"
+      "matcap": "MatCap",
+      "toon": "Schets",
+      "gooch": "Illustratie"
     },
     "flyNav": {
       "title": "Vliegnavigatie",
@@ -4048,7 +4053,9 @@
       "strafeLeft": "Naar links (A)",
       "strafeRight": "Naar rechts (D)",
       "raise": "Camera omhoog (R)",
-      "lower": "Camera omlaag (F)"
+      "lower": "Camera omlaag (F)",
+      "slower": "Langzamer (−)",
+      "faster": "Sneller (+)"
     },
     "measurement": {
       "modeDistance": "Afstand",
@@ -4150,6 +4157,9 @@
       "enableEffects": "Effecten inschakelen",
       "edgesOutline": "Randen (omlijning)",
       "quality": "Kwaliteit",
+      "cameraFeel": "Cameragevoel",
+      "cameraFeelHint": "Hoe snel de camera tot rust komt na draaien of verschuiven. Hoger is directer; lager is vloeiender en met meer naloop.",
+      "responsiveness": "Reactiesnelheid",
       "zoomLimits": "Zoom",
       "zoomHint": "Inzoomen vliegt door tot in interieurs; maximaal uitzoomen begrenst hoe ver je kunt uitzoomen.",
       "zoomSpeed": "Zoomsnelheid",

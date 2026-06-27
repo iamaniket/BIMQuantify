@@ -137,7 +137,9 @@ export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
 
   // 3D→2D: selection → project centroid → pan + persistent highlight on the plan,
   // and auto-follow the plan to the selected element's storey. The marker holds
-  // (unlike the old transient pulse) until the selection clears.
+  // (unlike the old transient pulse) until the selection clears. Also SEEDS once on
+  // mount / (re)calibration so entering Split/2D with a pre-existing 3D selection
+  // centers the plan on it — no `selection:change` fires on entry.
   useEffect(() => {
     if (!fpHandle || !viewerHandle || !viewerReady) return undefined;
     // A selection handler awaits viewer commands before touching plan state; if
@@ -146,46 +148,65 @@ export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
     const clearMarker = (): void => {
       void fpHandle.commands.execute('floorplan.setSelectionMarker', null).catch(() => undefined);
     };
-    const off = viewerHandle.events.on('selection:change', (ev) => {
-      void (async () => {
-        const selected = ev.selected;
-        if (!selected || selected.length === 0) {
+    type SelItem = { localId: number; modelId: string };
+    const applySelection = async (
+      selected: readonly SelItem[] | undefined,
+      fromEvent: boolean,
+    ): Promise<void> => {
+      if (!selected || selected.length === 0) {
+        // Only a real selection-clear event empties the marker; an empty seed (no
+        // current selection) must leave any event-driven marker untouched.
+        if (fromEvent) {
           lastSelectedSpaceRef.current = null;
           clearMarker();
-          return;
         }
-        const sole = selected.length === 1 ? selected[0] : null;
-        // Echo of our own 2D→3D pick — still mark the room, but don't bounce the
-        // plan camera / level (the user just clicked there).
-        const isEcho = !!sole && sole.localId === lastSelectedSpaceRef.current;
-        if (isEcho) lastSelectedSpaceRef.current = null;
-        const centroid = await viewerHandle.commands
-          .execute<Centroid>('camera.getSelectionCentroid')
-          .catch(() => null);
-        if (cancelled || !centroid) return;
-        const proj = await viewerHandle.commands
-          .execute<Projected>('minimap.projectPoint', centroid)
-          .catch(() => null);
-        if (cancelled || !proj) return;
-        void fpHandle.commands
-          .execute('floorplan.setSelectionMarker', { planX: proj.x, planY: proj.y })
-          .catch(() => undefined);
-        if (isEcho) return;
-        fpHandle.focusPlanPoint(proj.x, proj.y);
-        // Auto-follow the plan to the selected element's storey.
-        const setLevel = setActiveLevelRef.current;
-        if (sole && setLevel) {
-          const storeyId = localToStorey.get(sole.localId);
-          if (storeyId != null) {
-            const idx = levelsRef.current.findIndex((l) => l.storeyExpressID === storeyId);
-            if (idx >= 0 && idx !== activeLevelRef.current) setLevel(idx);
-          }
+        return;
+      }
+      const sole = selected.length === 1 ? selected[0] : null;
+      // Echo of our own 2D→3D pick — still mark the room, but don't bounce the
+      // plan camera / level (the user just clicked there). Only events can echo.
+      const isEcho = fromEvent && !!sole && sole.localId === lastSelectedSpaceRef.current;
+      if (isEcho) lastSelectedSpaceRef.current = null;
+      const centroid = await viewerHandle.commands
+        .execute<Centroid>('camera.getSelectionCentroid')
+        .catch(() => null);
+      if (cancelled || !centroid) return;
+      const proj = await viewerHandle.commands
+        .execute<Projected>('minimap.projectPoint', centroid)
+        .catch(() => null);
+      if (cancelled || !proj) return;
+      void fpHandle.commands
+        .execute('floorplan.setSelectionMarker', { planX: proj.x, planY: proj.y })
+        .catch(() => undefined);
+      if (isEcho) return;
+      fpHandle.focusPlanPoint(proj.x, proj.y);
+      // Auto-follow the plan to the selected element's storey.
+      const setLevel = setActiveLevelRef.current;
+      if (sole && setLevel) {
+        const storeyId = localToStorey.get(sole.localId);
+        if (storeyId != null) {
+          const idx = levelsRef.current.findIndex((l) => l.storeyExpressID === storeyId);
+          if (idx >= 0 && idx !== activeLevelRef.current) setLevel(idx);
         }
-      })();
+      }
+    };
+    const off = viewerHandle.events.on('selection:change', (ev) => {
+      void applySelection(ev.selected, true);
     });
+    // Seed once now, and again on (re)calibration — projection needs the minimap
+    // calibrated, which is async and may land after this pane mounts.
+    const seed = (): void => {
+      void viewerHandle.commands
+        .execute<SelItem[]>('selection.get')
+        .then((sel) => { if (!cancelled) void applySelection(sel, false); })
+        .catch(() => undefined);
+    };
+    const offCal = viewerHandle.events.on('minimap:calibrated', seed);
+    seed();
     return () => {
       cancelled = true;
       off();
+      offCal();
       clearMarker();
     };
   }, [fpHandle, viewerHandle, viewerReady, localToStorey]);

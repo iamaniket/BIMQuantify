@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Glasses, Moon, Sparkles, Sun, type AppIcon } from '@bimdossier/ui/icons';
+import { Box, Glasses, Moon, Sparkles, Sun, Pencil, Blueprint, type AppIcon } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef, type JSX } from 'react';
 
@@ -28,10 +28,12 @@ const ENTRIES: readonly ModeEntry[] = [
   { mode: 'monochrome', icon: Moon },
   { mode: 'clay', icon: Sun },
   { mode: 'matcap', icon: Sparkles },
+  { mode: 'toon', icon: Pencil },
+  { mode: 'gooch', icon: Blueprint },
 ];
 
 /**
- * Toolbar flyout listing the five mutually-exclusive display modes. Selecting
+ * Toolbar flyout listing the mutually-exclusive display modes. Selecting
  * one just calls `display.set` (via `onSelect`); the active highlight is driven by
  * the live `activeMode`. Closes on select (handled by the parent) or Esc — no
  * outside-click dismissal, matching the fly-nav popover.

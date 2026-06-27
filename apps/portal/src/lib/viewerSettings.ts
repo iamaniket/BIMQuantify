@@ -146,7 +146,35 @@ export const DEFAULT_CONTROLS: ControlsSettings = {
   middle: 'dolly',
   right: 'truck',
   wheel: 'dolly',
+  // Orbit/pan damping in seconds (camera-controls library defaults). The settings
+  // "Responsiveness" slider maps a single 0..1 axis onto both via lerp; lower =
+  // snappier, higher = more inertial. See dampingFromResponsiveness().
+  smoothTime: 0.25,
+  draggingSmoothTime: 0.125,
 };
+
+/**
+ * Map a single "Responsiveness" slider (0 = smooth/inertial, 1 = snappy) onto the
+ * two camera-controls damping times. The endpoints bracket the library defaults
+ * (≈0.6 responsiveness) so the default sits comfortably mid-scale.
+ */
+export function dampingFromResponsiveness(r: number): {
+  smoothTime: number;
+  draggingSmoothTime: number;
+} {
+  const t = Math.min(1, Math.max(0, r));
+  const lerp = (a: number, b: number): number => a + (b - a) * t;
+  return {
+    smoothTime: lerp(0.45, 0.0001),
+    draggingSmoothTime: lerp(0.22, 0.0001),
+  };
+}
+
+/** Inverse of {@link dampingFromResponsiveness} for seeding the slider position. */
+export function responsivenessFromDamping(smoothTime: number): number {
+  const t = (0.45 - smoothTime) / (0.45 - 0.0001);
+  return Math.min(1, Math.max(0, t));
+}
 
 // Conservative motion-suppression profile, on by default. The two enabled
 // toggles are visually imperceptible — `dynamicPixelRatio` drops resolution
