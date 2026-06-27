@@ -117,6 +117,23 @@ export async function deleteOrganization(
   return apiClient.delete(`/admin/organizations/${id}`, accessToken);
 }
 
+/**
+ * Hard-purge a soft-deleted org (phase 2): wipes its storage + DROPs its tenant
+ * schema. Only succeeds once the org is past the retention window (the server
+ * returns 409 ORG_PURGE_NOT_DUE otherwise). Super-admin only.
+ */
+export async function purgeOrganization(
+  accessToken: string,
+  id: string,
+): Promise<OrganizationRead> {
+  return apiClient.post<OrganizationRead>(
+    `/admin/organizations/${id}/purge`,
+    undefined,
+    OrganizationReadSchema,
+    accessToken,
+  );
+}
+
 // ----------------------------------------------------------------------------
 // Users
 // ----------------------------------------------------------------------------

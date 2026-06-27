@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { useT } from '@/i18n';
 import { BottomNav } from '@/features/projects/BottomNav';
 import { ProjectCard } from '@/features/projects/ProjectCard';
 import { ProjectCoverCard } from '@/features/projects/ProjectCoverCard';
@@ -26,6 +27,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { colors } from '@/theme';
 
 export default function ProjectsScreen() {
+  const { t } = useT();
   const navigation = useNavigation();
   const layout = useLayoutKind();
   const drawerStatus = useDrawerStatus();
@@ -106,9 +108,9 @@ export default function ProjectsScreen() {
         </View>
       ) : isError ? (
         <View style={styles.centered}>
-          <Text style={styles.muted}>Couldn’t load projects.</Text>
+          <Text style={styles.muted}>{t('projects.list.loadError')}</Text>
           <Pressable style={styles.retry} onPress={() => { void refetch(); }}>
-            <Text style={styles.retryText}>Retry</Text>
+            <Text style={styles.retryText}>{t('common.retry')}</Text>
           </Pressable>
         </View>
       ) : (
@@ -127,7 +129,7 @@ export default function ProjectsScreen() {
           }
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.muted}>{query.length > 0 || activeOnly ? 'No matching projects.' : 'No projects yet.'}</Text>
+              <Text style={styles.muted}>{query.length > 0 || activeOnly ? t('projects.list.noMatches') : t('projects.list.empty')}</Text>
             </View>
           }
           renderItem={({ item }) => {

@@ -65,8 +65,11 @@ type Props = {
 };
 
 /** Storey display label, falling back to "Level N" for an unnamed storey. */
-function storeyLabel(s: { name: string | null; ordering: number | null }): string {
-  return s.name ?? `Level ${(s.ordering ?? 0) + 1}`;
+function storeyLabel(
+  s: { name: string | null; ordering: number | null },
+  levelFallbackLabel: (n: number) => string,
+): string {
+  return s.name ?? levelFallbackLabel((s.ordering ?? 0) + 1);
 }
 
 /** Resolve a model's head ProjectFile id (restore pointer, else newest ready). */
@@ -95,6 +98,7 @@ export function CalibrationPane({
   onExit,
 }: Props): JSX.Element {
   const t = useTranslations('viewer');
+  const tCalibration = useTranslations('viewer.calibration');
 
   const documentsQuery = useAuthQuery({
     queryKey: documentsWithVersionsKey(projectId),
@@ -327,7 +331,11 @@ export function CalibrationPane({
     [numPages],
   );
 
-  const levelLabel = selectedStorey ? storeyLabel(selectedStorey) : t('aligned.pickLevel');
+  const storeyFallbackLabel = useCallback(
+    (n: number) => tCalibration('levelFallback', { n }),
+    [tCalibration],
+  );
+  const levelLabel = selectedStorey ? storeyLabel(selectedStorey, storeyFallbackLabel) : t('aligned.pickLevel');
   const modelLabel = selectedModel?.name ?? t('aligned.pickPdfModel');
 
   return (
@@ -355,7 +363,7 @@ export function CalibrationPane({
           <Dropdown label={levelLabel} disabled={active}>
             {storeys.map((s) => (
               <DropdownMenuItem key={s.id} onSelect={() => { setSelectedStoreyId(s.id); }}>
-                {storeyLabel(s)}
+                {storeyLabel(s, storeyFallbackLabel)}
               </DropdownMenuItem>
             ))}
           </Dropdown>

@@ -23,6 +23,7 @@ export function ReassignOwnerDialog({
   onCancel,
 }: Props): JSX.Element {
   const t = useTranslations('admin.members.reassign');
+  const tCommon = useTranslations('common');
   const [selected, setSelected] = useState<string>('');
 
   return (
@@ -35,6 +36,7 @@ export function ReassignOwnerDialog({
         if (selected !== '') onConfirm(selected);
       }}
       saveLabel={t('confirm')}
+      cancelLabel={tCommon('cancel')}
       saveDisabled={selected === '' || candidates.length === 0}
     >
       <div className="flex flex-col gap-1.5">

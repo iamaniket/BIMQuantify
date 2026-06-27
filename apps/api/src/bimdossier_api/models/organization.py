@@ -61,6 +61,15 @@ class Organization(MasterBase):
     provisioned_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Set the moment the org is SOFT-deleted (DELETE /admin/organizations/{id}).
+    # Schema + storage are RETAINED for `org_retention_days`; the row is kept as
+    # an audit tombstone. Soft-deleted orgs are API-inaccessible (403).
     deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Set when the org is HARD-purged: storage wiped + tenant schema dropped.
+    # NULL while soft-deleted-but-retained. Once set, the tenant data is gone
+    # and the org is no longer recoverable. See provisioning.py::purge_organization.
+    purged_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

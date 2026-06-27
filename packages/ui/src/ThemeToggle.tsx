@@ -8,9 +8,15 @@ import { cn } from './lib/cn.js';
 
 type Props = {
   className?: string;
+  /**
+   * Localized accessible label, applied to both `aria-label` and `title`. The
+   * package stays i18n-agnostic; consumers pass a translated string. Falls back
+   * to an English default so the component works standalone.
+   */
+  ariaLabel?: string | undefined;
 };
 
-export function ThemeToggle({ className }: Props): JSX.Element {
+export function ThemeToggle({ className, ariaLabel }: Props): JSX.Element {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -20,7 +26,7 @@ export function ThemeToggle({ className }: Props): JSX.Element {
 
   const isDark = mounted && resolvedTheme === 'dark';
   const nextTheme = isDark ? 'light' : 'dark';
-  const label = `Switch to ${nextTheme} theme`;
+  const label = ariaLabel ?? `Switch to ${nextTheme} theme`;
 
   return (
     <button

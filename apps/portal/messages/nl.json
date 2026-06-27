@@ -76,6 +76,10 @@
       "download": "Downloaden"
     },
     "loadMore": "Meer laden",
+    "cancel": "Annuleren",
+    "save": "Opslaan",
+    "reset": "Opnieuw instellen",
+    "optional": "(optioneel)",
     "pagination": {
       "rowsPerPage": "Rijen per pagina",
       "range": "{from}–{to} van {total}",
@@ -158,13 +162,15 @@
     "languageTitle": "Taal",
     "languageDescription": "Kies hier de portaaltaal voor interface-labels, uitleg en toekomstige workflowteksten.",
     "languageHelper": "Engelse en Nederlandse teksten staan apart in de broncode zodat een taalexpert ze later kan controleren en verfijnen.",
+    "themeToggleAria": "Thema wisselen",
     "themeOptions": {
       "lightLabel": "Licht",
       "lightDescription": "Heldere werkruimte met meer contrast voor gebruik overdag.",
       "darkLabel": "Donker",
       "darkDescription": "Minder schittering tijdens gerichte reviewsessies en werk bij weinig licht.",
       "systemLabel": "Systeem",
-      "systemDescription": "Volg automatisch de weergave-instelling van je besturingssysteem."
+      "systemDescription": "Volg automatisch de weergave-instelling van je besturingssysteem.",
+      "systemActiveSuffix": "{label} ({mode} actief)"
     },
     "placeholders": {
       "profileDetailsTitle": "Profielgegevens",
@@ -184,7 +190,7 @@
       "title": "Organisatiekalender",
       "subtitle": "Eén gedeelde kalender voor je hele organisatie — alle items uit je projecten, gerangschikt op wat als eerste moet.",
       "pendingLabel": "Openstaand",
-      "pendingSub": "Open items",
+      "pendingSub": "Openstaande items",
       "overdueLabel": "Te laat",
       "overdueSub": "Verstreken",
       "dueThisWeekLabel": "Deze week",
@@ -203,7 +209,7 @@
     "overview": {
       "kpiTotal": "Totaal",
       "kpiPending": "Openstaand",
-      "kpiPendingSub": "Open items",
+      "kpiPendingSub": "Openstaande items",
       "kpiOverdue": "Te laat",
       "kpiOverdueSub": "Verstreken",
       "kpiDueThisWeek": "Deze week",
@@ -359,6 +365,7 @@
     "avatarRemoved": "Foto verwijderd.",
     "invitationsTitle": "Teamuitnodigingen",
     "noInvitations": "Geen openstaande uitnodigingen.",
+    "invitationsLoading": "Laden…",
     "accept": "Accepteren",
     "accepting": "Accepteren…",
     "decline": "Weigeren",
@@ -469,6 +476,7 @@
       "handover": "Oplevering"
     },
     "card": {
+      "archivedReadOnly": "Gearchiveerd · alleen-lezen",
       "menu": {
         "actions": "Projectacties",
         "view": "Bekijken",
@@ -496,6 +504,17 @@
           "archiveFailed": "Project kon niet worden gearchiveerd."
         }
       }
+    },
+    "issueDetail": {
+      "location": "Locatie",
+      "model": "Model",
+      "owner": "Eigenaar",
+      "created": "Aangemaakt",
+      "createdAgo": "{value} geleden",
+      "bblRequirement": "Bbl-eis",
+      "pinPhoto": "Foto vastpinnen",
+      "reassign": "Opnieuw toewijzen",
+      "markResolved": "Markeren als opgelost"
     },
     "filters": {
       "all": "Alle",
@@ -820,7 +839,8 @@
       "fieldTagsPlaceholder": "bijv. isolatie, CE, KOMO",
       "fieldFile": "Bestand",
       "submit": "Uploaden",
-      "cancel": "Annuleren"
+      "cancel": "Annuleren",
+      "successToast": "{filename} geüpload"
     },
     "linkDialog": {
       "title": "Koppelen uit bibliotheek",
@@ -873,7 +893,7 @@
       "expiringSoonSub": "Binnen 30 dagen",
       "expiredCerts": "Verlopen",
       "donutCenterLabel": "certificaten",
-      "trendTitle": "Toegevoegd na verloop van tijd",
+      "trendTitle": "Toegevoegd in de tijd",
       "trendEmpty": "Nog geen certificaten.",
       "renewalsTitle": "Vernieuwingen nodig",
       "renewalsEmpty": "Niets verloopt in de komende 90 dagen.",
@@ -936,7 +956,7 @@
         "expiringSoonSub": "Binnen 30 dagen",
         "expiredCerts": "Verlopen",
         "donutCenterLabel": "certificaten",
-        "trendTitle": "Toegevoegd na verloop van tijd",
+        "trendTitle": "Toegevoegd in de tijd",
         "trendEmpty": "Nog geen certificaten.",
         "renewalsTitle": "Vernieuwingen nodig",
         "renewalsEmpty": "Niets verloopt in de komende 90 dagen.",
@@ -954,13 +974,16 @@
       "projectLoadError": "Project laden mislukt.",
       "tabs": {
         "overview": "Overzicht",
-        "list": "Bijlagen"
+        "list": "Bijlagen",
+        "links": "Opnamelinks"
       },
       "panel": {
         "overviewEyebrow": "Bestanden & bijlagen",
         "overviewTitle": "Bijlagenoverzicht",
         "listEyebrow": "Bestanden & bijlagen",
-        "listTitle": "{count} bijlagen"
+        "listTitle": "{count} bijlagen",
+        "linksEyebrow": "Bestanden & bijlagen",
+        "linksTitle": "Opnamelinks"
       },
       "hero": {
         "badge": "Bijlagen",
@@ -998,7 +1021,7 @@
         "byCategoryTitle": "Per categorie",
         "donutCenterLabel": "bestanden",
         "storageTitle": "Opslag per categorie",
-        "trendTitle": "Toegevoegd na verloop van tijd",
+        "trendTitle": "Toegevoegd in de tijd",
         "trendEmpty": "Nog geen bijlagen.",
         "recentTitle": "Recent toegevoegd",
         "empty": "Nog geen bijlagen"
@@ -1127,6 +1150,11 @@
     }
   },
   "projectDetail": {
+    "compliance": {
+      "byDomain": {
+        "stats": "{articles} art. · {checks} controles"
+      }
+    },
     "hero": {
       "partialDataError": "Sommige projectgegevens konden niet worden geladen; onderstaande cijfers zijn mogelijk onvolledig.",
       "notFound": "Project niet gevonden. Mogelijk is het al verwijderd.",
@@ -1279,12 +1307,22 @@
         "cancel": "Annuleren",
         "emptyState": "Nog geen informatiecontainers",
         "emptyDescription": "Upload IFC-bestanden om uw BIM-informatiecontainers te bekijken en beheren.",
+        "upload": {
+          "hashing": "Controleren op duplicaten… {pct}%",
+          "uploading": "Uploaden…",
+          "uploaded": "Geüpload",
+          "removeAria": "{filename} verwijderen"
+        },
         "newDocumentDialog": {
           "title": "Nieuwe informatiecontainer",
           "description": "Groepeer bestandsversies op discipline. Na het aanmaken kun je een bestand uploaden in de informatiecontainer.",
           "submitCreate": "Aanmaken",
           "submitCreating": "Bezig met aanmaken…",
           "cancel": "Annuleren",
+          "validation": {
+            "nameRequired": "Naam is verplicht",
+            "nameMaxLength": "Maximaal 255 tekens"
+          },
           "errors": {
             "nameTaken": "Deze naam is al in gebruik"
           },
@@ -1539,7 +1577,7 @@
         "captureLinkLabelPlaceholder": "bv. Bouwfoto's week 23",
         "captureLinkTtl": "Verloopt na",
         "captureLinkTtlHours": "{hours} uur",
-        "captureLinkMaxUses": "Max uploads",
+        "captureLinkMaxUses": "Max. uploads",
         "captureLinkMaxUsesPlaceholder": "Onbeperkt",
         "captureLinkCreate": "Link aanmaken",
         "captureLinkCancel": "Annuleren",
@@ -1553,6 +1591,14 @@
         "captureLinkUsesUnlimited": "{count} keer gebruikt",
         "captureLinkNoLinks": "Nog geen opnamelinks",
         "captureLinkLoadError": "Kan opnamelinks niet laden.",
+        "captureLinkColLabel": "Label",
+        "captureLinkColUses": "Gebruik",
+        "captureLinkColStatus": "Status",
+        "captureLinkColExpires": "Verloopt",
+        "captureLinkColCreated": "Aangemaakt",
+        "captureLinkStatusActive": "Actief",
+        "captureLinkExhausted": "Opgebruikt",
+        "captureLinkCopy": "Link kopiëren",
         "view": "Bekijken",
         "viewerTitle": "Bijlage details",
         "viewerSubtitle": "Bekijk het bestand en de bijbehorende metadata.",
@@ -1576,7 +1622,15 @@
         "viewerDimensions": "Afmetingen",
         "viewerCamera": "Camera",
         "viewerCapturedAt": "Vastgelegd",
-        "viewerLocation": "Locatie"
+        "viewerLocation": "Locatie",
+        "kindLabel": {
+          "image": "Afbeelding",
+          "video": "Video",
+          "audio": "Audio",
+          "pdf": "PDF",
+          "office": "Document",
+          "other": "Bestand"
+        }
       },
       "certificates": {
         "label": "Certificaten",
@@ -1891,6 +1945,8 @@
   },
   "findingsBoard": {
     "crumb": "Bevindingen",
+    "projectNotFound": "Project niet gevonden.",
+    "projectLoadError": "Project laden mislukt.",
     "hero": {
       "badge": "Kwaliteitsbewaking",
       "subtitle": "Sleep bevindingen tussen kolommen om de status bij te werken",
@@ -2050,7 +2106,8 @@
       "noModel": "Onbekend model",
       "unplaced": "Niet geplaatst",
       "openToPinHint": "Open deze in de viewer om ze aan een model of tekening te koppelen.",
-      "empty": "Geen bevindingen om te lokaliseren."
+      "empty": "Geen bevindingen om te lokaliseren.",
+      "pageRef": "blz. {page}"
     },
     "photos": {
       "empty": "Nog geen foto's gekoppeld aan bevindingen.",
@@ -2458,14 +2515,14 @@
       "totalReportTemplates": "Rapportsjablonen",
       "reportDefaults": "Standaarden ingesteld",
       "noReportTemplates": "Nog geen rapportsjablonen aangemaakt.",
-      "totalTemplates": "Templates",
-      "byTypeTitle": "Templates per type",
+      "totalTemplates": "Sjablonen",
+      "byTypeTitle": "Sjablonen per type",
       "fieldTypesTitle": "Veldtypen in gebruik",
-      "fieldsPerTemplateTitle": "Aangepaste velden per template",
+      "fieldsPerTemplateTitle": "Aangepaste velden per sjabloon",
       "fieldsDonutCenter": "velden",
       "findingType": "Bevinding",
       "noFields": "Nog geen aangepaste velden.",
-      "noFindingTemplates": "Nog geen bevindingstemplates.",
+      "noFindingTemplates": "Nog geen bevindingssjablonen.",
       "fieldType": {
         "text": "Tekst",
         "textarea": "Tekstvak",
@@ -2481,13 +2538,13 @@
       "tagline": "Wkb-conform BIM-platform"
     },
     "hero": {
-      "readyBadge": "Klaar voor Wkb {version}",
+      "checksBadge": "{wkb} Wkb · {bbl} BBL-toetsen actief",
       "headlineTemplate": "Breng je <em>modellen</em>, <em>bevindingen</em> en <em>dossier</em> samen in één Wkb-dossier.",
-      "subhead": "Gefedereerde IFC-review, geautomatiseerde Bouwbesluit-controles en een opleveringsklaar consumentendossier — voor bouwers onder de Wet kwaliteitsborging voor het bouwen (Wkb)."
+      "subhead": "Gefedereerde IFC-review, geautomatiseerde toetsen op belangrijke Bouwbesluit-artikelen en een opleveringsklaar consumentendossier — voor bouwers onder de Wet kwaliteitsborging voor het bouwen (Wkb)."
     },
     "kpi": {
-      "wkb": "Wkb",
-      "bbl": "Bbl",
+      "wkb": "Wkb-toetsen",
+      "bbl": "BBL-toetsen",
       "ifc": "IFC",
       "status": "Status",
       "statusNormal": "Normaal",
@@ -2551,6 +2608,9 @@
     "copyright": "© {year} {brand}"
   },
   "orgDetail": {
+    "relativeTime": {
+      "justNow": "Zojuist"
+    },
     "tabs": {
       "overview": "Overzicht",
       "members": "Leden",
@@ -2574,6 +2634,9 @@
       "eventsToday": "{count} {count, plural, =1 {gebeurtenis} other {gebeurtenissen}} vandaag",
       "noEvents": "Nog geen gebeurtenissen",
       "today": "vandaag",
+      "statusActive": "Actief",
+      "statusSuspended": "Gepauzeerd",
+      "audit": "audit",
       "changeImage": "Logo wijzigen",
       "removeImage": "Logo verwijderen",
       "uploadImage": "Logo uploaden"
@@ -2651,7 +2714,9 @@
       "roleMember": "Lid",
       "noMembers": "Nog geen leden.",
       "activityTrendTitle": "Activiteit na verloop van tijd",
-      "trendEmpty": "Nog geen activiteit."
+      "trendEmpty": "Nog geen activiteit.",
+      "noRecentActivity": "Geen recente activiteit",
+      "seatsBadge": "{count} licenties"
     },
     "members": {
       "inviteButton": "Lid uitnodigen",
@@ -2777,7 +2842,9 @@
       "roleMember": "Lid",
       "noMembers": "Nog geen leden.",
       "activityTrendTitle": "Activiteit na verloop van tijd",
-      "trendEmpty": "Nog geen activiteit."
+      "trendEmpty": "Nog geen activiteit.",
+      "noRecentActivity": "Geen recente activiteit",
+      "seatsBadge": "{count} licenties"
     },
     "members": {
       "inviteButton": "Lid uitnodigen",
@@ -2923,7 +2990,8 @@
         "all": "Alle statussen",
         "active": "Actief",
         "suspended": "Geschorst",
-        "provisioning": "In opbouw"
+        "provisioning": "In opbouw",
+        "deleted": "Verwijderd"
       },
       "createButton": "Nieuwe tenant",
       "loadError": "Tenants konden niet worden geladen.",
@@ -2931,7 +2999,8 @@
         "active": "Actief",
         "suspended": "Geschorst",
         "deleted": "Verwijderd",
-        "provisioning": "In opbouw"
+        "provisioning": "In opbouw",
+        "pending": "In behandeling"
       },
       "table": {
         "name": "Tenant",
@@ -2939,7 +3008,23 @@
         "seats": "Zetels",
         "storage": "Opslag",
         "created": "Aangemaakt",
-        "empty": "Geen tenants gevonden voor deze filters."
+        "empty": "Geen tenants gevonden voor deze filters.",
+        "retentionStatus": "Bewaartermijn"
+      },
+      "retentionBadge": {
+        "retained": "Bewaard — {days, plural, =1 {nog 1 dag} other {nog # dagen}}",
+        "eligible": "Klaar voor verwijdering",
+        "purged": "Definitief verwijderd"
+      },
+      "purge": {
+        "button": "Definitief verwijderen",
+        "title": "Deze tenant definitief verwijderen?",
+        "description": "Dit verwijdert {name} en alles erin definitief — het tenant-schema wordt verwijderd en alle opgeslagen bestanden worden gewist. Dit kan niet ongedaan worden gemaakt.",
+        "confirmPrompt": "Typ de tenantnaam {name} ter bevestiging:",
+        "confirm": "Definitief verwijderen",
+        "cancel": "Annuleren",
+        "success": "{name} is definitief verwijderd.",
+        "error": "De tenant kon niet worden verwijderd. Probeer het opnieuw."
       },
       "create": {
         "title": "Tenant aanmaken",
@@ -3632,7 +3717,35 @@
     },
     "loadingOverlay": {
       "model": "Model laden…",
-      "updating": "Weergave bijwerken…"
+      "updating": "Weergave bijwerken…",
+      "preparing": "Viewer voorbereiden…"
+    },
+    "statusBar": {
+      "page": "pagina",
+      "view": "weergave",
+      "viewDocument": "document",
+      "viewDrawing": "tekening",
+      "viewPerspective": "perspectief",
+      "format": "formaat",
+      "formatPdf": "PDF",
+      "formatDxfFallback": "DXF",
+      "units": "eenheden",
+      "layers": "lagen",
+      "extents": "grenzen",
+      "schema": "schema",
+      "storeys": "verdiepingen",
+      "dims": "afm.",
+      "elements": "elementen",
+      "visible": "zichtbaar",
+      "selected": "geselecteerd",
+      "attach": "bijlagen",
+      "findings": "bevindingen",
+      "fps": "fps",
+      "gpu": "gpu",
+      "gpuValue": "WebGL2"
+    },
+    "calibration": {
+      "levelFallback": "Verdieping {n}"
     },
     "framing": {
       "outOfView": "Model buiten beeld",
@@ -3732,7 +3845,12 @@
       "hideAll": "Alles verbergen",
       "selectAll": "Alles selecteren",
       "deselectAll": "Alles deselecteren",
-      "propertiesTitle": "Eigenschappen"
+      "propertiesTitle": "Eigenschappen",
+      "noElementData": "Geen elementgegevens beschikbaar.",
+      "noMetadata": "Geen metadata beschikbaar voor dit model.",
+      "loadingModelData": "Modelgegevens laden…",
+      "noSpatialData": "Geen ruimtelijke gegevens beschikbaar.",
+      "noStoreyData": "Geen verdiepingsgegevens beschikbaar."
     },
     "properties": {
       "filter": "Eigenschappen filteren…",
@@ -3746,7 +3864,12 @@
       "loading": "Eigenschappen laden…",
       "noCommonProperties": "Geen gemeenschappelijke eigenschappen voor geselecteerde elementen.",
       "tooManySelected": "Te veel elementen geselecteerd ({count}). Selecteer minder dan 100 om eigenschappen te vergelijken.",
-      "multiSummary": "{elements, plural, one {# element} other {# elementen}} · {properties, plural, one {# gemeenschappelijke eigenschap} other {# gemeenschappelijke eigenschappen}}"
+      "multiSummary": "{elements, plural, one {# element} other {# elementen}} · {properties, plural, one {# gemeenschappelijke eigenschap} other {# gemeenschappelijke eigenschappen}}",
+      "noPsets": "Geen eigenschappensets gevonden voor dit element.",
+      "noMatch": "Geen eigenschappen komen overeen met \"{query}\"",
+      "pinned": "Vastgepind:",
+      "unnamed": "Naamloos",
+      "multi": "Meerdere"
     },
     "sidePanel": {
       "titleExplorer": "Verkenner",
@@ -3768,6 +3891,8 @@
       "text": "Tekst"
     },
     "bcf": {
+      "renderError": "Er is iets misgegaan bij het weergeven van deze weergave.",
+      "retry": "Opnieuw proberen",
       "loading": "Issues laden…",
       "emptyState": "Nog geen BCF-issues. Maak er een aan om te beginnen.",
       "noSearchResults": "Geen issues gevonden voor je zoekopdracht.",
@@ -4163,7 +4288,12 @@
       "zoomInOut": "In-/uitzoomen ({action})",
       "zoomInOutAlways": "In-/uitzoomen (altijd beschikbaar)",
       "zoomInOutShort": "In-/uitzoomen",
-      "mouseGestures": "Muisgebaren"
+      "mouseGestures": "Muisgebaren",
+      "mouseDiagram": {
+        "leftClick": "Linkermuisknop",
+        "scrollWheel": "Scrollwiel",
+        "rightClick": "Rechtermuisknop"
+      }
     },
     "docContextMenu": {
       "addFindings": "Bevinding toevoegen",

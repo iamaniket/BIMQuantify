@@ -6,6 +6,8 @@ import type { JSX } from 'react';
 
 import type { Locale } from '@bimdossier/i18n';
 
+import { Button } from '@bimdossier/ui';
+
 import { DataTable } from '@/components/shared/DataTable';
 import type { Column } from '@/components/shared/PageTable';
 import { formatDate } from '@/lib/formatting/dates';
@@ -13,17 +15,26 @@ import type { TablePagination } from '@/lib/query/useTableQuery';
 import type { OrganizationRead } from '@/lib/api/schemas';
 
 import { OrgStatusBadge } from './OrgStatusBadge';
+import { RetentionBadge } from './RetentionBadge';
 import { SeatUsage } from './SeatUsage';
 import { StorageUsage } from './StorageUsage';
 
 export function OrgTable({
   table,
+  onPurge,
+  purgingId,
 }: {
   table: TablePagination<OrganizationRead>;
+  /** When provided, the table is in the "deleted" view: a retention-status column
+   *  and a per-row "Remove permanently" action are shown (super-admin purge). */
+  onPurge?: ((org: OrganizationRead) => void) | undefined;
+  purgingId?: string | null | undefined;
 }): JSX.Element {
   const t = useTranslations('admin.organizations.table');
   const tOrg = useTranslations('admin.organizations');
+  const tPurge = useTranslations('admin.organizations.purge');
   const locale = useLocale() as Locale;
+  const showPurge = onPurge !== undefined;
 
   const columns: Column<OrganizationRead>[] = [
     {
@@ -67,6 +78,30 @@ export function OrgTable({
       cell: (org) => formatDate(org.created_at, locale),
     },
   ];
+
+  if (showPurge) {
+    columns.push({
+      header: t('retentionStatus'),
+      cell: (org) => <RetentionBadge org={org} />,
+    });
+    columns.push({
+      header: '',
+      className: 'text-right',
+      cell: (org) => (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="destructive"
+            size="md"
+            disabled={!org.is_purge_eligible || org.purged_at !== null || purgingId === org.id}
+            onClick={() => { onPurge?.(org); }}
+          >
+            {tPurge('button')}
+          </Button>
+        </div>
+      ),
+    });
+  }
 
   return (
     <DataTable

@@ -23,9 +23,12 @@ function isPlaced(f: Finding): boolean {
   return f.linked_document_id !== null && f.linked_file_id !== null;
 }
 
-function locationSummary(f: Finding): string | null {
+function locationSummary(
+  f: Finding,
+  pageRefLabel: (page: number) => string,
+): string | null {
   if (f.linked_element_global_id !== null) return f.linked_element_global_id;
-  if (f.anchor_page !== null) return `p. ${String(f.anchor_page)}`;
+  if (f.anchor_page !== null) return pageRefLabel(f.anchor_page);
   return null;
 }
 
@@ -86,7 +89,7 @@ export function FindingsLocationsTab({ projectId, findings }: Props): JSX.Elemen
           </div>
           <ul className="flex flex-col gap-1.5">
             {items.map((f) => {
-              const summary = locationSummary(f);
+              const summary = locationSummary(f, (page) => t('pageRef', { page }));
               return (
                 <li
                   key={f.id}

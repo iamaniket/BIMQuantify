@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertCircle, CheckCircle2, X } from '@bimdossier/ui/icons';
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { Button, Spinner } from '@bimdossier/ui';
@@ -35,14 +36,17 @@ function StateIcon({ state }: { state: UploadState }): JSX.Element {
   return <span className="h-4 w-4" />;
 }
 
-function stateMessage(state: UploadState): string | null {
+function stateMessage(
+  state: UploadState,
+  t: ReturnType<typeof useTranslations>,
+): string | null {
   if (state.kind === 'idle') return null;
   if (state.kind === 'hashing') {
     const pct = Math.min(99, Math.round(state.fraction * 100));
-    return `Checking for duplicates… ${String(pct)}%`;
+    return t('hashing', { pct: String(pct) });
   }
-  if (state.kind === 'uploading') return 'Uploading…';
-  if (state.kind === 'success') return 'Uploaded';
+  if (state.kind === 'uploading') return t('uploading');
+  if (state.kind === 'success') return t('uploaded');
   if (state.kind === 'rejected') return formatRejection(state.reason);
   return state.message;
 }
@@ -50,7 +54,8 @@ function stateMessage(state: UploadState): string | null {
 export function UploadProgressItem({
   filename, sizeBytes, state, onRemove,
 }: Props): JSX.Element {
-  const message = stateMessage(state);
+  const t = useTranslations('projectDetail.tabs.documents.upload');
+  const message = stateMessage(state, t);
   const messageClass = state.kind === 'rejected' || state.kind === 'error'
     ? 'text-error'
     : 'text-foreground-tertiary';
@@ -71,7 +76,7 @@ export function UploadProgressItem({
           type="button"
           variant="ghost"
           size="md"
-          aria-label={`Remove ${filename}`}
+          aria-label={t('removeAria', { filename })}
           className="h-8 w-8 p-0"
           onClick={onRemove}
         >

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
 import { CATEGORY_STYLES } from './shortcutCategories';
@@ -42,13 +43,14 @@ export function MouseDiagram({
   leftButton, middleButton, rightButton, scrollWheel,
   selected: selectedProp, onPick,
 }: Props): JSX.Element {
+  const t = useTranslations('viewer.shortcuts.mouseDiagram');
   const [hovered, setHovered] = useState<string | null>(null);
   const selected = selectedProp ?? null;
 
   const slots: Slot[] = [
-    { id: 'mouse-left', label: 'Left Click', side: 'L', anchor: { x: 345, y: 100 }, callout: { x: 15, y: 130 }, zone: leftButton },
-    { id: 'mouse-middle', label: 'Scroll Wheel', side: 'R', anchor: { x: 385, y: 80 }, callout: { x: 515, y: 70 }, zone: middleButton },
-    { id: 'mouse-right', label: 'Right Click', side: 'R', anchor: { x: 425, y: 100 }, callout: { x: 515, y: 220 }, zone: rightButton },
+    { id: 'mouse-left', label: t('leftClick'), side: 'L', anchor: { x: 345, y: 100 }, callout: { x: 15, y: 130 }, zone: leftButton },
+    { id: 'mouse-middle', label: t('scrollWheel'), side: 'R', anchor: { x: 385, y: 80 }, callout: { x: 515, y: 70 }, zone: middleButton },
+    { id: 'mouse-right', label: t('rightClick'), side: 'R', anchor: { x: 425, y: 100 }, callout: { x: 515, y: 220 }, zone: rightButton },
   ];
 
   function catFor(zone: MouseZone) {

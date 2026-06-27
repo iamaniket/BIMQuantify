@@ -288,6 +288,7 @@ function MembersToolbar({
 
 export default function ProjectAccessPage(): JSX.Element {
   const t = useTranslations('projectAccess');
+  const t2 = useTranslations();
   const tTable = useTranslations('common.table');
   const params = useParams();
   const rawProjectId = params['projectId'];
@@ -308,11 +309,11 @@ export default function ProjectAccessPage(): JSX.Element {
     () => (projectName === undefined
       ? null
       : [
-        { label: 'Projects', href: '/projects' },
+        { label: t2('breadcrumbs.projects'), href: '/projects' },
         { label: projectName, href: `/projects/${projectId}` },
         { label: t('crumb'), href: undefined },
       ]),
-    [projectName, projectId, t],
+    [projectName, projectId, t, t2],
   );
   useHeaderCrumbsOverride(crumbs);
 

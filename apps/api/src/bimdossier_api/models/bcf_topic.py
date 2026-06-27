@@ -75,7 +75,7 @@ class BcfTopic(TimestampMixin, SoftDeleteMixin, TenantBase):
         nullable=True,
     )
     # Topic-level dimension discriminator. 3D (IFC) and 2D (drawing) issues are
-    # fundamentally different (BIMcollab/BCF): 2D issues live in a drawing's
+    # fundamentally different (per the BCF model): 2D issues live in a drawing's
     # coordinate space and carry no element GlobalIds. Denormalized from the
     # viewpoint's is_2d so the list endpoint can hard-filter by viewer type.
     is_2d: Mapped[bool] = mapped_column(

@@ -193,10 +193,10 @@ export function AppSidebar(props: DrawerContentComponentProps) {
         <FooterAction icon="settings-outline" label={t('nav.settings')} onPress={() => go('/settings')} />
         <FooterAction icon="log-out-outline" label={t('nav.signOut')} onPress={() => setTokens(null)} />
         <View style={styles.brand}>
-          <BrandMark size={34} />
+          <BrandMark size={34} variant="white" />
           <View style={styles.brandText}>
             <Text style={styles.wordmark}>BimDossier</Text>
-            <Text style={styles.tagline}>BimDossier Platform</Text>
+            <Text style={styles.tagline}>{t('nav.brandTagline')}</Text>
           </View>
         </View>
       </View>

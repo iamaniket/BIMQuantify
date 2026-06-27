@@ -1,5 +1,5 @@
 /**
- * Revit/Forge-style nav-cube widget. Cube has 26 pickable regions
+ * CAD-style navigation-cube widget. Cube has 26 pickable regions
  * (6 faces, 12 edges, 8 corners). Each region maps to a direction
  * vector the host can use to frame the model.
  *

@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, type JSX } from 'react';
+import { useEffect, useMemo, type JSX } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { useTranslations } from 'next-intl';
 
@@ -16,7 +16,7 @@ import { useRegisterField } from '@/hooks/useRegisterField';
 import { ApiError } from '@/lib/api/client';
 import { STATUS_OPTIONS } from '@/lib/formatting/models';
 import {
-  DocumentFormSchema,
+  createDocumentFormSchema,
   type DocumentFormValues,
 } from './documentFormSchema';
 import { useCreateDocument } from './useCreateDocument';
@@ -37,8 +37,10 @@ export function NewDocumentDialog({ open, onOpenChange, projectId }: Props): JSX
   const createMutation = useCreateDocument();
   const { reset: resetMutation } = createMutation;
 
+  const schema = useMemo(() => createDocumentFormSchema(t), [t]);
+
   const form = useForm<DocumentFormValues>({
-    resolver: zodResolver(DocumentFormSchema),
+    resolver: zodResolver(schema),
     defaultValues: DEFAULTS,
     mode: 'onSubmit',
   });

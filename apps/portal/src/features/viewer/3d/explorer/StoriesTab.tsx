@@ -1,6 +1,7 @@
 'use client';
 
 import { Building } from '@bimdossier/ui/icons';
+import { useTranslations } from 'next-intl';
 import {
   useState, useMemo, useCallback, type JSX,
 } from 'react';
@@ -18,6 +19,7 @@ type StoriesTabProps = {
 };
 
 export function StoriesTab({ models }: StoriesTabProps): JSX.Element {
+  const t = useTranslations('viewer.explorer');
   const showItems = useViewerEntityStore((s) => s.showItems);
   const hideItems = useViewerEntityStore((s) => s.hideItems);
   const hidden = useViewerEntityStore((s) => s.hidden);
@@ -82,7 +84,7 @@ export function StoriesTab({ models }: StoriesTabProps): JSX.Element {
   const filtered = useMemo(() => filterTree(storeyNodes, filter), [storeyNodes, filter]);
 
   if (storeyNodes.length === 0) {
-    return <PanelEmptyState icon={Building} message="No storey data available." />;
+    return <PanelEmptyState icon={Building} message={t('noStoreyData')} />;
   }
 
   return (

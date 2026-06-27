@@ -98,14 +98,24 @@ async def test_list_capture_links(
 ) -> None:
     client, _ = fake_storage_client
     project = await _create_project(client, org_user["access_token"])
-    await _create_capture_link(client, org_user["access_token"], project["id"])
-    await _create_capture_link(client, org_user["access_token"], project["id"], label="Link 2")
+    link1 = await _create_capture_link(client, org_user["access_token"], project["id"])
+    link2 = await _create_capture_link(
+        client, org_user["access_token"], project["id"], label="Link 2"
+    )
     resp = await client.get(
         f"/projects/{project['id']}/capture-links",
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200
-    assert len(resp.json()) == 2
+    body = resp.json()
+    assert len(body) == 2
+    # The list response rebuilds the shareable URL (same as the create response)
+    # so an authorized member can re-copy a link after creation. The URL ends
+    # with the link's token, regardless of the configured frontend base.
+    tokens = {link1["token"], link2["token"]}
+    for item in body:
+        assert item["url"], "list response must include the shareable url"
+        assert item["url"].rsplit("/", 1)[-1] in tokens, item["url"]
 
 
 @pytest.mark.asyncio

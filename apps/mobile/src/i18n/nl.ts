@@ -24,6 +24,39 @@ export const nl: Record<MessageKey, string> = {
   'nav.seats': '{used} plekken',
   'nav.seatsLimit': '{used}/{limit} plekken',
   'nav.switchTo': 'Wisselen naar {name}',
+  'nav.brandTagline': 'BimDossier-platform',
+
+  // --- projects list / header / toolbar ---
+  'projects.list.loadError': 'Projecten konden niet worden geladen.',
+  'projects.list.empty': 'Nog geen projecten.',
+  'projects.list.noMatches': 'Geen overeenkomende projecten.',
+  'projects.header.title': 'Projecten',
+  'projects.header.count': '{active} actief · {archived} gearchiveerd',
+  'projects.header.notificationsA11y': 'Meldingen',
+  'projects.header.toggleThemeA11y': 'Thema wisselen',
+  'projects.header.openMenuA11y': 'Menu openen',
+  'projects.toolbar.searchPlaceholder': 'Projecten zoeken…',
+  'projects.toolbar.showAllA11y': 'Alle projecten tonen',
+  'projects.toolbar.showActiveA11y': 'Alleen actieve projecten tonen',
+  'projects.toolbar.filterActive': 'Actief',
+  'projects.toolbar.filterAll': 'Alle',
+  'projects.toolbar.newProject': 'Nieuw project',
+  'projects.toolbar.newProjectA11y': 'Nieuw project',
+  'projects.nav.openMenuA11y': 'Menu openen',
+  'projects.nav.menu': 'Menu',
+  'projects.nav.projects': 'Projecten',
+  'projects.card.openA11y': 'Project {name} openen',
+  'projects.stats.active': 'Actief',
+  'projects.stats.totalSub': '{total} totaal',
+  'projects.stats.inConstruction': 'In uitvoering',
+  'projects.stats.inDesignSub': '{count} in ontwerp',
+  'projects.stats.inDesign': 'In ontwerp',
+  'projects.stats.inProgressSub': 'in behandeling',
+  'projects.stats.archived': 'Gearchiveerd',
+  'projects.stats.archivedNone': 'geen',
+  'projects.stats.archivedClosed': 'afgesloten',
+  'projects.viewMode.changeViewA11y': 'Weergave wijzigen',
+  'projects.viewMode.noFloorPlan': 'Geen plattegrond voor dit model',
 
   // --- organization picker ---
   'selectOrg.title': 'Kies een organisatie',
@@ -204,12 +237,12 @@ export const nl: Record<MessageKey, string> = {
   // --- login: hero / brand canvas ---
   'login.hero.subtext': 'Wkb-conform BIM-platform',
   'login.hero.subtextTablet': 'BIM-platform conform de Wet kwaliteitsborging voor het bouwen (Wkb)',
-  'login.hero.pillMobile': 'Wkb {version} · Actief in NL',
-  'login.hero.pillTablet': 'Wkb {version} gereed',
+  'login.hero.pillMobile': 'Wkb · Actief in NL',
+  'login.hero.pillTablet': 'Wkb gereed',
   // Words wrapped in *asterisks* render as italic accent spans (any word order).
   'login.hero.headline': 'Verweef je *modellen*, *bevindingen* en *dossier* tot één Wkb-dossier.',
   'login.hero.subcopy':
-    'Gefedereerde IFC-review, automatische Bouwbesluit-toetsen en een opleveringsklaar consumentendossier — voor bouwers die werken onder de Wet kwaliteitsborging voor het bouwen (Wkb).',
+    'Gefedereerde IFC-review, automatische toetsen op belangrijke Bouwbesluit-artikelen en een opleveringsklaar consumentendossier — voor bouwers die werken onder de Wet kwaliteitsborging voor het bouwen (Wkb).',
 
   // --- login: legal footer ---
   'login.footer.privacy': 'Privacybeleid',

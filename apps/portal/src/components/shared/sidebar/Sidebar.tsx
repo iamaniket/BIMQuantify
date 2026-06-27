@@ -31,10 +31,10 @@ function BrandFooter({ collapsed }: { collapsed: boolean }): JSX.Element {
       {!collapsed && (
         <div className="min-w-0 flex-1">
           <div className="text-[14.5px] font-semibold leading-[1.1] tracking-tight text-white">
-            BimDossier
+            {'BimDossier'}
           </div>
           <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/55">
-            Wkb 2026.1
+            {'NL · Wkb + BBL'}
           </div>
         </div>
       )}

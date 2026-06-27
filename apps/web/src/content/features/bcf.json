@@ -13,9 +13,9 @@
   ],
   "en": {
     "title": "Open BCF interoperability",
-    "card": "Import and export findings as BCF to round-trip issues with Solibri, BIMcollab, Revit, and your kwaliteitsborger's tools.",
+    "card": "Import and export findings as BCF to round-trip issues with your kwaliteitsborger's clash-detection and authoring tools.",
     "tagline": "Round-trip findings with any BIM tool",
-    "intro": "Import and export findings as BCF, the open BIM Collaboration Format, and round-trip issues with Solibri, BIMcollab, Revit, and whatever tools your kwaliteitsborger and design partners run. Findings move between platforms with their location, comments, and viewpoints intact. Nobody is re-typing an issue from a screenshot.",
+    "intro": "Import and export findings as BCF, the open BIM Collaboration Format, and round-trip issues with whatever clash-detection and authoring tools your kwaliteitsborger and design partners run. Findings move between platforms with their location, comments, and viewpoints intact. Nobody is re-typing an issue from a screenshot.",
     "problemTitle": "Findings get trapped in one tool",
     "problem": "On any real project, every party works in different software. The architect is in one authoring tool, the kwaliteitsborger in a clash detector, the contractor somewhere else again. Without a shared exchange format, findings get re-typed from one tool into the next. That's slow, it drops detail, and the same issue ends up tracked three different ways. Comments go missing, copies drift apart, and there's no single status everyone trusts.",
     "solutionTitle": "BCF as the common language",
@@ -50,7 +50,7 @@
       },
       {
         "q": "Which tools can I exchange findings with?",
-        "a": "Any BCF-capable tool, including Solibri, BIMcollab, and Revit, plus your kwaliteitsborger's software. You export findings as BCF and import the BCF files they send back."
+        "a": "Any BCF-capable tool, including your kwaliteitsborger's clash-detection and authoring software. You export findings as BCF and import the BCF files they send back."
       },
       {
         "q": "What information survives the exchange?",
@@ -59,23 +59,23 @@
     ],
     "imageCaptions": [
       "Exporting findings to BCF",
-      "Importing a BCF from Solibri",
+      "Importing an external BCF",
       "Synced issues across tools"
     ],
     "keywords": [
       "BCF interoperability",
       "BIM Collaboration Format",
       "BCF import export",
-      "Solibri BIMcollab Revit",
+      "BCF-capable BIM tools",
       "open BIM issues",
       "BCF round-trip"
     ]
   },
   "nl": {
     "title": "Open BCF-uitwisseling",
-    "card": "Importeer en exporteer bevindingen als BCF om issues uit te wisselen met Solibri, BIMcollab, Revit en de tools van uw kwaliteitsborger.",
+    "card": "Importeer en exporteer bevindingen als BCF om issues uit te wisselen met de clashdetectie- en autoringtools van uw kwaliteitsborger.",
     "tagline": "Wissel bevindingen uit met elke BIM-tool",
-    "intro": "Importeer en exporteer bevindingen als BCF, het open BIM Collaboration Format, en wissel issues in beide richtingen uit met Solibri, BIMcollab, Revit en alle tools die uw kwaliteitsborger en ontwerppartners gebruiken. Bevindingen gaan van platform naar platform met locatie, opmerkingen en viewpoints volledig intact. Niemand hoeft nog een issue over te typen vanaf een screenshot.",
+    "intro": "Importeer en exporteer bevindingen als BCF, het open BIM Collaboration Format, en wissel issues in beide richtingen uit met alle clashdetectie- en autoringtools die uw kwaliteitsborger en ontwerppartners gebruiken. Bevindingen gaan van platform naar platform met locatie, opmerkingen en viewpoints volledig intact. Niemand hoeft nog een issue over te typen vanaf een screenshot.",
     "problemTitle": "Bevindingen raken opgesloten in één tool",
     "problem": "Op elk echt project werkt elke partij in andere software. De architect zit in het ene autoringpakket, de kwaliteitsborger in een clashdetectietool, de aannemer weer ergens anders. Zonder een gedeeld uitwisselformaat worden bevindingen van de ene tool in de volgende overgetypt. Dat is traag, er valt detail weg, en hetzelfde punt wordt op drie plekken anders bijgehouden. Opmerkingen gaan verloren, kopieën lopen uiteen, en er is geen status die iedereen vertrouwt.",
     "solutionTitle": "BCF als gemeenschappelijke taal",
@@ -110,7 +110,7 @@
       },
       {
         "q": "Met welke tools kan ik bevindingen uitwisselen?",
-        "a": "Met elke BCF-compatibele tool, waaronder Solibri, BIMcollab en Revit, en met de software van uw kwaliteitsborger. U exporteert bevindingen als BCF en importeert de BCF-bestanden die zij terugsturen."
+        "a": "Met elke BCF-compatibele tool, waaronder de clashdetectie- en autoringsoftware van uw kwaliteitsborger. U exporteert bevindingen als BCF en importeert de BCF-bestanden die zij terugsturen."
       },
       {
         "q": "Welke informatie overleeft de uitwisseling?",
@@ -119,14 +119,14 @@
     ],
     "imageCaptions": [
       "Bevindingen exporteren naar BCF",
-      "Een BCF importeren uit Solibri",
+      "Een externe BCF importeren",
       "Gesynchroniseerde issues tussen tools"
     ],
     "keywords": [
       "BCF-uitwisseling",
       "BIM Collaboration Format",
       "BCF importeren exporteren",
-      "Solibri BIMcollab Revit",
+      "BCF-compatibele BIM-tools",
       "open BIM-issues",
       "BCF round-trip"
     ]

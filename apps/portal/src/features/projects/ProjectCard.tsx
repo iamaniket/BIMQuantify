@@ -69,6 +69,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
   const queryClient = useQueryClient();
   const { tokens } = useAuth();
   const tPhases = useTranslations('projects.phases');
+  const tCard = useTranslations('projects.card');
   const archived = isProjectArchived(project);
   const createdLabel = formatDate(project.created_at, locale, '');
   const updatedLabel = formatDate(project.updated_at, locale, '');
@@ -214,7 +215,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
                 {project.lifecycle_state === 'archived' && (
                   <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${projectBadgeClasses(project)}`}>
                     <span className={`h-1.5 w-1.5 rounded-full ${projectDotClasses(project)}`} />
-                    Archived · read only
+                    {tCard('archivedReadOnly')}
                   </span>
                 )}
                 <h3 className="line-clamp-2 break-all text-title3 font-semibold text-primary-foreground">

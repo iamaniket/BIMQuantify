@@ -31,6 +31,7 @@ export function FindingDetailModal({
 }: Props): JSX.Element {
   const t = useTranslations('findings.detail');
   const tStatus = useTranslations('findings.status');
+  const tCommon = useTranslations('common');
   const [tab, setTab] = useState<FindingTab>('edit');
   const api = useFindingDetailForm(projectId, finding, {
     onSaved: () => { onOpenChange(false); },
@@ -98,6 +99,7 @@ export function FindingDetailModal({
       )}
       {...(isEdit && canEdit ? { onSave: api.save } : {})}
       saveLabel={t('save')}
+      cancelLabel={tCommon('cancel')}
       saveDisabled={isPending}
       // Save/Delete belong to the Edit tab only. On History keep a minimal
       // footer node so the Cancel/Close button still renders (the dialog has no

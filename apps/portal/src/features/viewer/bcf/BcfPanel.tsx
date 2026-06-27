@@ -1,9 +1,37 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Component, type ErrorInfo, type ReactNode, type JSX } from 'react';
 
 import { BcfTopicList } from './BcfTopicList';
 import type { BcfController } from './useBcfController';
+
+function BcfRenderErrorFallback({
+  message,
+  onReset,
+}: {
+  message: string;
+  onReset: () => void;
+}): JSX.Element {
+  const t = useTranslations('viewer.bcf');
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 p-6 text-center">
+      <p className="text-body3 font-medium text-error">
+        {t('renderError')}
+      </p>
+      <p className="text-caption text-foreground-tertiary">
+        {message}
+      </p>
+      <button
+        type="button"
+        className="mt-2 rounded bg-primary px-3 py-1 text-body3 font-medium text-primary-foreground"
+        onClick={onReset}
+      >
+        {t('retry')}
+      </button>
+    </div>
+  );
+}
 
 type Props = {
   projectId: string;
@@ -38,21 +66,10 @@ class BcfErrorBoundary extends Component<
   override render(): ReactNode {
     if (this.state.error !== null) {
       return (
-        <div className="flex flex-col items-center justify-center gap-2 p-6 text-center">
-          <p className="text-body3 font-medium text-error">
-            Something went wrong rendering this view.
-          </p>
-          <p className="text-caption text-foreground-tertiary">
-            {this.state.error.message}
-          </p>
-          <button
-            type="button"
-            className="mt-2 rounded bg-primary px-3 py-1 text-body3 font-medium text-primary-foreground"
-            onClick={() => { this.setState({ error: null }); this.props.onReset(); }}
-          >
-            Retry
-          </button>
-        </div>
+        <BcfRenderErrorFallback
+          message={this.state.error.message}
+          onReset={() => { this.setState({ error: null }); this.props.onReset(); }}
+        />
       );
     }
     return this.props.children;

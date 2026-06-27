@@ -1,6 +1,5 @@
+import { BrandMark } from '@bimdossier/brand';
 import type { JSX } from 'react';
-
-import { BRAND_LOGO_DATA_URI } from '@bimdossier/brand';
 
 type Props = {
   size?: number;
@@ -10,27 +9,18 @@ type Props = {
 };
 
 /**
- * BimDossier logomark — the full-colour "A"-folder brand logo, rendered in the
- * sidebar footer chip (a translucent-white tile gives it backing on the blue
- * gradient).
+ * BimDossier logomark — the white "A-house" brand mark, rendered in the sidebar
+ * footer chip (it sits on the blue gradient, so the white variant is used).
  */
 export function DossierLogo({
   size = 22,
   className,
 }: Props): JSX.Element {
   return (
-    <span
-      aria-hidden="true"
-      className={className}
-      style={{
-        display: 'inline-block',
-        width: size,
-        height: size,
-        backgroundImage: `url(${BRAND_LOGO_DATA_URI})`,
-        backgroundSize: 'contain',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}
+    <BrandMark
+      variant="white"
+      size={size}
+      {...(className !== undefined ? { className } : {})}
     />
   );
 }

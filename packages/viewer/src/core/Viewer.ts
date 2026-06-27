@@ -114,7 +114,7 @@ export interface ZoomOptions {
   /** Max dolly distance as multiple of model size. Default: 4. */
   maxFactor?: number;
   /**
-   * Zoom toward the cursor (Forge/Navisworks-style) rather than the orbit
+   * Zoom toward the cursor (as in most CAD viewers) rather than the orbit
    * centre. Default: true. When false, the wheel dollies toward the current
    * camera target, which makes it hard to zoom into off-centre objects.
    */
@@ -606,7 +606,7 @@ export class Viewer {
     world.camera.controls.setLookAt(15, 15, 15, 0, 0, 0);
     world.camera.three.layers.enable(LAYER_OVERLAY);
 
-    // Zoom toward the cursor (Forge/Navisworks-style) instead of the orbit
+    // Zoom toward the cursor (as in most CAD viewers) instead of the orbit
     // centre, so scrolling in over an off-centre object actually approaches
     // that object rather than flying past it toward the model centre. Matches
     // the 2D viewer and the pivot-rotate orbit behaviour. Configurable via
@@ -1333,7 +1333,7 @@ export class Viewer {
     this.shadowMode = opts.mode ?? 'auto';
     const sceneThree = threeScene(world.scene);
 
-    // Forge-style neutral studio lighting: a hemisphere ambient + a soft
+    // Neutral studio lighting (CAD-viewer style): a hemisphere ambient + a soft
     // directional sun. SimpleScene.setup() may have already added its own
     // lights; we add ours alongside — three.js sums them.
     const hemi = new THREE.HemisphereLight(0xffffff, 0xdcdcdc, 0.6);

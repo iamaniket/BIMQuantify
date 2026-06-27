@@ -85,7 +85,7 @@ export function VersionTimeline({
                       isHead ? 'text-primary' : 'text-foreground'
                     }`}
                   >
-                    v{String(v.versionNumber).padStart(2, '0')}
+                    {t('badge', { n: String(v.versionNumber).padStart(2, '0') })}
                   </span>
                   {isHead && (
                     <span className="rounded-sm bg-primary px-1.5 py-px text-caption font-bold uppercase text-primary-foreground">

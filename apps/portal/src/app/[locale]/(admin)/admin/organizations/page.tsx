@@ -35,6 +35,8 @@ import { useDeleteBlogPost } from '@/features/admin/blog/useDeleteBlogPost';
 import { useUpdateBlogPost } from '@/features/admin/blog/useUpdateBlogPost';
 import { OrgCreateDialog } from '@/features/admin/organizations/OrgCreateDialog';
 import { OrgTable } from '@/features/admin/organizations/OrgTable';
+import { PurgeOrgDialog } from '@/features/admin/organizations/PurgeOrgDialog';
+import { usePurgeOrganization } from '@/features/admin/organizations/usePurgeOrganization';
 import { adminOrganizationsListKey } from '@/features/admin/organizations/queryKeys';
 import { useAdminOrganizations } from '@/features/admin/organizations/useAdminOrganizations';
 import { ProcessorPane } from '@/features/admin/processor/ProcessorPane';
@@ -129,6 +131,7 @@ function OverviewPane({
   onCreateTenant: () => void;
 }): JSX.Element {
   const t = useTranslations('admin.organizations.overview');
+  const tStatus = useTranslations('admin.organizations.status');
   const locale = useLocale() as Locale;
 
   const byStatus = {
@@ -306,7 +309,7 @@ function OverviewPane({
                 </div>
                 <div className="flex items-center gap-3">
                   <Badge variant={org.status === 'active' ? 'success' : org.status === 'suspended' ? 'warning' : 'default'}>
-                    {org.status}
+                    {tStatus(org.status)}
                   </Badge>
                   <span className="text-caption text-foreground-tertiary">
                     {formatDate(org.created_at, locale)}
@@ -392,9 +395,13 @@ export default function AdminOrganizationsPage(): JSX.Element {
 
   // The Organizations tab table is server-paginated + sortable, filtered by the
   // toolbar's search + status. `total` drives the panel heading / tab badge.
+  // Selecting the "deleted" status surfaces soft-deleted tenants (include_deleted)
+  // with their retention status + the super-admin purge action.
+  const viewingDeleted = statusFilter === 'deleted';
   const orgFilters = {
     q: search === '' ? undefined : search,
     status: statusFilter === 'all' ? undefined : statusFilter,
+    include_deleted: viewingDeleted ? true : undefined,
   };
   const orgTable = useTableQuery<OrganizationRead, typeof orgFilters>({
     filters: orgFilters,
@@ -402,6 +409,34 @@ export default function AdminOrganizationsPage(): JSX.Element {
     queryFn: (token, p) => listOrganizationsPage(token, p),
     initialSort: { key: 'created_at', dir: 'desc' },
   });
+
+  // Super-admin hard-purge of a soft-deleted org (phase 2 of the lifecycle).
+  const tOrgPurge = useTranslations('admin.organizations.purge');
+  const purgeMutation = usePurgeOrganization();
+  const [purgeTarget, setPurgeTarget] = useState<OrganizationRead | null>(null);
+  const [purgeOpen, setPurgeOpen] = useState(false);
+  const [purgeError, setPurgeError] = useState<string | null>(null);
+
+  const handlePurge = useCallback((org: OrganizationRead) => {
+    setPurgeTarget(org);
+    setPurgeError(null);
+    setPurgeOpen(true);
+  }, []);
+
+  const handlePurgeConfirm = useCallback(() => {
+    if (purgeTarget === null) return;
+    const name = purgeTarget.name;
+    purgeMutation.mutate(purgeTarget.id, {
+      onSuccess: () => {
+        toast.success(tOrgPurge('success', { name }));
+        setPurgeOpen(false);
+        setPurgeTarget(null);
+      },
+      onError: () => {
+        setPurgeError(tOrgPurge('error'));
+      },
+    });
+  }, [purgeTarget, purgeMutation, tOrgPurge]);
 
   // Pending-request count for the Hero KPI + tab badge — a global "new" count,
   // independent of the table's own filters.
@@ -562,6 +597,7 @@ export default function AdminOrganizationsPage(): JSX.Element {
         <option value="active">{t('statusFilters.active')}</option>
         <option value="suspended">{t('statusFilters.suspended')}</option>
         <option value="provisioning">{t('statusFilters.provisioning')}</option>
+        <option value="deleted">{t('statusFilters.deleted')}</option>
       </Select>
     </TableToolbar>
   ) : tab === 'blog' ? (
@@ -623,11 +659,23 @@ export default function AdminOrganizationsPage(): JSX.Element {
           <OrgCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
           <AccessRequestApproveDialog request={approveTarget} open={approveOpen} onOpenChange={setApproveOpen} />
           <BlogPostCreateDialog open={blogCreateOpen} onOpenChange={setBlogCreateOpen} />
+          <PurgeOrgDialog
+            open={purgeOpen}
+            onOpenChange={(o) => { setPurgeOpen(o); if (!o) { setPurgeError(null); setPurgeTarget(null); } }}
+            orgName={purgeTarget?.name ?? ''}
+            onConfirm={handlePurgeConfirm}
+            isPending={purgeMutation.isPending}
+            errorMessage={purgeError}
+          />
         </>
       }
     >
       <TabsContent value="organizations" className="mt-0 flex min-h-0 flex-1 flex-col">
-        <OrgTable table={orgTable} />
+        <OrgTable
+          table={orgTable}
+          onPurge={viewingDeleted ? handlePurge : undefined}
+          purgingId={purgeMutation.isPending ? purgeTarget?.id ?? null : null}
+        />
         <TablePaginationFooter
           table={orgTable}
           className="shrink-0 border-t border-border px-5 py-2.5"

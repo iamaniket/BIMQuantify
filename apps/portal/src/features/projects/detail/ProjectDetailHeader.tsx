@@ -114,7 +114,7 @@ export function ProjectDetailHeader({
       <span
         className={`rounded-full border border-black/15 px-2 py-px text-[10px] font-bold uppercase tracking-[0.04em] text-black dark:border-white/20 dark:text-white ${statusBadgeClass}`}
       >
-        ● {formatProjectBadgeLabel(project, tPhases(project.phase))}
+        {'●'} {formatProjectBadgeLabel(project, tPhases(project.phase))}
       </span>
     </>
   );

@@ -9,9 +9,9 @@ const SystemStatusSchema = z.object({
   status: z.enum(['normal', 'degraded', 'down']),
   region: z.string(),
   node: z.string(),
-  wkb_version: z.string(),
-  bbl_version: z.string(),
-  ifc_version: z.string(),
+  wkb_checks: z.number(),
+  bbl_checks: z.number(),
+  ifc_schemas: z.array(z.string()),
   checks: z.record(z.string(), z.boolean()),
 });
 

@@ -203,7 +203,7 @@ def _snag_photo_payload(att: ProjectFile) -> dict[str, object]:
     """A finding photo's storage key + content type + a best-effort capture
     timestamp (the server-stamped `server_received_at` when present, else the
     upload time). The worker fetches the object and embeds it; the timestamp is
-    printed under the image (Ed Controls evidence pattern)."""
+    printed under the image (timestamp-under-photo evidence pattern)."""
     captured_at: str | None = None
     meta = att.capture_metadata if isinstance(att.capture_metadata, dict) else None
     raw = meta.get("server_received_at") if meta else None

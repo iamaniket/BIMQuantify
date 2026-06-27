@@ -58,6 +58,7 @@ type Props = {
 export function OrgCreateDialog({ open, onOpenChange, prefill, onCreated }: Props): JSX.Element {
   const t = useTranslations('admin.organizations.create');
   const tCommon = useTranslations('admin.common');
+  const tShared = useTranslations('common');
   const mutation = useCreateOrganization();
   const { tokens } = useAuth();
   const accessToken = tokens?.access_token;
@@ -181,6 +182,7 @@ export function OrgCreateDialog({ open, onOpenChange, prefill, onCreated }: Prop
       subtitle={t('subtitle')}
       onSave={form.handleSubmit(onSubmit)}
       saveLabel={t('submit')}
+      cancelLabel={tShared('cancel')}
       saveDisabled={mutation.isPending}
     >
       <div className="flex flex-col gap-4">

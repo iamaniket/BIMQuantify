@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useT } from '@/i18n';
 import { Avatar } from '@/components/Avatar';
 import { BlueGradient } from '@/components/BlueGradient';
 import { useAuth } from '@/providers/AuthProvider';
@@ -26,6 +27,7 @@ const ON = 'rgba(255,255,255,0.92)';
  * the OS status bar via the top safe-area inset — no fake status bar is drawn.
  */
 export function ProjectsHeader({ layout, activeCount, archivedCount, onOpenDrawer }: Props) {
+  const { t, locale } = useT();
   const insets = useSafeAreaInsets();
   const { me } = useAuth();
   const full = layout !== 'phone';
@@ -44,17 +46,17 @@ export function ProjectsHeader({ layout, activeCount, archivedCount, onOpenDrawe
             style={[styles.title, { fontSize: titleSize }]}
             numberOfLines={1}
           >
-            Projects
+            {t('projects.header.title')}
           </Text>
           <Text style={styles.count} numberOfLines={1}>
-            {activeCount} active · {archivedCount} archived
+            {t('projects.header.count', { active: activeCount, archived: archivedCount })}
           </Text>
         </View>
 
         <View style={[styles.controls, { gap: full ? 16 : 12 }]}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Notifications"
+            accessibilityLabel={t('projects.header.notificationsA11y')}
             hitSlop={10}
             style={styles.iconBtn}
           >
@@ -62,16 +64,16 @@ export function ProjectsHeader({ layout, activeCount, archivedCount, onOpenDrawe
             {pending ? <View style={styles.bellDot} /> : null}
           </Pressable>
 
-          {full ? <Text style={styles.lang}>EN</Text> : null}
+          {full ? <Text style={styles.lang}>{locale.toUpperCase()}</Text> : null}
           {full ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Toggle theme" hitSlop={10} style={styles.iconBtn}>
+            <Pressable accessibilityRole="button" accessibilityLabel={t('projects.header.toggleThemeA11y')} hitSlop={10} style={styles.iconBtn}>
               <Ionicons name="sunny-outline" size={19} color={ON} />
             </Pressable>
           ) : null}
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Open menu"
+            accessibilityLabel={t('projects.header.openMenuA11y')}
             hitSlop={8}
             onPress={onOpenDrawer}
           >

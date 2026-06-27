@@ -480,6 +480,7 @@ async def delete_certificate(
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
+    storage: StorageBackend = Depends(get_storage),
 ) -> Response:
     project = await load_project_or_404(session, project_id)
     membership = await require_membership(session, project.id, user.id)
@@ -498,6 +499,7 @@ async def delete_certificate(
 
     cert = await _load_certificate_or_404(session, project.id, certificate_id)
     before = _certificate_snapshot(cert)
+    storage_key = cert.storage_key
     cert.soft_delete()
     await session.flush()
 
@@ -511,6 +513,16 @@ async def delete_certificate(
         project_id=project.id,
         request=request,
     )
+    # Best-effort object cleanup (DLC-2): the row delete is a soft-delete with no
+    # restore path, so the stored bytes can go now. Never fail the request if the
+    # object is already gone.
+    try:
+        await storage.delete_object(storage_key, bucket=get_attachments_bucket())
+    except Exception:
+        logger.warning(
+            "delete_certificate: storage cleanup failed for %s", certificate_id,
+            exc_info=True,
+        )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

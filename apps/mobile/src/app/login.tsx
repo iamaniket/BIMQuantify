@@ -27,6 +27,12 @@ import { brand, colors } from '@/theme';
 // live between the phone / tablet-portrait / tablet-landscape designs.
 const TABLET_MIN_SIDE = 600;
 
+/** "IFC2X3" / "IFC4" / "IFC4X3" -> "2x3 / 4 / 4x3" (em-dash when unknown). */
+function formatIfcSchemas(schemas: readonly string[]): string {
+  if (schemas.length === 0) return '—';
+  return schemas.map((s) => s.replace(/^IFC/i, '').toLowerCase()).join(' / ');
+}
+
 export default function LoginScreen() {
   const router = useRouter();
   const { t, locale } = useT();
@@ -77,11 +83,13 @@ export default function LoginScreen() {
   // static values when the endpoint is loading/unreachable.
   const sys = systemQuery.data;
   const status = sys?.status;
-  const wkb = sys?.wkb_version ?? '2026.1';
+  const wkbChecks = sys?.wkb_checks ?? null;
+  const bblChecks = sys?.bbl_checks ?? null;
+  const ifcSchemas = sys?.ifc_schemas ?? [];
   const kpiItems: Kpi[] = [
-    { label: 'WKB', value: wkb },
-    { label: 'BBL', value: sys?.bbl_version ?? 'v2026.04' },
-    { label: 'IFC', value: sys?.ifc_version ?? '4.3' },
+    { label: 'WKB', value: wkbChecks != null ? String(wkbChecks) : '—' },
+    { label: 'BBL', value: bblChecks != null ? String(bblChecks) : '—' },
+    { label: 'IFC', value: formatIfcSchemas(ifcSchemas) },
     {
       label: 'STATUS',
       value:
@@ -135,7 +143,6 @@ export default function LoginScreen() {
     kpiItems,
     statusColor,
     statusLabel,
-    wkb,
     webBaseUrl: webBase,
     insets,
   };

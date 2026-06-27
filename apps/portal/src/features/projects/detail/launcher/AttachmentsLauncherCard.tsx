@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  FileAudio, FileText, FileVideo, Image, Paperclip, Plus, User,
+  Camera, FileAudio, FileText, FileVideo, Image, Paperclip, Plus, User,
 } from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import {
@@ -11,11 +11,12 @@ import { toast } from 'sonner';
 
 import type { Locale } from '@bimdossier/i18n';
 import {
-  Badge, Button, IconTile, MediaRow,
+  Badge, Button, IconTile, MediaRow, SplitButton,
 } from '@bimdossier/ui';
 
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
+import { CreateCaptureLinkDialog } from '@/features/attachments/CreateCaptureLinkDialog';
 import { formatSize } from '@/features/attachments/attachmentMeta';
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
 import { useProjectOverview } from '@/features/projects/useProjectOverview';
@@ -47,6 +48,8 @@ export function AttachmentsLauncherCard({ projectId }: { projectId: string }): J
   const tAtt = useTranslations('projectDetail.tabs.attachments');
   const locale = useLocale() as Locale;
   const { can } = useProjectPermissions(projectId);
+  const canUpload = can('attachment', 'create');
+  const canCreateCaptureLink = can('capture_link', 'create');
   // Attachment preview + count come from the shared project-overview aggregate.
   const overviewQuery = useProjectOverview(projectId);
   const attBlock = overviewQuery.data?.attachments;
@@ -54,6 +57,7 @@ export function AttachmentsLauncherCard({ projectId }: { projectId: string }): J
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [viewing, setViewing] = useState<Attachment | null>(null);
+  const [captureLinkDialogOpen, setCaptureLinkDialogOpen] = useState(false);
 
   // Only "ready" attachments have an object to preview; pending/rejected ones
   // can't be opened, so they're filtered out of the recent preview. (The
@@ -76,17 +80,50 @@ export function AttachmentsLauncherCard({ projectId }: { projectId: string }): J
     );
   };
 
-  const createAction = can('attachment', 'create') ? (
-    <Button
-      variant="primary"
-      size="md"
-      disabled={upload.isPending}
-      onClick={() => { inputRef.current?.click(); }}
-    >
-      <Plus className="h-3.5 w-3.5" />
-      {t('nav.new')}
-    </Button>
-  ) : undefined;
+  // Upload stays the primary action; capture-link creation is the dropdown action
+  // (mirrors the full Attachments page split button). Fall back to a plain button
+  // for the lopsided permission cases so we never render an empty dropdown caret.
+  let createAction: JSX.Element | undefined;
+  if (canUpload && canCreateCaptureLink) {
+    createAction = (
+      <SplitButton
+        label={t('nav.new')}
+        icon={<Plus className="h-3.5 w-3.5" />}
+        disabled={upload.isPending}
+        onClick={() => { inputRef.current?.click(); }}
+        menuLabel={tAtt('captureLink')}
+        items={[{
+          id: 'create-capture-link',
+          label: tAtt('captureLinkTitle'),
+          icon: <Camera className="h-4 w-4" />,
+          onSelect: () => { setCaptureLinkDialogOpen(true); },
+        }]}
+      />
+    );
+  } else if (canUpload) {
+    createAction = (
+      <Button
+        variant="primary"
+        size="md"
+        disabled={upload.isPending}
+        onClick={() => { inputRef.current?.click(); }}
+      >
+        <Plus className="h-3.5 w-3.5" />
+        {t('nav.new')}
+      </Button>
+    );
+  } else if (canCreateCaptureLink) {
+    createAction = (
+      <Button
+        variant="primary"
+        size="md"
+        onClick={() => { setCaptureLinkDialogOpen(true); }}
+      >
+        <Camera className="h-3.5 w-3.5" />
+        {tAtt('captureLinkCreate')}
+      </Button>
+    );
+  }
 
   return (
     <>
@@ -148,6 +185,11 @@ export function AttachmentsLauncherCard({ projectId }: { projectId: string }): J
       </LauncherPanel>
 
       <input ref={inputRef} type="file" className="hidden" onChange={onPick} />
+      <CreateCaptureLinkDialog
+        projectId={projectId}
+        open={captureLinkDialogOpen}
+        onOpenChange={setCaptureLinkDialogOpen}
+      />
       <AttachmentViewerDialog
         attachment={viewing}
         projectId={projectId}

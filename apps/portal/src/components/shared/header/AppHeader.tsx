@@ -114,6 +114,7 @@ export function AppHeader({
   crumbs, lastCrumbSlot, status, action, rightSlot, onMenuOpen,
 }: Props): JSX.Element {
   const t = useTranslations('common');
+  const tSettings = useTranslations('settings');
   const lastCrumb = crumbs[crumbs.length - 1];
 
   return (
@@ -149,7 +150,7 @@ export function AppHeader({
       <div className="relative flex shrink-0 items-center gap-1">
         {rightSlot}
         <LocaleToggle className="hidden h-[40px] w-[40px] text-white/80 hover:bg-white/10 hover:text-white md:inline-flex" />
-        <ThemeToggle className="hidden h-[40px] w-[40px] rounded-md text-white/80 hover:bg-white/10 hover:text-white md:flex" />
+        <ThemeToggle ariaLabel={tSettings('themeToggleAria')} className="hidden h-[40px] w-[40px] rounded-md text-white/80 hover:bg-white/10 hover:text-white md:flex" />
         {action === null ? null : (
           <button
             type="button"

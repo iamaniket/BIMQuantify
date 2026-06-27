@@ -5,7 +5,7 @@ types and properties into format-neutral canonical names.  Rules and the
 engine operate exclusively on canonical names; each file-format extractor
 maps its native concepts here.
 
-Adding a new file format (e.g. Revit, Navisworks) requires only adding a
+Adding a new file format (e.g. Revit, or another CAD/BIM format) requires only adding a
 new ``*_TO_CANONICAL`` mapping dict — rules and the engine stay unchanged.
 """
 

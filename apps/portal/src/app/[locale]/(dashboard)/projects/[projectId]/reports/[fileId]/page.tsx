@@ -29,6 +29,7 @@ import { useAuth } from '@/providers/AuthProvider';
 
 export default function ReportDetailPage(): JSX.Element {
   const t = useTranslations('reports.page');
+  const tv = useTranslations('common.versions');
   const { projectId, fileId } = useParams<{ projectId: string; fileId: string }>();
   const search = useSearchParams();
   const framework = (search.get('framework') ?? 'bbl') as 'bbl' | 'wkb';
@@ -130,8 +131,7 @@ export default function ReportDetailPage(): JSX.Element {
               </Badge>
               {reportMeta !== undefined && (
                 <span className="text-body3 font-semibold">
-                  {reportMeta.document_name} · {reportMeta.file_name} (v
-                  {String(reportMeta.file_version).padStart(2, '0')})
+                  {reportMeta.document_name} · {reportMeta.file_name} ({tv('badge', { n: String(reportMeta.file_version).padStart(2, '0') })})
                 </span>
               )}
             </div>

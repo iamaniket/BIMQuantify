@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useT } from '@/i18n';
 import { Avatar } from '@/components/Avatar';
 import { BlueGradient } from '@/components/BlueGradient';
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
@@ -31,6 +32,7 @@ function FootMeta({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label
  * and a created/updated/delivery meta row.
  */
 export function ProjectCoverCard({ project }: { project: Project }) {
+  const { t } = useT();
   const router = useRouter();
   const hasCover = project.thumbnail_url != null && project.thumbnail_url !== '';
 
@@ -55,7 +57,7 @@ export function ProjectCoverCard({ project }: { project: Project }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Open project ${project.name}`}
+      accessibilityLabel={t('projects.card.openA11y', { name: project.name })}
       style={styles.card}
       onPress={() =>
         router.push({

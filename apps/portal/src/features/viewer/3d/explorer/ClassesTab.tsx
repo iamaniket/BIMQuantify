@@ -1,6 +1,7 @@
 'use client';
 
 import { Layers } from '@bimdossier/ui/icons';
+import { useTranslations } from 'next-intl';
 import {
   useState, useMemo, useCallback, type JSX,
 } from 'react';
@@ -18,6 +19,7 @@ type ClassesTabProps = {
 };
 
 export function ClassesTab({ models }: ClassesTabProps): JSX.Element {
+  const t = useTranslations('viewer.explorer');
   const showItems = useViewerEntityStore((s) => s.showItems);
   const hideItems = useViewerEntityStore((s) => s.hideItems);
   const hidden = useViewerEntityStore((s) => s.hidden);
@@ -81,7 +83,7 @@ export function ClassesTab({ models }: ClassesTabProps): JSX.Element {
   const filtered = useMemo(() => filterTree(classNodes, filter), [classNodes, filter]);
 
   if (classNodes.length === 0) {
-    return <PanelEmptyState icon={Layers} message="No element data available." />;
+    return <PanelEmptyState icon={Layers} message={t('noElementData')} />;
   }
 
   return (

@@ -175,7 +175,7 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
           // Marketing-only: rotate around the model's CENTER, never the point
           // under the cursor. The built-in `pivot-rotate` plugin (in the
           // 'minimal' preset) moves the orbit point to the picked geometry on
-          // every drag (Navisworks-style), so the model would swing around
+          // every drag (orbit point follows the cursor), so the model would swing around
           // whatever you grabbed. Disabling it makes camera-controls orbit its
           // existing target — which `cameraZoomPlugin` pins to the model center
           // via `setLookAt(..., cx, cy, cz)` — so the turntable always spins in
@@ -279,7 +279,7 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
                   />
                 ) : (
                   <span aria-hidden className="text-success">
-                    ✓
+                    {'✓'}
                   </span>
                 )}
                 <span className={activeBroken ? 'text-foreground-secondary' : 'text-success'}>

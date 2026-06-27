@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -22,10 +22,13 @@ from bimdossier_api.admin.membership_rules import (
     assert_last_superuser_invariant,
 )
 from bimdossier_api.admin.provisioning import (
+    PURGE_SKIPPED_NOT_DELETED,
+    PURGE_SKIPPED_NOT_DUE,
     ProvisioningError,
     ProvisionResult,
     delete_organization,
     provision_organization,
+    purge_organization,
 )
 from bimdossier_api.admin.seats import count_consumed_seats
 from bimdossier_api.admin.storage import (
@@ -52,6 +55,7 @@ from bimdossier_api.pagination import (
     set_total_count,
     sort_params,
 )
+from bimdossier_api.config import get_settings
 from bimdossier_api.schemas.admin import (
     AccessRequestAdminRead,
     AccessRequestApproveInput,
@@ -60,6 +64,7 @@ from bimdossier_api.schemas.admin import (
     AuditEntry,
     OrganizationCreate,
     OrganizationCreateResponse,
+    OrganizationPurgeRequest,
     OrganizationRead,
     OrganizationUpdate,
 )
@@ -137,6 +142,14 @@ async def _serialize_org(
         image_url = await storage.presigned_get_url(
             org.image_key, "org-logo", bucket=bucket,
         )
+    # Retention metadata: only meaningful while soft-deleted-but-not-purged.
+    purge_eligible_at: datetime | None = None
+    is_purge_eligible = False
+    if org.deleted_at is not None and org.purged_at is None:
+        purge_eligible_at = org.deleted_at + timedelta(
+            days=get_settings().org_retention_days
+        )
+        is_purge_eligible = datetime.now(UTC) >= purge_eligible_at
     return OrganizationRead(
         id=org.id,
         name=org.name,
@@ -150,6 +163,9 @@ async def _serialize_org(
         created_at=org.created_at,
         provisioned_at=org.provisioned_at,
         deleted_at=org.deleted_at,
+        purged_at=org.purged_at,
+        purge_eligible_at=purge_eligible_at,
+        is_purge_eligible=is_purge_eligible,
     )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -242,6 +258,7 @@ async def list_organizations(
             "name": Organization.name,
             "status": Organization.status,
             "created_at": Organization.created_at,
+            "deleted_at": Organization.deleted_at,
         },
         default="created_at",
         default_dir="desc",
@@ -413,6 +430,51 @@ async def delete_org(
         requester=requester,
         request=request,
     )
+
+
+@router.post("/organizations/{organization_id}/purge", response_model=OrganizationRead)
+async def purge_org(
+    organization_id: UUID,
+    request: Request,
+    payload: OrganizationPurgeRequest | None = None,
+    requester: User = Depends(require_superuser),
+    session: AsyncSession = Depends(get_async_session),
+    storage: StorageBackend = Depends(get_storage),
+) -> OrganizationRead:
+    """Hard-purge a soft-deleted org: wipe its storage + DROP its tenant schema.
+
+    Phase 2 of the lifecycle. By default only purges an org past the retention
+    window (`ORG_RETENTION_DAYS`); `skip_retention=true` forces it (erasure-on-
+    request). Idempotent. The org row remains as an audit tombstone.
+    """
+    skip_retention = bool(payload and payload.skip_retention)
+    result = await purge_organization(
+        organization_id=organization_id,
+        actor_user_id=requester.id,
+        now=skip_retention,
+        storage=storage,
+        request=request,
+    )
+    if result.status == PURGE_SKIPPED_NOT_DELETED:
+        # Either no such org, or a live (non-soft-deleted) org — distinguish them.
+        org = await session.get(Organization, organization_id)
+        if org is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ORG_NOT_FOUND")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="ORG_NOT_DELETED")
+    if result.status == PURGE_SKIPPED_NOT_DUE:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="ORG_PURGE_NOT_DUE"
+        )
+
+    # purged (or already-purged, idempotent) → return the current tombstone state.
+    # The schema is gone, so active-storage reads 0 (compute_active_storage_gb is
+    # resilient to the dropped schema).
+    org = await session.get(Organization, organization_id)
+    if org is None:  # pragma: no cover — purge wrote the row, so it exists
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ORG_NOT_FOUND")
+    seat_count = await count_consumed_seats(session, organization_id)
+    storage_gb = await compute_active_storage_gb(get_session_maker(), org.schema_name)
+    return await _serialize_org(org, seat_count, storage_gb, storage)
 
 
 # ---------------------------------------------------------------------------

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useT } from '@/i18n';
 import { Avatar } from '@/components/Avatar';
 import { BlueGradient } from '@/components/BlueGradient';
 import { GridTexture } from '@/components/GridTexture';
@@ -63,6 +64,7 @@ function CoverThumb({ thumbnailUrl, aerialUrl }: { thumbnailUrl?: string | null;
  * delivery date, plus a project mark.
  */
 export function ProjectCard({ project }: { project: Project }) {
+  const { t } = useT();
   const router = useRouter();
   const sub = [project.phase ? humanize(project.phase) : null, project.city]
     .filter((x) => x != null && x !== '')
@@ -80,7 +82,7 @@ export function ProjectCard({ project }: { project: Project }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Open project ${project.name}`}
+      accessibilityLabel={t('projects.card.openA11y', { name: project.name })}
       style={styles.card}
       onPress={() =>
         router.push({

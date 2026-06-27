@@ -101,7 +101,12 @@ export default function SettingsPage(): JSX.Element {
 
   const activeThemeLabel = mounted
     ? selectedTheme === 'system'
-      ? `${t('themeOptions.systemLabel')} (${resolvedTheme === 'dark' ? t('themeOptions.darkLabel').toLowerCase() : t('themeOptions.lightLabel').toLowerCase()} active)`
+      ? t('themeOptions.systemActiveSuffix', {
+          label: t('themeOptions.systemLabel'),
+          mode: resolvedTheme === 'dark'
+            ? t('themeOptions.darkLabel').toLowerCase()
+            : t('themeOptions.lightLabel').toLowerCase(),
+        })
       : selectedTheme.charAt(0).toUpperCase() + selectedTheme.slice(1)
     : t('loadingThemePreference');
 

@@ -32,6 +32,7 @@ export function OrgDetailHero({
   onImageRemove?: () => void;
 }): JSX.Element {
   const t = useTranslations('orgDetail.hero');
+  const tRelative = useTranslations('orgDetail.relativeTime');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canEdit = onImageUpload !== undefined;
 
@@ -115,12 +116,12 @@ export function OrgDetailHero({
       title={org.name}
       badge={
         <Badge variant={org.status === 'active' ? 'success' : 'warning'}>
-          {org.status === 'active' ? 'Active' : 'Suspended'}
+          {org.status === 'active' ? t('statusActive') : t('statusSuspended')}
         </Badge>
       }
       subtitle={
         <>
-          <span>{t('members')}, {t('seats').toLowerCase()}, audit</span>
+          <span>{t('members')}, {t('seats').toLowerCase()}, {t('audit')}</span>
           <span className="text-foreground-tertiary/50">&middot;</span>
           <span>
             <strong className="text-primary">{adminCount}</strong> {t('admin')}
@@ -170,7 +171,7 @@ export function OrgDetailHero({
         },
         {
           label: t('lastActivity'),
-          value: lastEvent !== null ? relativeTime(lastEvent.created_at) : '—',
+          value: lastEvent !== null ? relativeTime(lastEvent.created_at, tRelative('justNow')) : '—',
           sub: lastEvent !== null ? lastEvent.action : t('noEvents'),
         },
         {

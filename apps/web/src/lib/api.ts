@@ -76,9 +76,9 @@ export type PublicSystemStatus = {
   status: 'normal' | 'degraded' | 'down';
   region: string;
   node: string;
-  wkb_version: string;
-  bbl_version: string;
-  ifc_version: string;
+  wkb_checks: number;
+  bbl_checks: number;
+  ifc_schemas: string[];
 };
 
 export async function fetchSystemStatus(): Promise<PublicSystemStatus> {

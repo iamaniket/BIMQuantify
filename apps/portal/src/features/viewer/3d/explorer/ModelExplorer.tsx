@@ -1,6 +1,7 @@
 'use client';
 
 import { Box } from '@bimdossier/ui/icons';
+import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
 import type { ModelMetadata, ModelProperties } from '@/lib/api/viewerTypes';
@@ -47,17 +48,18 @@ export function ModelExplorer({
   onPropertiesToggle,
   modelTreeExpanded,
 }: ModelExplorerProps): JSX.Element {
+  const t = useTranslations('viewer.explorer');
   const [tab, setTab] = useState<ExplorerTab>('objects');
 
   if (isLoading) {
-    return <PanelEmptyState message="Loading model data..." />;
+    return <PanelEmptyState message={t('loadingModelData')} />;
   }
 
   if (models.length === 0) {
     return (
       <PanelEmptyState
         icon={Box}
-        message="No metadata available for this model."
+        message={t('noMetadata')}
       />
     );
   }

@@ -6,8 +6,8 @@
  * (the architectural plan convention — chest height, so walls/columns/doors read
  * as line work). Each triangle that straddles the plane contributes one 2D
  * segment in the two horizontal axes. Meshes belonging to an IfcSpace are
- * bucketed separately as *room* geometry (so the viewer can fill + label rooms
- * BIMcollab-style); everything else is *wall* line work. Geometry access mirrors
+ * bucketed separately as *room* geometry (so the viewer can fill + label rooms);
+ * everything else is *wall* line work. Geometry access mirrors
  * `metadata.ts::computeBoundingBox` (web-ifc `StreamAllMeshes` → `flatTransformation`
  * → world vertices); we add the triangle index array so we can slice faces.
  *

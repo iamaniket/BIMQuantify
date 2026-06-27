@@ -423,7 +423,7 @@ function InvitationsPane({
 
   if (invitationsLoading) {
     return (
-      <div className="py-4 text-center text-body2 text-foreground-tertiary">Loading…</div>
+      <div className="py-4 text-center text-body2 text-foreground-tertiary">{t('invitationsLoading')}</div>
     );
   }
 

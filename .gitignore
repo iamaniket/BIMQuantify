@@ -17,6 +17,9 @@ scripts/_diag_*.py
 _lint.json
 *.lint.json
 
+# i18n audit dumps (chunked diagnostic output, scratch only) — never commit
+.i18n-audit/
+
 # Python — bytecode + tool caches (never commit; apps/api has its own copy,
 # this covers apps/arbiter and any other Python at the repo root)
 __pycache__/
@@ -36,3 +39,8 @@ docs
 apps/portal/public/web-ifc/
 apps/portal/public/fragments/
 apps/web/public/models/demo.frag
+
+# Generated in-app brand logos (synced from assets/logos/ by scripts/sync-brand-assets.mjs
+# on predev/prebuild). Mobile's copies under apps/mobile/assets/images/ ARE committed.
+apps/web/public/brand/
+apps/portal/public/brand/

@@ -340,12 +340,10 @@ const LEGAL_LINKS = [
 export function FooterLinks({
   stacked = false,
   center = false,
-  wkb = '2026.1',
   webBaseUrl,
 }: {
   stacked?: boolean;
   center?: boolean;
-  wkb?: string;
   webBaseUrl: string;
 }) {
   const { t } = useT();
@@ -359,7 +357,7 @@ export function FooterLinks({
       }}
     >
       <Text style={{ fontSize: 11.5, color: colors.textMuted }}>
-        © 2026 BimDossier · Wkb {wkb}
+        © {new Date().getFullYear()} BimDossier · Wkb + BBL
       </Text>
       <View style={{ flexDirection: 'row', gap: 16 }}>
         {LEGAL_LINKS.map((l) => (

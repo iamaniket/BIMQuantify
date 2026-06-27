@@ -34,7 +34,7 @@ export function LanguageToggle({ className }: Props): JSX.Element {
         'inline-flex h-8 items-center rounded-md px-2 text-body3 font-semibold text-foreground-secondary hover:bg-background-hover disabled:opacity-50',
         className,
       )}
-      aria-label={`Switch to ${t('label')}`}
+      aria-label={t('ariaLabel', { language: t('label') })}
     >
       {t('label')}
     </button>

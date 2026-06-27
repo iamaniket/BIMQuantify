@@ -95,7 +95,7 @@ export function OrgCertificateUploadDialog({ open, onOpenChange }: Props): JSX.E
       },
       {
         onSuccess: (cert) => {
-          toast.success(`${cert.original_filename} uploaded`);
+          toast.success(t('successToast', { filename: cert.original_filename }));
           reset();
           onOpenChange(false);
         },

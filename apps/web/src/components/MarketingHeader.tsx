@@ -56,7 +56,7 @@ export function MarketingHeader(): JSX.Element {
 
         <div className="flex items-center gap-2">
           <LanguageToggle />
-          <ThemeToggle />
+          <ThemeToggle ariaLabel={t('themeToggle')} />
         </div>
       </div>
     </header>

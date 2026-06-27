@@ -20,7 +20,19 @@ async def test_system_status_returns_normal_when_healthy(
     assert body["status"] == "normal"
     assert body["region"] == "dev"
     assert body["node"] == "local"
-    assert body["wkb_version"] == "2026.1"
+    # Real coverage figures replace the old made-up "version" strings.
+    from bimdossier_api.compliance.coverage import (
+        BBL_IMPLEMENTED_CHECKS,
+        WKB_IMPLEMENTED_CHECKS,
+    )
+    from bimdossier_api.ifc.header import supported_ifc_schemas
+
+    assert body["wkb_checks"] == WKB_IMPLEMENTED_CHECKS
+    assert body["bbl_checks"] == BBL_IMPLEMENTED_CHECKS
+    assert body["ifc_schemas"] == supported_ifc_schemas()
+    assert "wkb_version" not in body
+    assert "bbl_version" not in body
+    assert "ifc_version" not in body
     assert body["checks"] == {"db": True, "redis": True, "storage": True}
 
 

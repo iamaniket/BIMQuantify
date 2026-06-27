@@ -134,6 +134,7 @@ type SettingsDialogProps = {
 
 function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProps): JSX.Element {
   const t = useTranslations('viewer.measurement');
+  const tCommon = useTranslations('common');
   const [cfg, setCfg] = useState<MeasurementConfig | null>(null);
 
   useEffect(() => {
@@ -160,6 +161,7 @@ function MeasurementSettingsDialog({ handle, open, onClose }: SettingsDialogProp
       onClose={onClose}
       title={t('settingsTitle')}
       subtitle={t('settingsSubtitle')}
+      cancelLabel={tCommon('cancel')}
       width={400}
     >
       <div className="flex flex-col gap-5">

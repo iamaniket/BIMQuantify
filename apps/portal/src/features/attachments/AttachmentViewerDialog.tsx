@@ -62,15 +62,6 @@ function fileKind(attachment: Attachment): string {
   return attachment.attachment_category ?? 'other';
 }
 
-const KIND_LABEL: Record<string, string> = {
-  image: 'Image',
-  video: 'Video',
-  audio: 'Audio',
-  pdf: 'PDF',
-  office: 'Document',
-  other: 'File',
-};
-
 // ─── Media stage ─────────────────────────────────────────────────────
 
 function ContentPreview({
@@ -181,8 +172,9 @@ function ContentPreview({
 // ─── Metadata rail bits ──────────────────────────────────────────────
 
 function KindChip({ kind }: { kind: string }): JSX.Element {
+  const t = useTranslations('projectDetail.tabs.attachments.kindLabel');
   const Icon = CATEGORY_ICONS[kind] ?? FileText;
-  const label = KIND_LABEL[kind] ?? KIND_LABEL['other'];
+  const label = t.has(kind) ? t(kind) : t('other');
   return (
     <span className="inline-flex items-center gap-1.5 text-foreground">
       <Icon className="h-3.5 w-3.5 text-foreground-tertiary" />

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { useT } from '@/i18n';
 import { colors, radii } from '@/theme';
 
 interface Props {
@@ -30,6 +31,7 @@ export function ProjectsToolbar({
   showNew = false,
   onNew,
 }: Props) {
+  const { t } = useT();
   return (
     <View style={styles.row}>
       <View style={styles.search}>
@@ -38,7 +40,7 @@ export function ProjectsToolbar({
           style={styles.input}
           value={query}
           onChangeText={onQueryChange}
-          placeholder="Search projects…"
+          placeholder={t('projects.toolbar.searchPlaceholder')}
           placeholderTextColor={colors.placeholder}
           autoCapitalize="none"
           autoCorrect={false}
@@ -49,14 +51,14 @@ export function ProjectsToolbar({
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={activeOnly ? 'Show all projects' : 'Show active projects only'}
+        accessibilityLabel={activeOnly ? t('projects.toolbar.showAllA11y') : t('projects.toolbar.showActiveA11y')}
         accessibilityState={{ selected: activeOnly }}
         style={[styles.filter, activeOnly ? styles.filterOn : null]}
         onPress={onToggleActiveOnly}
       >
         <Ionicons name="funnel-outline" size={14} color={activeOnly ? colors.primary : colors.textMuted} />
         <Text style={[styles.filterText, activeOnly ? styles.filterTextOn : null]}>
-          {activeOnly ? 'Active' : 'All'}
+          {activeOnly ? t('projects.toolbar.filterActive') : t('projects.toolbar.filterAll')}
         </Text>
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{count}</Text>
@@ -64,9 +66,9 @@ export function ProjectsToolbar({
       </Pressable>
 
       {showNew ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="New project" style={styles.new} onPress={onNew}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('projects.toolbar.newProjectA11y')} style={styles.new} onPress={onNew}>
           <Ionicons name="add" size={18} color="#fff" />
-          <Text style={styles.newText}>New project</Text>
+          <Text style={styles.newText}>{t('projects.toolbar.newProject')}</Text>
         </Pressable>
       ) : null}
     </View>

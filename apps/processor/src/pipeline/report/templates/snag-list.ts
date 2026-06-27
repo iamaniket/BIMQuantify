@@ -3,7 +3,7 @@
  * hands to a subcontractor. Cover (project + recipient + selection), then the
  * findings grouped by status, each with severity / deadline / Bbl ref /
  * location / description / resolution note and embedded photos (with their
- * capture timestamp — the Ed Controls evidence pattern).
+ * capture timestamp — the standard field-evidence pattern).
  *
  * Photos arrive as `{storage_key, content_type, captured_at}`; the
  * orchestrator's `prepare` downloads each from MinIO and fills `data_url`,

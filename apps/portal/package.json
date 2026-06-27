@@ -3,9 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "predev": "node scripts/copy-wasm.mjs",
+    "predev": "node scripts/copy-wasm.mjs && node ../../scripts/sync-brand-assets.mjs",
     "dev": "next dev --turbopack --port 3001",
-    "prebuild": "node scripts/copy-wasm.mjs",
+    "prebuild": "node scripts/copy-wasm.mjs && node ../../scripts/sync-brand-assets.mjs",
     "build": "next build --webpack",
     "start": "next start --port 3001",
     "lint": "eslint .",

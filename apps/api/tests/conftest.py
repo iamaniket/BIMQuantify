@@ -602,6 +602,16 @@ class FakeStorage:
             del self.objects[key]
         self.deleted.append(key)
 
+    async def delete_prefix(self, prefix: str, *, bucket: str | None = None) -> int:
+        # Mirror the real guard so the empty-prefix safety check is testable.
+        if not prefix or not prefix.strip():
+            raise ValueError("delete_prefix requires a non-empty prefix")
+        keys = [k for k in self.objects if k.startswith(prefix)]
+        for k in keys:
+            del self.objects[k]
+            self.deleted.append(k)
+        return len(keys)
+
     async def copy_object(
         self, source_key: str, dest_key: str, *, bucket: str | None = None
     ) -> None:

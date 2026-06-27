@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { setRequestLocale } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { compileMDX } from 'next-mdx-remote/rsc';
 import type { JSX } from 'react';
@@ -32,9 +32,10 @@ export async function generateMetadata({
   const { locale, slug } = await params;
   const post = await getPostBySlugMerged(slug, locale as Locale);
   if (post === null) {
+    const t = await getTranslations({ locale, namespace: 'blog' });
     // Bare title — the [locale]/layout.tsx `%s — BimDossier` template appends
     // the suffix, so adding it here would double it.
-    return { title: 'Post not found' };
+    return { title: t('metadata.postNotFound') };
   }
   return {
     title: post.meta.title,

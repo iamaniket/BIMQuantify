@@ -55,6 +55,7 @@ export function TenantOrgEditDialog({
   onSuccess,
 }: Props): JSX.Element {
   const t = useTranslations('tenantAdmin.editOrg');
+  const tCommon = useTranslations('common');
   const mutation = useUpdateOrgName();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -129,6 +130,7 @@ export function TenantOrgEditDialog({
       subtitle={t('subtitle')}
       onSave={form.handleSubmit(onSubmit)}
       saveLabel={t('submit')}
+      cancelLabel={tCommon('cancel')}
       saveDisabled={mutation.isPending || uploading}
     >
       <div className="flex flex-col gap-5">

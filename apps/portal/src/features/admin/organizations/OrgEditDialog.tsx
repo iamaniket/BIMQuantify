@@ -42,6 +42,7 @@ function toFormValues(org: OrganizationRead): FormValues {
 export function OrgEditDialog({ organization, open, onOpenChange }: Props): JSX.Element {
   const t = useTranslations('admin.organizations.edit');
   const tCommon = useTranslations('admin.common');
+  const tShared = useTranslations('common');
   const mutation = useUpdateOrganization();
 
   const form = useForm<FormValues>({
@@ -127,6 +128,7 @@ export function OrgEditDialog({ organization, open, onOpenChange }: Props): JSX.
       subtitle={t('subtitle')}
       onSave={form.handleSubmit(onSubmit)}
       saveLabel={t('submit')}
+      cancelLabel={tShared('cancel')}
       saveDisabled={mutation.isPending}
     >
       <div className="flex flex-col gap-4">

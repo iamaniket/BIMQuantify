@@ -23,10 +23,15 @@ class ProjectsMapPoint(BaseModel):
 
 
 class SystemStatusResponse(BaseModel):
+    """Live platform health + real capability figures for the login/marketing
+    surfaces. The ``*_checks`` counts are the implemented automated rule counts
+    per framework (honest coverage, not a made-up version string); ``ifc_schemas``
+    is exactly what the IFC parser accepts."""
+
     status: SystemStatus
     region: str
     node: str
-    wkb_version: str = "2026.1"
-    bbl_version: str = "v2026.04"
-    ifc_version: str = "4.3"
+    wkb_checks: int
+    bbl_checks: int
+    ifc_schemas: list[str] = Field(default_factory=list)
     checks: dict[str, bool] = Field(default_factory=dict)

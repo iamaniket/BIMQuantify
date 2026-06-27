@@ -226,6 +226,8 @@ en_messages: Catalog = {
     "errors.ORG_SUSPENDED": "This workspace is suspended. Please contact a super-admin to restore access.",
     "errors.ORG_NAME_TAKEN": "That workspace name is already taken.",
     "errors.ORG_STATUS_NOT_TRANSITIONABLE": "This workspace's status can't be changed that way.",
+    "errors.ORG_NOT_DELETED": "This workspace hasn't been deleted, so it can't be permanently removed.",
+    "errors.ORG_PURGE_NOT_DUE": "This workspace is still within its retention period and can't be permanently removed yet.",
     "errors.NO_ACTIVE_ORGANIZATION": "Select a workspace before continuing.",
     "errors.SEAT_LIMIT_EXCEEDED": "Seat limit reached. Raise the limit or remove a member before inviting.",
     "errors.SEAT_LIMIT_BELOW_USAGE": "The new seat limit is below the number of seats currently in use.",

@@ -42,6 +42,7 @@ export function ReportsTable({
   const t = useTranslations('reports');
   const tHub = useTranslations('reports.hub');
   const tSign = useTranslations('reports.sign');
+  const tv = useTranslations('common.versions');
   const locale = useLocale() as Locale;
   const { can } = useProjectPermissions(projectId);
   const canSign = can('completion_declaration', 'sign');
@@ -65,7 +66,7 @@ export function ReportsTable({
                 {t(`types.${r.report_type}.title`)}
               </span>
               <span className="block text-caption tabular-nums text-foreground-tertiary">
-                v{String(r.versionNumber).padStart(2, '0')}
+                {tv('badge', { n: String(r.versionNumber).padStart(2, '0') })}
               </span>
             </span>
           </div>

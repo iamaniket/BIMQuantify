@@ -17,6 +17,12 @@ export const OrganizationReadSchema = z.object({
   created_at: z.string(),
   provisioned_at: z.union([z.string(), z.null()]),
   deleted_at: z.union([z.string(), z.null()]),
+  // Two-phase deletion: purged_at set once the org is hard-purged (storage wiped
+  // + schema dropped); purge_eligible_at = deleted_at + retention window;
+  // is_purge_eligible true once a soft-deleted org is past that window.
+  purged_at: z.union([z.string(), z.null()]),
+  purge_eligible_at: z.union([z.string(), z.null()]),
+  is_purge_eligible: z.boolean(),
 });
 
 export type OrganizationRead = z.infer<typeof OrganizationReadSchema>;

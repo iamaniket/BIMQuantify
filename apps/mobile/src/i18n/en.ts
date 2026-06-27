@@ -22,6 +22,39 @@ export const en = {
   'nav.seats': '{used} seats',
   'nav.seatsLimit': '{used}/{limit} seats',
   'nav.switchTo': 'Switch to {name}',
+  'nav.brandTagline': 'BimDossier Platform',
+
+  // --- projects list / header / toolbar ---
+  'projects.list.loadError': 'Couldn’t load projects.',
+  'projects.list.empty': 'No projects yet.',
+  'projects.list.noMatches': 'No matching projects.',
+  'projects.header.title': 'Projects',
+  'projects.header.count': '{active} active · {archived} archived',
+  'projects.header.notificationsA11y': 'Notifications',
+  'projects.header.toggleThemeA11y': 'Toggle theme',
+  'projects.header.openMenuA11y': 'Open menu',
+  'projects.toolbar.searchPlaceholder': 'Search projects…',
+  'projects.toolbar.showAllA11y': 'Show all projects',
+  'projects.toolbar.showActiveA11y': 'Show active projects only',
+  'projects.toolbar.filterActive': 'Active',
+  'projects.toolbar.filterAll': 'All',
+  'projects.toolbar.newProject': 'New project',
+  'projects.toolbar.newProjectA11y': 'New project',
+  'projects.nav.openMenuA11y': 'Open menu',
+  'projects.nav.menu': 'Menu',
+  'projects.nav.projects': 'Projects',
+  'projects.card.openA11y': 'Open project {name}',
+  'projects.stats.active': 'Active',
+  'projects.stats.totalSub': '{total} total',
+  'projects.stats.inConstruction': 'In construction',
+  'projects.stats.inDesignSub': '{count} in design',
+  'projects.stats.inDesign': 'In design',
+  'projects.stats.inProgressSub': 'in progress',
+  'projects.stats.archived': 'Archived',
+  'projects.stats.archivedNone': 'none',
+  'projects.stats.archivedClosed': 'closed',
+  'projects.viewMode.changeViewA11y': 'Change view',
+  'projects.viewMode.noFloorPlan': 'No floor plan for this model',
 
   // --- organization picker ---
   'selectOrg.title': 'Choose an organization',
@@ -202,13 +235,13 @@ export const en = {
   // --- login: hero / brand canvas ---
   'login.hero.subtext': 'Wkb-compliant BIM platform',
   'login.hero.subtextTablet': 'Quality Assurance in Construction Act (Wkb)-compliant BIM platform',
-  'login.hero.pillMobile': 'Wkb {version} · Live in NL',
-  'login.hero.pillTablet': 'Quality Assurance in Construction Act (Wkb) {version} Ready',
+  'login.hero.pillMobile': 'Wkb · Live in NL',
+  'login.hero.pillTablet': 'Quality Assurance in Construction Act (Wkb) Ready',
   // Words wrapped in *asterisks* render as italic accent spans (any word order).
   'login.hero.headline':
     'Stitch your *models*, *issues* and *dossier* into one Quality Assurance in Construction Act (Wkb) record.',
   'login.hero.subcopy':
-    'Federated IFC review, automated Bouwbesluit checks and a delivery-ready consumentendossier — for builders working under the Quality Assurance in Construction Act (Wkb).',
+    'Federated IFC review, automated checks for key Bouwbesluit articles and a delivery-ready consumentendossier — for builders working under the Quality Assurance in Construction Act (Wkb).',
 
   // --- login: legal footer ---
   'login.footer.privacy': 'Privacy policy',

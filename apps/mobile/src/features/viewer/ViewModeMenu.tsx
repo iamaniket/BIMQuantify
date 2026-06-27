@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRef, useState } from 'react';
 import { Dimensions, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useT } from '@/i18n';
 import { colors, radii } from '@/theme';
 import type { ViewMode } from '@/features/viewer/embedBridge';
 
@@ -27,6 +28,7 @@ type Props = {
  * it over the WebView bridge (`setViewMode`).
  */
 export function ViewModeMenu({ mode, floorPlansAvailable, onChange }: Props) {
+  const { t } = useT();
   const triggerRef = useRef<View>(null);
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<{ top: number; right: number }>({ top: 56, right: 12 });
@@ -50,7 +52,7 @@ export function ViewModeMenu({ mode, floorPlansAvailable, onChange }: Props) {
       <Pressable
         ref={triggerRef}
         accessibilityRole="button"
-        accessibilityLabel="Change view"
+        accessibilityLabel={t('projects.viewMode.changeViewA11y')}
         onPress={openMenu}
         hitSlop={10}
         style={styles.trigger}
@@ -101,7 +103,7 @@ export function ViewModeMenu({ mode, floorPlansAvailable, onChange }: Props) {
               );
             })}
             {!floorPlansAvailable ? (
-              <Text style={styles.hint}>No floor plan for this model</Text>
+              <Text style={styles.hint}>{t('projects.viewMode.noFloorPlan')}</Text>
             ) : null}
           </View>
         </Pressable>

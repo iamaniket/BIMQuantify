@@ -49,6 +49,7 @@ export function AddProjectMemberDialog({
 }: Props): JSX.Element {
   const t = useTranslations('projectAccess.addDialog');
   const tRoles = useTranslations('projectAccess.table.roles');
+  const tCommon = useTranslations('common');
   // Member-callable picker source: works for non-admin project owners (the
   // full org-member list is org-admin only) and already excludes guests.
   const orgMembersQuery = useSelectableOrgMembers(organizationId);
@@ -157,6 +158,7 @@ export function AddProjectMemberDialog({
       subtitle={t('subtitle')}
       onSave={onSave}
       saveLabel={t('submit')}
+      cancelLabel={tCommon('cancel')}
       saveDisabled={saveDisabled}
     >
       <Tabs

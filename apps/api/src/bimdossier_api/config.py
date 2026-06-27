@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     )
     invite_token_ttl_seconds: int = Field(default=604800, alias="INVITE_TOKEN_TTL_SECONDS")
     invitation_ttl_days: int = Field(default=14, alias="INVITATION_TTL_DAYS")
+    # Days a soft-deleted org is retained (schema + storage kept, recoverable)
+    # before it becomes eligible for hard purge (storage wipe + DROP SCHEMA).
+    org_retention_days: int = Field(default=30, alias="ORG_RETENTION_DAYS")
     invitation_sweep_interval_minutes: int = Field(
         default=60, alias="INVITATION_SWEEP_INTERVAL_MINUTES"
     )

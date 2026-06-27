@@ -15,8 +15,8 @@ import os
 import pathlib
 import secrets
 import threading
-from dataclasses import dataclass
-from datetime import UTC, datetime
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from alembic import command
@@ -28,8 +28,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api import audit
 from bimdossier_api._rls_sql import drop_tenant_schema, grant_schema_to_app_role
+from bimdossier_api.admin.storage import wipe_org_storage
+from bimdossier_api.config import get_settings
 from bimdossier_api.db import get_admin_engine, get_session_maker
 from bimdossier_api.models.organization import Organization, OrganizationStatus
+from bimdossier_api.storage import StorageBackend, get_storage
 from bimdossier_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
@@ -287,27 +290,33 @@ async def delete_organization(
     requester: User,
     request: Request | None = None,
 ) -> None:
-    """Soft-delete an org and drop its tenant schema.
+    """Soft-delete an org — phase 1 of the two-phase lifecycle.
 
-    Inverts the provisioning saga: mark `deleted_at`, then DROP SCHEMA.
-    The organization row remains for audit-trail purposes (`deleted_at`
-    distinguishes it from live orgs). Membership rows cascade delete via
-    the FK; the audit_log keeps its rows because the FK is ON DELETE
-    SET NULL.
+    Marks `deleted_at` + `status=deleted` and writes a platform audit record. The
+    tenant SCHEMA and all STORAGE are RETAINED for `org_retention_days`, so a
+    soft-deleted org stays recoverable during the window (engineer-manual restore:
+    clear `deleted_at`/`status`, re-run `migrate_all`). It is API-inaccessible the
+    whole time — `_verify_membership` 403s any org with `deleted_at` set. The hard
+    teardown (storage wipe + DROP SCHEMA) happens later in `purge_organization`,
+    triggered manually by a super-admin (UI button or `scripts/purge_organizations`).
+
+    Idempotent: a re-delete is a no-op. The org row is kept permanently as an audit
+    tombstone — never hard-deleted.
+
+    NB: the provisioning saga's own rollback (`_compensate`) still DROPs the schema
+    immediately — that path is a half-built org with no retention duty.
     """
     session_maker = get_session_maker()
-    admin_engine = get_admin_engine()
 
     async with session_maker() as s, s.begin():
         org = await s.get(Organization, organization_id)
         if org is None or org.deleted_at is not None:
-            return  # idempotent — already gone
+            return  # idempotent — already soft-deleted
 
-        schema = org.schema_name
         before = {
             "id": str(org.id),
             "name": org.name,
-            "schema_name": schema,
+            "schema_name": org.schema_name,
             "status": org.status.value,
         }
         await s.execute(
@@ -318,8 +327,8 @@ async def delete_organization(
                 status=OrganizationStatus.deleted,
             )
         )
-        # Platform schema: the org's own schema is dropped immediately below,
-        # so the deletion record can't live there.
+        # Platform schema (org_id=None): the deletion record must outlive the
+        # tenant schema, which is dropped later at purge time.
         await audit.record_for_org(
             s,
             None,
@@ -331,13 +340,112 @@ async def delete_organization(
             request=request,
         )
 
-    # Drop the schema OUTSIDE the master txn so a failed drop doesn't
-    # leave the master row marked active again.
-    try:
-        async with admin_engine.begin() as conn:
-            for stmt in drop_tenant_schema(schema):
-                await conn.execute(text(stmt))
-    except Exception:
-        logger.exception("drop_schema[%s] failed during org deletion", schema)
-        # Don't re-raise — the master row is already marked deleted, and
-        # leaving an orphan schema is recoverable manually.
+
+# ── purge_organization (phase 2: hard teardown) ─────────────────────────────
+
+# Outcome statuses returned by `purge_organization`.
+PURGE_DONE = "purged"
+PURGE_DRY_RUN = "dry_run"
+PURGE_SKIPPED_NOT_DELETED = "skipped_not_deleted"
+PURGE_SKIPPED_NOT_DUE = "skipped_not_due"
+PURGE_SKIPPED_ALREADY_PURGED = "skipped_already_purged"
+
+
+@dataclass
+class PurgeResult:
+    organization_id: UUID
+    status: str
+    schema_name: str | None = None
+    deleted_object_count: int = 0
+    targets: list[str] = field(default_factory=list)  # bucket:prefix*/key (dry-run)
+
+
+async def purge_organization(
+    *,
+    organization_id: UUID,
+    actor_user_id: UUID | None = None,
+    now: bool = False,
+    dry_run: bool = False,
+    retention_days: int | None = None,
+    storage: StorageBackend | None = None,
+    request: Request | None = None,
+) -> PurgeResult:
+    """Hard-purge a soft-deleted org — phase 2. Wipes its storage, DROPs its tenant
+    schema, and stamps `purged_at`. The org row is kept as an audit tombstone.
+
+    Ordering is load-bearing: storage is wiped BEFORE the schema drop, because the
+    flat-keyed objects (thumbnails, org-certificates) are discovered from tenant
+    rows that `DROP SCHEMA` destroys. If the wipe raises, the drop is ABORTED and
+    the org stays soft-deleted for a clean retry — dropping after a partial wipe
+    would orphan the survivors forever (the GDPR-Art.17 gap this closes).
+
+    Guards: refuses a live org (`deleted_at IS NULL`); no-op on an already-purged
+    org. Unless `now=True`, refuses an org still inside `retention_days` (defaults
+    to `settings.org_retention_days`). `dry_run=True` reports the storage targets
+    and changes nothing.
+    """
+    settings = get_settings()
+    session_maker = get_session_maker()
+    admin_engine = get_admin_engine()
+    storage = storage if storage is not None else get_storage()
+
+    # 1. Load + guards (read-only). Detach the org so its loaded columns stay
+    #    usable for the storage wipe after the session closes.
+    async with session_maker() as s:
+        org = await s.get(Organization, organization_id)
+        if org is None or org.deleted_at is None:
+            return PurgeResult(organization_id, PURGE_SKIPPED_NOT_DELETED)
+        if org.purged_at is not None:
+            return PurgeResult(
+                organization_id, PURGE_SKIPPED_ALREADY_PURGED, schema_name=org.schema_name
+            )
+        if not now:
+            days = retention_days if retention_days is not None else settings.org_retention_days
+            if org.deleted_at > datetime.now(UTC) - timedelta(days=days):
+                return PurgeResult(
+                    organization_id, PURGE_SKIPPED_NOT_DUE, schema_name=org.schema_name
+                )
+        schema = org.schema_name
+        deleted_at_iso = org.deleted_at.isoformat()
+        s.expunge(org)
+
+    # 2. Wipe storage BEFORE the drop. A prefix-delete failure propagates here,
+    #    aborting the purge before any irreversible DROP SCHEMA.
+    wipe = await wipe_org_storage(session_maker, storage, org, dry_run=dry_run)
+
+    if dry_run:
+        return PurgeResult(
+            organization_id, PURGE_DRY_RUN, schema_name=schema, targets=wipe.targets
+        )
+
+    # 3. DROP SCHEMA (admin engine, AUTOCOMMIT). IF EXISTS makes a crash-retry safe.
+    async with admin_engine.begin() as conn:
+        for stmt in drop_tenant_schema(schema):
+            await conn.execute(text(stmt))
+
+    # 4. Finalize the tombstone + platform audit. NULL image_key (its object is
+    #    gone) so the read model no longer presigns a dead logo URL.
+    async with session_maker() as s, s.begin():
+        await s.execute(
+            update(Organization)
+            .where(Organization.id == organization_id)
+            .values(purged_at=datetime.now(UTC), image_key=None)
+        )
+        await audit.record_for_org(
+            s,
+            None,
+            action="organization.purged",
+            resource_type="organization",
+            resource_id=organization_id,
+            before={"schema_name": schema, "deleted_at": deleted_at_iso},
+            after={"deleted_object_count": wipe.deleted_count},
+            actor_user_id=actor_user_id,
+            request=request,
+        )
+
+    return PurgeResult(
+        organization_id,
+        PURGE_DONE,
+        schema_name=schema,
+        deleted_object_count=wipe.deleted_count,
+    )

@@ -50,7 +50,6 @@ export interface LoginLayoutProps {
   kpiItems: readonly Kpi[];
   statusColor: string;
   statusLabel: string;
-  wkb: string;
   webBaseUrl: string;
   insets: EdgeInsets;
 }
@@ -84,7 +83,6 @@ export function MobileLogin({
   kpiItems,
   statusColor,
   statusLabel,
-  wkb,
   webBaseUrl,
   insets,
 }: LoginLayoutProps) {
@@ -137,7 +135,7 @@ export function MobileLogin({
           <View>
             <Brand markSize={34} nameSize={17} subSize={8} subText={t('login.hero.subtext')} />
             <View style={{ marginTop: 22 }}>
-              <WkbPill fontSize={9} text={t('login.hero.pillMobile', { version: wkb })} />
+              <WkbPill fontSize={9} text={t('login.hero.pillMobile')} />
             </View>
             <View style={{ marginTop: 16 }}>
               <Headline fontSize={29} lineHeight={1.06} />
@@ -168,7 +166,7 @@ export function MobileLogin({
         </View>
         <View style={{ flex: 1, minHeight: 18 }} />
         <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 14 }}>
-          <FooterLinks stacked center wkb={wkb} webBaseUrl={webBaseUrl} />
+          <FooterLinks stacked center webBaseUrl={webBaseUrl} />
         </View>
       </View>
     </KbScroll>
@@ -184,7 +182,6 @@ export function TabletPortraitLogin({
   kpiItems,
   statusColor,
   statusLabel,
-  wkb,
   webBaseUrl,
   insets,
 }: LoginLayoutProps) {
@@ -212,7 +209,7 @@ export function TabletPortraitLogin({
         <View style={{ flex: 1, paddingBottom: 26 }}>
           <Brand markSize={36} nameSize={19} subSize={8.5} subText={t('login.hero.subtextTablet')} />
           <View style={{ marginTop: 26 }}>
-            <WkbPill fontSize={9.5} text={t('login.hero.pillTablet', { version: wkb })} />
+            <WkbPill fontSize={9.5} text={t('login.hero.pillTablet')} />
           </View>
           <View style={{ marginTop: 20, maxWidth: 440 }}>
             <Headline fontSize={40} lineHeight={1.05} />
@@ -242,7 +239,7 @@ export function TabletPortraitLogin({
           </View>
         </View>
         <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 16 }}>
-          <FooterLinks wkb={wkb} webBaseUrl={webBaseUrl} />
+          <FooterLinks webBaseUrl={webBaseUrl} />
         </View>
       </View>
     </KbScroll>
@@ -258,7 +255,6 @@ export function TabletLandscapeLogin({
   kpiItems,
   statusColor,
   statusLabel,
-  wkb,
   webBaseUrl,
   insets,
 }: LoginLayoutProps) {
@@ -289,7 +285,7 @@ export function TabletLandscapeLogin({
         </View>
         <Brand markSize={36} nameSize={19} subSize={8.5} subText={t('login.hero.subtextTablet')} />
         <View style={{ marginTop: 26 }}>
-          <WkbPill fontSize={9.5} text={t('login.hero.pillTablet', { version: wkb })} />
+          <WkbPill fontSize={9.5} text={t('login.hero.pillTablet')} />
         </View>
         <View style={{ marginTop: 18, maxWidth: 420 }}>
           <Headline fontSize={42} lineHeight={1.03} />
@@ -318,7 +314,7 @@ export function TabletLandscapeLogin({
               <LoginForm {...form} titleSize={32} />
             </View>
           </View>
-          <FooterLinks wkb={wkb} webBaseUrl={webBaseUrl} />
+          <FooterLinks webBaseUrl={webBaseUrl} />
         </KbScroll>
       </View>
     </View>

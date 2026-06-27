@@ -493,11 +493,13 @@ async def delete_org_certificate(
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
+    storage: StorageBackend = Depends(get_storage),
 ) -> Response:
     await _require_org_admin(session, user, active_org_id)
 
     cert = await _load_org_cert_or_404(session, certificate_id)
     before = _org_cert_snapshot(cert)
+    storage_key = cert.storage_key
     cert.soft_delete()
     await session.flush()
 
@@ -510,4 +512,13 @@ async def delete_org_certificate(
         actor_user_id=user.id,
         request=request,
     )
+    # Best-effort object cleanup (DLC-2/DLC-4): soft-delete with no restore path,
+    # so the bytes can go now. Never fail the request if the object is already gone.
+    try:
+        await storage.delete_object(storage_key, bucket=get_attachments_bucket())
+    except Exception:
+        logger.warning(
+            "delete_org_certificate: storage cleanup failed for %s", certificate_id,
+            exc_info=True,
+        )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -10,7 +10,8 @@
     "faq": "FAQ",
     "blog": "Blog",
     "requestAccess": "Request access",
-    "contactSales": "Contact sales"
+    "contactSales": "Contact sales",
+    "themeToggle": "Toggle theme"
   },
   "hero": {
     "badge": "Private pilot · a few open spots for Dutch contractors",
@@ -58,7 +59,10 @@
     "faqHeading": "Frequently asked questions",
     "relatedHeading": "Related capabilities",
     "imagesHeading": "See it in action",
-    "imagesNote": "More screenshots and short videos coming soon."
+    "imagesNote": "More screenshots and short videos coming soon.",
+    "metadata": {
+      "featureNotFound": "Feature not found · BimDossier"
+    }
   },
   "roadmap": {
     "eyebrow": "On the roadmap",
@@ -123,10 +127,14 @@
     "headline": "Insights & updates",
     "subtitle": "Wkb compliance, Dutch building regulations, and product updates, straight from the team building the dossier that runs on your model.",
     "empty": "No posts yet. Check back soon.",
-    "readingTime": "min read"
+    "readingTime": "min read",
+    "metadata": {
+      "postNotFound": "Post not found"
+    }
   },
   "languageToggle": {
-    "label": "NL"
+    "label": "NL",
+    "ariaLabel": "Switch to {language}"
   },
   "legalBrand": {
     "backToSite": "Back to site"
@@ -138,9 +146,13 @@
     "bookCall": "Book a call",
     "bookCallDescription": "Schedule a 30-minute demo with our team. We'll show you the platform and talk through pricing that fits your situation.",
     "orEmail": "Or send us an email",
-    "emailDescription": "Prefer email? Reach out and we'll get back to you within one business day.",
+    "emailDescription": "Prefer email? Reach out and we'll get back to you as soon as we can.",
     "emailButton": "Email us",
-    "noBookingUrl": "Booking link coming soon. For now, just reach out by email."
+    "noBookingUrl": "Booking link coming soon. For now, just reach out by email.",
+    "metadata": {
+      "title": "BimDossier · Contact sales",
+      "description": "Book a demo or get in touch with the BimDossier team to discuss pricing and plans."
+    }
   },
   "requestAccessPage": {
     "backToHome": "Back to home",
@@ -154,6 +166,10 @@
       "rateLimited": "Too many requests from your network. Please try again in an hour.",
       "generic": "We couldn't submit your request: {detail}",
       "unreachable": "We couldn't reach the BimDossier API. Please try again in a moment."
+    },
+    "metadata": {
+      "title": "BimDossier · Request access",
+      "description": "Request a guided demo of BimDossier, the BIM platform built for the Wet kwaliteitsborging voor het bouwen (Wkb)."
     }
   },
   "snagShowcase": {
@@ -167,6 +183,7 @@
     "fallbackTitle": "Interactive 3D snag inspection",
     "fallbackBody": "Your browser can't show the live 3D model, but here are the snags it carries:",
     "fallbackAlt": "Interactive 3D building model with quality-assurance snags",
+    "bblMeta": "{severity} · Bbl {article}",
     "severity": {
       "low": "Low",
       "medium": "Medium",
@@ -250,7 +267,9 @@
   "brandPanel": {
     "brand": "BimDossier",
     "eyebrow": "Construction quality, built on your model",
-    "statusReady": "Wkb {version} ready",
+    "statusChecks": "{wkb} Wkb · {bbl} BBL checks live",
+    "kpiWkb": "Wkb checks",
+    "kpiBbl": "BBL checks",
     "headline": "Keep every <em>snag</em>, <em>photo</em> and <em>certificate</em> on the model.",
     "body": "Pin findings on your model, track every deadline, and keep the dossier ready for the kwaliteitsborger and bevoegd gezag. Built for the Wet kwaliteitsborging voor het bouwen (Wkb).",
     "status": {

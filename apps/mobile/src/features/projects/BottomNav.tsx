@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useT } from '@/i18n';
 import { colors } from '@/theme';
 
 interface Props {
@@ -19,19 +20,20 @@ interface Props {
  * only — landscape uses the docked sidebar.
  */
 export function BottomNav({ onMenu, menuOpen, projectsCount }: Props) {
+  const { t } = useT();
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 6) }]}>
       <View style={styles.items}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Open menu"
+          accessibilityLabel={t('projects.nav.openMenuA11y')}
           accessibilityState={{ expanded: menuOpen }}
           style={styles.item}
           onPress={onMenu}
         >
           <Ionicons name="menu" size={22} color={menuOpen ? colors.primary : colors.textMuted} />
-          <Text style={[styles.label, menuOpen ? styles.labelOn : null]}>Menu</Text>
+          <Text style={[styles.label, menuOpen ? styles.labelOn : null]}>{t('projects.nav.menu')}</Text>
         </Pressable>
 
         <View style={styles.item}>
@@ -46,7 +48,7 @@ export function BottomNav({ onMenu, menuOpen, projectsCount }: Props) {
                 </View>
               ) : null}
             </View>
-            <Text style={[styles.label, styles.labelOn]}>Projects</Text>
+            <Text style={[styles.label, styles.labelOn]}>{t('projects.nav.projects')}</Text>
           </View>
         </View>
       </View>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { ContextLine } from '@/components/shared/viewer/shared/ContextLine';
@@ -13,5 +14,6 @@ export function ElementHeader({
   name,
   type,
 }: ElementHeaderProps): JSX.Element {
-  return <ContextLine tag={type} name={name ?? 'Unnamed'} />;
+  const t = useTranslations('viewer.properties');
+  return <ContextLine tag={type} name={name ?? t('unnamed')} />;
 }

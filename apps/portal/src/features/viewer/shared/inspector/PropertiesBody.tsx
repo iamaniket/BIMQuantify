@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import {
   useCallback, useMemo, useState, type JSX,
 } from 'react';
@@ -40,6 +41,7 @@ export function PropertiesBody({
   properties,
   isLoading,
 }: PropertiesBodyProps): JSX.Element {
+  const t = useTranslations('viewer.properties');
   const [filter, setFilter] = useState('');
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -91,9 +93,9 @@ export function PropertiesBody({
 
       <div className="min-h-0 flex-1 overflow-auto">
         {isLoading ? (
-          <PanelEmptyState message="Loading properties…" />
+          <PanelEmptyState message={t('loading')} />
         ) : psetEntries.length === 0 ? (
-          <PanelEmptyState message="No property sets found for this element." />
+          <PanelEmptyState message={t('noPsets')} />
         ) : (
           <>
             {psetEntries.map(([psetName, pset]) => (
@@ -116,7 +118,7 @@ export function PropertiesBody({
             <div className="border-t border-border" />
             {filter && shown === 0 && (
               <div className="py-6 text-center font-sans text-caption text-foreground-tertiary">
-                No properties match &ldquo;{filter}&rdquo;
+                {t('noMatch', { query: filter })}
               </div>
             )}
           </>
@@ -127,7 +129,7 @@ export function PropertiesBody({
         <div className="flex items-center justify-between border-t border-border bg-surface-low px-3.5 py-2.5 font-sans text-body3 tabular-nums text-foreground-tertiary">
           <span className="truncate">
             <span className="font-bold text-foreground-secondary">
-              Pinned:
+              {t('pinned')}
             </span>{' '}
             {selectedKey}
           </span>
@@ -136,7 +138,7 @@ export function PropertiesBody({
             onClick={() => { setSelectedKey(null); }}
             className="ml-2 cursor-pointer border-none bg-transparent font-sans text-body3 text-primary"
           >
-            clear
+            {t('clear')}
           </button>
         </div>
       )}

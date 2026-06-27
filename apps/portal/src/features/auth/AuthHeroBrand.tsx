@@ -27,6 +27,13 @@ import { formatApproxCount } from '@/lib/formatting/numbers';
  * left-pane experience. Lives outside `@bimdossier/ui` because it depends
  * on portal-specific data hooks (system status, projects map).
  */
+
+/** "IFC2X3" / "IFC4" / "IFC4X3" -> "2x3 / 4 / 4x3" (em-dash when unknown). */
+function formatIfcSchemas(schemas: readonly string[]): string {
+  if (schemas.length === 0) return '—';
+  return schemas.map((s) => s.replace(/^IFC/i, '').toLowerCase()).join(' / ');
+}
+
 export function AuthHeroBrand(): JSX.Element {
   const t = useTranslations('auth');
   const tLegal = useTranslations('legal');
@@ -43,9 +50,9 @@ export function AuthHeroBrand(): JSX.Element {
   const status: SystemStatusValue = statusQuery.isLoading
     ? 'loading'
     : live?.status ?? 'loading';
-  const wkb = live?.wkb_version ?? '2026.1';
-  const bbl = live?.bbl_version ?? 'v2026.04';
-  const ifc = live?.ifc_version ?? '4.3';
+  const wkbChecks = live?.wkb_checks ?? null;
+  const bblChecks = live?.bbl_checks ?? null;
+  const ifcSchemas = live?.ifc_schemas ?? [];
 
   const markers: readonly MapMarker[] = markersQuery.data ?? [];
   const totalProjects = markers.reduce((sum, m) => sum + (m.count ?? 1), 0);
@@ -61,13 +68,13 @@ export function AuthHeroBrand(): JSX.Element {
       <HeroGrid opacity={0.1} stroke="#ffffff" step={36} />
 
       {/* Top: brand row */}
-      <div className="relative flex items-center gap-3">
-        <BrandMark size={42} plate />
+      <div className="relative flex items-center gap-4">
+        <BrandMark size={50} variant="white" />
         <div>
-          <div className="font-display text-[20px] font-semibold leading-tight tracking-tight text-white">
-            BimDossier
+          <div className="font-display text-[24px] font-semibold leading-tight tracking-tight text-white">
+            {'BimDossier'}
           </div>
-          <div className="mt-0.5 text-[11.5px] font-semibold uppercase tracking-[0.10em] text-white/60">
+          <div className="mt-0.5 text-[14px] font-semibold uppercase tracking-[0.10em] text-white/60">
             {t('brand.tagline')}
           </div>
         </div>
@@ -88,7 +95,7 @@ export function AuthHeroBrand(): JSX.Element {
             }}
           >
             <span aria-hidden className="inline-block size-1.5 rounded-full" style={{ background: 'var(--header-status-success-dot)' }} />
-            {t('hero.readyBadge', { version: wkb })}
+            {t('hero.checksBadge', { wkb: wkbChecks ?? '—', bbl: bblChecks ?? '—' })}
           </div>
 
           <h1
@@ -118,9 +125,9 @@ export function AuthHeroBrand(): JSX.Element {
           <KpiStrip
             tone="on-dark"
             items={[
-              { label: t('kpi.wkb'), value: wkb },
-              { label: t('kpi.bbl'), value: bbl, valueColor: 'var(--header-status-info-dot)' },
-              { label: t('kpi.ifc'), value: ifc, valueColor: 'var(--header-status-info-dot)' },
+              { label: t('kpi.wkb'), value: wkbChecks ?? '—' },
+              { label: t('kpi.bbl'), value: bblChecks ?? '—', valueColor: 'var(--header-status-info-dot)' },
+              { label: t('kpi.ifc'), value: formatIfcSchemas(ifcSchemas), valueColor: 'var(--header-status-info-dot)' },
               {
                 label: t('kpi.status'),
                 value: statusLabel,
@@ -182,7 +189,11 @@ export function AuthHeroBrand(): JSX.Element {
         <LegalFooter
           tone="on-dark"
           links={legalLinks}
-          tail={`Wet kwaliteitsborging voor het bouwen (Wkb) ${wkb}`}
+          tail={
+            wkbChecks != null && bblChecks != null
+              ? `${wkbChecks} Wkb · ${bblChecks} BBL`
+              : 'Wkb + BBL'
+          }
         />
       </div>
     </>

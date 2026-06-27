@@ -1,6 +1,7 @@
 'use client';
 
 import type { JSX } from 'react';
+import { useTranslations } from 'next-intl';
 
 import { cn } from '@bimdossier/ui';
 
@@ -53,24 +54,25 @@ function PdfStatusBar({
   numPages: number | null;
   className?: string;
 }): JSX.Element {
+  const t = useTranslations('viewer.statusBar');
   return (
     <div className={cn('flex h-[18px] shrink-0 items-center overflow-hidden px-2 font-sans', className)} style={{ background: 'linear-gradient(90deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)' }}>
       <span className="flex min-w-0 flex-1 items-center overflow-hidden">
-        <Label>page</Label>
+        <Label>{t('page')}</Label>
         <span>&nbsp;</span>
         <Value>
           {currentPage}
           {numPages !== null ? ` / ${numPages}` : ''}
         </Value>
         <Separator />
-        <Label>view</Label>
+        <Label>{t('view')}</Label>
         <span>&nbsp;</span>
-        <Value>document</Value>
+        <Value>{t('viewDocument')}</Value>
       </span>
       <span className="flex shrink-0 items-center">
-        <Label>format</Label>
+        <Label>{t('format')}</Label>
         <span>&nbsp;</span>
-        <Value>PDF</Value>
+        <Value>{t('formatPdf')}</Value>
       </span>
     </div>
   );
@@ -83,6 +85,7 @@ function DrawingStatusBar({
   metadata: DrawingMetadata | undefined;
   className?: string;
 }): JSX.Element {
+  const t = useTranslations('viewer.statusBar');
   const extents = metadata?.extents ?? null;
   const size = extents !== null
     ? `${(extents.max[0] - extents.min[0]).toFixed(1)} × ${(extents.max[1] - extents.min[1]).toFixed(1)}`
@@ -90,30 +93,30 @@ function DrawingStatusBar({
   return (
     <div className={cn('flex h-[18px] shrink-0 items-center overflow-hidden px-2 font-sans', className)} style={{ background: 'linear-gradient(90deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)' }}>
       <span className="flex min-w-0 flex-1 items-center overflow-hidden">
-        <Label>units</Label>
+        <Label>{t('units')}</Label>
         <span>&nbsp;</span>
         <Value>{metadata?.units ?? '—'}</Value>
         <Separator />
-        <Label>layers</Label>
+        <Label>{t('layers')}</Label>
         <span>&nbsp;</span>
         <Value>{metadata !== undefined ? metadata.layers.length : '—'}</Value>
         {size !== null ? (
           <>
             <Separator />
-            <Label>extents</Label>
+            <Label>{t('extents')}</Label>
             <span>&nbsp;</span>
             <Value>{size}</Value>
           </>
         ) : null}
         <Separator />
-        <Label>view</Label>
+        <Label>{t('view')}</Label>
         <span>&nbsp;</span>
-        <Value>drawing</Value>
+        <Value>{t('viewDrawing')}</Value>
       </span>
       <span className="flex shrink-0 items-center">
-        <Label>format</Label>
+        <Label>{t('format')}</Label>
         <span>&nbsp;</span>
-        <Value>{metadata !== undefined ? metadata.source.toUpperCase() : 'DXF'}</Value>
+        <Value>{metadata !== undefined ? metadata.source.toUpperCase() : t('formatDxfFallback')}</Value>
       </span>
     </div>
   );
@@ -152,6 +155,7 @@ function IfcStatusBar({
   fileId: string | undefined;
   className?: string;
 }): JSX.Element {
+  const t = useTranslations('viewer.statusBar');
   const fps = useViewerFPS(viewerReady);
   const selectedAll = useViewerEntityStore((s) => s.selectedAll);
   const partialCount = useViewerEntityStore((s) => s.selected.size);
@@ -164,7 +168,6 @@ function IfcStatusBar({
   const totalElements = storeTotalElements > 0 ? storeTotalElements : (metadata?.totalElements ?? 0);
   const visibleCount = totalElements - hiddenCount;
   const selectionCount = selectedAll ? totalElements : partialCount;
-  const hasSelection = selectionCount > 0;
 
   const storeys = countStoreys(metadata?.spatialTree ?? null);
   const dims = formatDimensions(metadata?.bbox ?? null, metadata?.project.lengthUnit ?? 'm');
@@ -172,61 +175,61 @@ function IfcStatusBar({
   return (
     <div className={cn('flex h-[18px] shrink-0 items-center overflow-hidden px-2 font-sans', className)} style={{ background: 'linear-gradient(90deg, var(--brand-gradient-start) 0%, var(--brand-gradient-end) 100%)' }}>
       <span className="flex min-w-0 flex-1 items-center overflow-hidden">
-        <Label>schema</Label>
+        <Label>{t('schema')}</Label>
         <span>&nbsp;</span>
         <Value>{metadata?.schema ?? '—'}</Value>
         <Separator />
-        <Label>units</Label>
+        <Label>{t('units')}</Label>
         <span>&nbsp;</span>
         <Value>{metadata?.project.lengthUnit ?? 'm'}</Value>
         <Separator />
-        <Label>storeys</Label>
+        <Label>{t('storeys')}</Label>
         <span>&nbsp;</span>
         <Value>{storeys > 0 ? storeys : '—'}</Value>
         {dims !== null ? (
           <>
             <Separator />
-            <Label>dims</Label>
+            <Label>{t('dims')}</Label>
             <span>&nbsp;</span>
             <Value>{dims}</Value>
           </>
         ) : null}
         <Separator />
-        <Label>view</Label>
+        <Label>{t('view')}</Label>
         <span>&nbsp;</span>
-        <Value>perspective</Value>
+        <Value>{t('viewPerspective')}</Value>
       </span>
       <span className="flex shrink-0 items-center">
-        <Label>elements</Label>
+        <Label>{t('elements')}</Label>
         <span>&nbsp;</span>
         <Value>{totalElements.toLocaleString()}</Value>
         <Separator />
-        <Label>visible</Label>
+        <Label>{t('visible')}</Label>
         <span>&nbsp;</span>
         <Value>{visibleCount.toLocaleString()}</Value>
         <Separator />
-        <Label>selected</Label>
+        <Label>{t('selected')}</Label>
         <span>&nbsp;</span>
         <Value>{selectionCount.toLocaleString()}</Value>
         <Separator />
-        <Label>attach</Label>
+        <Label>{t('attach')}</Label>
         <span>&nbsp;</span>
         <Value>{attachmentCount.toLocaleString()}</Value>
         <Separator />
-        <Label>findings</Label>
+        <Label>{t('findings')}</Label>
         <span>&nbsp;</span>
         <Value>{findingCount.toLocaleString()}</Value>
         <Separator />
         <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
-        <Label>fps</Label>
+        <Label>{t('fps')}</Label>
         <span>&nbsp;</span>
         <span className="text-caption font-semibold tabular-nums tracking-tight text-green-300">
           {fps > 0 ? fps : '—'}
         </span>
         <Separator />
-        <Label>gpu</Label>
+        <Label>{t('gpu')}</Label>
         <span>&nbsp;</span>
-        <Value>WebGL2</Value>
+        <Value>{t('gpuValue')}</Value>
       </span>
     </div>
   );

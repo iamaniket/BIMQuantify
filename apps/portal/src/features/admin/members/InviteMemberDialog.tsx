@@ -39,6 +39,7 @@ export function InviteMemberDialog({
   onOpenChange,
 }: Props): JSX.Element {
   const t = useTranslations('admin.members.invite');
+  const tCommon = useTranslations('common');
   const mutation = useInviteMember();
 
   const form = useForm<FormValues>({
@@ -93,6 +94,7 @@ export function InviteMemberDialog({
       subtitle={t('subtitle')}
       onSave={form.handleSubmit(onSubmit)}
       saveLabel={t('submit')}
+      cancelLabel={tCommon('cancel')}
       saveDisabled={mutation.isPending}
     >
       <div className="flex flex-col gap-4">

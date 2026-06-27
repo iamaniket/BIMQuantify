@@ -51,6 +51,13 @@ _KNOWN_SCHEMAS: dict[str, IfcSchema] = {
     "IFC4X3": IfcSchema.ifc4x3,
 }
 
+
+def supported_ifc_schemas() -> list[str]:
+    """The IFC schemas the parser actually accepts, e.g. for the public status
+    surface. Single source of truth is ``_KNOWN_SCHEMAS`` above — no duplicated
+    literal list to drift out of sync."""
+    return sorted(_KNOWN_SCHEMAS)
+
 # UTF-8 BOM, occasionally seen in files exported by Windows tooling.
 _BOM = b"\xef\xbb\xbf"
 

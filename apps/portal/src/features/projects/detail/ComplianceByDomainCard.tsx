@@ -40,6 +40,7 @@ export function ComplianceByDomainCard({
 }: Props): JSX.Element {
   const t = useTranslations('reports.byDomain');
   const tCat = useTranslations('reports.categories');
+  const tStats = useTranslations('projectDetail.compliance.byDomain');
   const [tab, setTab] = useState('domains');
 
   const seed = [
@@ -104,7 +105,7 @@ export function ComplianceByDomainCard({
                     <span className="font-semibold text-foreground">{tCat.has(d.name) ? tCat(d.name) : d.name}</span>
                     <span className="flex items-baseline gap-2">
                       <span className="text-caption text-foreground-tertiary">
-                        {d.articleCount} arts · {t} checks
+                        {tStats('stats', { articles: d.articleCount, checks: t })}
                       </span>
                       <span
                         className={`tabular-nums font-bold ${

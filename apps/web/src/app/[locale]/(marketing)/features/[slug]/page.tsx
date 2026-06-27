@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { setRequestLocale } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import type { JSX } from 'react';
 
@@ -33,7 +33,8 @@ export async function generateMetadata({
   const { locale, slug } = await params;
   const content = getFeatureContent(slug, locale);
   if (content === null) {
-    return { title: 'Feature not found · BimDossier' };
+    const t = await getTranslations({ locale, namespace: 'featureDetail' });
+    return { title: t('metadata.featureNotFound') };
   }
   const { title, intro: description, keywords } = content;
 

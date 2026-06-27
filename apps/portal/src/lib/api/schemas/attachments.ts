@@ -76,6 +76,8 @@ export const CaptureLinkSchema = z.object({
   max_uses: z.union([z.number(), z.null()]),
   use_count: z.number(),
   created_at: z.string(),
+  // Shareable upload URL, rebuilt server-side per request so members can re-copy it.
+  url: z.union([z.string(), z.null()]),
 });
 export type CaptureLink = z.infer<typeof CaptureLinkSchema>;
 

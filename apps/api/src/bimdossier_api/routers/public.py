@@ -22,8 +22,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api.approx import approx_count_floor
 from bimdossier_api.cache.client import get_redis
+from bimdossier_api.compliance.coverage import (
+    BBL_IMPLEMENTED_CHECKS,
+    WKB_IMPLEMENTED_CHECKS,
+)
 from bimdossier_api.config import Settings, get_settings
 from bimdossier_api.db import get_async_session
+from bimdossier_api.ifc.header import supported_ifc_schemas
 from bimdossier_api.models.blog_post import BlogPost, BlogPostStatus
 from bimdossier_api.models.organization import Organization, OrganizationStatus
 from bimdossier_api.routers.admin_blog import _fetch_content
@@ -143,6 +148,9 @@ async def system_status(
         status=status_value,
         region=settings.deploy_region,
         node=settings.deploy_node,
+        wkb_checks=WKB_IMPLEMENTED_CHECKS,
+        bbl_checks=BBL_IMPLEMENTED_CHECKS,
+        ifc_schemas=supported_ifc_schemas(),
         checks=checks,
     )
 

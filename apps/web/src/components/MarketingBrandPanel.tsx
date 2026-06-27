@@ -15,17 +15,25 @@ import { formatApproxCount } from '@/lib/formatting/numbers';
 
 type StatusState = {
   status: 'normal' | 'degraded' | 'down' | 'loading';
-  wkb: string;
-  bbl: string;
-  ifc: string;
+  wkbChecks: number | null;
+  bblChecks: number | null;
+  ifcSchemas: readonly string[];
 };
 
+// Real coverage figures come from the API. When it's unreachable the marketing
+// page degrades to em-dashes rather than baking (and risking drift on) numbers.
 const STATUS_DEFAULTS: StatusState = {
   status: 'loading',
-  wkb: '2026.1',
-  bbl: 'v2026.04',
-  ifc: '4.3',
+  wkbChecks: null,
+  bblChecks: null,
+  ifcSchemas: [],
 };
+
+/** "IFC2X3" / "IFC4" / "IFC4X3" -> "2x3 / 4 / 4x3" (em-dash when unknown). */
+function formatIfcSchemas(schemas: readonly string[]): string {
+  if (schemas.length === 0) return '—';
+  return schemas.map((s) => s.replace(/^IFC/i, '').toLowerCase()).join(' / ');
+}
 
 /** System-status → `brandPanel.status.*` catalog key. */
 const STATUS_LABEL_KEY: Record<StatusState['status'], string> = {
@@ -68,9 +76,9 @@ export function MarketingBrandPanel(): JSX.Element {
         if (cancelled) return;
         setSysStatus({
           status: live.status,
-          wkb: live.wkb_version,
-          bbl: live.bbl_version,
-          ifc: live.ifc_version,
+          wkbChecks: live.wkb_checks,
+          bblChecks: live.bbl_checks,
+          ifcSchemas: live.ifc_schemas,
         });
       })
       .catch(() => {
@@ -95,13 +103,13 @@ export function MarketingBrandPanel(): JSX.Element {
     <>
       <HeroGrid opacity={0.1} stroke="#ffffff" step={36} />
 
-      <div className="relative flex items-center gap-3">
-        <BrandMark size={42} plate />
+      <div className="relative flex items-center gap-4">
+        <BrandMark size={50} variant="white" />
         <div>
-          <div className="font-display text-[20px] font-semibold leading-tight tracking-tight text-white">
+          <div className="font-display text-[24px] font-semibold leading-tight tracking-tight text-white">
             {t('brand')}
           </div>
-          <div className="mt-0.5 text-[11.5px] font-semibold uppercase tracking-[0.10em] text-white/60">
+          <div className="mt-0.5 text-[14px] font-semibold uppercase tracking-[0.10em] text-white/60">
             {t('eyebrow')}
           </div>
         </div>
@@ -118,7 +126,7 @@ export function MarketingBrandPanel(): JSX.Element {
             }}
           >
             <span aria-hidden className="inline-block size-1.5 rounded-full" style={{ background: 'var(--header-status-success-dot)' }} />
-            {t('statusReady', { version: sysStatus.wkb })}
+            {t('statusChecks', { wkb: sysStatus.wkbChecks ?? '—', bbl: sysStatus.bblChecks ?? '—' })}
           </div>
 
           <h1
@@ -147,9 +155,9 @@ export function MarketingBrandPanel(): JSX.Element {
           <KpiStrip
             tone="on-dark"
             items={[
-              { label: 'Wkb', value: sysStatus.wkb },
-              { label: 'BBL', value: sysStatus.bbl, valueColor: 'var(--header-status-info-dot)' },
-              { label: 'IFC', value: sysStatus.ifc, valueColor: 'var(--header-status-info-dot)' },
+              { label: t('kpiWkb'), value: sysStatus.wkbChecks ?? '—' },
+              { label: t('kpiBbl'), value: sysStatus.bblChecks ?? '—', valueColor: 'var(--header-status-info-dot)' },
+              { label: 'IFC', value: formatIfcSchemas(sysStatus.ifcSchemas), valueColor: 'var(--header-status-info-dot)' },
               {
                 label: t('kpiStatus'),
                 value: statusLabel,
@@ -199,7 +207,11 @@ export function MarketingBrandPanel(): JSX.Element {
         <LegalFooter
           tone="on-dark"
           links={legalLinks}
-          tail={`Wkb ${sysStatus.wkb}`}
+          tail={
+            sysStatus.wkbChecks != null && sysStatus.bblChecks != null
+              ? `${sysStatus.wkbChecks} Wkb · ${sysStatus.bblChecks} BBL`
+              : 'Wkb + BBL'
+          }
         />
       </div>
     </>

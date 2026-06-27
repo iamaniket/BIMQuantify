@@ -32,6 +32,7 @@ type Props = {
 export function AccessRequestApproveDialog({ request, open, onOpenChange }: Props): JSX.Element {
   const t = useTranslations('admin.accessRequests.approve');
   const tCommon = useTranslations('admin.common');
+  const tShared = useTranslations('common');
   const mutation = useApproveAccessRequest();
 
   const form = useForm<FormValues>({
@@ -101,6 +102,7 @@ export function AccessRequestApproveDialog({ request, open, onOpenChange }: Prop
         : ''}
       onSave={form.handleSubmit(onSubmit)}
       saveLabel={t('submit')}
+      cancelLabel={tShared('cancel')}
       saveDisabled={mutation.isPending}
     >
       <div className="flex flex-col gap-4">

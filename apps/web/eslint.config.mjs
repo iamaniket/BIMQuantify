@@ -65,14 +65,13 @@ export default tseslint.config(
   reactAndNext,
   i18next.configs['flat/recommended'],
   {
-    // Currently 'warn' — graduate to 'error' once the existing JSX-text
-    // hardcodes (~20 today) have been migrated through useTranslations
-    // or @bimdossier/i18n. The audit underestimated the count vs. what
-    // the rule actually flags; rather than half-fixing or splatting
-    // eslint-disable comments, we keep the rule visible at warn level so
-    // every new violation surfaces in CI output without blocking ship.
+    // 'error': the existing JSX-text hardcodes have been migrated through
+    // useTranslations() / @bimdossier/i18n, so any NEW literal JSX text now
+    // fails CI instead of merely warning. The rule runs in the default
+    // 'jsx-text-only' mode (guards JSX text, not attributes), and its default
+    // words.exclude already skips punctuation/all-caps/html-entities/emoji.
     rules: {
-      'i18next/no-literal-string': ['warn', {
+      'i18next/no-literal-string': ['error', {
         message: 'String literals in JSX must be routed through useTranslations() or @bimdossier/i18n shared catalog.',
       }],
     },

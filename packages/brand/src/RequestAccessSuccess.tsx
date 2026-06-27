@@ -39,7 +39,7 @@ export function RequestAccessSuccess({
           We&rsquo;ve logged your pilot application for{' '}
           <strong className="text-foreground-secondary">{company}</strong> and will send a
           personalised invitation to <strong className="text-foreground-secondary">{email}</strong> after
-          a quick review, usually within one business day.
+          a quick review.
         </p>
       </div>
 
@@ -49,7 +49,7 @@ export function RequestAccessSuccess({
         </div>
         <ol className="m-0 flex list-none flex-col gap-2.5 p-0">
           {[
-            ['1', 'A BimDossier admin reviews your application', 'Usually within one business day, in NL or EN.'],
+            ['1', 'A BimDossier admin reviews your application', 'We review every application personally, in NL or EN.'],
             ['2', 'You receive an invite email', "It includes a verified link to set your password."],
             ['3', 'Your sandbox is ready', 'Pre-loaded with sample Wet kwaliteitsborging voor het bouwen (Wkb) projects and BBL libraries.'],
           ].map(([n, t, d]) => (

@@ -1,6 +1,7 @@
 'use client';
 
 import { Eyebrow } from '@bimdossier/ui';
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import type { TypeBreakdown } from '@/features/viewer/shared/inspector/useMultiSelectedProperties';
@@ -12,6 +13,7 @@ type MultiElementHeaderProps = {
 export function MultiElementHeader({
   typeBreakdown,
 }: MultiElementHeaderProps): JSX.Element {
+  const t = useTranslations('viewer.properties');
   const label = typeBreakdown
     .map((entry) => `${String(entry.count)} × ${entry.type}`)
     .join(', ');
@@ -19,7 +21,7 @@ export function MultiElementHeader({
   const firstEntry = typeBreakdown[0];
   const eyebrowLabel = typeBreakdown.length === 1 && firstEntry !== undefined
     ? firstEntry.type
-    : 'Multi';
+    : t('multi');
 
   return (
     <div className="flex items-center gap-2 truncate bg-surface-main px-[21px] py-2 leading-snug">

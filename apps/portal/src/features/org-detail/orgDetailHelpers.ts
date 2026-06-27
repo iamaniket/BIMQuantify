@@ -65,10 +65,12 @@ export function exportAuditCsv(entries: AuditEntry[]): void {
   URL.revokeObjectURL(url);
 }
 
-export function relativeTime(dateStr: string): string {
+// `justNowLabel` is localized by the caller (pass `useTranslations('orgDetail.relativeTime')('justNow')`).
+// The m/h/d units are language-neutral abbreviations and stay inline.
+export function relativeTime(dateStr: string, justNowLabel: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'Just now';
+  if (mins < 1) return justNowLabel;
   if (mins < 60) return `${mins}m`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h`;

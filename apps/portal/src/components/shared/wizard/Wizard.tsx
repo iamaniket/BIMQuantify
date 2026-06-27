@@ -2,6 +2,7 @@
 
 import { Button, cn } from '@bimdossier/ui';
 import { Check } from '@bimdossier/ui/icons';
+import { useTranslations } from 'next-intl';
 import { type JSX, type ReactNode, type KeyboardEvent } from 'react';
 
 export type WizardStep = {
@@ -73,6 +74,7 @@ export function WizardStepper({
   onStepClick,
   className,
 }: WizardStepperProps): JSX.Element {
+  const t = useTranslations('common');
   return (
     <ol role="list" className={cn(stepperBase, className)}>
       {steps.map((step, index) => {
@@ -135,7 +137,7 @@ export function WizardStepper({
                   {step.title}
                   {step.optional === true && (
                     <span className="ml-1 font-normal text-foreground-tertiary">
-                      (optional)
+                      {t('optional')}
                     </span>
                   )}
                 </span>

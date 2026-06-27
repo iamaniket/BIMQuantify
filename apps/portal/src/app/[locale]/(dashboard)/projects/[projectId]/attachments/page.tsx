@@ -1,34 +1,36 @@
 'use client';
 
-import { Camera, LayoutGrid, Table2, Upload } from '@bimdossier/ui/icons';
+import { LayoutGrid, LinkIcon, Plus, Table2, Upload } from '@bimdossier/ui/icons';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { toast } from 'sonner';
 
-import { Badge, Button, Select, Skeleton, SplitButton, TabsContent } from '@bimdossier/ui';
+import { Badge, Button, Select, Skeleton, TabsContent } from '@bimdossier/ui';
 
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { useHeaderCrumbsOverride } from '@/components/shared/header/AppHeaderContext';
 import { PageShell } from '@/components/shared/layout/PageShell';
-import { TabbedPageShell } from '@/components/shared/layout/TabbedPageShell';
+import { TabbedPageShell, type TabDef } from '@/components/shared/layout/TabbedPageShell';
 import { SearchInput, TableToolbar } from '@/components/shared/PageTable';
 import { TablePaginationFooter } from '@/components/shared/TablePaginationFooter';
 import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
-import { CaptureLinksList } from '@/features/attachments/CaptureLinksList';
 import { CreateCaptureLinkDialog } from '@/features/attachments/CreateCaptureLinkDialog';
 import { ProjectAttachmentsHero } from '@/features/attachments/ProjectAttachmentsHero';
 import { ProjectAttachmentsOverview } from '@/features/attachments/ProjectAttachmentsOverview';
 import { ProjectAttachmentsTable } from '@/features/attachments/ProjectAttachmentsTable';
+import { ProjectCaptureLinksTable } from '@/features/attachments/ProjectCaptureLinksTable';
 import { useAttachments } from '@/features/attachments/useAttachments';
+import { useCaptureLinks } from '@/features/attachments/useCaptureLinks';
 import { useDeleteAttachment } from '@/features/attachments/useDeleteAttachment';
+import { useRevokeCaptureLink } from '@/features/attachments/useRevokeCaptureLink';
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
 import { useProjectPermissions } from '@/features/permissions';
 import { useProject } from '@/features/projects/useProject';
 import { getAttachmentDownloadUrl } from '@/lib/api/attachments';
 import { ApiError } from '@/lib/api/client';
 import { openExternalUrl } from '@/lib/url';
-import type { Attachment, AttachmentCategoryValue } from '@/lib/api/schemas';
+import type { Attachment, AttachmentCategoryValue, CaptureLink } from '@/lib/api/schemas';
 import { useAllInfinitePages } from '@/lib/query/useAllInfinitePages';
 import { useClientPagination } from '@/lib/query/useTableQuery';
 import {
@@ -65,7 +67,6 @@ export default function ProjectAttachmentsPage(): JSX.Element {
   const [categoryFilter, setCategoryFilter] = useState<AttachmentCategoryValue | undefined>(undefined);
   const [viewing, setViewing] = useState<Attachment | null>(null);
   const [captureLinkDialogOpen, setCaptureLinkDialogOpen] = useState(false);
-  const [showCaptureLinks, setShowCaptureLinks] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const geoRef = useRef<GeolocationResult>({ status: 'unavailable' });
 
@@ -76,12 +77,16 @@ export default function ProjectAttachmentsPage(): JSX.Element {
   const projectQuery = useProject(projectId);
   const attachmentsQuery = useAttachments(projectId);
   const attachments = useAllInfinitePages(attachmentsQuery);
+  const captureLinksQuery = useCaptureLinks(projectId);
   const uploadMutation = useUploadAttachment(projectId);
   const deleteMutation = useDeleteAttachment(projectId);
+  const revokeMutation = useRevokeCaptureLink(projectId);
   const { can } = useProjectPermissions(projectId);
   const canUpload = can('attachment', 'create');
   const canDelete = can('attachment', 'delete');
   const canCreateCaptureLink = can('capture_link', 'create');
+  const canReadCaptureLink = can('capture_link', 'read');
+  const canRevokeCaptureLink = can('capture_link', 'delete');
 
   const projectName = projectQuery.data?.name;
   const crumbs = useMemo(
@@ -116,6 +121,37 @@ export default function ProjectAttachmentsPage(): JSX.Element {
     isLoading: attachments.isLoading,
     isError: attachments.isError,
   });
+
+  const captureLinks = captureLinksQuery.data ?? [];
+  const linksTable = useClientPagination<CaptureLink>(captureLinks, {
+    sortAccessors: {
+      label: (l) => l.label ?? '',
+      use_count: (l) => l.use_count,
+      expires_at: (l) => l.expires_at,
+      created_at: (l) => l.created_at,
+    },
+    initialSort: { key: 'created_at', dir: 'desc' },
+    isLoading: captureLinksQuery.isLoading,
+    isError: captureLinksQuery.isError,
+  });
+
+  const handleCopyLink = useCallback(
+    (link: CaptureLink) => {
+      if (link.url === null) return;
+      void navigator.clipboard.writeText(link.url);
+      toast.success(tAtt('captureLinkCopied'));
+    },
+    [tAtt],
+  );
+
+  const handleRevokeLink = useCallback(
+    (link: CaptureLink) => {
+      revokeMutation.mutate(link.id, {
+        onSuccess: () => { toast.success(tAtt('captureLinkRevoked')); },
+      });
+    },
+    [revokeMutation, tAtt],
+  );
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,25 +236,20 @@ export default function ProjectAttachmentsPage(): JSX.Element {
     return <main className="flex flex-1 items-center justify-center" />;
   }
 
-  const captureItems = [
-    {
-      id: 'capture-link',
-      label: tAtt('captureLink'),
-      icon: <Camera className="h-4 w-4" />,
-      onSelect: () => { setShowCaptureLinks((prev) => !prev); },
-    },
-    ...(canCreateCaptureLink ? [{
-      id: 'create-capture-link',
-      label: tAtt('captureLinkCreate'),
-      icon: <Camera className="h-4 w-4" />,
-      onSelect: () => { setShowCaptureLinks(true); setCaptureLinkDialogOpen(true); },
-    }] : []),
-  ];
+  const safeTab = tab === 'links' && !canReadCaptureLink ? 'list' : tab;
 
   const panelHeading = {
     overview: { eyebrow: t('panel.overviewEyebrow'), title: t('panel.overviewTitle') },
     list: { eyebrow: t('panel.listEyebrow'), title: t('panel.listTitle', { count: table.total }) },
-  }[tab] ?? { eyebrow: '', title: '' };
+    links: { eyebrow: t('panel.linksEyebrow'), title: t('panel.linksTitle'), sub: tAtt('captureLinkDescription') },
+  }[safeTab] ?? { eyebrow: '', title: '' };
+
+  const linksTab: TabDef = {
+    value: 'links',
+    label: t('tabs.links'),
+    icon: <LinkIcon className="h-4 w-4" />,
+    badge: <Badge variant="primary" size="md" bordered={false}>{linksTable.total}</Badge>,
+  };
 
   return (
     <TabbedPageShell
@@ -231,42 +262,57 @@ export default function ProjectAttachmentsPage(): JSX.Element {
           icon: <Table2 className="h-4 w-4" />,
           badge: <Badge variant="primary" size="md" bordered={false}>{table.total}</Badge>,
         },
+        ...(canReadCaptureLink ? [linksTab] : []),
       ]}
-      activeTab={tab}
+      activeTab={safeTab}
       onTabChange={setTab}
       panelHeading={panelHeading}
-      fillContent={tab === 'list'}
-      toolbar={tab === 'list' ? (
-        <TableToolbar
-          actions={canUpload ? (
-            <SplitButton
-              label={tAtt('uploadButton')}
-              icon={<Upload className="h-3.5 w-3.5" />}
-              disabled={uploadMutation.isPending}
-              onClick={() => { fileInputRef.current?.click(); }}
-              menuLabel={tAtt('captureLink')}
-              items={captureItems}
-            />
-          ) : undefined}
-        >
-          <SearchInput
-            placeholder={t('list.searchPlaceholder')}
-            value={search}
-            onChange={setSearch}
-            aria-label={t('list.searchPlaceholder')}
-          />
-          <Select
-            selectSize="md"
-            className="w-auto shrink-0"
-            value={categoryFilter ?? 'all'}
-            onChange={(e) => { setCategoryFilter(e.target.value === 'all' ? undefined : e.target.value as AttachmentCategoryValue); }}
+      fillContent={safeTab === 'list' || safeTab === 'links'}
+      toolbar={
+        safeTab === 'list' ? (
+          <TableToolbar
+            actions={canUpload ? (
+              <Button
+                variant="primary"
+                size="md"
+                disabled={uploadMutation.isPending}
+                onClick={() => { fileInputRef.current?.click(); }}
+              >
+                <Upload className="mr-1.5 h-3.5 w-3.5" />
+                {tAtt('uploadButton')}
+              </Button>
+            ) : undefined}
           >
-            {CATEGORY_FILTERS.map(({ value, labelKey }) => (
-              <option key={value} value={value}>{tAtt(labelKey)}</option>
-            ))}
-          </Select>
-        </TableToolbar>
-      ) : undefined}
+            <SearchInput
+              placeholder={t('list.searchPlaceholder')}
+              value={search}
+              onChange={setSearch}
+              aria-label={t('list.searchPlaceholder')}
+            />
+            <Select
+              selectSize="md"
+              className="w-auto shrink-0"
+              value={categoryFilter ?? 'all'}
+              onChange={(e) => { setCategoryFilter(e.target.value === 'all' ? undefined : e.target.value as AttachmentCategoryValue); }}
+            >
+              {CATEGORY_FILTERS.map(({ value, labelKey }) => (
+                <option key={value} value={value}>{tAtt(labelKey)}</option>
+              ))}
+            </Select>
+          </TableToolbar>
+        ) : safeTab === 'links' ? (
+          <TableToolbar
+            actions={canCreateCaptureLink ? (
+              <Button variant="primary" size="md" onClick={() => { setCaptureLinkDialogOpen(true); }}>
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                {tAtt('captureLinkCreate')}
+              </Button>
+            ) : undefined}
+          >
+            <></>
+          </TableToolbar>
+        ) : undefined
+      }
       afterTabs={(
         <>
           <input
@@ -309,19 +355,6 @@ export default function ProjectAttachmentsPage(): JSX.Element {
             </div>
           </div>
         )}
-        {showCaptureLinks && (
-          <div className="mx-5 mt-3 space-y-2 rounded-lg border border-border bg-surface-low p-3">
-            <div className="flex items-center justify-between">
-              <div className="text-body3 font-semibold text-foreground">{tAtt('captureLink')}</div>
-              {canCreateCaptureLink && (
-                <Button variant="border" size="md" onClick={() => { setCaptureLinkDialogOpen(true); }}>
-                  {tAtt('captureLinkCreate')}
-                </Button>
-              )}
-            </div>
-            <CaptureLinksList projectId={projectId} />
-          </div>
-        )}
         <ProjectAttachmentsTable
           table={table}
           canDelete={canDelete}
@@ -331,6 +364,19 @@ export default function ProjectAttachmentsPage(): JSX.Element {
         />
         <TablePaginationFooter
           table={table}
+          className="shrink-0 border-t border-border px-5 py-2.5"
+        />
+      </TabsContent>
+
+      <TabsContent value="links" className="mt-0 flex min-h-0 flex-1 flex-col">
+        <ProjectCaptureLinksTable
+          table={linksTable}
+          canRevoke={canRevokeCaptureLink}
+          onCopy={handleCopyLink}
+          onRevoke={handleRevokeLink}
+        />
+        <TablePaginationFooter
+          table={linksTable}
           className="shrink-0 border-t border-border px-5 py-2.5"
         />
       </TabsContent>

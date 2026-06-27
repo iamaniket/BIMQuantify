@@ -47,6 +47,7 @@ export function OverviewPane({
   onDelete?: (() => void) | undefined;
 }): JSX.Element {
   const t = useTranslations('orgDetail.overview');
+  const tRelative = useTranslations('orgDetail.relativeTime');
   const unlimited = org.seatLimit === null;
   const gridTotal = 20;
   const cells = Array.from({ length: gridTotal }, (_, i) => (i < org.seatCountUsed ? 'used' : 'available'));
@@ -96,7 +97,7 @@ export function OverviewPane({
             <h3 className="text-body2 font-bold">{t('seatUsageTitle')}</h3>
             <Badge variant="info">
               <Key className="mr-1 h-3 w-3" />
-              {unlimited ? t('unlimited') : `${org.seatLimit} seats`}
+              {unlimited ? t('unlimited') : t('seatsBadge', { count: org.seatLimit ?? 0 })}
             </Badge>
           </CardHeader>
           <CardBody>
@@ -152,7 +153,7 @@ export function OverviewPane({
           <CardBody className="space-y-0 p-0">
             {recentEvents.length === 0 ? (
               <div className="flex h-32 items-center justify-center text-body3 text-foreground-tertiary">
-                No recent activity
+                {t('noRecentActivity')}
               </div>
             ) : (
               <div className="divide-y divide-border">
@@ -172,7 +173,7 @@ export function OverviewPane({
                       <span className="text-foreground-tertiary">{entry.action}</span>
                     </div>
                     <div className="font-sans text-body3 text-foreground-tertiary">
-                      {relativeTime(entry.created_at)}
+                      {relativeTime(entry.created_at, tRelative('justNow'))}
                     </div>
                   </div>
                 ))}
@@ -192,7 +193,7 @@ export function OverviewPane({
               <div className="flex items-center justify-between px-5 py-2.5">
                 <div className="flex items-center gap-2.5 text-body3 font-medium text-foreground-secondary">
                   <span className="h-2.5 w-2.5 rounded-sm bg-primary" />
-                  Admin
+                  {t('roleAdmin')}
                 </div>
                 <div className="font-sans text-body3 text-foreground-tertiary">
                   {adminCount} <span className="text-foreground-tertiary">&middot; {t('fullAccess')}</span>
@@ -201,7 +202,7 @@ export function OverviewPane({
               <div className="flex items-center justify-between px-5 py-2.5">
                 <div className="flex items-center gap-2.5 text-body3 font-medium text-foreground-secondary">
                   <span className="h-2.5 w-2.5 rounded-sm bg-foreground-tertiary" />
-                  Member
+                  {t('roleMember')}
                 </div>
                 <div className="font-sans text-body3 text-foreground-tertiary">
                   {memberCount} <span className="text-foreground-tertiary">&middot; {t('readWrite')}</span>

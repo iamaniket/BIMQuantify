@@ -598,6 +598,7 @@ function applyLiveCommands3D(
 
 export function SettingsDialog(props: Props): JSX.Element {
   const t = useTranslations('viewer.settings');
+  const tCommon = useTranslations('common');
   const {
     mode, open, onClose, settings, onSettingsChange,
   } = props;
@@ -678,6 +679,8 @@ export function SettingsDialog(props: Props): JSX.Element {
       onReset={handleReset}
       resetLabel={t('resetDefaults')}
       onSave={handleSave}
+      saveLabel={tCommon('save')}
+      cancelLabel={tCommon('cancel')}
     >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 flex-1 flex-col">
         <TabsList className="w-fit shrink-0">

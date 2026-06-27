@@ -64,7 +64,10 @@ function ShowcaseFallback(): JSX.Element {
                 {t(`snags.${snag.titleKey}`)}
               </span>
               <span className="text-caption text-foreground-tertiary">
-                {t(`severity.${snag.severity}`)} · Bbl {snag.bblArticleRef}
+                {t('bblMeta', {
+                  severity: t(`severity.${snag.severity}`),
+                  article: snag.bblArticleRef,
+                })}
               </span>
             </div>
           </li>

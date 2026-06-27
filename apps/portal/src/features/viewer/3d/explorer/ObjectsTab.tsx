@@ -1,6 +1,7 @@
 'use client';
 
 import { FolderOpen } from '@bimdossier/ui/icons';
+import { useTranslations } from 'next-intl';
 import {
   useState, useMemo, useCallback, type JSX,
 } from 'react';
@@ -21,6 +22,7 @@ type ObjectsTabProps = {
 };
 
 export function ObjectsTab({ models }: ObjectsTabProps): JSX.Element {
+  const t = useTranslations('viewer.explorer');
   const showItems = useViewerEntityStore((s) => s.showItems);
   const hideItems = useViewerEntityStore((s) => s.hideItems);
   const hidden = useViewerEntityStore((s) => s.hidden);
@@ -90,7 +92,7 @@ export function ObjectsTab({ models }: ObjectsTabProps): JSX.Element {
   const filtered = useMemo(() => filterTree(roots, filter), [roots, filter]);
 
   if (roots.length === 0) {
-    return <PanelEmptyState icon={FolderOpen} message="No spatial data available." />;
+    return <PanelEmptyState icon={FolderOpen} message={t('noSpatialData')} />;
   }
 
   return (

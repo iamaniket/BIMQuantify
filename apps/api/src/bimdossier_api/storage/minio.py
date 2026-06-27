@@ -45,6 +45,8 @@ class StorageBackend(Protocol):
 
     async def delete_object(self, key: str, *, bucket: str | None = None) -> None: ...
 
+    async def delete_prefix(self, prefix: str, *, bucket: str | None = None) -> int: ...
+
     async def copy_object(
         self, source_key: str, dest_key: str, *, bucket: str | None = None
     ) -> None: ...
@@ -211,6 +213,69 @@ class S3Storage:
     async def delete_object(self, key: str, *, bucket: str | None = None) -> None:
         client = await self._get_client()
         await client.delete_object(Bucket=self._resolve_bucket(bucket), Key=key)
+
+    async def delete_prefix(self, prefix: str, *, bucket: str | None = None) -> int:
+        """Delete every object whose key starts with ``prefix``. Returns the count.
+
+        Paginates ``list_objects_v2`` (≤1000 keys/page) and batch-deletes each page
+        via ``delete_objects`` (also ≤1000/request). Used by the org hard-purge to
+        wipe a tenant's objects. Idempotent — a re-run re-lists and deletes any
+        survivors.
+
+        SAFETY: refuses an empty/whitespace prefix. ``list_objects_v2`` with an
+        empty ``Prefix`` returns the WHOLE shared multi-tenant bucket, so an empty
+        prefix here would wipe every tenant's objects.
+        """
+        if not prefix or not prefix.strip():
+            raise ValueError("delete_prefix requires a non-empty prefix")
+        resolved = self._resolve_bucket(bucket)
+        client = await self._get_client()
+        deleted = 0
+        continuation: str | None = None
+        while True:
+            kwargs: dict[str, Any] = {
+                "Bucket": resolved,
+                "Prefix": prefix,
+                "MaxKeys": 1000,
+            }
+            if continuation:
+                kwargs["ContinuationToken"] = continuation
+            try:
+                resp = await client.list_objects_v2(**kwargs)
+            except ClientError as exc:
+                code = exc.response.get("Error", {}).get("Code", "")
+                if code in {"NoSuchBucket", "404", "NotFound"}:
+                    return deleted  # bucket absent → nothing to delete
+                raise
+            contents = resp.get("Contents", [])
+            if contents:
+                objects = [{"Key": obj["Key"]} for obj in contents]
+                try:
+                    result = await client.delete_objects(
+                        Bucket=resolved, Delete={"Objects": objects, "Quiet": True}
+                    )
+                except ClientError as exc:
+                    code = exc.response.get("Error", {}).get("Code", "")
+                    if code == "NotImplemented":
+                        # Backend without batch delete (rare) — fall back per-key.
+                        for obj in objects:
+                            await client.delete_object(Bucket=resolved, Key=obj["Key"])
+                    else:
+                        raise
+                else:
+                    errors = result.get("Errors") or []
+                    if errors:
+                        logger.warning(
+                            "delete_prefix[%s/%s]: %d object(s) reported delete errors",
+                            resolved,
+                            prefix,
+                            len(errors),
+                        )
+                deleted += len(objects)
+            if not resp.get("IsTruncated"):
+                break
+            continuation = resp.get("NextContinuationToken")
+        return deleted
 
     async def copy_object(
         self, source_key: str, dest_key: str, *, bucket: str | None = None

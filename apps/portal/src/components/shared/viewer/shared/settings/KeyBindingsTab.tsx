@@ -232,7 +232,7 @@ function CaptureOverlay({ action, combo, cat, onCancel }: {
           </kbd>
           {' '}· {t.rich('pressEscToCancel', {
             key: () => (
-              <kbd className="rounded border border-border bg-surface-high px-1.5 py-0.5 font-sans text-caption font-semibold text-foreground">Esc</kbd>
+              <kbd className="rounded border border-border bg-surface-high px-1.5 py-0.5 font-sans text-caption font-semibold text-foreground">{'Esc'}</kbd>
             ),
           })}
         </div>

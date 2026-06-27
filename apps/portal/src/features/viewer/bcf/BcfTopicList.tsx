@@ -51,7 +51,7 @@ type Props = {
 
 /**
  * Which issues the in-viewer panel lists:
- * - `model`  → all versions of the open model (default; matches BCF/BIMcollab)
+ * - `model`  → all versions of the open model (default; matches the BCF convention)
  * - `version`→ only issues raised on the exact open file version
  * - `all`    → every issue in the project (still scoped to the viewer dimension)
  */

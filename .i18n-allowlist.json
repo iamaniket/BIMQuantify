@@ -1,0 +1,10 @@
+{
+  "_comment": "Identical en/nl values that are legitimately language-neutral (statutory proper nouns, pure format strings). Used by scripts/check-i18n-value-drift.mjs. 'values' = exact strings allowed to be identical; 'keys' = '<app>:<dotted.key>' exceptions.",
+  "values": [],
+  "keys": [
+    "portal:admin.blog.create.placeholders.title",
+    "portal:admin.blog.create.placeholders.titleNl",
+    "portal:admin.blog.create.placeholders.content",
+    "portal:admin.blog.create.placeholders.contentNl"
+  ]
+}

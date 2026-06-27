@@ -35,6 +35,10 @@ class CaptureLinkRead(BaseModel):
     max_uses: int | None
     use_count: int
     created_at: datetime
+    # The shareable upload URL, rebuilt per request from the active org id + token
+    # so authorized members can re-copy a link after creation. None when the
+    # caller did not provide org context (defensive; the list handler always sets it).
+    url: str | None = None
 
 
 class CaptureTokenValidation(BaseModel):

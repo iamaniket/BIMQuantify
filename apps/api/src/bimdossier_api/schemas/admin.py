@@ -55,8 +55,21 @@ class OrganizationRead(BaseModel):
     created_at: datetime
     provisioned_at: datetime | None
     deleted_at: datetime | None
+    # Hard-purge timestamp (storage wiped + schema dropped). Null while retained.
+    purged_at: datetime | None = None
+    # When a soft-deleted org becomes eligible for hard purge (deleted_at +
+    # ORG_RETENTION_DAYS). Null for live (non-deleted) and already-purged orgs.
+    purge_eligible_at: datetime | None = None
+    # True when soft-deleted, not yet purged, and past the retention window.
+    is_purge_eligible: bool = False
 
     model_config = {"from_attributes": True}
+
+
+class OrganizationPurgeRequest(BaseModel):
+    # Skip the retention window (GDPR erasure-on-request). Default False = only
+    # purge once the org is past ORG_RETENTION_DAYS.
+    skip_retention: bool = False
 
 
 class OrganizationCreateResponse(BaseModel):

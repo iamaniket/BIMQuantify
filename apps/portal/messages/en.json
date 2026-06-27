@@ -76,6 +76,10 @@
       "download": "Download"
     },
     "loadMore": "Load more",
+    "cancel": "Cancel",
+    "save": "Save",
+    "reset": "Reset",
+    "optional": "(optional)",
     "pagination": {
       "rowsPerPage": "Rows per page",
       "range": "Showing {from}–{to} of {total}",
@@ -158,13 +162,15 @@
     "languageTitle": "Language",
     "languageDescription": "Choose the portal language for interface labels, guidance, and future workflow copy.",
     "languageHelper": "English and Dutch are stored separately in source so copy can be reviewed and refined later.",
+    "themeToggleAria": "Toggle theme",
     "themeOptions": {
       "lightLabel": "Light",
       "lightDescription": "Bright workspace with higher contrast for daytime use.",
       "darkLabel": "Dark",
       "darkDescription": "Reduced glare for focused review sessions and low-light work.",
       "systemLabel": "System",
-      "systemDescription": "Follow your operating system appearance automatically."
+      "systemDescription": "Follow your operating system appearance automatically.",
+      "systemActiveSuffix": "{label} ({mode} active)"
     },
     "placeholders": {
       "profileDetailsTitle": "Profile details",
@@ -359,6 +365,7 @@
     "avatarRemoved": "Photo removed.",
     "invitationsTitle": "Team invitations",
     "noInvitations": "No pending invitations right now.",
+    "invitationsLoading": "Loading…",
     "accept": "Accept",
     "accepting": "Accepting…",
     "decline": "Decline",
@@ -469,6 +476,7 @@
       "handover": "Delivery"
     },
     "card": {
+      "archivedReadOnly": "Archived · read only",
       "menu": {
         "actions": "Project actions",
         "view": "View",
@@ -496,6 +504,17 @@
           "archiveFailed": "Could not archive project."
         }
       }
+    },
+    "issueDetail": {
+      "location": "Location",
+      "model": "Model",
+      "owner": "Owner",
+      "created": "Created",
+      "createdAgo": "{value} ago",
+      "bblRequirement": "Bbl requirement",
+      "pinPhoto": "Pin photo",
+      "reassign": "Reassign",
+      "markResolved": "Mark resolved"
     },
     "filters": {
       "all": "All",
@@ -820,7 +839,8 @@
       "fieldTagsPlaceholder": "e.g. insulation, CE, KOMO",
       "fieldFile": "File",
       "submit": "Upload",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "successToast": "{filename} uploaded"
     },
     "linkDialog": {
       "title": "Link from library",
@@ -954,13 +974,16 @@
       "projectLoadError": "Failed to load project.",
       "tabs": {
         "overview": "Overview",
-        "list": "Attachments"
+        "list": "Attachments",
+        "links": "Capture links"
       },
       "panel": {
         "overviewEyebrow": "Files & attachments",
         "overviewTitle": "Attachments overview",
         "listEyebrow": "Files & attachments",
-        "listTitle": "{count} attachments"
+        "listTitle": "{count} attachments",
+        "linksEyebrow": "Files & attachments",
+        "linksTitle": "Capture links"
       },
       "hero": {
         "badge": "Attachments",
@@ -1127,6 +1150,11 @@
     }
   },
   "projectDetail": {
+    "compliance": {
+      "byDomain": {
+        "stats": "{articles} arts · {checks} checks"
+      }
+    },
     "hero": {
       "partialDataError": "Some project data couldn’t be loaded, so the figures below may be incomplete.",
       "notFound": "Project not found. It may have been deleted.",
@@ -1159,7 +1187,7 @@
       "readiness": {
         "label": "Readiness",
         "eyebrow": "Dossier readiness",
-        "subtitle": "What you still need before gereedmelding",
+        "subtitle": "What you still need before completion notification",
         "progress": "{pct}% complete · {filled} of {total} required items"
       },
       "dossier": {
@@ -1279,12 +1307,22 @@
         "cancel": "Cancel",
         "emptyState": "No containers yet",
         "emptyDescription": "Upload IFC files to view and manage your BIM containers.",
+        "upload": {
+          "hashing": "Checking for duplicates… {pct}%",
+          "uploading": "Uploading…",
+          "uploaded": "Uploaded",
+          "removeAria": "Remove {filename}"
+        },
         "newDocumentDialog": {
           "title": "New container",
           "description": "Group file versions by discipline. You can upload a file into the container after creating it.",
           "submitCreate": "Create",
           "submitCreating": "Creating…",
           "cancel": "Cancel",
+          "validation": {
+            "nameRequired": "Name is required",
+            "nameMaxLength": "Maximum 255 characters"
+          },
           "errors": {
             "nameTaken": "This name is taken"
           },
@@ -1553,6 +1591,14 @@
         "captureLinkUsesUnlimited": "{count} uses",
         "captureLinkNoLinks": "No capture links yet",
         "captureLinkLoadError": "Failed to load capture links.",
+        "captureLinkColLabel": "Label",
+        "captureLinkColUses": "Uses",
+        "captureLinkColStatus": "Status",
+        "captureLinkColExpires": "Expires",
+        "captureLinkColCreated": "Created",
+        "captureLinkStatusActive": "Active",
+        "captureLinkExhausted": "Used up",
+        "captureLinkCopy": "Copy link",
         "view": "View",
         "viewerTitle": "Attachment details",
         "viewerSubtitle": "Preview the file and view its metadata.",
@@ -1576,7 +1622,15 @@
         "viewerDimensions": "Dimensions",
         "viewerCamera": "Camera",
         "viewerCapturedAt": "Captured",
-        "viewerLocation": "Location"
+        "viewerLocation": "Location",
+        "kindLabel": {
+          "image": "Image",
+          "video": "Video",
+          "audio": "Audio",
+          "pdf": "PDF",
+          "office": "Document",
+          "other": "File"
+        }
       },
       "certificates": {
         "label": "Certificates",
@@ -1698,7 +1752,7 @@
           "back": "Back",
           "cancel": "Cancel",
           "optional": "Optional",
-          "fileButton": "File melding",
+          "fileButton": "File notification",
           "filedOn": "Filed on {date}",
           "filedBy": "Filed by {name}",
           "referenceShort": "Ref: {number}"
@@ -1891,6 +1945,8 @@
   },
   "findingsBoard": {
     "crumb": "Findings",
+    "projectNotFound": "Project not found.",
+    "projectLoadError": "Failed to load project.",
     "hero": {
       "badge": "Quality tracking",
       "subtitle": "Drag findings between columns to update status",
@@ -2050,7 +2106,8 @@
       "noModel": "Unknown model",
       "unplaced": "Not placed",
       "openToPinHint": "Open these in the viewer to pin them to a model or drawing.",
-      "empty": "No findings to locate."
+      "empty": "No findings to locate.",
+      "pageRef": "p. {page}"
     },
     "photos": {
       "empty": "No photos attached to any finding yet.",
@@ -2481,13 +2538,13 @@
       "tagline": "Wkb-compliant BIM platform"
     },
     "hero": {
-      "readyBadge": "Wkb {version} ready",
+      "checksBadge": "{wkb} Wkb · {bbl} BBL checks live",
       "headlineTemplate": "Bring your <em>models</em>, <em>issues</em> and <em>dossier</em> together into one Wkb record.",
-      "subhead": "Federated IFC review, automated Bouwbesluit checks and a delivery-ready consumentendossier — for builders working under the Quality Assurance in Construction Act (Wkb)."
+      "subhead": "Federated IFC review, automated checks for key Bouwbesluit articles and a delivery-ready consumentendossier — for builders working under the Quality Assurance in Construction Act (Wkb)."
     },
     "kpi": {
-      "wkb": "Wkb",
-      "bbl": "Bbl",
+      "wkb": "Wkb checks",
+      "bbl": "BBL checks",
       "ifc": "IFC",
       "status": "Status",
       "statusNormal": "Normal",
@@ -2551,6 +2608,9 @@
     "copyright": "© {year} {brand}"
   },
   "orgDetail": {
+    "relativeTime": {
+      "justNow": "Just now"
+    },
     "tabs": {
       "overview": "Overview",
       "members": "Members",
@@ -2574,6 +2634,9 @@
       "eventsToday": "{count} {count, plural, =1 {event} other {events}} today",
       "noEvents": "No events yet",
       "today": "today",
+      "statusActive": "Active",
+      "statusSuspended": "Suspended",
+      "audit": "audit",
       "changeImage": "Change logo",
       "removeImage": "Remove logo",
       "uploadImage": "Upload logo"
@@ -2651,7 +2714,9 @@
       "roleMember": "Member",
       "noMembers": "No members yet.",
       "activityTrendTitle": "Activity over time",
-      "trendEmpty": "No activity yet."
+      "trendEmpty": "No activity yet.",
+      "noRecentActivity": "No recent activity",
+      "seatsBadge": "{count} seats"
     },
     "members": {
       "inviteButton": "Invite member",
@@ -2777,7 +2842,9 @@
       "roleMember": "Member",
       "noMembers": "No members yet.",
       "activityTrendTitle": "Activity over time",
-      "trendEmpty": "No activity yet."
+      "trendEmpty": "No activity yet.",
+      "noRecentActivity": "No recent activity",
+      "seatsBadge": "{count} seats"
     },
     "members": {
       "inviteButton": "Invite member",
@@ -2923,7 +2990,8 @@
         "all": "All statuses",
         "active": "Active",
         "suspended": "Suspended",
-        "provisioning": "Provisioning"
+        "provisioning": "Provisioning",
+        "deleted": "Deleted"
       },
       "createButton": "New tenant",
       "loadError": "Could not load tenants.",
@@ -2931,7 +2999,8 @@
         "active": "Active",
         "suspended": "Suspended",
         "deleted": "Deleted",
-        "provisioning": "Provisioning"
+        "provisioning": "Provisioning",
+        "pending": "Pending"
       },
       "table": {
         "name": "Tenant",
@@ -2939,7 +3008,23 @@
         "seats": "Seats",
         "storage": "Storage",
         "created": "Created",
-        "empty": "No tenants match your filters."
+        "empty": "No tenants match your filters.",
+        "retentionStatus": "Retention"
+      },
+      "retentionBadge": {
+        "retained": "Retained — {days, plural, =1 {1 day left} other {# days left}}",
+        "eligible": "Eligible for removal",
+        "purged": "Purged"
+      },
+      "purge": {
+        "button": "Remove permanently",
+        "title": "Permanently remove this tenant?",
+        "description": "This permanently deletes {name} and everything in it — the tenant schema is dropped and all stored files are wiped. This cannot be undone.",
+        "confirmPrompt": "Type the tenant name {name} to confirm:",
+        "confirm": "Remove permanently",
+        "cancel": "Cancel",
+        "success": "{name} was permanently removed.",
+        "error": "Could not remove the tenant. Please try again."
       },
       "create": {
         "title": "Create tenant",
@@ -3632,7 +3717,35 @@
     },
     "loadingOverlay": {
       "model": "Loading model…",
-      "updating": "Updating view…"
+      "updating": "Updating view…",
+      "preparing": "Preparing viewer…"
+    },
+    "statusBar": {
+      "page": "page",
+      "view": "view",
+      "viewDocument": "document",
+      "viewDrawing": "drawing",
+      "viewPerspective": "perspective",
+      "format": "format",
+      "formatPdf": "PDF",
+      "formatDxfFallback": "DXF",
+      "units": "units",
+      "layers": "layers",
+      "extents": "extents",
+      "schema": "schema",
+      "storeys": "storeys",
+      "dims": "dims",
+      "elements": "elements",
+      "visible": "visible",
+      "selected": "selected",
+      "attach": "attach",
+      "findings": "findings",
+      "fps": "fps",
+      "gpu": "gpu",
+      "gpuValue": "WebGL2"
+    },
+    "calibration": {
+      "levelFallback": "Level {n}"
     },
     "framing": {
       "outOfView": "Model is out of view",
@@ -3732,7 +3845,12 @@
       "hideAll": "Hide all",
       "selectAll": "Select all",
       "deselectAll": "Deselect all",
-      "propertiesTitle": "Properties"
+      "propertiesTitle": "Properties",
+      "noElementData": "No element data available.",
+      "noMetadata": "No metadata available for this model.",
+      "loadingModelData": "Loading model data…",
+      "noSpatialData": "No spatial data available.",
+      "noStoreyData": "No storey data available."
     },
     "properties": {
       "filter": "Filter properties…",
@@ -3746,7 +3864,12 @@
       "loading": "Loading properties…",
       "noCommonProperties": "No common properties across selected elements.",
       "tooManySelected": "Too many elements selected ({count}). Select fewer than 100 to compare properties.",
-      "multiSummary": "{elements, plural, one {# element} other {# elements}} · {properties, plural, one {# common property} other {# common properties}}"
+      "multiSummary": "{elements, plural, one {# element} other {# elements}} · {properties, plural, one {# common property} other {# common properties}}",
+      "noPsets": "No property sets found for this element.",
+      "noMatch": "No properties match \"{query}\"",
+      "pinned": "Pinned:",
+      "unnamed": "Unnamed",
+      "multi": "Multi"
     },
     "sidePanel": {
       "titleExplorer": "Explorer",
@@ -3768,6 +3891,8 @@
       "text": "Text"
     },
     "bcf": {
+      "renderError": "Something went wrong rendering this view.",
+      "retry": "Retry",
       "loading": "Loading issues…",
       "emptyState": "No BCF issues yet. Create one to get started.",
       "noSearchResults": "No issues match your search.",
@@ -4163,7 +4288,12 @@
       "zoomInOut": "Zoom in/out ({action})",
       "zoomInOutAlways": "Zoom in/out (always available)",
       "zoomInOutShort": "Zoom In/Out",
-      "mouseGestures": "Mouse gestures"
+      "mouseGestures": "Mouse gestures",
+      "mouseDiagram": {
+        "leftClick": "Left Click",
+        "scrollWheel": "Scroll Wheel",
+        "rightClick": "Right Click"
+      }
     },
     "docContextMenu": {
       "addFindings": "Add Finding",

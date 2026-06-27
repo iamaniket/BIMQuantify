@@ -1,6 +1,7 @@
 'use client';
 
 import { MapPin, UserCog, CheckCircle2 } from '@bimdossier/ui/icons';
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import {
@@ -24,6 +25,7 @@ type Props = {
 };
 
 export function IssueDetailModal({ issue, open, onOpenChange }: Props): JSX.Element {
+  const t = useTranslations('projects.issueDetail');
   if (issue === null) {
     return <Dialog open={false}><DialogContent><span /></DialogContent></Dialog>;
   }
@@ -53,13 +55,13 @@ export function IssueDetailModal({ issue, open, onOpenChange }: Props): JSX.Elem
           <div className="grid grid-cols-2 gap-3 text-body3">
             <div>
               <span className="text-caption font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
-                Location
+                {t('location')}
               </span>
               <div className="mt-0.5 font-medium text-foreground">{issue.location}</div>
             </div>
             <div>
               <span className="text-caption font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
-                Model
+                {t('model')}
               </span>
               <div className="mt-0.5">
                 <span
@@ -72,21 +74,21 @@ export function IssueDetailModal({ issue, open, onOpenChange }: Props): JSX.Elem
             </div>
             <div>
               <span className="text-caption font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
-                Owner
+                {t('owner')}
               </span>
               <div className="mt-0.5 font-medium text-foreground">{issue.owner}</div>
             </div>
             <div>
               <span className="text-caption font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
-                Created
+                {t('created')}
               </span>
-              <div className="mt-0.5 font-medium text-foreground">{issue.createdAt} ago</div>
+              <div className="mt-0.5 font-medium text-foreground">{t('createdAgo', { value: issue.createdAt })}</div>
             </div>
           </div>
 
           <div className="rounded-md border border-border bg-background-secondary p-3">
             <span className="text-caption font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
-              Bbl requirement
+              {t('bblRequirement')}
             </span>
             <p className="mt-1 text-body3 leading-relaxed text-foreground">
               {issue.requirementText}
@@ -97,15 +99,15 @@ export function IssueDetailModal({ issue, open, onOpenChange }: Props): JSX.Elem
         <DialogFooter>
           <Button variant="border" size="md">
             <MapPin className="mr-1.5 h-3 w-3" />
-            Pin photo
+            {t('pinPhoto')}
           </Button>
           <Button variant="border" size="md">
             <UserCog className="mr-1.5 h-3 w-3" />
-            Reassign
+            {t('reassign')}
           </Button>
           <Button variant="primary" size="md">
             <CheckCircle2 className="mr-1.5 h-3 w-3" />
-            Mark resolved
+            {t('markResolved')}
           </Button>
         </DialogFooter>
 

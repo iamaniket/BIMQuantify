@@ -1,5 +1,5 @@
 /**
- * pivot-rotate plugin — Forge/Navisworks-style orbit pivot.
+ * pivot-rotate plugin — cursor-anchored orbit pivot.
  *
  * On every drag-rotate start, the geometry point under the cursor becomes
  * the camera-controls orbit point for that drag. Pan (truck) speed is
@@ -312,7 +312,7 @@ export function pivotRotatePlugin(options: PivotRotateOptions = {}): Plugin {
       // ── Pivot indicator ───────────────────────────────────────────────
       // Screen-space sphere drawn at the active pivot. Lives across the
       // whole drag, then fades out. depthTest off so it's never occluded
-      // (matches Forge — you're orbiting around it, you should always see it).
+      // (you're orbiting around it, so you should always see it).
       let sprite: THREE.Sprite | null = null;
       let spriteTex: THREE.CanvasTexture | null = null;
       let pivotWorld = new THREE.Vector3();

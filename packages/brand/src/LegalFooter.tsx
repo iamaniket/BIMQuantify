@@ -27,7 +27,7 @@ export function LegalFooter({
   // Plain product name until the holding/parent entity is registered; callers
   // can pass the registered entity (e.g. "BimDossier B.V.") once it exists.
   company = 'BimDossier',
-  tail = 'Wet kwaliteitsborging voor het bouwen (Wkb) 2026.1',
+  tail = 'Wet kwaliteitsborging voor het bouwen (Wkb)',
   tone = 'on-light',
   links = DEFAULT_LINKS,
   className,

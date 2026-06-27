@@ -201,7 +201,7 @@ export type IfcViewerProps = {
    */
   outline?: OutlinePluginOptions;
   /**
-   * Forge-style orbit-around-cursor. Pass `false` to disable, an options
+   * Orbit-around-cursor (as in most CAD viewers). Pass `false` to disable, an options
    * object to tune. Defaults are sensible — most consumers can omit this.
    */
   pivotRotate?: PivotRotateOptions | false;

@@ -120,7 +120,8 @@ async def list_capture_links(
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
-) -> list[CaptureLink]:
+    settings: Settings = Depends(get_settings),
+) -> list[CaptureLinkRead]:
     project = await load_project_or_404(session, project_id)
     membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.capture_link, Action.read)
@@ -131,7 +132,14 @@ async def list_capture_links(
     result = await session.execute(
         base.order_by(CaptureLink.created_at.desc()).limit(limit).offset(offset)
     )
-    return list(result.scalars().all())
+    # Rebuild the shareable URL per row (same construction as create) so an
+    # authorized member can re-copy a link after creation.
+    return [
+        CaptureLinkRead.model_validate(row).model_copy(
+            update={"url": f"{settings.frontend_capture_url}/{active_org_id}/{row.token}"}
+        )
+        for row in result.scalars().all()
+    ]
 
 
 @router.delete("/{link_id}", status_code=status.HTTP_204_NO_CONTENT)

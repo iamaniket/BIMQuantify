@@ -586,6 +586,7 @@ async def delete_attachment(
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
+    storage: StorageBackend = Depends(get_storage),
 ) -> Response:
     project = await load_project_or_404(session, project_id)
     membership = await require_membership(session, project.id, user.id)
@@ -604,6 +605,7 @@ async def delete_attachment(
 
     att = await _load_attachment_or_404(session, project.id, attachment_id)
     before = _attachment_snapshot(att)
+    storage_key = att.storage_key
     att.soft_delete()
     await session.flush()
 
@@ -617,4 +619,13 @@ async def delete_attachment(
         project_id=project.id,
         request=request,
     )
+    # Best-effort object cleanup (DLC-2): soft-delete with no restore path, so the
+    # stored bytes can go now. Never fail the request if the object is already gone.
+    try:
+        await storage.delete_object(storage_key, bucket=get_attachments_bucket())
+    except Exception:
+        logger.warning(
+            "delete_attachment: storage cleanup failed for %s", attachment_id,
+            exc_info=True,
+        )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -35,6 +35,7 @@ import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 
 export default function FindingsBoardPage(): JSX.Element {
   const t = useTranslations('findingsBoard');
+  const t2 = useTranslations();
   const params = useParams<{ projectId: string }>();
   const { projectId } = params;
 
@@ -49,11 +50,11 @@ export default function FindingsBoardPage(): JSX.Element {
     () => (projectName === undefined
       ? null
       : [
-        { label: 'Projects', href: '/projects' },
+        { label: t2('breadcrumbs.projects'), href: '/projects' },
         { label: projectName, href: `/projects/${projectId}` },
         { label: t('crumb'), href: undefined },
       ]),
-    [projectName, projectId, t],
+    [projectName, projectId, t, t2],
   );
   useHeaderCrumbsOverride(crumbs);
 
@@ -98,7 +99,7 @@ export default function FindingsBoardPage(): JSX.Element {
     return (
       <main className="p-6">
         <ErrorBanner
-          message={isNotFound ? 'Project not found.' : 'Failed to load project.'}
+          message={isNotFound ? t('projectNotFound') : t('projectLoadError')}
           tone="soft"
           className="text-body2"
         />

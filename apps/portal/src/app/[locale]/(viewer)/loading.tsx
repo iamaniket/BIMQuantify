@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { Skeleton, Spinner } from '@bimdossier/ui';
@@ -10,6 +11,7 @@ import { Skeleton, Spinner } from '@bimdossier/ui';
  * into the mounted viewer page is visually seamless.
  */
 export default function ViewerLoading(): JSX.Element {
+  const t = useTranslations('viewer.loadingOverlay');
   return (
     <main className="flex min-h-0 w-full flex-1 animate-viewer-fade-in">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -28,7 +30,7 @@ export default function ViewerLoading(): JSX.Element {
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-4">
           <Spinner size="lg" className="text-primary" />
           <span className="text-body3 text-foreground-secondary">
-            Preparing viewer…
+            {t('preparing')}
           </span>
         </div>
       </div>

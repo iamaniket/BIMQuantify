@@ -10,7 +10,8 @@
     "faq": "Veelgestelde vragen",
     "blog": "Blog",
     "requestAccess": "Toegang aanvragen",
-    "contactSales": "Neem contact op"
+    "contactSales": "Neem contact op",
+    "themeToggle": "Thema wisselen"
   },
   "hero": {
     "badge": "Private pilot · beperkt aantal plekken voor Nederlandse aannemers",
@@ -58,7 +59,10 @@
     "faqHeading": "Veelgestelde vragen",
     "relatedHeading": "Gerelateerde mogelijkheden",
     "imagesHeading": "Zie het in actie",
-    "imagesNote": "Meer schermafbeeldingen en korte video's volgen binnenkort."
+    "imagesNote": "Meer schermafbeeldingen en korte video's volgen binnenkort.",
+    "metadata": {
+      "featureNotFound": "Functie niet gevonden · BimDossier"
+    }
   },
   "roadmap": {
     "eyebrow": "Op de roadmap",
@@ -123,10 +127,14 @@
     "headline": "Inzichten & updates",
     "subtitle": "Wkb-compliance, Nederlandse bouwregelgeving en productupdates, rechtstreeks van het team achter het dossier dat op uw BIM-model draait.",
     "empty": "Nog geen berichten. Kom snel terug.",
-    "readingTime": "min leestijd"
+    "readingTime": "min leestijd",
+    "metadata": {
+      "postNotFound": "Bericht niet gevonden"
+    }
   },
   "languageToggle": {
-    "label": "EN"
+    "label": "EN",
+    "ariaLabel": "Schakel naar {language}"
   },
   "legalBrand": {
     "backToSite": "Terug naar site"
@@ -138,9 +146,13 @@
     "bookCall": "Plan een gesprek",
     "bookCallDescription": "Plan een demo van 30 minuten met ons team. We laten u het platform zien en bespreken prijzen op maat.",
     "orEmail": "Of stuur ons een e-mail",
-    "emailDescription": "Liever e-mailen? Neem contact op en we reageren binnen één werkdag.",
+    "emailDescription": "Liever e-mailen? Neem contact op en we reageren zo snel mogelijk.",
     "emailButton": "Mail ons",
-    "noBookingUrl": "Boekingslink volgt binnenkort. Neem in de tussentijd gerust contact op via e-mail."
+    "noBookingUrl": "Boekingslink volgt binnenkort. Neem in de tussentijd gerust contact op via e-mail.",
+    "metadata": {
+      "title": "BimDossier · Verkoop contacteren",
+      "description": "Boek een demo of neem contact op met het BimDossier-team om prijzen en abonnementen te bespreken."
+    }
   },
   "requestAccessPage": {
     "backToHome": "Terug naar home",
@@ -154,6 +166,10 @@
       "rateLimited": "Te veel verzoeken vanuit jouw netwerk. Probeer het over een uur opnieuw.",
       "generic": "We konden je aanvraag niet versturen: {detail}",
       "unreachable": "We konden de BimDossier-API niet bereiken. Probeer het zo opnieuw."
+    },
+    "metadata": {
+      "title": "BimDossier · Toegang aanvragen",
+      "description": "Vraag een begeleide demo aan van BimDossier, het BIM-platform gebouwd voor de Wet kwaliteitsborging voor het bouwen (Wkb)."
     }
   },
   "snagShowcase": {
@@ -167,6 +183,7 @@
     "fallbackTitle": "Interactieve 3D-bevindingsinspectie",
     "fallbackBody": "Uw browser kan het live 3D-model niet tonen, maar dit zijn de bevindingen erin:",
     "fallbackAlt": "Interactief 3D-gebouwmodel met kwaliteitsborgingsbevindingen",
+    "bblMeta": "{severity} · Bbl {article}",
     "severity": {
       "low": "Laag",
       "medium": "Middel",
@@ -250,7 +267,9 @@
   "brandPanel": {
     "brand": "BimDossier",
     "eyebrow": "Bouwkwaliteit, gebouwd op uw model",
-    "statusReady": "Wkb {version} gereed",
+    "statusChecks": "{wkb} Wkb · {bbl} BBL-toetsen actief",
+    "kpiWkb": "Wkb-toetsen",
+    "kpiBbl": "BBL-toetsen",
     "headline": "Houd elke <em>bevinding</em>, <em>foto</em> en <em>certificaat</em> bij op het model.",
     "body": "Zet bevindingen vast op uw model, bewaak elke deadline en houd het dossier klaar voor de kwaliteitsborger en het bevoegd gezag. Gebouwd voor de Wet kwaliteitsborging voor het bouwen (Wkb).",
     "status": {
