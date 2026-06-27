@@ -1,13 +1,14 @@
 'use client';
 
 import { Button, Eyebrow } from '@bimdossier/ui';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useEffect, useState, type JSX } from 'react';
 
 import { useInView } from '@/hooks/useInView';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { Link } from '@/i18n/navigation';
+import { portalHref } from '@/lib/portalLinks';
 
 import { DEMO_SNAGS, type DemoSnagSeverity } from './snag-showcase/demoSnags';
 
@@ -79,6 +80,7 @@ function ShowcaseFallback(): JSX.Element {
 
 export function SnagShowcaseSection(): JSX.Element {
   const t = useTranslations('snagShowcase');
+  const locale = useLocale();
   const reducedMotion = useReducedMotion();
   // Start fetching the viewer chunk slightly before the canvas scrolls in.
   const { ref, inView } = useInView<HTMLDivElement>({ rootMargin: '200px', once: true });
@@ -154,11 +156,11 @@ export function SnagShowcaseSection(): JSX.Element {
                 </li>
               </ul>
               <div className="pointer-events-auto mt-2 flex flex-wrap items-center gap-4">
-                <Link href="/request-access">
+                <a href={portalHref(locale, '/request-access')}>
                   <Button variant="primary" size="lg">
                     {t('cta')}
                   </Button>
-                </Link>
+                </a>
                 <Link
                   href="/blog"
                   className="text-body2 font-medium text-primary hover:underline"

@@ -136,9 +136,6 @@
     "label": "EN",
     "ariaLabel": "Schakel naar {language}"
   },
-  "legalBrand": {
-    "backToSite": "Terug naar site"
-  },
   "contactPage": {
     "eyebrow": "Prijzen & abonnementen",
     "headline": "Laten we het juiste abonnement vinden voor uw team",
@@ -152,24 +149,6 @@
     "metadata": {
       "title": "BimDossier · Verkoop contacteren",
       "description": "Boek een demo of neem contact op met het BimDossier-team om prijzen en abonnementen te bespreken."
-    }
-  },
-  "requestAccessPage": {
-    "backToHome": "Terug naar home",
-    "intro": {
-      "eyebrow": "Pilotprogramma",
-      "subtitle": "We openen een beperkte pilot voor een kleine groep Nederlandse aannemers. Vertel ons over uw team, en als het past nemen we contact op."
-    },
-    "errors": {
-      "pendingDuplicate": "We hebben je aanvraag al binnen. Geef ons een dag om ernaar te kijken, dan sturen we je een e-mail.",
-      "alreadyApproved": "Je BimDossier-account staat al klaar. Controleer je e-mail voor de activatielink, of neem contact op met support als je hem niet hebt ontvangen.",
-      "rateLimited": "Te veel verzoeken vanuit jouw netwerk. Probeer het over een uur opnieuw.",
-      "generic": "We konden je aanvraag niet versturen: {detail}",
-      "unreachable": "We konden de BimDossier-API niet bereiken. Probeer het zo opnieuw."
-    },
-    "metadata": {
-      "title": "BimDossier · Toegang aanvragen",
-      "description": "Vraag een begeleide demo aan van BimDossier, het BIM-platform gebouwd voor de Wet kwaliteitsborging voor het bouwen (Wkb)."
     }
   },
   "snagShowcase": {
@@ -263,28 +242,5 @@
         "a": "De pilotprijs hangt af van uw team en projecten. Vraag toegang aan, dan bespreken we het. Een gesprek beginnen verplicht u tot niets."
       }
     ]
-  },
-  "brandPanel": {
-    "brand": "BimDossier",
-    "eyebrow": "Bouwkwaliteit, gebouwd op uw model",
-    "statusChecks": "{wkb} Wkb · {bbl} BBL-toetsen actief",
-    "kpiWkb": "Wkb-toetsen",
-    "kpiBbl": "BBL-toetsen",
-    "headline": "Houd elke <em>bevinding</em>, <em>foto</em> en <em>certificaat</em> bij op het model.",
-    "body": "Zet bevindingen vast op uw model, bewaak elke deadline en houd het dossier klaar voor de kwaliteitsborger en het bevoegd gezag. Gebouwd voor de Wet kwaliteitsborging voor het bouwen (Wkb).",
-    "status": {
-      "normal": "Normaal",
-      "degraded": "Verminderd",
-      "outage": "Storing",
-      "unknown": "—"
-    },
-    "kpiStatus": "Status",
-    "mapCaption": "{projects} projecten · {cities} steden live",
-    "mapAria": "Live BimDossier-projectlocaties in heel Nederland",
-    "legal": {
-      "privacy": "Privacybeleid",
-      "terms": "Algemene voorwaarden",
-      "dpa": "Verwerkersovereenkomst (DPA)"
-    }
   }
 }

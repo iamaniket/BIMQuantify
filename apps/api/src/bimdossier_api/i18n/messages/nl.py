@@ -106,6 +106,16 @@ nl_messages: Catalog = {
     "notifications.job.failed.body": "{report_title}: {error}",
     "notifications.job.unknown_error": "onbekende fout",
 
+    # Extractie-notificaties (IFC/PDF). Gelokaliseerd naar de jurisdictie van het
+    # project in routers/jobs_internal.py::_emit_notification (geen enkele ontvanger).
+    "notifications.extraction.started.title": "Extractie gestart",
+    "notifications.extraction.started.body": "Extractie van {filename} is bezig",
+    "notifications.extraction.completed.title": "Extractie voltooid",
+    "notifications.extraction.completed.body": "{filename} is gereed om te bekijken",
+    "notifications.extraction.failed.title": "Extractie mislukt",
+    "notifications.extraction.failed.body": "Extractie van {filename} mislukt: {error}",
+    "notifications.extraction.unknown_error": "onbekende fout",
+
     # Dossier-ready email
     "notifications.dossier_ready_email.subject": "Dossier bevoegd gezag gereed",
     "notifications.dossier_ready_email.body": "Het dossier '{title}' staat klaar in BimDossier.",

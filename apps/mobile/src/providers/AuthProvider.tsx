@@ -16,11 +16,24 @@ import { tokenManager } from '@/lib/api/tokenManager';
 import { readStoredTokens, writeStoredTokens } from '@/lib/auth/secureStore';
 import { readCachedMe, writeCachedMe } from '@/lib/auth/cachedMe';
 import { wipeAllOfflineData } from '@/lib/offline/db';
+import { clearAllPinnedFiles } from '@/features/viewer/offline/pinStore';
 import type {
   AuthMeResponse,
   OrgMembershipBrief,
   TokenPair,
 } from '@/lib/api/schemas/auth';
+
+/**
+ * Reset the offline store for a tenant boundary (voluntary logout / org-switch).
+ * Deletes the on-disk pinned artifacts BEFORE wiping the rows that index them —
+ * `wipeAllOfflineData()` clears `pinned_models` but not the `.frag`/properties
+ * files, so wiping first would orphan them on disk forever (and leave the prior
+ * tenant's BIM geometry readable on a shared device).
+ */
+async function clearOfflineData(): Promise<void> {
+  await clearAllPinnedFiles();
+  await wipeAllOfflineData();
+}
 
 // RN port of apps/portal/src/providers/AuthProvider.tsx. Same contract; the only
 // change is async hydration from expo-secure-store (the `hasHydrated` gate
@@ -28,6 +41,8 @@ import type {
 type AuthState = {
   tokens: TokenPair | null;
   setTokens: (tokens: TokenPair | null) => void;
+  /** Voluntary logout: clears tokens AND wipes offline data (incl. pinned files). */
+  signOut: () => Promise<void>;
   hasHydrated: boolean;
   me: AuthMeResponse | null;
   refreshMe: () => Promise<void>;
@@ -107,12 +122,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tokensRef.current = next;
     void writeStoredTokens(next);
     setTokensState(next);
-    // Logout wipes all offline data — a shared, multi-tenant device must not
-    // keep one user's cached snags/findings into the next session.
-    if (next === null) {
-      void wipeAllOfflineData();
-    }
+    // Clearing tokens here does NOT wipe offline data. An INVOLUNTARY expiry
+    // (tokenManager refresh failure) routes through this path, and an inspector
+    // returning from a no-signal site must not silently lose queued offline
+    // mutations. Voluntary logout goes through signOut(), which wipes.
   }, []);
+
+  const signOut = useCallback(async (): Promise<void> => {
+    // Voluntary logout: a different user may sign in on this shared device, so
+    // reset the cached tenant data + pinned files. (Trade-off: this still drops
+    // any unsynced outbox entries — acceptable for a user-initiated sign-out,
+    // unlike the involuntary expiry above. A future per-user outbox scope would
+    // let us preserve them; tracked as a follow-up.)
+    await clearOfflineData();
+    setTokens(null);
+  }, [setTokens]);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -126,9 +150,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Cannot switch organization without an active session');
       }
       const nextTokens = await switchOrgApi(organizationId, current.access_token);
-      // Clear the previous org's cached data before adopting the new tenant
-      // context — the offline cache isn't org-scoped, so a switch must reset it.
-      await wipeAllOfflineData();
+      // Clear the previous org's cached data + pinned files before adopting the
+      // new tenant context — the offline cache isn't org-scoped, so a switch
+      // must reset it (and the prior tenant's BIM artifacts must leave disk).
+      await clearOfflineData();
       setTokens(nextTokens);
       await queryClient.invalidateQueries();
       // /auth/me re-fetches via the effect watching `tokens`.
@@ -146,13 +171,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       tokens,
       setTokens,
+      signOut,
       hasHydrated,
       me,
       refreshMe,
       activeMembership,
       switchOrganization,
     }),
-    [tokens, setTokens, hasHydrated, me, refreshMe, activeMembership, switchOrganization],
+    [tokens, setTokens, signOut, hasHydrated, me, refreshMe, activeMembership, switchOrganization],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

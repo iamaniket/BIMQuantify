@@ -48,6 +48,15 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
   const updateMutation = useUpdateFinding(projectId);
   const { can, canVerifyFinding } = useProjectPermissions(projectId);
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
+  // Re-derive the open finding from the live list: a Kanban drag (or any other
+  // background mutation) refetches `findings`, and the detail panel/modal must
+  // render — and Save against — the fresh row, not the snapshot captured at open.
+  const liveSelectedFinding = useMemo(
+    () => (selectedFinding === null
+      ? null
+      : findings.find((f) => f.id === selectedFinding.id) ?? selectedFinding),
+    [findings, selectedFinding],
+  );
   // 'panel' = right-rail; 'dialog' = expanded into the centered modal.
   const [detailMode, setDetailMode] = useState<'panel' | 'dialog'>('panel');
   const [search, setSearch] = useState('');
@@ -219,7 +228,7 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
         {detailMode === 'panel' && (
           <FindingDetailPanel
             projectId={projectId}
-            finding={selectedFinding}
+            finding={liveSelectedFinding}
             onClose={() => { setSelectedFinding(null); }}
             onExpand={() => { setDetailMode('dialog'); }}
           />
@@ -228,7 +237,7 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
 
       <FindingDetailModal
         projectId={projectId}
-        finding={detailMode === 'dialog' ? selectedFinding : null}
+        finding={detailMode === 'dialog' ? liveSelectedFinding : null}
         open={detailMode === 'dialog' && selectedFinding !== null}
         onOpenChange={(o) => { if (!o) setSelectedFinding(null); }}
       />

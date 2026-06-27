@@ -1,12 +1,13 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { BrandMark } from '@bimdossier/brand';
 
 import { Link } from '@/i18n/navigation';
 import { env } from '@/lib/env';
+import { portalHref } from '@/lib/portalLinks';
 
 type FooterLink = {
   label: string;
@@ -24,6 +25,7 @@ export function Footer(): JSX.Element {
   const tFooter = useTranslations('footer');
   const tBrand = useTranslations('shared.brand');
   const tLegal = useTranslations('shared.legal');
+  const locale = useLocale();
 
   const connectLinks: FooterLink[] = [];
   if (env.NEXT_PUBLIC_SOCIAL_YOUTUBE_URL) {
@@ -54,7 +56,8 @@ export function Footer(): JSX.Element {
       links: [
         { label: tHeader('features'), href: '/#features', external: undefined },
         { label: tHeader('contactSales'), href: '/contact', external: undefined },
-        { label: tHeader('requestAccess'), href: '/request-access', external: undefined },
+        // Request access + legal pages live in the portal — link out.
+        { label: tHeader('requestAccess'), href: portalHref(locale, '/request-access'), external: true },
       ],
     },
     {
@@ -66,9 +69,9 @@ export function Footer(): JSX.Element {
     {
       title: tFooter('legal'),
       links: [
-        { label: tLegal('privacy'), href: '/legal/privacy', external: undefined },
-        { label: tLegal('terms'), href: '/legal/terms', external: undefined },
-        { label: tLegal('dpa'), href: '/legal/dpa', external: undefined },
+        { label: tLegal('privacy'), href: portalHref(locale, '/legal/privacy'), external: true },
+        { label: tLegal('terms'), href: portalHref(locale, '/legal/terms'), external: true },
+        { label: tLegal('dpa'), href: portalHref(locale, '/legal/dpa'), external: true },
       ],
     },
   ];

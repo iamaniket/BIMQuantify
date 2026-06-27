@@ -1227,6 +1227,91 @@ async def test_pdf_callback_persists_geometry_and_bundle_serves_it(
     assert "geometry.json" in body["geometry_url"]
 
 
+async def test_viewer_bundle_pdf_rewrites_pages_manifest_to_presigned_urls(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """The mobile viewer's ImageRasterSource reads each page's `url`; the
+    processor writes a raw `key`. The viewer-bundle must rewrite the manifest —
+    presigning every page key into a fetchable url — and inline it as a data:
+    URL. Regression guard for the cross-seam contract mismatch that rendered
+    zero pages on mobile."""
+    import base64 as _b64
+    import json as _json
+
+    client, fake = fake_storage_client
+    project_id, document_id = await _project_and_model(
+        client, org_user["access_token"], project_name="PdfPages"
+    )
+    init = (
+        await client.post(
+            f"/projects/{project_id}/documents/{document_id}/files/initiate",
+            json={
+                "filename": "plan.pdf",
+                "size_bytes": len(VALID_PDF_BYTES),
+                "content_type": "application/pdf",
+                "content_sha256": "deadbeef" * 8,
+            },
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    fake.objects[init["storage_key"]] = VALID_PDF_BYTES
+    await client.post(
+        f"/projects/{project_id}/documents/{document_id}/files/{init['file_id']}/complete",
+        headers=_auth(org_user["access_token"]),
+    )
+
+    # The processor uploads pages.json with raw S3 `key`s (no url).
+    manifest_key = f"projects/{project_id}/{init['file_id']}.pages.json"
+    image_key = f"projects/{project_id}/{init['file_id']}.page-0.webp"
+    fake.objects[manifest_key] = _json.dumps(
+        {
+            "v": 1,
+            "pages": [
+                {
+                    "index": 0,
+                    "pageWidth": 595.3,
+                    "pageHeight": 841.9,
+                    "imageWidth": 2480,
+                    "imageHeight": 3508,
+                    "key": image_key,
+                }
+            ],
+        }
+    ).encode()
+    cb = await client.post(
+        "/internal/jobs/pages/callback",
+        json={
+            "file_id": init["file_id"],
+            "organization_id": org_user["organization_id"],
+            "status": "succeeded",
+            "pdf_pages_key": manifest_key,
+            "page_count": 1,
+        },
+        headers=_WORKER_AUTH,
+    )
+    assert cb.status_code == 200, cb.text
+
+    resp = await client.get(
+        f"/projects/{project_id}/documents/{document_id}/files/{init['file_id']}/viewer-bundle",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    pages_url = resp.json()["pdf_pages_url"]
+    assert pages_url is not None
+    assert pages_url.startswith("data:application/json;base64,")
+
+    decoded = _json.loads(_b64.b64decode(pages_url.split(",", 1)[1]))
+    page0 = decoded["pages"][0]
+    # The page now carries a fetchable url (presigned), not a raw key.
+    assert "key" not in page0
+    assert page0["url"] is not None and image_key in page0["url"]
+    # Geometry is preserved so the viewer can size the world-space page box.
+    assert page0["pageWidth"] == 595.3
+    assert page0["index"] == 0
+
+
 async def _complete_ready_pdf(
     client: AsyncClient,
     fake: FakeStorage,

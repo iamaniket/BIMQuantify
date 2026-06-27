@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { Button } from '@bimdossier/ui';
@@ -8,12 +8,13 @@ import { ArrowRight, CalendarClock, Mail } from '@bimdossier/ui/icons';
 
 import { HeroPill } from '@/components/sections/HeroPill';
 import { HeroShell } from '@/components/sections/HeroShell';
-import { Link } from '@/i18n/navigation';
 import { env } from '@/lib/env';
+import { portalHref } from '@/lib/portalLinks';
 
 export function ContactSalesClient(): JSX.Element {
   const t = useTranslations('contactPage');
   const tHeader = useTranslations('header');
+  const locale = useLocale();
   const bookingUrl = env.NEXT_PUBLIC_CONTACT_BOOKING_URL;
   const contactEmail = env.NEXT_PUBLIC_CONTACT_EMAIL;
 
@@ -71,12 +72,12 @@ export function ContactSalesClient(): JSX.Element {
                 </Button>
               </a>
             ) : (
-              <Link href="/request-access" className="mt-auto">
+              <a href={portalHref(locale, '/request-access')} className="mt-auto">
                 <Button variant="border" size="md" className="w-full">
                   {tHeader('requestAccess')}
                   <ArrowRight className="ml-1.5 h-4 w-4" />
                 </Button>
-              </Link>
+              </a>
             )}
           </div>
         </div>

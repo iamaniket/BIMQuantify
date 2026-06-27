@@ -5,6 +5,8 @@ The endpoints here are decorated with the per-file `router` imported from
 """
 
 import asyncio
+import base64
+import json
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -47,6 +49,64 @@ from bimdossier_api.tenancy import (
     open_tenant_session,
     require_active_organization,
 )
+
+# The processor's page-image manifest is small (one entry per page, a few KB even
+# for a large set); cap the read so a corrupt/huge object can't be slurped whole.
+_PDF_PAGES_MANIFEST_MAX_BYTES = 8 * 1024 * 1024
+
+
+async def _build_pdf_pages_manifest_url(
+    storage: StorageBackend, manifest_key: str
+) -> str | None:
+    """Rewrite the processor's page-image manifest into the shape the mobile
+    viewer's ``ImageRasterSource`` consumes, and return it as a ``data:`` URL.
+
+    The processor writes each page entry with a raw S3 ``key`` (it cannot mint a
+    presigned URL — those would expire long before the viewer opens). The viewer,
+    however, reads a fetchable ``url`` and fetches it auth-free from inside the
+    WebView. So here — at viewer-bundle time, where presigning belongs — we read
+    the manifest, presign every page ``key`` into a ``url``, and inline the
+    rewritten manifest as a ``data:`` URL. Inlining keeps the existing
+    ``pdf_pages_url`` field + the WebView's ``fetch(url)`` / ``RasterSource.open(url)``
+    contract intact, and avoids re-uploading a manifest full of expiring URLs.
+
+    Returns ``None`` when the manifest object is missing or unreadable (the viewer
+    then reports "no 2D view" rather than rendering blank pages).
+    """
+    try:
+        raw = await storage.get_object_range(
+            manifest_key, 0, _PDF_PAGES_MANIFEST_MAX_BYTES - 1
+        )
+    except ObjectNotFoundError:
+        return None
+    try:
+        manifest = json.loads(raw)
+        source_pages = manifest["pages"]
+    except (ValueError, TypeError, KeyError):
+        logger.warning("Unreadable PDF pages manifest %s", manifest_key, exc_info=True)
+        return None
+
+    async def _entry(page: dict[str, object]) -> dict[str, object]:
+        # Presigned, fetchable url replaces the raw key; geometry is preserved.
+        url = await storage.presigned_get_url(
+            str(page["key"]), "page.webp", disposition="inline"
+        )
+        return {
+            "index": page.get("index"),
+            "pageWidth": page.get("pageWidth"),
+            "pageHeight": page.get("pageHeight"),
+            "imageWidth": page.get("imageWidth"),
+            "imageHeight": page.get("imageHeight"),
+            "url": url,
+        }
+
+    pages = await asyncio.gather(
+        *[_entry(p) for p in source_pages if isinstance(p, dict) and p.get("key")]
+    )
+    encoded = base64.b64encode(json.dumps({"v": 1, "pages": pages}).encode()).decode(
+        "ascii"
+    )
+    return f"data:application/json;base64,{encoded}"
 
 
 @router.get("", response_model=list[ProjectFileRead])
@@ -127,10 +187,12 @@ async def get_viewer_bundle(
                 row.geometry_storage_key, "geometry.json"
             )
         # Server-rasterized page-image manifest for the mobile pdfjs-free viewer.
+        # Rewrite it (presign each page key → url) and inline as a data: URL so
+        # the WebView's auth-free fetch gets pages it can actually load.
         pdf_pages_url: str | None = None
         if row.pdf_pages_storage_key is not None:
-            pdf_pages_url = await storage.presigned_get_url(
-                row.pdf_pages_storage_key, "pages.json"
+            pdf_pages_url = await _build_pdf_pages_manifest_url(
+                storage, row.pdf_pages_storage_key
             )
         return ViewerBundleResponse(
             file_type=row.file_type,

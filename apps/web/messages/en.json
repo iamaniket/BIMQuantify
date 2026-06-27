@@ -136,9 +136,6 @@
     "label": "NL",
     "ariaLabel": "Switch to {language}"
   },
-  "legalBrand": {
-    "backToSite": "Back to site"
-  },
   "contactPage": {
     "eyebrow": "Pricing & plans",
     "headline": "Let's find the right plan for your team",
@@ -152,24 +149,6 @@
     "metadata": {
       "title": "BimDossier · Contact sales",
       "description": "Book a demo or get in touch with the BimDossier team to discuss pricing and plans."
-    }
-  },
-  "requestAccessPage": {
-    "backToHome": "Back to home",
-    "intro": {
-      "eyebrow": "Pilot program",
-      "subtitle": "We're opening a limited pilot to a small group of Dutch contractors. Tell us about your team, and if it's a fit we'll be in touch."
-    },
-    "errors": {
-      "pendingDuplicate": "We've already got your request. Give us a day to look it over and we'll email you.",
-      "alreadyApproved": "Your BimDossier account is already set up. Check your email for the activation link, or contact support if you didn't receive one.",
-      "rateLimited": "Too many requests from your network. Please try again in an hour.",
-      "generic": "We couldn't submit your request: {detail}",
-      "unreachable": "We couldn't reach the BimDossier API. Please try again in a moment."
-    },
-    "metadata": {
-      "title": "BimDossier · Request access",
-      "description": "Request a guided demo of BimDossier, the BIM platform built for the Wet kwaliteitsborging voor het bouwen (Wkb)."
     }
   },
   "snagShowcase": {
@@ -263,28 +242,5 @@
         "a": "Pilot pricing depends on your team and projects. Request access and we'll talk it through. Starting the conversation commits you to nothing."
       }
     ]
-  },
-  "brandPanel": {
-    "brand": "BimDossier",
-    "eyebrow": "Construction quality, built on your model",
-    "statusChecks": "{wkb} Wkb · {bbl} BBL checks live",
-    "kpiWkb": "Wkb checks",
-    "kpiBbl": "BBL checks",
-    "headline": "Keep every <em>snag</em>, <em>photo</em> and <em>certificate</em> on the model.",
-    "body": "Pin findings on your model, track every deadline, and keep the dossier ready for the kwaliteitsborger and bevoegd gezag. Built for the Wet kwaliteitsborging voor het bouwen (Wkb).",
-    "status": {
-      "normal": "Normal",
-      "degraded": "Degraded",
-      "outage": "Outage",
-      "unknown": "—"
-    },
-    "kpiStatus": "Status",
-    "mapCaption": "{projects} projects · {cities} cities live",
-    "mapAria": "Live BimDossier project locations across the Netherlands",
-    "legal": {
-      "privacy": "Privacy policy",
-      "terms": "Terms of service",
-      "dpa": "Data processing agreement (DPA)"
-    }
   }
 }

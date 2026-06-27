@@ -88,6 +88,16 @@ export function useProjectCalendarData(projectId: string, findings: Finding[]) {
   >(null);
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
 
+  // Re-derive the open finding from the live list so a calendar drag (or any
+  // other background mutation) is reflected in the detail panel/modal — and a
+  // Save writes against the fresh row, not the snapshot captured when it opened.
+  const liveSelectedFinding = useMemo(
+    () => (selectedFinding === null
+      ? null
+      : findings.find((f) => f.id === selectedFinding.id) ?? selectedFinding),
+    [findings, selectedFinding],
+  );
+
   const deadlines = useMemo(() => deadlinesQuery.data ?? [], [deadlinesQuery.data]);
   const settings = useMemo(() => settingsQuery.data ?? [], [settingsQuery.data]);
   const moments = useMemo(() => planQuery.data?.moments ?? [], [planQuery.data]);
@@ -273,7 +283,7 @@ export function useProjectCalendarData(projectId: string, findings: Finding[]) {
     setSelectedDay,
     unscheduledOpen,
     setUnscheduledOpen,
-    selectedFinding,
+    selectedFinding: liveSelectedFinding,
     setSelectedFinding,
     filingDeadline,
     setFilingDeadline,

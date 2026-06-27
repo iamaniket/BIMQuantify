@@ -57,7 +57,7 @@ async function apiFetch(
 
 test.describe.serial('Model: IFC', () => {
   let projectId: string;
-  const uploaded: { name: string; modelId: string; fileId: string }[] = [];
+  const uploaded: { name: string; documentId: string; fileId: string }[] = [];
 
   test('creates two models, uploads an IFC to each, and converts them', async ({ page }) => {
     // 1. Auth
@@ -70,13 +70,13 @@ test.describe.serial('Model: IFC', () => {
     })) as { id: string };
     projectId = project.id;
 
-    // 3. For each model: create it, then upload its IFC (two-phase)
+    // 3. For each model: create the document, then upload its IFC (two-phase)
     for (const spec of MODELS) {
-      const model = (await apiFetch(page, 'POST', `/projects/${projectId}/models`, {
+      const document = (await apiFetch(page, 'POST', `/projects/${projectId}/documents`, {
         name: spec.name,
         discipline: spec.discipline,
       })) as { id: string };
-      const modelId = model.id;
+      const documentId = document.id;
 
       const fileBytes = readFileSync(resolve(SAMPLES_DIR, spec.file));
       const sha256 = createHash('sha256').update(fileBytes).digest('hex');
@@ -84,7 +84,7 @@ test.describe.serial('Model: IFC', () => {
       const initResp = (await apiFetch(
         page,
         'POST',
-        `/projects/${projectId}/models/${modelId}/files/initiate`,
+        `/projects/${projectId}/documents/${documentId}/files/initiate`,
         {
           filename: spec.file,
           size_bytes: fileBytes.length,
@@ -105,10 +105,10 @@ test.describe.serial('Model: IFC', () => {
       await apiFetch(
         page,
         'POST',
-        `/projects/${projectId}/models/${modelId}/files/${fileId}/complete`,
+        `/projects/${projectId}/documents/${documentId}/files/${fileId}/complete`,
       );
 
-      uploaded.push({ name: spec.name, modelId, fileId });
+      uploaded.push({ name: spec.name, documentId, fileId });
     }
 
     // 4. Wait for both extractions to finish (processor must be running)
@@ -119,7 +119,7 @@ test.describe.serial('Model: IFC', () => {
         const files = (await apiFetch(
           page,
           'GET',
-          `/projects/${projectId}/models/${info.modelId}/files?status=all`,
+          `/projects/${projectId}/documents/${info.documentId}/files?status=all`,
         )) as ({ id: string; extraction_status: string })[];
         const file = files.find((f) => f.id === fileId);
         const status = file?.extraction_status ?? 'not_started';
@@ -141,8 +141,8 @@ test.describe.serial('Model: IFC', () => {
     // Re-auth this fresh page context, then open each model one by one.
     await loginViaAPI(page, ACME_ADMIN_EMAIL, ACME_ADMIN_PASSWORD);
 
-    for (const { name, modelId, fileId } of uploaded) {
-      await page.goto(`/en/projects/${projectId}/models/${modelId}/viewer/${fileId}`);
+    for (const { name, documentId, fileId } of uploaded) {
+      await page.goto(`/en/projects/${projectId}/documents/${documentId}/viewer/${fileId}`);
 
       // Viewer chrome renders once the bundle URL resolves.
       await expect(

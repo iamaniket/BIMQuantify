@@ -131,6 +131,16 @@ en_messages: Catalog = {
     "notifications.job.failed.body": "{report_title}: {error}",
     "notifications.job.unknown_error": "unknown error",
 
+    # Extraction notifications (IFC/PDF). Localized to the project's jurisdiction
+    # in routers/jobs_internal.py::_emit_notification (no single recipient).
+    "notifications.extraction.started.title": "Extraction started",
+    "notifications.extraction.started.body": "{filename} extraction is in progress",
+    "notifications.extraction.completed.title": "Extraction completed",
+    "notifications.extraction.completed.body": "{filename} is ready to view",
+    "notifications.extraction.failed.title": "Extraction failed",
+    "notifications.extraction.failed.body": "{filename} extraction failed: {error}",
+    "notifications.extraction.unknown_error": "unknown error",
+
     # Dossier-ready email — single-locale via report.locale. Absorbed
     # from routers/jobs_internal.py:486-495.
     "notifications.dossier_ready_email.subject": "Dossier for the authority is ready",

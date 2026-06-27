@@ -4,12 +4,12 @@ import { Card, CardBody } from '@bimdossier/ui';
 import {
   ArrowRight, Scale, ShieldCheck, Users, type AppIcon,
 } from '@bimdossier/ui/icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { Reveal } from '@/components/shared/Reveal';
 import { SectionHeading } from '@/components/shared/SectionHeading';
-import { Link } from '@/i18n/navigation';
+import { portalHref } from '@/lib/portalLinks';
 
 type TrustKey = 'hosting' | 'instrument' | 'team';
 
@@ -29,6 +29,7 @@ const TRUST_ITEMS: { key: TrustKey; icon: AppIcon }[] = [
 
 export function TrustBandSection(): JSX.Element {
   const t = useTranslations('trust');
+  const locale = useLocale();
 
   return (
     <section id="trust" className="bg-surface-low">
@@ -56,13 +57,13 @@ export function TrustBandSection(): JSX.Element {
                     </p>
                   </div>
                   {key === 'hosting' ? (
-                    <Link
-                      href="/legal/dpa"
+                    <a
+                      href={portalHref(locale, '/legal/dpa')}
                       className="mt-auto inline-flex items-center gap-1.5 text-body2 font-medium text-primary hover:underline"
                     >
                       {t('dpaLink')}
                       <ArrowRight className="h-4 w-4" aria-hidden />
-                    </Link>
+                    </a>
                   ) : null}
                 </CardBody>
               </Card>

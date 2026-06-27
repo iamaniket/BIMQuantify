@@ -2,7 +2,7 @@
 
 import { AuthFormIntro } from '@/features/auth/AuthFormIntro';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from '@/i18n/navigation';
+import { Link, useRouter } from '@/i18n/navigation';
 import { ArrowRight, Eye, EyeOff, Lock, Mail } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useId, useMemo, useState, type JSX } from 'react';
@@ -28,9 +28,6 @@ type LoginFormValues = { username: string; password: string };
 type OrganizationMembership = { organization_id: string; organization_name: string };
 
 export function LoginForm(): JSX.Element {
-  const requestAccessHref = process.env['NEXT_PUBLIC_MARKETING_URL']
-    ? `${process.env['NEXT_PUBLIC_MARKETING_URL'].replace(/\/$/, '')}/request-access`
-    : '/request-access';
   const t = useTranslations('auth.login');
   const router = useRouter();
   const { setTokens, switchOrganization } = useAuth();
@@ -130,9 +127,9 @@ export function LoginForm(): JSX.Element {
               {t('intro')}{' '}
               <span className="whitespace-nowrap">
                 {t('newHere')}{' '}
-                <a href={requestAccessHref} className="font-semibold text-primary no-underline">
+                <Link href="/request-access" className="font-semibold text-primary no-underline">
                   {t('requestAccessCta')}
-                </a>
+                </Link>
               </span>
             </>
           )}

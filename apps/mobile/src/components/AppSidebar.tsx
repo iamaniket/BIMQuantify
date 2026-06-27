@@ -52,7 +52,7 @@ export function AppSidebar(props: DrawerContentComponentProps) {
   const { t } = useT();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { me, activeMembership, switchOrganization, setTokens } = useAuth();
+  const { me, activeMembership, switchOrganization, signOut } = useAuth();
   const { data: projects } = useProjects();
 
   const [switching, setSwitching] = useState<string | null>(null);
@@ -191,7 +191,7 @@ export function AppSidebar(props: DrawerContentComponentProps) {
       {/* Footer actions + brand (fixed bottom) */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}>
         <FooterAction icon="settings-outline" label={t('nav.settings')} onPress={() => go('/settings')} />
-        <FooterAction icon="log-out-outline" label={t('nav.signOut')} onPress={() => setTokens(null)} />
+        <FooterAction icon="log-out-outline" label={t('nav.signOut')} onPress={() => { void signOut(); }} />
         <View style={styles.brand}>
           <BrandMark size={34} variant="white" />
           <View style={styles.brandText}>

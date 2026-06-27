@@ -24,14 +24,15 @@ from sqlalchemy.orm import selectinload
 from bimdossier_api import audit
 from bimdossier_api.db import get_async_session
 from bimdossier_api.email.transport import get_email_transport
-from bimdossier_api.i18n import coerce_locale, t
+from bimdossier_api.i18n import coerce_locale, resolve_org_locale, t
 from bimdossier_api.jobs import require_worker_secret
+from bimdossier_api.models.document import Document
 from bimdossier_api.models.job import _JOB_TERMINAL, Job, JobStatus
 from bimdossier_api.models.levels import Level, LevelSource
-from bimdossier_api.models.document import Document
 from bimdossier_api.models.notification import NotificationEventType
 from bimdossier_api.models.organization import Organization
 from bimdossier_api.models.pdf_pages import PdfPage
+from bimdossier_api.models.project import Project
 from bimdossier_api.models.project_file import (
     ExtractionStatus,
     ProjectFile,
@@ -311,10 +312,11 @@ _EVENT_MAP: dict[ExtractionStatus, NotificationEventType] = {
     ExtractionStatus.failed: NotificationEventType.job_failed,
 }
 
-_TITLE_MAP: dict[ExtractionStatus, str] = {
-    ExtractionStatus.running: "Extraction started",
-    ExtractionStatus.succeeded: "Extraction completed",
-    ExtractionStatus.failed: "Extraction failed",
+# Extraction status → the `notifications.extraction.<key>` catalog stem.
+_NOTIF_KEY_MAP: dict[ExtractionStatus, str] = {
+    ExtractionStatus.running: "started",
+    ExtractionStatus.succeeded: "completed",
+    ExtractionStatus.failed: "failed",
 }
 
 
@@ -334,16 +336,7 @@ async def _emit_notification(
     if payload.status is ExtractionStatus.running and payload.progress is not None:
         return
 
-    title = _TITLE_MAP[payload.status]
     filename = file.original_filename
-    if payload.status is ExtractionStatus.running:
-        body = f"{filename} extraction is in progress"
-    elif payload.status is ExtractionStatus.succeeded:
-        body = f"{filename} is ready to view"
-    else:
-        snippet = (payload.error or "unknown error")[:200]
-        body = f"{filename} extraction failed: {snippet}"
-
     # Re-anchor the search_path inside this txn — the outer callback's
     # `SET search_path` may not survive a connection check-in between
     # transactions on the same AsyncSession (`SET LOCAL` only persists until
@@ -352,6 +345,25 @@ async def _emit_notification(
     schema = schema_name_for(payload.organization_id)
     async with session.begin():
         await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+        # Localize the bell notification to the project's jurisdiction — there's
+        # no single recipient to key off, so derive the locale from the project's
+        # country (the same pattern finding-notifications use). Bilingual rule:
+        # never emit a hardcoded single-language notification.
+        country = await session.scalar(
+            select(Project.country)
+            .join(Document, Document.project_id == Project.id)
+            .where(Document.id == file.document_id)
+        )
+        locale = resolve_org_locale(country)
+        stem = _NOTIF_KEY_MAP[payload.status]
+        title = t(f"notifications.extraction.{stem}.title", locale)
+        if payload.status is ExtractionStatus.failed:
+            error = (
+                payload.error or t("notifications.extraction.unknown_error", locale)
+            )[:200]
+            body = t("notifications.extraction.failed.body", locale, filename=filename, error=error)
+        else:
+            body = t(f"notifications.extraction.{stem}.body", locale, filename=filename)
         if job is not None:
             notification = await upsert_job_notification(
                 session,
