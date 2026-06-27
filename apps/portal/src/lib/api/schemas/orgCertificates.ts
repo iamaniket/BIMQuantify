@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { CertificateStatusEnum, CertificateTypeEnum } from './certificates';
+import { httpUrlString } from './url';
 
 export const OrgCertificateSchema = z.object({
   id: z.string().uuid(),
@@ -40,7 +41,7 @@ export const OrgCertificateInitiateResponseSchema = z.object({
 export type OrgCertificateInitiateResponse = z.infer<typeof OrgCertificateInitiateResponseSchema>;
 
 export const OrgCertificateDownloadResponseSchema = z.object({
-  download_url: z.string(),
+  download_url: httpUrlString,
   expires_in: z.number(),
 });
 export type OrgCertificateDownloadResponse = z.infer<typeof OrgCertificateDownloadResponseSchema>;

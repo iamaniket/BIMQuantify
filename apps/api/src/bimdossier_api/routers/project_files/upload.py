@@ -4,6 +4,7 @@ The endpoints here are decorated with the per-file `router` imported from
 `._shared`; importing this module registers them.
 """
 
+from dataclasses import dataclass
 from uuid import UUID, uuid4
 
 from fastapi import Depends, HTTPException, Request, status
@@ -58,7 +59,11 @@ from bimdossier_api.schemas.project_file import (
 )
 from bimdossier_api.storage import StorageBackend, get_storage
 from bimdossier_api.storage.minio import ObjectNotFoundError
-from bimdossier_api.tenancy import get_tenant_session, require_active_organization
+from bimdossier_api.tenancy import (
+    get_tenant_session,
+    open_tenant_session,
+    require_active_organization,
+)
 
 
 @router.post(
@@ -216,30 +221,183 @@ async def initiate_upload(
     )
 
 
+# --- complete_upload: file-type detection + job specs ----------------------
+#
+# complete_upload validates a freshly-uploaded object and queues extraction.
+# Its S3 reads (HEAD + a single header peek) and the processor dispatch are
+# network I/O, so they MUST NOT run while a tenant DB connection is held —
+# otherwise a slow/unreachable processor pins a pooled connection for up to
+# ~37s (two dispatches x the retry budget) and starves the pool under
+# concurrency. We mirror the three-phase discipline in routers/compliance.py:
+#   Phase 1 — validate + snapshot          (short tenant session)
+#   Phase 2 — S3 HEAD + one header peek + magic-byte detection (NO connection)
+#   Phase 3 — persist status + job rows + audit (short tenant session)
+#   Phase 4 — dispatch the job(s)           (NO connection)
+#   Phase 5 — on dispatch failure, mark rows failed (short tenant session)
+
+
+@dataclass(frozen=True)
+class _JobSpec:
+    job_type: JobType
+    payload: dict[str, str | bool]
+    # A primary extraction job: a dispatch failure must also flip the file's
+    # extraction_status to `failed`. Best-effort siblings (PDF rasterization)
+    # leave the file untouched on dispatch failure.
+    primary: bool
+
+
+@dataclass(frozen=True)
+class _CompleteDecision:
+    accepted: bool
+    audit_file_type: str
+    rejection_reason: str | None = None
+    set_ifc_schema: bool = False
+    ifc_schema: IfcSchema | None = None
+    clear_head: bool = False
+    jobs: tuple[_JobSpec, ...] = ()
+
+
+def _detect_completed_file(
+    *,
+    file_type: FileType,
+    original_filename: str,
+    head_bytes: bytes,
+    project_id: UUID,
+    file_id: UUID,
+    storage_key: str,
+) -> _CompleteDecision:
+    """Pure magic-byte detection for a completed upload (no I/O, no session).
+
+    Decides accept/reject and which extraction job(s) to queue. Runs in Phase 2
+    with no DB connection held. A single ``head_bytes`` buffer (one S3 range
+    read) feeds detection for every file type.
+    """
+    base: dict[str, str | bool] = {
+        "file_id": str(file_id),
+        "project_id": str(project_id),
+        "storage_key": storage_key,
+    }
+
+    if file_type == FileType.pdf:
+        if not head_bytes.startswith(b"%PDF"):
+            return _CompleteDecision(False, "pdf", rejection_reason="FILE_NOT_VALID_PDF")
+        # Primary PDF metadata extraction + a best-effort page rasterization for
+        # the mobile viewer (independent; the processor re-reads the PDF itself).
+        return _CompleteDecision(
+            True,
+            "pdf",
+            clear_head=True,
+            jobs=(
+                _JobSpec(JobType.pdf_extraction, dict(base), primary=True),
+                _JobSpec(JobType.pdf_pages_rasterization, dict(base), primary=False),
+            ),
+        )
+
+    if file_type in (FileType.dxf, FileType.dwg):
+        # CAD path. We only magic-byte sniff here; the processor parses DXF (and
+        # converts DWG -> DXF via dwg2dxf first). The `source_format` flag tells
+        # the worker whether to convert first.
+        if file_type is FileType.dwg:
+            accepted = looks_like_dwg(head_bytes)
+            rejection = None if accepted else "FILE_NOT_VALID_DWG"
+            source_format = "dwg"
+        else:
+            accepted = looks_like_dxf(head_bytes)
+            rejection = None if accepted else "FILE_NOT_VALID_DXF"
+            source_format = "dxf"
+        if not accepted:
+            return _CompleteDecision(False, file_type.value, rejection_reason=rejection)
+        return _CompleteDecision(
+            True,
+            file_type.value,
+            jobs=(
+                _JobSpec(
+                    JobType.dxf_extraction,
+                    {**base, "source_format": source_format},
+                    primary=True,
+                ),
+            ),
+        )
+
+    # IFC path. Compressed `.ifczip` is a zip wrapper whose schema can only be
+    # read after decompression — verify only the zip magic and defer schema
+    # validation to the processor. Uncompressed `.ifc` is STEP-header-sniffed.
+    if original_filename.lower().endswith(".ifczip"):
+        accepted = looks_like_zip(head_bytes)
+        return _CompleteDecision(
+            accepted,
+            "ifc",
+            rejection_reason=None if accepted else "FILE_NOT_VALID_IFCZIP",
+            set_ifc_schema=True,
+            ifc_schema=IfcSchema.unknown,
+            clear_head=accepted,
+            jobs=(
+                (_JobSpec(JobType.ifc_extraction, {**base, "compressed": True}, primary=True),)
+                if accepted
+                else ()
+            ),
+        )
+
+    result = parse_ifc_header(head_bytes)
+    accepted = result.rejection is None and result.schema is not None
+    return _CompleteDecision(
+        accepted,
+        "ifc",
+        rejection_reason=result.rejection.value if result.rejection else None,
+        set_ifc_schema=True,
+        ifc_schema=result.schema,
+        clear_head=accepted,
+        jobs=(
+            (_JobSpec(JobType.ifc_extraction, dict(base), primary=True),) if accepted else ()
+        ),
+    )
+
+
 @router.post("/{file_id}/complete", response_model=ProjectFileRead)
 async def complete_upload(
     project_id: UUID,
     document_id: UUID,
     file_id: UUID,
     request: Request,
-    session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
 ) -> ProjectFile:
-    project = await load_project_or_404(session, project_id)
-    membership = await require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.project_file, Action.create)
-    require_project_writable(project)
+    """Finalize a two-phase upload: validate the object, then queue extraction.
 
-    document = await _load_document_or_404(session, project.id, document_id)
-    row = await _load_file_or_404(session, document.id, file_id)
-    if row.status is not ProjectFileStatus.pending:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="FILE_ALREADY_FINALIZED")
+    The S3 reads and processor dispatch run with NO tenant DB connection held
+    (Phases 2 and 4) so a slow/unreachable processor or object store can never
+    pin a pooled connection and starve the pool — the same three-phase
+    discipline as routers/compliance.py. Do NOT fold this back into a single
+    get_tenant_session request.
+    """
+    schema: str = request.state.active_schema
 
+    # --- Phase 1: validate + snapshot the values later phases need, then
+    # release the connection.
+    async with open_tenant_session(schema, active_org_id, user.id) as session:
+        project = await load_project_or_404(session, project_id)
+        membership = await require_membership(session, project.id, user.id)
+        require_permission(membership.role, Resource.project_file, Action.create)
+        require_project_writable(project)
+
+        document = await _load_document_or_404(session, project.id, document_id)
+        row = await _load_file_or_404(session, document.id, file_id)
+        if row.status is not ProjectFileStatus.pending:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="FILE_ALREADY_FINALIZED"
+            )
+        storage_key = row.storage_key
+        size_bytes = row.size_bytes
+        file_type = row.file_type
+        original_filename = row.original_filename
+        project_uuid = project.id
+
+    # --- Phase 2: S3 HEAD + a single coalesced header read + magic-byte
+    # detection, with NO DB connection held.
     try:
-        head = await storage.head_object(row.storage_key)
+        head = await storage.head_object(storage_key)
     except ObjectNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -247,32 +405,63 @@ async def complete_upload(
         ) from exc
 
     head_size = head.get("ContentLength")
-    if isinstance(head_size, int) and head_size != row.size_bytes:
+    if isinstance(head_size, int) and head_size != size_bytes:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="SIZE_MISMATCH"
         )
 
-    if row.file_type == FileType.pdf:
-        head_bytes = await storage.get_object_range(row.storage_key, 0, min(4, row.size_bytes - 1))
-        if not head_bytes.startswith(b"%PDF"):
+    range_end = min(HEADER_PEEK_BYTES - 1, max(size_bytes - 1, 0))
+    head_bytes = await storage.get_object_range(storage_key, 0, range_end)
+
+    decision = _detect_completed_file(
+        file_type=file_type,
+        original_filename=original_filename,
+        head_bytes=head_bytes,
+        project_id=project_uuid,
+        file_id=file_id,
+        storage_key=storage_key,
+    )
+
+    # A rejected upload's stored object is useless — delete it (no connection held).
+    if not decision.accepted:
+        try:
+            await storage.delete_object(storage_key)
+        except Exception:
+            logger.warning(
+                "Failed to delete rejected upload %s; row marked rejected anyway",
+                storage_key,
+                exc_info=True,
+            )
+
+    # --- Phase 3: persist the outcome + create job rows (pending) + audit, in a
+    # fresh short transaction. Dispatch happens AFTER this commits (Phase 4).
+    created_jobs: list[tuple[Job, _JobSpec]] = []
+    async with open_tenant_session(schema, active_org_id, user.id) as session:
+        document = await _load_document_or_404(session, project_id, document_id)
+        row = await _load_file_or_404(session, document.id, file_id)
+        # A concurrent request may have finalized the row between phases.
+        if row.status is not ProjectFileStatus.pending:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="FILE_ALREADY_FINALIZED"
+            )
+
+        if decision.set_ifc_schema:
+            row.ifc_schema = decision.ifc_schema
+
+        if not decision.accepted:
             row.status = ProjectFileStatus.rejected
-            row.rejection_reason = "FILE_NOT_VALID_PDF"
-            try:
-                await storage.delete_object(row.storage_key)
-            except Exception:
-                logger.warning(
-                    "Failed to delete rejected upload %s; row marked rejected anyway",
-                    row.storage_key,
-                    exc_info=True,
-                )
+            row.rejection_reason = decision.rejection_reason or "UNKNOWN"
             await audit.record(
                 session,
                 action="project_file.rejected",
                 resource_type="project_file",
                 resource_id=row.id,
-                after={"rejection_reason": "FILE_NOT_VALID_PDF", "file_type": "pdf"},
+                after={
+                    "rejection_reason": row.rejection_reason,
+                    "file_type": decision.audit_file_type,
+                },
                 actor_user_id=user.id,
-                project_id=project.id,
+                project_id=project_uuid,
                 request=request,
             )
             await session.flush()
@@ -283,306 +472,82 @@ async def complete_upload(
         row.extraction_status = ExtractionStatus.queued
         if document.primary_file_type is None:
             document.primary_file_type = row.file_type
-        # A newly-completed version reclaims the head: clear any restore pointer
-        # so the document's effective head reverts to this (newest) version.
-        document.head_file_id = None
+        if decision.clear_head:
+            # A newly-completed version reclaims the head: clear any restore
+            # pointer so the document's effective head reverts to this version.
+            document.head_file_id = None
 
         try:
             await check_job_concurrency(session, settings)
-        except JobConcurrencyError:
+        except JobConcurrencyError as exc:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="TOO_MANY_ACTIVE_JOBS",
-            )
+            ) from exc
 
-        pdf_job = Job(
-            project_id=project.id,
-            file_id=row.id,
-            job_type=JobType.pdf_extraction,
-            status=JobStatus.pending,
-            payload={
-                "file_id": str(row.id),
-                "project_id": str(project.id),
-                "storage_key": row.storage_key,
-            },
-            created_by_user_id=user.id,
-        )
-        session.add(pdf_job)
-        await session.flush()
-
-        try:
-            await dispatch_job(pdf_job, settings, active_org_id)
-        except DispatchJobError as exc:
-            row.extraction_status = ExtractionStatus.failed
-            row.extraction_error = f"DISPATCH_FAILED: {exc}"[:500]
-            pdf_job.status = JobStatus.failed
-            pdf_job.error = f"DISPATCH_FAILED: {exc}"[:500]
-            pdf_job.retriable = True
-            pdf_job.error_kind = "dispatch"
-            logger.warning("Worker dispatch failed for %s: %s", row.storage_key, exc)
-            await session.flush()
-
-        # Also kick off PDF→page-image rasterization for the mobile viewer (the
-        # processor renders each page to WebP so the embed needs no pdf.js). It
-        # runs in parallel with extraction — it re-reads the PDF itself, so it has
-        # no dependency on extraction output. Best-effort: a dispatch failure must
-        # not fail the upload or the (primary) extraction path; it only leaves the
-        # mobile-PDF underlay unavailable until re-upload.
-        raster_job = Job(
-            project_id=project.id,
-            file_id=row.id,
-            job_type=JobType.pdf_pages_rasterization,
-            status=JobStatus.pending,
-            payload={
-                "file_id": str(row.id),
-                "project_id": str(project.id),
-                "storage_key": row.storage_key,
-            },
-            created_by_user_id=user.id,
-        )
-        session.add(raster_job)
-        await session.flush()
-        try:
-            await dispatch_job(raster_job, settings, active_org_id)
-        except DispatchJobError as exc:
-            raster_job.status = JobStatus.failed
-            raster_job.error = f"DISPATCH_FAILED: {exc}"[:500]
-            raster_job.retriable = True
-            raster_job.error_kind = "dispatch"
-            logger.warning("Rasterization dispatch failed for %s: %s", row.storage_key, exc)
-            await session.flush()
-
-        await audit.record(
-            session,
-            action="project_file.completed",
-            resource_type="project_file",
-            resource_id=row.id,
-            after={
-                "file_type": "pdf",
-                "original_filename": row.original_filename,
-                "version_number": row.version_number,
-            },
-            actor_user_id=user.id,
-            project_id=project.id,
-            request=request,
-        )
-
-        await session.refresh(row)
-        return row
-
-    if row.file_type in (FileType.dxf, FileType.dwg):
-        # CAD path. We only magic-byte sniff here; the processor parses DXF (and
-        # converts DWG -> DXF via dwg2dxf first), then extracts geometry +
-        # metadata. Both file types run the single `dxf_extraction` job; the
-        # `source_format` payload flag tells the worker whether to convert first.
-        range_end = min(HEADER_PEEK_BYTES - 1, max(row.size_bytes - 1, 0))
-        head_bytes = await storage.get_object_range(row.storage_key, 0, range_end)
-
-        if row.file_type is FileType.dwg:
-            cad_accepted = looks_like_dwg(head_bytes)
-            cad_rejection = None if cad_accepted else "FILE_NOT_VALID_DWG"
-            source_format = "dwg"
-        else:
-            cad_accepted = looks_like_dxf(head_bytes)
-            cad_rejection = None if cad_accepted else "FILE_NOT_VALID_DXF"
-            source_format = "dxf"
-
-        file_type_label = row.file_type.value
-
-        if cad_accepted:
-            row.status = ProjectFileStatus.ready
-            row.extraction_status = ExtractionStatus.queued
-            if document.primary_file_type is None:
-                document.primary_file_type = row.file_type
-
-            try:
-                await check_job_concurrency(session, settings)
-            except JobConcurrencyError:
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail="TOO_MANY_ACTIVE_JOBS",
-                )
-
-            cad_job = Job(
-                project_id=project.id,
+        for spec in decision.jobs:
+            job = Job(
+                project_id=project_uuid,
                 file_id=row.id,
-                job_type=JobType.dxf_extraction,
+                job_type=spec.job_type,
                 status=JobStatus.pending,
-                payload={
-                    "file_id": str(row.id),
-                    "project_id": str(project.id),
-                    "storage_key": row.storage_key,
-                    "source_format": source_format,
-                },
+                payload=dict(spec.payload),
                 created_by_user_id=user.id,
             )
-            session.add(cad_job)
+            session.add(job)
             await session.flush()
+            created_jobs.append((job, spec))
 
-            try:
-                await dispatch_job(cad_job, settings, active_org_id)
-            except DispatchJobError as exc:
-                row.extraction_status = ExtractionStatus.failed
-                row.extraction_error = f"DISPATCH_FAILED: {exc}"[:500]
-                cad_job.status = JobStatus.failed
-                cad_job.error = f"DISPATCH_FAILED: {exc}"[:500]
-                cad_job.retriable = True
-                cad_job.error_kind = "dispatch"
-                logger.warning("Worker dispatch failed for %s: %s", row.storage_key, exc)
-                await session.flush()
-
-            await audit.record(
-                session,
-                action="project_file.completed",
-                resource_type="project_file",
-                resource_id=row.id,
-                after={
-                    "file_type": file_type_label,
-                    "original_filename": row.original_filename,
-                    "version_number": row.version_number,
-                },
-                actor_user_id=user.id,
-                project_id=project.id,
-                request=request,
-            )
-
-            await session.refresh(row)
-            return row
-
-        row.status = ProjectFileStatus.rejected
-        row.rejection_reason = cad_rejection or "UNKNOWN"
-        try:
-            await storage.delete_object(row.storage_key)
-        except Exception:
-            logger.warning(
-                "Failed to delete rejected upload %s; row marked rejected anyway",
-                row.storage_key,
-                exc_info=True,
-            )
-        await audit.record(
-            session,
-            action="project_file.rejected",
-            resource_type="project_file",
-            resource_id=row.id,
-            after={"rejection_reason": row.rejection_reason, "file_type": file_type_label},
-            actor_user_id=user.id,
-            project_id=project.id,
-            request=request,
-        )
-        await session.flush()
-        await session.refresh(row)
-        return row
-
-    # IFC path. Uncompressed `.ifc` is STEP-header-sniffed here. Compressed
-    # `.ifczip` is a zip wrapper whose schema can only be read after
-    # decompression, so we verify only the zip magic and defer schema
-    # validation to the processor (it rejects on UnsupportedSchemaError).
-    is_compressed = row.original_filename.lower().endswith(".ifczip")
-    range_end = min(HEADER_PEEK_BYTES - 1, max(row.size_bytes - 1, 0))
-    head_bytes = await storage.get_object_range(row.storage_key, 0, range_end)
-
-    if is_compressed:
-        accepted = looks_like_zip(head_bytes)
-        rejection_reason = None if accepted else "FILE_NOT_VALID_IFCZIP"
-        row.ifc_schema = IfcSchema.unknown
-    else:
-        result = parse_ifc_header(head_bytes)
-        accepted = result.rejection is None and result.schema is not None
-        rejection_reason = result.rejection.value if result.rejection else None
-        row.ifc_schema = result.schema
-
-    if accepted:
-        row.status = ProjectFileStatus.ready
-        row.extraction_status = ExtractionStatus.queued
-        if document.primary_file_type is None:
-            document.primary_file_type = row.file_type
-        # A newly-completed version reclaims the head: clear any restore pointer
-        # so the document's effective head reverts to this (newest) version.
-        document.head_file_id = None
-
-        try:
-            await check_job_concurrency(session, settings)
-        except JobConcurrencyError:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="TOO_MANY_ACTIVE_JOBS",
-            )
-
-        job_payload: dict[str, str | bool] = {
-            "file_id": str(row.id),
-            "project_id": str(project.id),
-            "storage_key": row.storage_key,
+        after: dict[str, object] = {
+            "file_type": decision.audit_file_type,
+            "original_filename": row.original_filename,
+            "version_number": row.version_number,
         }
-        if is_compressed:
-            job_payload["compressed"] = True
-
-        ifc_job = Job(
-            project_id=project.id,
-            file_id=row.id,
-            job_type=JobType.ifc_extraction,
-            status=JobStatus.pending,
-            payload=job_payload,
-            created_by_user_id=user.id,
-        )
-        session.add(ifc_job)
-        await session.flush()
-
-        try:
-            await dispatch_job(ifc_job, settings, active_org_id)
-        except DispatchJobError as exc:
-            row.extraction_status = ExtractionStatus.failed
-            row.extraction_error = f"DISPATCH_FAILED: {exc}"[:500]
-            ifc_job.status = JobStatus.failed
-            ifc_job.error = f"DISPATCH_FAILED: {exc}"[:500]
-            ifc_job.retriable = True
-            ifc_job.error_kind = "dispatch"
-            logger.warning("Worker dispatch failed for %s: %s", row.storage_key, exc)
-            await session.flush()
-
+        if decision.set_ifc_schema:
+            after["ifc_schema"] = row.ifc_schema.value if row.ifc_schema else None
         await audit.record(
             session,
             action="project_file.completed",
             resource_type="project_file",
             resource_id=row.id,
-            after={
-                "file_type": "ifc",
-                "original_filename": row.original_filename,
-                "version_number": row.version_number,
-                "ifc_schema": row.ifc_schema.value if row.ifc_schema else None,
-            },
+            after=after,
             actor_user_id=user.id,
-            project_id=project.id,
+            project_id=project_uuid,
             request=request,
         )
-
         await session.refresh(row)
+
+    # --- Phase 4: dispatch the queued job(s) with NO DB connection held. The
+    # job rows are committed `pending`; failures are recorded in Phase 5.
+    failed: list[tuple[Job, _JobSpec, str]] = []
+    for job, spec in created_jobs:
+        try:
+            await dispatch_job(job, settings, active_org_id)
+        except DispatchJobError as exc:
+            msg = f"DISPATCH_FAILED: {exc}"[:500]
+            logger.warning("Worker dispatch failed for %s: %s", storage_key, exc)
+            failed.append((job, spec, msg))
+
+    if not failed:
         return row
 
-    row.status = ProjectFileStatus.rejected
-    row.rejection_reason = rejection_reason or "UNKNOWN"
-    try:
-        await storage.delete_object(row.storage_key)
-    except Exception:
-        logger.warning(
-            "Failed to delete rejected upload %s; row marked rejected anyway",
-            row.storage_key,
-            exc_info=True,
-        )
-    await audit.record(
-        session,
-        action="project_file.rejected",
-        resource_type="project_file",
-        resource_id=row.id,
-        after={
-            "rejection_reason": row.rejection_reason,
-            "file_type": "ifc",
-        },
-        actor_user_id=user.id,
-        project_id=project.id,
-        request=request,
-    )
-    await session.flush()
-    await session.refresh(row)
+    # --- Phase 5: record dispatch failures in a fresh short transaction. A
+    # primary-job failure also flips the file's extraction_status to failed.
+    async with open_tenant_session(schema, active_org_id, user.id) as session:
+        document = await _load_document_or_404(session, project_id, document_id)
+        row = await _load_file_or_404(session, document.id, file_id)
+        for job, spec, msg in failed:
+            failed_job = await session.get(Job, job.id)
+            if failed_job is not None:
+                failed_job.status = JobStatus.failed
+                failed_job.error = msg
+                failed_job.retriable = True
+                failed_job.error_kind = "dispatch"
+            if spec.primary:
+                row.extraction_status = ExtractionStatus.failed
+                row.extraction_error = msg
+        await session.flush()
+        await session.refresh(row)
     return row
 
 

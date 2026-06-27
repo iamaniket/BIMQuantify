@@ -7,6 +7,7 @@ _add_member, _new_hash) live in conftest.py.
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -297,6 +298,41 @@ async def test_public_initiate_emits_audit_without_user(
     assert row.user_id is None
     assert row.after is not None
     assert "capture_link_id" in row.after
+
+
+@pytest.mark.asyncio
+async def test_public_initiate_concurrent_respects_max_uses(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """A `max_uses=1` link hit by two simultaneous uploads must be consumed
+    exactly once. `initiate` loads the link FOR UPDATE, so the
+    is_exhausted-check + use_count increment serialize: one upload lands (201),
+    the other sees the now-exhausted link (410 CAPTURE_LINK_EXHAUSTED). The two
+    requests carry distinct content hashes so this exercises the use_count race,
+    not content de-dup. Without the row lock both reads see use_count=0, both
+    pass, and a single-use link is consumed twice — on an UNAUTHENTICATED
+    endpoint.
+    """
+    client, _ = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    link = await _create_capture_link(
+        client, org_user["access_token"], project["id"], max_uses=1
+    )
+    org_id = org_user["organization_id"]
+
+    async def _initiate() -> object:
+        return await client.post(
+            f"/public/capture/{org_id}/{link['token']}/initiate",
+            json=_capture_upload_payload(content_sha256=_new_hash()),
+        )
+
+    r1, r2 = await asyncio.gather(_initiate(), _initiate())
+
+    statuses = sorted([r1.status_code, r2.status_code])
+    assert statuses == [201, 410], (r1.text, r2.text)
+    loser = r1 if r1.status_code == 410 else r2
+    assert loser.json()["detail"] == "CAPTURE_LINK_EXHAUSTED"
 
 
 @pytest.mark.asyncio

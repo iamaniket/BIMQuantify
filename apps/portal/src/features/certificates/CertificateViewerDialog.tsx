@@ -24,6 +24,7 @@ import {
 import { useCertificateViewUrl } from '@/features/certificates/useCertificateViewUrl';
 import { getCertificateDownloadUrl } from '@/lib/api/certificates';
 import { getOrgCertificateDownloadUrl, getOrgCertificateViewUrl } from '@/lib/api/orgCertificates';
+import { isHttpUrl, openExternalUrl } from '@/lib/url';
 import type { Certificate, OrgCertificate } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
@@ -102,7 +103,7 @@ function CertificatePreview({
     );
   }
 
-  if (isPdf(certificate)) {
+  if (isPdf(certificate) && isHttpUrl(viewUrl)) {
     return (
       <iframe
         src={`${viewUrl}#toolbar=0`}
@@ -150,7 +151,7 @@ export function CertificateViewerDialog({
         projectId,
         certificate.id,
       );
-      window.open(downloadUrl, '_blank');
+      openExternalUrl(downloadUrl);
     } catch {
       toast.error(t('downloadError'));
     }
@@ -284,7 +285,7 @@ export function OrgCertificateViewerDialog({
         tokens.access_token,
         certificate.id,
       );
-      window.open(downloadUrl, '_blank');
+      openExternalUrl(downloadUrl);
     } catch {
       toast.error(t('downloadError'));
     }

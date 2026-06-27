@@ -10,6 +10,7 @@ and the PATCH/list endpoints — none of which need a real tenant schema.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -397,6 +398,43 @@ async def test_delete_member_frees_seat(
     await session.delete(member)
     await session.commit()
     assert await count_consumed_seats(session, org.id) == 1
+
+
+async def test_concurrent_invites_cannot_exceed_seat_cap(
+    client: AsyncClient, session: AsyncSession, superadmin: dict[str, str]
+) -> None:
+    """Two simultaneous invites racing on the last free seat must not both
+    succeed. `assert_seat_available` takes a FOR UPDATE lock on the org row so
+    the count-then-insert is serialized: exactly one invite lands, the other
+    gets 409 SEAT_LIMIT_EXCEEDED. Without the lock both reads see room and both
+    commit, over-provisioning the org (a direct billing leak).
+    """
+    from bimdossier_api.admin.seats import count_consumed_seats
+
+    org = await _make_org(session, name="RaceCo", seat_limit=2)
+    await _add_member(session, org=org, email="incumbent@race.example")
+    # One free seat remains (limit 2, one consumed).
+
+    async def _invite(email: str) -> object:
+        return await client.post(
+            f"/organizations/{org.id}/members",
+            json={"email": email, "is_org_admin": False},
+            headers=_auth(superadmin["token"]),
+        )
+
+    r1, r2 = await asyncio.gather(
+        _invite("racer-a@race.example"),
+        _invite("racer-b@race.example"),
+    )
+
+    # Exactly one wins; the loser is rejected with the seat error (never a 500).
+    statuses = sorted([r1.status_code, r2.status_code])
+    assert statuses == [201, 409], (r1.text, r2.text)
+    loser = r1 if r1.status_code == 409 else r2
+    assert loser.json()["detail"] == "SEAT_LIMIT_EXCEEDED"
+
+    # The cap held: the org is exactly full, not over-provisioned.
+    assert await count_consumed_seats(session, org.id) == 2
 
 
 # ---------------------------------------------------------------------------

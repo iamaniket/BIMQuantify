@@ -87,7 +87,9 @@ export function ShortcutList({
                     role="button"
                     tabIndex={0}
                     onClick={() => { onSelect(b.command); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') onSelect(b.command); }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(b.command); }
+                    }}
                     className={[
                       'flex cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 py-2 transition-colors',
                       isActive

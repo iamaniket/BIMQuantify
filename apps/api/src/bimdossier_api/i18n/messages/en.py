@@ -379,6 +379,7 @@ en_messages: Catalog = {
     "errors.CANCEL_DISPATCH_FAILED": "We couldn't cancel the job. Please try again.",
     "errors.TOO_MANY_ACTIVE_JOBS": "Too many jobs are already running. Please wait for one to finish.",
     "errors.INVALID_CALLBACK_STATUS": "The job reported an unexpected status.",
+    "errors.INVALID_STORAGE_KEY": "The job reported a storage location outside this project.",
 
     # --- attachments / certificates ---
     "errors.ATTACHMENT_NOT_FOUND": "That attachment could not be found.",

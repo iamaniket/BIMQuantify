@@ -1,3 +1,5 @@
+import { BRIDGE_RECEIVE_GLOBAL } from '@bimdossier/contracts';
+
 import type { EmbedViewerBundle } from '@/lib/api/viewerBundle';
 
 // RN side of the postMessage bridge to apps/viewer-embed. These types mirror the
@@ -81,9 +83,9 @@ export type ClientMessage =
  */
 export function hostMessageToInjectedJs(msg: HostMessage): string {
   const payload = JSON.stringify(msg);
-  return `window.__bimdossierViewerReceive && window.__bimdossierViewerReceive(${JSON.stringify(
-    payload,
-  )}); true;`;
+  // The receive-global name is shared with the embed via @bimdossier/contracts.
+  const recv = `window[${JSON.stringify(BRIDGE_RECEIVE_GLOBAL)}]`;
+  return `${recv} && ${recv}(${JSON.stringify(payload)}); true;`;
 }
 
 /** Parse a WebView.onMessage payload into a ClientMessage, or null if it isn't one. */

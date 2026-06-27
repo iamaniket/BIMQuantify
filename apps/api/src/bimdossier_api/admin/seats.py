@@ -39,13 +39,29 @@ async def count_consumed_seats(session: AsyncSession, organization_id: UUID) -> 
 
 
 async def assert_seat_available(
-    session: AsyncSession, organization: Organization
+    session: AsyncSession, organization: Organization, *, lock: bool = True
 ) -> None:
     """Raise 409 SEAT_LIMIT_EXCEEDED if adding one more seat would exceed
     the org's `seat_limit`. No-op when the limit is NULL (unlimited).
+
+    `lock=True` (the default) takes a `SELECT ... FOR UPDATE` on the
+    `Organization` row before counting, so two invites racing on the last
+    free seat can't both read "room available" and both insert. The lock is
+    held until the surrounding transaction commits — which, at every call
+    site, is the same transaction that inserts/reactivates the member — so
+    the count-then-insert is serialized per org. Without it the unlocked
+    COUNT is a TOCTOU that over-provisions the org (a billing leak). Pass
+    `lock=False` only for read-only seat probes outside a write path.
+    Mirrors the `with_for_update` last-admin invariant in membership_rules.py.
     """
     if organization.seat_limit is None:
         return
+    if lock:
+        await session.execute(
+            select(Organization.id)
+            .where(Organization.id == organization.id)
+            .with_for_update()
+        )
     used = await count_consumed_seats(session, organization.id)
     if used >= organization.seat_limit:
         raise HTTPException(

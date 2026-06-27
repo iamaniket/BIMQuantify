@@ -74,6 +74,7 @@ export function FileDropZone({
         type="file"
         accept={accept}
         multiple={multiple}
+        aria-label={t('chooseFile')}
         className="hidden"
         onChange={handleInputChange}
       />

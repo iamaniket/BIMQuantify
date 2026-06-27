@@ -24,6 +24,7 @@ import {
 } from '@/components/shared/DocumentViewerDialog';
 
 import { getAttachmentDownloadUrl } from '@/lib/api/attachments';
+import { isHttpUrl, openExternalUrl } from '@/lib/url';
 import type { Attachment } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -150,7 +151,7 @@ function ContentPreview({
     );
   }
 
-  if (attachment.content_type === 'application/pdf') {
+  if (attachment.content_type === 'application/pdf' && isHttpUrl(viewUrl)) {
     return (
       <iframe
         src={`${viewUrl}#toolbar=0`}
@@ -239,7 +240,7 @@ export function AttachmentViewerDialog({
         projectId,
         attachment.id,
       );
-      window.open(downloadUrl, '_blank');
+      openExternalUrl(downloadUrl);
     } catch {
       toast.error(t('downloadError'));
     }

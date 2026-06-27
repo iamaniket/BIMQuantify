@@ -26,6 +26,7 @@ import { CertificateUploadDialog } from '@/features/projects/detail/CertificateU
 import { useProject } from '@/features/projects/useProject';
 import { getCertificateDownloadUrl } from '@/lib/api/certificates';
 import { ApiError } from '@/lib/api/client';
+import { openExternalUrl } from '@/lib/url';
 import type { Certificate, CertificateTypeValue } from '@/lib/api/schemas';
 import { useAllInfinitePages } from '@/lib/query/useAllInfinitePages';
 import { useClientPagination } from '@/lib/query/useTableQuery';
@@ -117,7 +118,7 @@ export default function ProjectCertificatesPage(): JSX.Element {
       if (tokens === null) return;
       try {
         const resp = await getCertificateDownloadUrl(tokens.access_token, projectId, cert.id);
-        window.open(resp.download_url, '_blank');
+        openExternalUrl(resp.download_url);
       } catch {
         toast.error(tCert('downloadError'));
       }

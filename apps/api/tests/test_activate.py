@@ -232,3 +232,50 @@ async def test_activate_inactive_user_rejected(
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "ACTIVATION_USER_INACTIVE"
+
+
+async def test_activate_rejects_short_password(
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    email_transport: InMemoryEmailTransport,
+) -> None:
+    """SOC2 CC6.1: a password below the minimum length is rejected.
+
+    The check runs BEFORE is_verified flips, so a rejected password must leave
+    the account unverified (never verified-but-passwordless).
+    """
+    email = "activate-shortpw@example.com"
+    await make_test_user(session_maker, email=email, is_verified=False)
+    token = await _request_verify_token(client, email, email_transport)
+
+    response = await client.post(
+        "/auth/activate", json={"token": token, "password": "short"}
+    )
+    assert response.status_code == 400, response.text
+    assert response.json()["code"] == "ACTIVATION_INVALID_PASSWORD"
+
+    async with session_maker() as session:
+        user = (
+            await session.execute(select(User).where(User.email == email))
+        ).scalar_one()
+        assert user.is_verified is False  # rejected before the verify flip
+
+
+async def test_activate_rejects_password_containing_email(
+    client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    email_transport: InMemoryEmailTransport,
+) -> None:
+    """SOC2 CC6.1: a long-but-weak password embedding the email local-part is
+    rejected even though it clears the length floor."""
+    email = "activate-emailpw@example.com"
+    await make_test_user(session_maker, email=email, is_verified=False)
+    token = await _request_verify_token(client, email, email_transport)
+
+    # Local-part "activate-emailpw" is embedded; 20 chars clears the length floor.
+    response = await client.post(
+        "/auth/activate",
+        json={"token": token, "password": "activate-emailpw-99x"},
+    )
+    assert response.status_code == 400, response.text
+    assert response.json()["code"] == "ACTIVATION_INVALID_PASSWORD"

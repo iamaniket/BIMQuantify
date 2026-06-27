@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { ProjectFileRoleEnum } from './files';
+import { httpUrlString } from './url';
 
 export const AttachmentCategoryEnum = z.enum(['image', 'video', 'audio', 'office', 'other']);
 export type AttachmentCategoryValue = z.infer<typeof AttachmentCategoryEnum>;
@@ -58,7 +59,7 @@ export const AttachmentInitiateResponseSchema = z.object({
 export type AttachmentInitiateResponse = z.infer<typeof AttachmentInitiateResponseSchema>;
 
 export const AttachmentDownloadResponseSchema = z.object({
-  download_url: z.string(),
+  download_url: httpUrlString,
   expires_in: z.number(),
 });
 export type AttachmentDownloadResponse = z.infer<typeof AttachmentDownloadResponseSchema>;

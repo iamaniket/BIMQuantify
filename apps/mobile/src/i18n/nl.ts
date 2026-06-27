@@ -35,6 +35,17 @@ export const nl: Record<MessageKey, string> = {
   'settings.language': 'Taal',
   'settings.languageDutch': 'Nederlands',
   'settings.languageEnglish': 'Engels',
+  'settings.offline.title': 'Offline-gegevens',
+  'settings.offline.cached': '{projects} projecten · {findings} bevindingen · {documents} documenten in cache',
+  'settings.offline.pinned': '{models} modellen offline opgeslagen · {size}',
+  'settings.offline.empty': 'Nog geen offline-gegevens op dit apparaat.',
+  'settings.offline.clear': 'Offline-gegevens wissen',
+  'settings.offline.clearConfirmTitle': 'Offline-gegevens wissen?',
+  'settings.offline.clearConfirmBody':
+    'Projecten, bevindingen en gedownloade modellen in de cache worden van dit apparaat verwijderd. Je blijft ingelogd.',
+  'settings.offline.clearConfirmBodyPending':
+    '{count} niet-gesynchroniseerde wijziging(en) zijn nog niet bij de server aangekomen en gaan verloren. Gegevens in de cache en gedownloade modellen worden ook verwijderd. Je blijft ingelogd.',
+  'settings.offline.cleared': 'Offline-gegevens gewist.',
 
   // --- offline / sync ---
   'offline.banner': 'Offline — opgeslagen gegevens worden getoond. Wijzigingen synchroniseren zodra je weer verbinding hebt.',
@@ -165,6 +176,10 @@ export const nl: Record<MessageKey, string> = {
   // --- login: errors ---
   'login.error.invalidCredentials': 'Ongeldige e-mail of wachtwoord.',
   'login.error.signInFailed': 'Inloggen mislukt: {message}',
+  'login.error.offline': 'Je bent offline. Maak verbinding met internet om in te loggen.',
+
+  // --- login: offline ---
+  'login.offline.banner': 'Je bent offline — maak verbinding om in te loggen.',
 
   // --- login: system status (KPI value + form status row) ---
   'login.status.normal': 'Normaal',

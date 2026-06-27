@@ -22,6 +22,8 @@
  * null so the caller simply shows no edges.
  */
 
+import { OUTLINE_MAGIC } from '@bimdossier/contracts';
+
 export interface DecodedOutline {
   /** One Float32Array per unique shape: local segment endpoints, multiple of 6. */
   templates: Float32Array[];
@@ -31,7 +33,9 @@ export interface DecodedOutline {
   instanceTransforms: Float32Array;
 }
 
-const MAGIC = 'BIMOUTL2';
+// Shared with the processor's encoder via @bimdossier/contracts so a one-sided
+// bump can't silently break decoding here. A mismatch returns null (no edges).
+const MAGIC = OUTLINE_MAGIC;
 /** magic(8) + templateCount(4) + instanceCount(4) + templateFloatsTotal(4). */
 const HEADER_BYTES = 20;
 

@@ -88,8 +88,16 @@ export function useDossierCompleteness(
 
   return {
     ...dossier,
+    // Every query whose data feeds the completeness computation must gate the
+    // loading state, or the Readiness tab briefly renders partial percentages
+    // before models/findings/deadlines resolve.
     isLoading:
-      projectQuery.isLoading || attachmentsQuery.isLoading || certificatesQuery.isLoading,
+      projectQuery.isLoading ||
+      attachmentsQuery.isLoading ||
+      certificatesQuery.isLoading ||
+      modelsQuery.isLoading ||
+      findingsQuery.isLoading ||
+      deadlinesQuery.isLoading,
     templateEmpty: template.length === 0,
     hasAnyModel: modelCount > 0,
   };

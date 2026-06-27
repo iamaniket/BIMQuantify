@@ -23,6 +23,7 @@ import {
   listOrgCertificatesPage,
 } from '@/lib/api/orgCertificates';
 import type { CertificateTypeValue, OrgCertificate } from '@/lib/api/schemas';
+import { openExternalUrl } from '@/lib/url';
 import { useTableQuery } from '@/lib/query/useTableQuery';
 import { OrgCertificatesHero } from '@/features/orgCertificates/OrgCertificatesHero';
 import { OrgCertificatesTable } from '@/features/orgCertificates/OrgCertificatesTable';
@@ -79,7 +80,7 @@ export default function CertificatesPage(): JSX.Element {
       if (tokens === null) return;
       try {
         const resp = await getOrgCertificateDownloadUrl(tokens.access_token, cert.id);
-        window.open(resp.download_url, '_blank');
+        openExternalUrl(resp.download_url);
       } catch {
         toast.error(t('list.downloadError'));
       }

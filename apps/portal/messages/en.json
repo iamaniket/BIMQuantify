@@ -61,6 +61,10 @@
     "success": "Account activated. You can sign in now."
   },
   "common": {
+    "a11y": {
+      "openNavigation": "Open navigation",
+      "closeNavigation": "Close navigation"
+    },
     "dropzone": {
       "prompt": "Drop a file here, or",
       "chooseFile": "Choose file"
@@ -223,7 +227,8 @@
       "daysRemaining": "{days, plural, =1 {1 day left} other {# days left}}",
       "overdueDays": "{days, plural, =1 {1 day overdue} other {# days overdue}}",
       "trendTitle": "Deadlines over time",
-      "trendEmpty": "No upcoming deadlines."
+      "trendEmpty": "No upcoming deadlines.",
+      "loadError": "Failed to load the deadline calendar."
     },
     "month": {
       "today": "Today",
@@ -246,6 +251,8 @@
     }
   },
   "sidebar": {
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar",
     "adminConsole": "Admin console",
     "orgMembers": "Members",
     "settings": "Settings",
@@ -1545,6 +1552,7 @@
         "captureLinkUses": "{count} / {max} uses",
         "captureLinkUsesUnlimited": "{count} uses",
         "captureLinkNoLinks": "No capture links yet",
+        "captureLinkLoadError": "Failed to load capture links.",
         "view": "View",
         "viewerTitle": "Attachment details",
         "viewerSubtitle": "Preview the file and view its metadata.",
@@ -3315,6 +3323,7 @@
           "titleNl": "Wkb uitgelegd",
           "description": "A short summary shown on the card and in search results.",
           "tags": "wkb, compliance, regulations",
+          "author": "BimDossier",
           "content": "## Heading\n\nWrite your post body in Markdown.",
           "contentNl": "## Kop\n\nSchrijf je bericht in Markdown."
         },
@@ -3616,6 +3625,11 @@
     "projectInvitationCreated": "Invited someone to the project"
   },
   "viewer": {
+    "mobileBanner": {
+      "message": "3D viewer works best on a larger screen.",
+      "ok": "OK",
+      "dismiss": "Dismiss"
+    },
     "loadingOverlay": {
       "model": "Loading model…",
       "updating": "Updating view…"

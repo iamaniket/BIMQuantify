@@ -140,6 +140,9 @@ export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
   // (unlike the old transient pulse) until the selection clears.
   useEffect(() => {
     if (!fpHandle || !viewerHandle || !viewerReady) return undefined;
+    // A selection handler awaits viewer commands before touching plan state; if
+    // the pane unmounts mid-flight, bail rather than poke a torn-down handle.
+    let cancelled = false;
     const clearMarker = (): void => {
       void fpHandle.commands.execute('floorplan.setSelectionMarker', null).catch(() => undefined);
     };
@@ -159,11 +162,11 @@ export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
         const centroid = await viewerHandle.commands
           .execute<Centroid>('camera.getSelectionCentroid')
           .catch(() => null);
-        if (!centroid) return;
+        if (cancelled || !centroid) return;
         const proj = await viewerHandle.commands
           .execute<Projected>('minimap.projectPoint', centroid)
           .catch(() => null);
-        if (!proj) return;
+        if (cancelled || !proj) return;
         void fpHandle.commands
           .execute('floorplan.setSelectionMarker', { planX: proj.x, planY: proj.y })
           .catch(() => undefined);
@@ -181,6 +184,7 @@ export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
       })();
     });
     return () => {
+      cancelled = true;
       off();
       clearMarker();
     };
@@ -195,12 +199,14 @@ export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
     // when the pane first mounts (it's async), so this also runs on
     // `minimap:calibrated`. Once calibrated, the static camera won't emit
     // `minimap:pose`, so the seed is the only path until the camera moves.
+    let cancelled = false;
     const seed = async (): Promise<void> => {
       const pose = await viewerHandle.commands.execute<CameraPose>('camera.getPose').catch(() => null);
-      if (!pose) return;
+      if (cancelled || !pose) return;
       const proj = await viewerHandle.commands
         .execute<Projected[]>('minimap.projectPoints', [pose.position, pose.target])
         .catch(() => [] as Projected[]);
+      if (cancelled) return;
       const here = proj[0];
       const look = proj[1];
       if (here && look) {
@@ -212,7 +218,7 @@ export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
     });
     const offCal = viewerHandle.events.on('minimap:calibrated', () => { void seed(); });
     void seed();
-    return () => { offPose(); offCal(); };
+    return () => { cancelled = true; offPose(); offCal(); };
   }, [fpHandle, viewerHandle, viewerReady]);
 
   // level→storey isolation. Restore the full model on unmount / mode exit.

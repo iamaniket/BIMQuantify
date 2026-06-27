@@ -154,6 +154,33 @@ export function AuthProvider({ children }: Props): JSX.Element {
     tokenManager.register(() => tokensRef.current, setTokens);
   }, [hasHydrated, setTokens]);
 
+  // Cross-tab sync. The backend is schema-per-tenant keyed off the JWT `org`
+  // claim, so a stale in-memory token in another tab silently reads/writes the
+  // WRONG tenant's schema after an org switch (and keeps firing a dead token
+  // after logout). The `storage` event fires in every OTHER tab when this key
+  // changes; re-hydrate from it and drop all cached tenant data so nothing
+  // renders under the previous org's token. We update state directly (not via
+  // `setTokens`, which would write the same value back to localStorage and
+  // echo the event). `e.key === null` covers `localStorage.clear()`.
+  useEffect(() => {
+    function onStorage(e: StorageEvent): void {
+      if (e.key !== null && e.key !== STORAGE_KEY) return;
+      const next = readStoredTokens();
+      if ((next?.access_token ?? null) === (tokensRef.current?.access_token ?? null)) {
+        return;
+      }
+      tokensRef.current = next;
+      setTokensState(next);
+      // Org switched (new tenant) or session ended in another tab. The effect
+      // watching `tokens` re-fetches /auth/me; clearing the cache prevents the
+      // previous org's data from lingering. On logout (next === null) the
+      // route guards redirect to /login.
+      void queryClient.invalidateQueries();
+    }
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [queryClient]);
+
   const switchOrganization = useCallback(
     async (organizationId: string): Promise<void> => {
       const current = tokensRef.current;

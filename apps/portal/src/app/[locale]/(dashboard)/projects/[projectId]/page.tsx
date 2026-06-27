@@ -16,7 +16,7 @@ import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
 import { useDocuments } from '@/features/documents/useDocuments';
 import { useProjectOverview } from '@/features/projects/useProjectOverview';
-import { projectDeadlinesKey, projectMembersKey } from '@/features/projects/queryKeys';
+import { projectDeadlinesKey, projectKey, projectMembersKey } from '@/features/projects/queryKeys';
 import { PageShell } from '@/components/shared/layout/PageShell';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ProjectDetailHeader } from '@/features/projects/detail/ProjectDetailHeader';
@@ -49,13 +49,16 @@ export default function ProjectDetailPage(): JSX.Element {
     track(PORTAL_EVENTS.PROJECT_OPENED, { project_id: projectId });
   }, [projectId]);
 
-  // Seed the per-resource caches the lazy tabs / assignee avatars read from,
-  // straight out of the aggregate. Both lists are full (uncapped) in the
-  // overview payload, so opening the Deadlines tab or rendering finding-assignee
-  // avatars resolves from cache instead of firing another request.
+  // Seed the per-resource caches the lazy tabs / assignee avatars / sub-pages
+  // read from, straight out of the aggregate. The lists are full (uncapped) in
+  // the overview payload, so opening the Deadlines tab, rendering finding
+  // assignee avatars, or navigating to a sub-page (findings/reports/attachments/
+  // access/activity/certificates — which call useProject/useProjectMembers for
+  // breadcrumbs + avatars) resolves from cache instead of firing another request.
   const overview = overviewQuery.data;
   useEffect(() => {
     if (overview === undefined) return;
+    queryClient.setQueryData(projectKey(projectId), overview.project);
     queryClient.setQueryData(projectDeadlinesKey(projectId), overview.deadlines.preview);
     queryClient.setQueryData(projectMembersKey(projectId), overview.members);
   }, [overview, projectId, queryClient]);

@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 
 import { Button, Skeleton } from '@bimdossier/ui';
 
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import type { CaptureLink } from '@/lib/api/schemas';
 
 import { useCaptureLinks } from './useCaptureLinks';
@@ -49,6 +50,10 @@ export function CaptureLinksList({ projectId }: Props): JSX.Element {
         <Skeleton className="h-12 w-full" />
       </div>
     );
+  }
+
+  if (linksQuery.isError) {
+    return <ErrorBanner message={t('captureLinkLoadError')} />;
   }
 
   const links = linksQuery.data ?? [];

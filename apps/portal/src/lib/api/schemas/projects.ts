@@ -21,6 +21,8 @@ export type ProjectPhaseValue = z.infer<typeof ProjectPhaseEnum>;
 // including the legacy `commercial` — or response validation rejects
 // existing projects. The wizard offers a narrower selectable subset
 // (see `BUILDING_TYPE_OPTIONS`).
+// DO NOT REMOVE legacy values just because the wizard no longer offers them —
+// the API still returns them on old projects. `projects.test.ts` guards this.
 export const BuildingTypeEnum = z.enum([
   'dwelling',
   'assembly',

@@ -6,9 +6,10 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "pnpm check:i18n && pnpm check:brand-tokens && turbo run lint",
+    "lint": "pnpm check:i18n && pnpm check:brand-tokens && pnpm check:fontsize-sync && turbo run lint",
     "check:i18n": "node scripts/check-i18n-parity.mjs",
     "check:brand-tokens": "node scripts/check-brand-tokens.mjs",
+    "check:fontsize-sync": "node scripts/check-fontsize-sync.mjs",
     "type-check": "turbo run type-check",
     "test": "turbo run test",
     "clean": "turbo run clean && rimraf node_modules"
@@ -25,7 +26,8 @@
   },
   "pnpm": {
     "overrides": {
-      "@opentelemetry/instrumentation": "0.214.0"
+      "@opentelemetry/instrumentation": "0.214.0",
+      "web-ifc": "0.0.77"
     },
     "patchedDependencies": {
       "@phosphor-icons/react": "patches/@phosphor-icons__react.patch",

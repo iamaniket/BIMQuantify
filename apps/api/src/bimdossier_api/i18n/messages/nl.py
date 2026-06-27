@@ -347,6 +347,7 @@ nl_messages: Catalog = {
     "errors.CANCEL_DISPATCH_FAILED": "We konden de taak niet annuleren. Probeer het opnieuw.",
     "errors.TOO_MANY_ACTIVE_JOBS": "Er worden al te veel taken uitgevoerd. Wacht tot er een is voltooid.",
     "errors.INVALID_CALLBACK_STATUS": "De taak rapporteerde een onverwachte status.",
+    "errors.INVALID_STORAGE_KEY": "De taak rapporteerde een opslaglocatie buiten dit project.",
 
     # --- bijlagen / certificaten ---
     "errors.ATTACHMENT_NOT_FOUND": "Die bijlage kon niet worden gevonden.",

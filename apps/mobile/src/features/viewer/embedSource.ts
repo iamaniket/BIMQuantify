@@ -1,3 +1,4 @@
+import { VIEWER_EMBED_ASSET_SUBDIR } from '@bimdossier/contracts';
 import { Platform } from 'react-native';
 
 import { env } from '@/lib/env';
@@ -7,7 +8,9 @@ import { env } from '@/lib/env';
  * the `withViewerEmbed` config plugin (apps/mobile/plugins/withViewerEmbed.js).
  * Android exposes android/app/src/main/assets/ at this virtual host.
  */
-const ANDROID_BUNDLED_URI = 'file:///android_asset/viewer-embed/index.html';
+// Subdir shared with the prebuild plugin (plugins/withViewerEmbed.js) via
+// @bimdossier/contracts so the copy target and this load path stay in lockstep.
+const ANDROID_BUNDLED_URI = `file:///android_asset/${VIEWER_EMBED_ASSET_SUBDIR}/index.html`;
 
 export type EmbedSource = { uri: string };
 

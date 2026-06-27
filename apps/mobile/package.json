@@ -12,6 +12,7 @@
     "eas-build-post-install": "pnpm --filter=viewer-embed build"
   },
   "dependencies": {
+    "@bimdossier/contracts": "workspace:*",
     "@bimdossier/design-tokens": "workspace:*",
     "@bimdossier/map": "workspace:*",
     "@expo-google-fonts/fraunces": "^0.4.1",

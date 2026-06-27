@@ -16,6 +16,7 @@ import { useMemo, type JSX } from 'react';
 import { Skeleton } from '@bimdossier/ui';
 import type { Locale } from '@bimdossier/i18n';
 
+import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { BarChartMini } from '@/components/shared/charts/BarChartMini';
 import { ChartSection } from '@/components/shared/charts/ChartSection';
 import { DonutChart, type DonutSegment } from '@/components/shared/charts/DonutChart';
@@ -98,6 +99,10 @@ export function CalendarOverviewTab(): JSX.Element {
 
   if (summaryQuery.isLoading) {
     return <Skeleton className="h-64 w-full" />;
+  }
+
+  if (summaryQuery.isError) {
+    return <ErrorBanner message={t('loadError')} />;
   }
 
   return (

@@ -16,6 +16,7 @@
  * `{ point, item }` a `point:picked` carries.
  */
 
+import { BRIDGE_RECEIVE_GLOBAL } from '@bimdossier/contracts';
 import type {
   Annotation2D,
   EntityMarkerData,
@@ -91,7 +92,9 @@ export type ClientMessage =
   | { type: 'annotationsChanged'; annotations: Annotation2D[] }
   | { type: 'annotationExport'; dataUrl: string };
 
-const RECEIVE_GLOBAL = '__bimdossierViewerReceive';
+// Shared with the native shell (apps/mobile) via @bimdossier/contracts so the
+// two sides of the bridge can't drift. Aliased locally to keep the literal type.
+const RECEIVE_GLOBAL = BRIDGE_RECEIVE_GLOBAL;
 
 declare global {
   interface Window {

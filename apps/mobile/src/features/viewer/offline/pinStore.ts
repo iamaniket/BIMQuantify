@@ -122,3 +122,17 @@ export async function unpinModel(fileId: string): Promise<void> {
     // Best-effort cleanup — the row is gone either way.
   }
 }
+
+/**
+ * Delete every downloaded pinned-model file from disk. `wipeAllOfflineData()`
+ * clears the `pinned_models` rows but NOT the files under `offline/documents/`,
+ * so the Settings "Clear offline data" action calls this first to avoid
+ * orphaning the downloaded artifacts.
+ */
+export async function clearAllPinnedFiles(): Promise<void> {
+  try {
+    await FileSystem.deleteAsync(DOCUMENTS_DIR, { idempotent: true });
+  } catch {
+    // Best-effort — the rows are wiped separately by wipeAllOfflineData().
+  }
+}

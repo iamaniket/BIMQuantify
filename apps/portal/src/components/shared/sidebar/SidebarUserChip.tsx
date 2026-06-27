@@ -31,14 +31,20 @@ export function SidebarUserChip(): JSX.Element {
   useEffect(() => {
     if (!avatarKey || accessToken === null) {
       setAvatarSrc(null);
-      return;
+      return undefined;
     }
-    void getAvatarUrl(accessToken).then(setAvatarSrc).catch((err: unknown) => {
-      // Cosmetic (initials fallback); dev-trace so a systemic presign outage
-      // isn't indistinguishable from "user has no avatar".
-      if (process.env.NODE_ENV !== 'production') console.warn('[sidebar] avatar presign failed', err);
-      setAvatarSrc(null);
-    });
+    // Guard against a stale resolve: when the account/token switches mid-flight
+    // the previous request must not overwrite the new avatar.
+    let cancelled = false;
+    void getAvatarUrl(accessToken)
+      .then((url) => { if (!cancelled) setAvatarSrc(url); })
+      .catch((err: unknown) => {
+        // Cosmetic (initials fallback); dev-trace so a systemic presign outage
+        // isn't indistinguishable from "user has no avatar".
+        if (process.env.NODE_ENV !== 'production') console.warn('[sidebar] avatar presign failed', err);
+        if (!cancelled) setAvatarSrc(null);
+      });
+    return () => { cancelled = true; };
   }, [avatarKey, accessToken]);
 
   return (

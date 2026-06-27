@@ -65,6 +65,19 @@ services:
       context: ./apps/processor
       dockerfile: Dockerfile
     container_name: bimdossier-processor
+    # Resource guardrails. Chromium (Puppeteer) + web-ifc WASM at
+    # JOB_CONCURRENCY=2 on a 2 GiB IFC (JOB_MAX_FILE_BYTES) can spike to several
+    # GB, and the Node heap alone is tuned to 4 GiB (see Dockerfile NODE_OPTIONS):
+    #   * mem_limit   — cap so an OOM kills only this container, never the host.
+    #   * shm_size    — Chromium OOMs on the default 64 MB /dev/shm when
+    #                   rendering large PDFs; give it room.
+    #   * restart     — an OOM-killed worker must self-heal, else in-flight jobs
+    #                   sit orphaned in `running` until the reconcile sweeper.
+    # The production task/pod spec MUST set the equivalent resources.limits +
+    # restart policy + a readiness probe (see the beta-readiness roadmap, P1-A).
+    restart: unless-stopped
+    mem_limit: 6g
+    shm_size: 1g
     environment:
       NODE_ENV: development
       PORT: "8080"
