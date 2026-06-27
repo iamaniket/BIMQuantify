@@ -203,6 +203,76 @@ async def retry_job(
     return new_job
 
 
+async def rerun_ifc_extraction(
+    session: AsyncSession,
+    file: ProjectFile,
+    *,
+    settings: Settings,
+    organization_id: UUID,
+    user: User,
+    discipline: str,
+) -> Job:
+    """Re-dispatch IFC extraction for an already-extracted file.
+
+    Used when a metadata change that the processor reads — the parent document's
+    declared discipline — can flip the floor-plan outcome. The floor-plan
+    artifact is only (re)built by re-running extraction, so this mints a fresh
+    `ifc_extraction` Job (payload rebuilt from the file + the new discipline),
+    rolls the file back to `queued`, and dispatches inside the caller's tenant
+    transaction — the same pattern as `retry_job` (flush only, never commit).
+
+    On a re-dispatch failure the file is rolled forward to `failed` so it never
+    sticks in `queued`. Raises 429 if the org is already at its job limit.
+    """
+    payload: dict[str, object] = {
+        "file_id": str(file.id),
+        "project_id": str(file.project_id),
+        "storage_key": file.storage_key,
+        "discipline": discipline,
+    }
+    if file.original_filename.lower().endswith(".ifczip"):
+        payload["compressed"] = True
+
+    try:
+        await check_job_concurrency(session, settings)
+    except JobConcurrencyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="TOO_MANY_ACTIVE_JOBS"
+        ) from exc
+
+    new_job = Job(
+        project_id=file.project_id,
+        file_id=file.id,
+        job_type=JobType.ifc_extraction,
+        status=JobStatus.pending,
+        payload=payload,
+        created_by_user_id=user.id,
+    )
+    session.add(new_job)
+    await session.flush()
+
+    file.extraction_status = ExtractionStatus.queued
+    file.extraction_error = None
+    file.extraction_started_at = None
+    file.extraction_finished_at = None
+    await session.flush()
+
+    try:
+        await dispatch_job(new_job, settings, organization_id)
+    except DispatchJobError as exc:
+        message = f"DISPATCH_FAILED: {exc}"[:500]
+        new_job.status = JobStatus.failed
+        new_job.error = message
+        new_job.retriable = True
+        new_job.error_kind = "dispatch"
+        new_job.finished_at = datetime.now(UTC)
+        file.extraction_status = ExtractionStatus.failed
+        file.extraction_error = message
+        await session.flush()
+
+    return new_job
+
+
 async def cancel_job(
     session: AsyncSession,
     job: Job,

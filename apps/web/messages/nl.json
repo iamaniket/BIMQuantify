@@ -9,16 +9,16 @@
     "features": "Functies",
     "faq": "Veelgestelde vragen",
     "blog": "Blog",
-    "requestAccess": "Toegang aanvragen",
+    "requestAccess": "Word partner",
     "contactSales": "Neem contact op",
     "themeToggle": "Thema wisselen"
   },
   "hero": {
-    "badge": "Private pilot · beperkt aantal plekken voor Nederlandse aannemers",
+    "badge": "Founding partners · beperkt aantal plekken voor Nederlandse aannemers",
     "headline": "Het bouwkwaliteitsplatform, gebouwd op uw model. Van eerste opleverpunt tot definitief dossier.",
     "subtitle": "Zet elke bevinding vast op uw 3D-model, of op een PDF-plattegrond als u nog geen model heeft. Voeg foto's toe, wijs de oplossing toe en volg hem tot hij klaar is. Deadlines bewaken zichzelf, zodat uw Wkb-dossier klaarligt van bouwmelding tot gereedmelding.",
-    "trust": "In private pilot met Nederlandse aannemers · EU-gehost, inclusief verwerkersovereenkomst · Werkt naast elke kwaliteitsborger en elk instrument",
-    "ctaPrimary": "Vraag early access aan",
+    "trust": "Samen met founding partners in Nederland gebouwd · EU-gehost, inclusief verwerkersovereenkomst · Werkt naast elke kwaliteitsborger en elk instrument",
+    "ctaPrimary": "Word founding partner",
     "ctaDemo": "Bekijk het op het model"
   },
   "features": {
@@ -110,8 +110,8 @@
   },
   "cta": {
     "headline": "Stop met achter papierwerk aan jagen. Laat zien dat het werk goed is gedaan.",
-    "subtitle": "Opleverpunten, inspecties en uw Wkb-dossier, allemaal op uw model. Doe mee aan de private pilot en sta er bij uw volgende gereedmelding helemaal klaar voor.",
-    "button": "Vraag early access aan"
+    "subtitle": "Opleverpunten, inspecties en uw Wkb-dossier, allemaal op uw model. Word founding partner en sta er bij uw volgende gereedmelding helemaal klaar voor.",
+    "button": "Word founding partner"
   },
   "footer": {
     "product": "Product",
@@ -155,10 +155,13 @@
     "eyebrow": "Kwaliteitsborging, live",
     "headline": "Vang gebreken voordat ze geld kosten.",
     "subtitle": "Sleep om het model te draaien. Bevindingen worden er direct op gemarkeerd zodra inspecteurs ze vinden en oplossen.",
-    "cta": "Vraag early access aan",
+    "cta": "Word founding partner",
     "hintDrag": "Sleep om te draaien",
     "hintWatch": "Elke speld markeert een echte bevinding",
     "learnMoreBlog": "Lees op de blog hoe opleveren werkt",
+    "tab3d": "3D-model",
+    "tab2d": "Plattegrond",
+    "plan2dHint": "Dezelfde snags, op de plattegrond.",
     "fallbackTitle": "Interactieve 3D-bevindingsinspectie",
     "fallbackBody": "Uw browser kan het live 3D-model niet tonen, maar dit zijn de bevindingen erin:",
     "fallbackAlt": "Interactief 3D-gebouwmodel met kwaliteitsborgingsbevindingen",
@@ -185,6 +188,13 @@
       "ventilation": "Ventilatiedebiet onder eis",
       "balustrade": "Balustradehoogte onder minimum",
       "rebar": "Wapeningsafstand buiten tolerantie"
+    },
+    "rooms": {
+      "living": "Woonkamer",
+      "kitchen": "Keuken",
+      "bath": "Badkamer",
+      "bed": "Slaapkamer",
+      "hall": "Hal"
     }
   },
   "fromBlog": {
@@ -195,12 +205,12 @@
   },
   "trust": {
     "eyebrow": "Waarom u erop kunt vertrouwen",
-    "headline": "Gebouwd voor een pilot, en daar eerlijk over",
+    "headline": "Gebouwd voor gereguleerd werk, en daar eerlijk over",
     "subtitle": "Uw dossier is juridisch dragend. Daarom leest u hier precies wie er achter het platform zit, waar uw gegevens staan en waar onze verantwoordelijkheid ophoudt.",
     "items": {
       "hosting": {
         "title": "EU-gehost, inclusief verwerkersovereenkomst",
-        "body": "Uw gegevens draaien op EU-infrastructuur en verlaten die nooit. Met elke pilotpartner sluiten we een verwerkersovereenkomst (DPA)."
+        "body": "Uw gegevens draaien op EU-infrastructuur en verlaten die nooit. Met elke founding partner sluiten we een verwerkersovereenkomst (DPA)."
       },
       "instrument": {
         "title": "Werkt naast uw kwaliteitsborger",
@@ -208,7 +218,7 @@
       },
       "team": {
         "title": "Een Nederlands team, bereikbaar",
-        "body": "Gebouwd in Nederland door het team achter BimDossier. Tijdens de pilot heeft u direct contact met ons. Geen ticketwachtrij."
+        "body": "Gebouwd in Nederland door het team achter BimDossier. Als founding partner heeft u direct contact met ons. Geen ticketwachtrij."
       }
     },
     "dpaLink": "Lees onze verwerkersovereenkomst"
@@ -218,12 +228,12 @@
     "headline": "Wat aannemers ons als eerste vragen",
     "items": [
       {
-        "q": "Wat betekent \"private pilot\" voor mij?",
-        "a": "We nemen een kleine groep Nederlandse aannemers persoonlijk aan boord. U krijgt vroege toegang, een directe lijn met het team en inspraak in wat we hierna bouwen. In ruil vragen we om eerlijke feedback uit de praktijk."
+        "q": "Wat betekent founding partner worden voor mij?",
+        "a": "We nemen een kleine groep Nederlandse aannemers persoonlijk aan boord. Als founding partner bent u er vroeg bij, heeft u een directe lijn met het team en echte inspraak in wat we hierna bouwen. In ruil vragen we om eerlijke feedback uit de praktijk."
       },
       {
         "q": "Waar staan mijn gegevens, en is er een verwerkersovereenkomst?",
-        "a": "Alles draait op EU-infrastructuur en verlaat die nooit. Met elke pilotpartner sluiten we een verwerkersovereenkomst (DPA). Bekijk onze verwerkersovereenkomst voor de details."
+        "a": "Alles draait op EU-infrastructuur en verlaat die nooit. Met elke founding partner sluiten we een verwerkersovereenkomst (DPA). Bekijk onze verwerkersovereenkomst voor de details."
       },
       {
         "q": "Heb ik BIM-modellen nodig, of werken PDF-plattegronden ook?",
@@ -238,8 +248,8 @@
         "a": "Bevindingen importeren en exporteren via BCF, zodat issues heen en weer gaan met de tools van uw kwaliteitsborger in plaats van in een silo te belanden."
       },
       {
-        "q": "Wat kost de pilot?",
-        "a": "De pilotprijs hangt af van uw team en projecten. Vraag toegang aan, dan bespreken we het. Een gesprek beginnen verplicht u tot niets."
+        "q": "Wat kost het om founding partner te zijn?",
+        "a": "Het founding-partner-tarief hangt af van uw team en projecten. Begin het gesprek, dan bespreken we het. Het verplicht u tot niets."
       }
     ]
   }

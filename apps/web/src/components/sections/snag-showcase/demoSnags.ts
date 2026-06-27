@@ -9,10 +9,11 @@
  * and refines each to a true surface point via a raycast when the GPU pick buffer
  * is fresh (`showcase.elementPoints`). It always returns `count` ON-MODEL points,
  * so these authored coords are reached only if the model has no usable geometry
- * at all. IMPORTANT: they are NOT kept in sync with `public/models/demo.frag` —
- * the current model's bounding box is roughly x -29..25.5, y -0.6..16.7,
- * z -17.9..22.7, so several authored x values below sit OFF this model. Don't
- * rely on them as real placements; fix the geometry path if pins go missing.
+ * at all. IMPORTANT: they are NOT kept in sync with `public/models/demo.frag`
+ * (a real project model) — their literal x/y/z almost certainly sit OFF the
+ * current model's bounding box. Don't rely on them as real placements; the
+ * raycast path supplies the actual on-model points. Fix the geometry path
+ * (snagPlacementPlugin / `showcase.elementPoints`) if pins go missing.
  */
 
 export type DemoSnagSeverity = 'low' | 'medium' | 'high';

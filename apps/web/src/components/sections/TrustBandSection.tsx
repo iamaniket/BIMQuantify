@@ -14,11 +14,11 @@ import { portalHref } from '@/lib/portalLinks';
 type TrustKey = 'hosting' | 'instrument' | 'team';
 
 /**
- * Honest trust band for a regulated pilot. Answers the three questions a Dutch
+ * Honest trust band for regulated work. Answers the three questions a Dutch
  * contractor asks before trusting a legally load-bearing dossier to a young
  * product: where does my data live (+ DPA), does this replace my kwaliteitsborger
- * /instrument (it doesn't), and who is behind it. Every claim is true at pilot
- * stage — no fabricated counts, logos, or quotes. Copy lives in the `trust.*`
+ * /instrument (it doesn't), and who is behind it. Every claim is true at founding
+ * stage, no fabricated counts, logos, or quotes. Copy lives in the `trust.*`
  * catalog (en + nl).
  */
 const TRUST_ITEMS: { key: TrustKey; icon: AppIcon }[] = [

@@ -36,6 +36,14 @@ export interface OutlinePluginOptions {
   color?: number;
   /** Screen-space line width in px. Default: 1.0. */
   lineWidth?: number;
+  /**
+   * Keep the outline drawn while the camera is moving, not just on the idle
+   * frame. Default: false (the portal's perf contract — outline parks during
+   * motion). The marketing snag showcase sets this true so the edges stay
+   * visible on its continuously auto-rotating turntable, where `viewer:idle`
+   * never fires. Instanced GPU geometry, so the per-frame redraw is cheap.
+   */
+  drawDuringMotion?: boolean;
 }
 
 export interface OutlinePluginAPI {
@@ -49,6 +57,7 @@ export function outlinePlugin(
   const cache = new OutlineCache();
   const color = options.color ?? 0x0d0d14;
   const lineWidth = options.lineWidth ?? 1.0;
+  const alwaysDraw = options.drawDuringMotion ?? false;
 
   let enabled = options.enabled ?? false;
   let ctxRef: ViewerContext | null = null;
@@ -74,7 +83,7 @@ export function outlinePlugin(
   let dirty = false;
 
   const updateVisibility = (): void => {
-    const show = enabled && isIdle && !xrayActive;
+    const show = enabled && (isIdle || alwaysDraw) && !xrayActive;
     for (const [modelId, group] of groups) {
       group.visible = show && !hiddenModels.has(modelId);
     }

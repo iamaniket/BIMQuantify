@@ -182,7 +182,11 @@ async function runFragOutline(port: MessagePort, bytes: Uint8Array): Promise<voi
   }
 }
 
-async function runWalk(port: MessagePort, bytes: Uint8Array): Promise<void> {
+async function runWalk(
+  port: MessagePort,
+  bytes: Uint8Array,
+  declaredDiscipline?: string,
+): Promise<void> {
   const parseStart = performance.now();
   // Schema gate inside openModel; UnsupportedSchemaError propagates to the
   // wire-error catch in main() and is re-hydrated host-side.
@@ -212,10 +216,11 @@ async function runWalk(port: MessagePort, bytes: Uint8Array): Promise<void> {
     // ONE geometry sweep for the bounding box AND the floor-plan up-axis + cut
     // planes. Runs unconditionally because the bbox is always needed; the slice
     // (pass 2) then runs only for plan-worthy content. The 1.2 m cut is an
-    // architectural convention, so it is generated only for architectural/mixed
-    // models — MEP/structural-only ones stay 3D-only (the cut would be noise).
-    // Degrades gracefully: a failure, or a model with no storeys, posts
-    // bytes:null and the viewer hides the 2D map.
+    // architectural convention, generated when the user's declared discipline
+    // asks for it or — when unspecified — the content carries a real wall/room
+    // envelope (see shouldGenerateFloorPlan). MEP/structural-only models stay
+    // 3D-only (the cut would be noise). Degrades gracefully: a failure, or a
+    // model with no storeys, posts bytes:null and the viewer hides the 2D map.
     const fpStart = performance.now();
     const scan = scanModelGeometry(
       ifcApi,
@@ -230,7 +235,7 @@ async function runWalk(port: MessagePort, bytes: Uint8Array): Promise<void> {
     const trueNorth = extractTrueNorth(ifcApi, opened.modelID, scan.planAxisX, scan.planAxisY);
     if (trueNorth !== null) metadata.trueNorth = trueNorth;
     let floorPlansBytes: Uint8Array | null = null;
-    if (shouldGenerateFloorPlan(detectedKind)) {
+    if (shouldGenerateFloorPlan(metadata.elementCounts, declaredDiscipline)) {
       try {
         const floorPlans = sliceFloorPlans(ifcApi, opened.modelID, scan, logger);
         if (floorPlans.levels.length > 0) floorPlansBytes = encodeFloorPlans(floorPlans);
@@ -242,7 +247,7 @@ async function runWalk(port: MessagePort, bytes: Uint8Array): Promise<void> {
       }
     } else {
       logger.info(
-        { detectedKind, file_id: 'walk' },
+        { detectedKind, declaredDiscipline: declaredDiscipline ?? null, file_id: 'walk' },
         'skipping floor-plan cut for non-architectural content — viewer stays 3D-only',
       );
     }
@@ -293,7 +298,7 @@ async function main(): Promise<void> {
       await runFragOutline(port, data.bytes);
       break;
     case 'walk':
-      await runWalk(port, data.bytes);
+      await runWalk(port, data.bytes, data.discipline);
       break;
     default: {
       const _exhaustive: never = data;

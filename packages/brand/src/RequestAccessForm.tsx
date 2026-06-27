@@ -45,7 +45,7 @@ const COUNTRIES: ReadonlyArray<readonly [string, string]> = [
 ];
 
 /**
- * Optional pilot-qualification questions. Each entry carries the UI `label`
+ * Optional founding-partner qualification questions. Each entry carries the UI `label`
  * and a short `notesLabel` used when folding the answer into the access
  * request's free-text `notes` (see `composeAccessRequestNotes`).
  */
@@ -76,18 +76,18 @@ export interface RequestAccessValues {
   role: string;
   company_size: string;
   country: string;
-  /** When they'd want to start the pilot — optional. */
+  /** When they'd want to start as a founding partner, optional. */
   timeline: string;
   /** Projects per year — optional. */
   project_volume: string;
-  /** Whether a live project is ready for the pilot — optional. */
+  /** Whether a live project is ready to start with, optional. */
   live_commitment: string;
   notes: string;
   terms_accepted: boolean;
 }
 
 /**
- * Folds the optional pilot answers and the free-text goal into a single
+ * Folds the optional founding-partner answers and the free-text goal into a single
  * `notes` blob for the access-request API — storage is unstructured by
  * design (no dedicated columns). Returns `undefined` when nothing was filled
  * in, preserving the prior "empty notes → omit" behaviour.
@@ -109,7 +109,7 @@ export function composeAccessRequestNotes(
   if (commitment !== undefined) lines.push(`Live project: ${commitment}`);
 
   const goal = values.notes.trim();
-  const structured = lines.length > 0 ? `— Pilot questions —\n${lines.join('\n')}` : '';
+  const structured = lines.length > 0 ? `— Founding-partner questions —\n${lines.join('\n')}` : '';
   const composed = [structured, goal].filter((s) => s !== '').join('\n\n');
   return composed === '' ? undefined : composed;
 }
@@ -225,7 +225,7 @@ export function RequestAccessForm({
           required
           error={errFor('work_email')}
           hint={errFor('work_email') === undefined
-            ? 'We send your pilot invite here. Free providers (gmail, hotmail, …) are blocked.'
+            ? 'We send your founding-partner invite here. Free providers (gmail, hotmail, …) are blocked.'
             : undefined}
           className="col-span-2"
         >
@@ -332,7 +332,7 @@ export function RequestAccessForm({
           </Select>
         </FormField>
 
-        <FormField label="A live project for the pilot?">
+        <FormField label="A live project to start with?">
           <Select
             value={values.live_commitment}
             onChange={(e) => update('live_commitment', e.target.value)}
@@ -347,7 +347,7 @@ export function RequestAccessForm({
         </FormField>
 
         <FormField
-          label="What do you want to get out of the pilot?"
+          label="What do you want to get out of partnering with us?"
           className="col-span-2"
           hint="Optional: your biggest Wet kwaliteitsborging voor het bouwen (Wkb) challenge, what success looks like, etc."
         >
@@ -368,7 +368,7 @@ export function RequestAccessForm({
           className="mt-0.5"
         />
         <span className="text-[12px] leading-snug text-foreground-secondary">
-          I agree that BimDossier may contact me about the pilot, and I accept the{' '}
+          I agree that BimDossier may contact me about the founding-partner program, and I accept the{' '}
           <a href="/legal/privacy" className="font-semibold text-primary no-underline">
             Privacy notice
           </a>{' '}
@@ -392,7 +392,7 @@ export function RequestAccessForm({
       ) : null}
 
       <Button type="submit" variant="primary" size="md" disabled={submitting} className="mt-1">
-        {submitting ? 'Submitting your application…' : 'Apply to join the pilot'}
+        {submitting ? 'Submitting your application…' : 'Apply to become a founding partner'}
       </Button>
 
       <div className="mt-1 text-center text-[11.5px] text-foreground-tertiary">

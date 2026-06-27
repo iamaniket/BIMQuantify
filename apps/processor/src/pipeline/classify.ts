@@ -122,11 +122,53 @@ export function detectContentKind(
   return mep >= struct ? 'mep' : 'structural';
 }
 
+// Element families a 1.2 m horizontal section cut actually draws — wall linework
+// and room (space) outlines; curtain walls are sliced too. Slabs/roofs sit
+// below/above the cut so they're not a "plan-readable" signal here.
+const PLAN_ENVELOPE_TYPES: readonly string[] = [
+  'IfcWall',
+  'IfcWallStandardCase',
+  'IfcCurtainWall',
+  'IfcSpace',
+];
+
+// A handful of host walls referenced by an MEP/structural model is incidental; a
+// real building carries dozens. This floor separates the two and survives a
+// model whose discipline mix is flooded by curtain-wall mullions (IfcMember) or
+// structural members — exactly the case content-share misclassifies.
+const MIN_PLAN_ENVELOPE = 10;
+
 /**
- * Whether a model with this content kind should get the level-based floor-plan
- * artifact. The 1.2 m architectural section cut is only meaningful when the
- * model carries architectural envelope/space geometry.
+ * Whether a model should get the level-based floor-plan artifact. The 1.2 m
+ * architectural section cut is only meaningful when the model carries
+ * architectural envelope/space geometry.
+ *
+ * Hybrid gate, decoupled from the `detected_kind` label:
+ *   1. The user-declared `Document.discipline` wins when set — `architectural`/
+ *      `coordination` force the cut on, `structural`/`mep` force it off. This is
+ *      the user's intent and overrides any content heuristic.
+ *   2. Otherwise (`other` / unset) auto-detect from content: a real wall/room
+ *      envelope, or an architectural/mixed content classification.
+ *
+ * `declaredDiscipline` is `Document.discipline` (architectural | structural |
+ * mep | coordination | other); `coordination` is the declared counterpart of
+ * the content-detected `mixed`.
  */
-export function shouldGenerateFloorPlan(kind: DetectedKind): boolean {
+export function shouldGenerateFloorPlan(
+  elementCounts: Record<string, number>,
+  declaredDiscipline?: string | null,
+): boolean {
+  switch (declaredDiscipline) {
+    case 'architectural':
+    case 'coordination':
+      return true;
+    case 'structural':
+    case 'mep':
+      return false;
+    // 'other' / null / undefined → fall through to content auto-detection.
+  }
+
+  if (sumTypes(elementCounts, PLAN_ENVELOPE_TYPES) >= MIN_PLAN_ENVELOPE) return true;
+  const kind = detectContentKind(elementCounts);
   return kind === 'architectural' || kind === 'mixed';
 }

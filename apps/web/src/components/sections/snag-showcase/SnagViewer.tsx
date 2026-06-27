@@ -3,7 +3,7 @@
 import type {
   EntityMarkerData, Vec3, ViewerBundle, ViewerHandle,
 } from '@bimdossier/viewer';
-import { IfcViewer } from '@bimdossier/viewer/viewer-3d';
+import { IfcViewer, outlinePlugin } from '@bimdossier/viewer/viewer-3d';
 import { useTranslations } from 'next-intl';
 import {
   useCallback, useRef, useState, type JSX,
@@ -24,8 +24,15 @@ import {
 // viewer's WASM + worker are likewise served from apps/web's own /public.
 const DEMO_BUNDLE: ViewerBundle = {
   fragmentsUrl: '/models/demo.frag',
+  // Precomputed hard-edge outline (BIMOUTL2, gzip — the viewer's codec gunzips
+  // it). Renders the crisp architectural line-drawing look over the monochrome
+  // model. The outline plugin is added below (it's filtered out of the 'minimal'
+  // preset) with drawDuringMotion so the edges stay visible while it spins.
+  outlineUrl: '/models/demo.outline.bin',
   modelId: DEMO_MODEL_ID,
-  cacheKey: 'web-demo-frag-v2',
+  // Bumped (v2→v3) on the model swap so returning visitors drop the
+  // IndexedDB-cached old fragments + its `<cacheKey>.outline` sibling.
+  cacheKey: 'web-demo-frag-v3',
 };
 
 // A snag reads as "broken" while it's open/in-progress, "fixed" once resolved or
@@ -103,15 +110,22 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
   // The reveal is deferred until this framing lands (see onReady), so the model
   // appears already at this size — no zoom-in pop.
   const ZOOM = { sizeBoost: 1.2, panFraction: 0.2 } as const;
+  // The 'minimal' preset (set on IfcViewer below) drops the built-in outline
+  // plugin, so we add it explicitly. `drawDuringMotion` keeps the edges painted
+  // while the turntable spins (the idle-only default never shows on a model that
+  // never goes idle). The outline bytes come from the bundle's `outlineUrl`.
+  const outline = outlinePlugin({ enabled: true, drawDuringMotion: true });
   const plugins = reducedMotion
     ? [
       monochromeLookPlugin(),
+      outline,
       cameraZoomPlugin({ ...ZOOM, animate: false }),
       snagPlacementPlugin(),
       snagSpotlightPlugin({ onSpotlight }),
     ]
     : [
       monochromeLookPlugin(),
+      outline,
       cameraZoomPlugin(ZOOM),
       autoRotatePlugin(),
       snagPlacementPlugin(),

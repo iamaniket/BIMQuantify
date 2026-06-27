@@ -1,6 +1,8 @@
 'use client';
 
-import { Button, Eyebrow } from '@bimdossier/ui';
+import {
+  Button, Eyebrow, Tabs, TabsList, TabsTrigger,
+} from '@bimdossier/ui';
 import { useLocale, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useEffect, useState, type JSX } from 'react';
@@ -12,7 +14,16 @@ import { portalHref } from '@/lib/portalLinks';
 
 import { DEMO_SNAGS, type DemoSnagSeverity } from './snag-showcase/demoSnags';
 
+type ShowcaseView = '3d' | '2d';
+
 const SnagViewer = dynamic(() => import('./snag-showcase/SnagViewer'), {
+  ssr: false,
+  loading: () => <ShowcaseSkeleton />,
+});
+
+// The 2D chunk only fetches when the floor-plan tab is first opened (the tab
+// conditionally mounts this component).
+const FloorPlanViewer = dynamic(() => import('./snag-showcase/FloorPlanViewer'), {
   ssr: false,
   loading: () => <ShowcaseSkeleton />,
 });
@@ -86,12 +97,22 @@ export function SnagShowcaseSection(): JSX.Element {
   const { ref, inView } = useInView<HTMLDivElement>({ rootMargin: '200px', once: true });
 
   const [webgl, setWebgl] = useState(true);
+  const [view, setView] = useState<ShowcaseView>('3d');
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     setWebgl(hasWebGL());
   }, []);
+
+  // Switching tabs swaps which viewer is mounted (keyed remount below), so reset
+  // the fade gate — the new view re-reveals once it signals onLoaded.
+  function changeView(next: ShowcaseView): void {
+    if (next === view) return;
+    setLoaded(false);
+    setFailed(false);
+    setView(next);
+  }
 
   return (
     <section id="showcase" className="bg-surface-low">
@@ -111,22 +132,60 @@ export function SnagShowcaseSection(): JSX.Element {
             <ShowcaseSkeleton />
           ) : (
             <>
-              {/* Fade the canvas in only once SnagViewer signals it's framed
-                  (onLoaded fires after showcase.zoomIn lands), so the model
-                  appears already sized — no load-time pop/zoom. */}
+              {/* Fade the active view in only once it signals it's framed
+                  (3D onLoaded fires after showcase.zoomIn; 2D after the plan +
+                  markers load), so it appears already sized — no load-time pop.
+                  Keyed by `view` so a tab switch remounts and re-runs the fade. */}
               <div
+                key={view}
                 className={`h-full w-full transition-opacity duration-700 ${
                   loaded ? 'opacity-100' : 'opacity-0'
                 }`}
               >
-                <SnagViewer
-                  reducedMotion={reducedMotion}
-                  onError={() => setFailed(true)}
-                  onLoaded={() => setLoaded(true)}
-                />
+                {view === '3d' ? (
+                  <SnagViewer
+                    reducedMotion={reducedMotion}
+                    onError={() => setFailed(true)}
+                    onLoaded={() => setLoaded(true)}
+                  />
+                ) : (
+                  <FloorPlanViewer
+                    reducedMotion={reducedMotion}
+                    onError={() => setFailed(true)}
+                    onLoaded={() => setLoaded(true)}
+                  />
+                )}
               </div>
               {!loaded && <ShowcaseSkeleton />}
             </>
+          )}
+
+          {/* VIEW TOGGLE — floats over the canvas in both layouts. Hidden when
+              the static fallback shows (no WebGL). The SAME demo snags render in
+              both views (shared marker style), so the 2D caption makes the
+              "one synced tool" point explicit. */}
+          {webgl && !failed && (
+            <div className="pointer-events-none absolute right-4 top-4 z-20 flex flex-col items-end gap-1.5">
+              <Tabs
+                value={view}
+                onValueChange={(v) => { changeView(v as ShowcaseView); }}
+                className="pointer-events-auto"
+              >
+                <TabsList className="shadow-sm ring-1 ring-border">
+                  <TabsTrigger value="3d" size="sm">
+                    {t('tab3d')}
+                  </TabsTrigger>
+                  <TabsTrigger value="2d" size="sm">
+                    {t('tab2d')}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              {view === '2d' && (
+                <span className="rounded bg-surface-low px-1.5 py-0.5 text-caption text-foreground-tertiary ring-1 ring-border">
+                  {t('plan2dHint')}
+                </span>
+              )}
+            </div>
           )}
         </div>
 

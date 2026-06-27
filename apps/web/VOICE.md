@@ -117,7 +117,7 @@ The Dutch voice is a **sibling**, not a translation. Both languages are Tom.
 - "A finding is never a vague description again. It's a precise point anyone can return to, on screen or on site."
 - "Pin a snag on the model, send it to whoever fixes it, and check it off with a photo."
 - "Deadlines track themselves, so your Wkb dossier stays ready from bouwmelding to gereedmelding."
-- "Built for a regulated pilot, and honest about it."
+- "Built for regulated work, and honest about it."
 - "BimDossier is not an approved Wkb instrument and doesn't replace one."
 - "Stop chasing paperwork. Prove the work was done right."
 
@@ -156,7 +156,7 @@ Govern the nouns, not just the tone. One word per concept, across UI, marketing,
 | Building decree ref | Bbl | Bbl | Casing is "Bbl," never "BBL." |
 | Data processing agreement | DPA | verwerkersovereenkomst | |
 | Contractor | contractor | aannemer | |
-| Stage of company | pilot / early access | pilot / early access | Honest framing. We are a private pilot. |
+| Stage of company | founding partners | founding partners | Honest framing. We are recruiting founding partners. Keep "founding partner" in English in both languages. |
 
 ---
 

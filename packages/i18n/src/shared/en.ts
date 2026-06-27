@@ -9,7 +9,7 @@ export const sharedEnMessages: SharedMessages = {
     tagline: 'The Wkb dossier platform for Dutch contractors.',
     productDescription:
       'The Wkb dossier platform for Dutch contractors. Track deadlines, manage documents, resolve findings, and file on time.',
-    pilotHeading: 'Join the BimDossier pilot.',
+    pilotHeading: 'Become a BimDossier founding partner.',
   },
   legal: {
     privacy: 'Privacy',

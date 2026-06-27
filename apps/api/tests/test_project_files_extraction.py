@@ -139,6 +139,137 @@ async def test_complete_marks_failed_when_dispatch_raises(
     assert "DISPATCH_FAILED" in row["extraction_error"]
 
 
+async def test_complete_ifc_payload_carries_document_discipline(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    extraction_calls: list[dict[str, object]],
+) -> None:
+    """The parent document's declared discipline rides on the ifc_extraction
+    payload so the processor's floor-plan gate can honor user intent."""
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"], name="disc-p")
+    doc = await _create_document(
+        client,
+        org_user["access_token"],
+        project["id"],
+        name="disc-m",
+        discipline="structural",
+    )
+    file_id = await _complete_ready_ifc(
+        client, fake, org_user, project["id"], doc["id"], "d.ifc", "1" * 64
+    )
+
+    assert len(extraction_calls) == 1
+    call = extraction_calls[0]
+    assert call["job_type"] == "ifc_extraction"
+    assert call["file_id"] == file_id
+    payload = call["payload"]
+    assert isinstance(payload, dict)
+    assert payload["discipline"] == "structural"
+
+
+async def test_discipline_change_reextracts_ifc_head(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    extraction_calls: list[dict[str, object]],
+) -> None:
+    """Flipping a document's plan intent (structural→architectural) re-dispatches
+    IFC extraction for the head version with the new discipline, so the
+    floor-plan artifact can be (re)built."""
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"], name="reext-p")
+    doc = await _create_document(
+        client,
+        org_user["access_token"],
+        project["id"],
+        name="reext-m",
+        discipline="structural",
+    )
+    file_id = await _complete_ready_ifc(
+        client, fake, org_user, project["id"], doc["id"], "r.ifc", "2" * 64
+    )
+    assert len(extraction_calls) == 1  # initial dispatch
+
+    # Mark the file extraction-succeeded so it's a valid re-extraction head.
+    succeeded = await client.post(
+        "/internal/jobs/callback",
+        json={
+            "file_id": file_id,
+            "organization_id": org_user["organization_id"],
+            "status": "succeeded",
+            "fragments_key": f"projects/{project['id']}/{file_id}.frag",
+        },
+        headers=_bearer(),
+    )
+    assert succeeded.status_code == 200, succeeded.text
+
+    # structural (plan OFF) → architectural (plan ON): re-extracts.
+    patched = await client.patch(
+        f"/projects/{project['id']}/documents/{doc['id']}",
+        json={"discipline": "architectural"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert patched.status_code == 200, patched.text
+
+    assert len(extraction_calls) == 2
+    reext = extraction_calls[1]
+    assert reext["job_type"] == "ifc_extraction"
+    assert reext["file_id"] == file_id
+    reext_payload = reext["payload"]
+    assert isinstance(reext_payload, dict)
+    assert reext_payload["discipline"] == "architectural"
+
+    # The head file is rolled back to queued for the fresh attempt.
+    listing = await client.get(
+        f"/projects/{project['id']}/documents/{doc['id']}/files?status=all",
+        headers=_auth(org_user["access_token"]),
+    )
+    [row] = listing.json()
+    assert row["extraction_status"] == "queued"
+
+
+async def test_discipline_change_same_intent_does_not_reextract(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    extraction_calls: list[dict[str, object]],
+) -> None:
+    """architectural→coordination keeps plan intent "on" — no re-extraction."""
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"], name="noreext-p")
+    doc = await _create_document(
+        client,
+        org_user["access_token"],
+        project["id"],
+        name="noreext-m",
+        discipline="architectural",
+    )
+    file_id = await _complete_ready_ifc(
+        client, fake, org_user, project["id"], doc["id"], "n.ifc", "3" * 64
+    )
+    await client.post(
+        "/internal/jobs/callback",
+        json={
+            "file_id": file_id,
+            "organization_id": org_user["organization_id"],
+            "status": "succeeded",
+            "fragments_key": f"projects/{project['id']}/{file_id}.frag",
+        },
+        headers=_bearer(),
+    )
+    assert len(extraction_calls) == 1
+
+    patched = await client.patch(
+        f"/projects/{project['id']}/documents/{doc['id']}",
+        json={"discipline": "coordination"},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert patched.status_code == 200, patched.text
+    assert len(extraction_calls) == 1  # no new dispatch
+
+
 # ---------------------------------------------------------------------------
 # Internal callback endpoint
 # ---------------------------------------------------------------------------

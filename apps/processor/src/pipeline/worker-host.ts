@@ -31,10 +31,12 @@ import { PermanentError, RetriableError } from './errors.js';
 import { UnsupportedSchemaError } from './ifc.js';
 import type { StoreyInfo } from './metadata.js';
 
-/** workerData for extraction-worker.ts, discriminated on `task`. */
+/** workerData for extraction-worker.ts, discriminated on `task`. `discipline`
+ * is the parent Document's user-declared discipline (when supplied), threaded to
+ * the floor-plan gate in the walk task. */
 export type ExtractionTask =
   | { task: 'frag-outline'; bytes: Uint8Array }
-  | { task: 'walk'; bytes: Uint8Array };
+  | { task: 'walk'; bytes: Uint8Array; discipline?: string };
 
 /** Flattened Error crossing the structuredClone boundary. `schema` carries
  * UnsupportedSchemaError's own prop; `kind` the Permanent/RetriableError

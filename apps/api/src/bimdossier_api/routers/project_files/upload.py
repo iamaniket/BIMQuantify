@@ -265,6 +265,7 @@ def _detect_completed_file(
     project_id: UUID,
     file_id: UUID,
     storage_key: str,
+    discipline: str | None = None,
 ) -> _CompleteDecision:
     """Pure magic-byte detection for a completed upload (no I/O, no session).
 
@@ -322,6 +323,14 @@ def _detect_completed_file(
     # IFC path. Compressed `.ifczip` is a zip wrapper whose schema can only be
     # read after decompression — verify only the zip magic and defer schema
     # validation to the processor. Uncompressed `.ifc` is STEP-header-sniffed.
+    #
+    # IFC extraction carries the parent document's declared discipline so the
+    # processor's floor-plan gate can honor user intent (architectural /
+    # coordination → plan; structural / mep → none; other → content auto-detect).
+    ifc_base: dict[str, str | bool] = dict(base)
+    if discipline is not None:
+        ifc_base["discipline"] = discipline
+
     if original_filename.lower().endswith(".ifczip"):
         accepted = looks_like_zip(head_bytes)
         return _CompleteDecision(
@@ -332,7 +341,7 @@ def _detect_completed_file(
             ifc_schema=IfcSchema.unknown,
             clear_head=accepted,
             jobs=(
-                (_JobSpec(JobType.ifc_extraction, {**base, "compressed": True}, primary=True),)
+                (_JobSpec(JobType.ifc_extraction, {**ifc_base, "compressed": True}, primary=True),)
                 if accepted
                 else ()
             ),
@@ -348,7 +357,7 @@ def _detect_completed_file(
         ifc_schema=result.schema,
         clear_head=accepted,
         jobs=(
-            (_JobSpec(JobType.ifc_extraction, dict(base), primary=True),) if accepted else ()
+            (_JobSpec(JobType.ifc_extraction, dict(ifc_base), primary=True),) if accepted else ()
         ),
     )
 
@@ -393,6 +402,10 @@ async def complete_upload(
         file_type = row.file_type
         original_filename = row.original_filename
         project_uuid = project.id
+        # The document's declared discipline drives the processor's floor-plan
+        # gate (IFC only). Snapshotted here so Phase 2 can build the job payload
+        # with no connection held.
+        document_discipline = document.discipline.value
 
     # --- Phase 2: S3 HEAD + a single coalesced header read + magic-byte
     # detection, with NO DB connection held.
@@ -420,6 +433,7 @@ async def complete_upload(
         project_id=project_uuid,
         file_id=file_id,
         storage_key=storage_key,
+        discipline=document_discipline,
     )
 
     # A rejected upload's stored object is useless — delete it (no connection held).

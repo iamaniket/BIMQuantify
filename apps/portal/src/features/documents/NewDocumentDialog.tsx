@@ -14,7 +14,7 @@ import { FormDialog } from '@/components/shared/FormDialog';
 import { Field } from '@/components/shared/forms/Field';
 import { useRegisterField } from '@/hooks/useRegisterField';
 import { ApiError } from '@/lib/api/client';
-import { STATUS_OPTIONS } from '@/lib/formatting/models';
+import { DISCIPLINE_OPTIONS, STATUS_OPTIONS } from '@/lib/formatting/models';
 import {
   createDocumentFormSchema,
   type DocumentFormValues,
@@ -23,6 +23,11 @@ import { useCreateDocument } from './useCreateDocument';
 
 const DEFAULTS: DocumentFormValues = {
   name: '',
+  // "other" → the processor auto-detects from content (a real arch model still
+  // gets a plan via the wall/room envelope). The user can pick a specific
+  // discipline to force the plan on (architectural/coordination) or off
+  // (structural/mep).
+  discipline: 'other',
   status: 'active',
 };
 
@@ -34,6 +39,9 @@ type Props = {
 
 export function NewDocumentDialog({ open, onOpenChange, projectId }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.documents.newDocumentDialog');
+  // Reuse the inline discipline selector's labels (field + options) so the two
+  // entry points stay in lockstep — no duplicate i18n keys.
+  const tDiscipline = useTranslations('projectDetail.tabs.documents.assignDiscipline');
   const createMutation = useCreateDocument();
   const { reset: resetMutation } = createMutation;
 
@@ -93,6 +101,22 @@ export function NewDocumentDialog({ open, onOpenChange, projectId }: Props): JSX
               invalid={invalid}
               {...useRegisterField(form, 'name')}
             />
+          )}
+        </Field>
+
+        <Field form={form} name="discipline" label={tDiscipline('label')}>
+          {({ id }) => (
+            <Select
+              id={id}
+              disabled={isSubmitting}
+              {...useRegisterField(form, 'discipline')}
+            >
+              {DISCIPLINE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {tDiscipline(`options.${opt.value}`)}
+                </option>
+              ))}
+            </Select>
           )}
         </Field>
 

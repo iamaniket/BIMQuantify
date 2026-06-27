@@ -48,6 +48,10 @@ export type IfcExtractionPayload = {
   project_id: string;
   storage_key: string;
   compressed: boolean;
+  // The parent Document's user-declared discipline (architectural | structural |
+  // mep | coordination | other), when the API supplies it. Drives the floor-plan
+  // gate (classify.ts::shouldGenerateFloorPlan); absent → content auto-detect.
+  discipline?: string;
 };
 
 function parseIfcPayload(raw: Record<string, unknown>): IfcExtractionPayload {
@@ -59,7 +63,14 @@ function parseIfcPayload(raw: Record<string, unknown>): IfcExtractionPayload {
       `INVALID_IFC_PAYLOAD: expected {file_id, project_id, storage_key} as strings, got ${JSON.stringify(raw)}`,
     );
   }
-  return { file_id, project_id, storage_key, compressed: raw['compressed'] === true };
+  const discipline = raw['discipline'];
+  return {
+    file_id,
+    project_id,
+    storage_key,
+    compressed: raw['compressed'] === true,
+    ...(typeof discipline === 'string' ? { discipline } : {}),
+  };
 }
 
 let cachedVersion: string | null = null;
@@ -196,7 +207,7 @@ export async function runExtraction(
         },
       );
       walkWorker = startExtractionWorker(
-        { task: 'walk', bytes: walkBytes },
+        { task: 'walk', bytes: walkBytes, discipline: payload.discipline },
         [walkBytes.buffer as ArrayBuffer],
         async (msg) => {
           if (msg.type === 'parsed') {

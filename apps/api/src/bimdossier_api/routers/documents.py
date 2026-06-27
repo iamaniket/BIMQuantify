@@ -32,10 +32,18 @@ from bimdossier_api.cache import (
     CACHE_TTL_DOCUMENTS_LIST,
     cache_response,
 )
+from bimdossier_api.config import Settings, get_settings
+from bimdossier_api.jobs.lifecycle import rerun_ifc_extraction
 from bimdossier_api.models.document import Document, DocumentDiscipline, DocumentStatus
 from bimdossier_api.models.levels import Level
-from bimdossier_api.models.project_file import FileType, ProjectFile
+from bimdossier_api.models.project_file import (
+    ExtractionStatus,
+    FileType,
+    ProjectFile,
+    ProjectFileStatus,
+)
 from bimdossier_api.models.user import User
+from bimdossier_api.routers.project_files._shared import resolve_head_file_id
 from bimdossier_api.schemas.document import (
     DocumentCreate,
     DocumentRead,
@@ -65,6 +73,20 @@ async def _load_document_or_404(
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="DOCUMENT_NOT_FOUND")
     return document
+
+
+def _plan_intent(discipline: DocumentDiscipline) -> str:
+    """Whether a declared discipline forces the floor-plan cut on/off, or defers
+    to content auto-detection. Mirrors the processor gate
+    (classify.ts::shouldGenerateFloorPlan) and is used to decide whether a
+    discipline change actually flips the outcome (so we only re-extract then):
+    architectural/coordination → "on", structural/mep → "off", other → "auto".
+    """
+    if discipline in (DocumentDiscipline.architectural, DocumentDiscipline.coordination):
+        return "on"
+    if discipline in (DocumentDiscipline.structural, DocumentDiscipline.mep):
+        return "off"
+    return "auto"
 
 
 @router.post("", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)
@@ -225,6 +247,7 @@ async def update_document(
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
+    settings: Settings = Depends(get_settings),
 ) -> Document:
     project = await load_project_or_404(session, project_id)
     membership = await require_membership(session, project.id, user.id)
@@ -232,6 +255,7 @@ async def update_document(
     require_project_writable(project)
 
     document = await _load_document_or_404(session, project.id, document_id)
+    old_discipline = document.discipline
 
     updates = payload.model_dump(exclude_unset=True)
 
@@ -287,6 +311,56 @@ async def update_document(
         project_id=project.id,
         request=request,
     )
+
+    # A discipline change can flip the floor-plan outcome — the processor reads
+    # the declared discipline at extraction time, and the 2D artifact is only
+    # (re)built by re-extracting. When the change flips plan intent (on/off/auto)
+    # for an IFC document, re-run extraction on the effective head version so the
+    # plan appears or disappears to match.
+    if (
+        "discipline" in updates
+        and document.primary_file_type is FileType.ifc
+        and _plan_intent(old_discipline) != _plan_intent(document.discipline)
+    ):
+        versions = (
+            (
+                await session.execute(
+                    select(ProjectFile)
+                    .where(
+                        ProjectFile.document_id == document.id,
+                        ProjectFile.status == ProjectFileStatus.ready,
+                        ProjectFile.extraction_status == ExtractionStatus.succeeded,
+                        ProjectFile.file_type == FileType.ifc,
+                        ProjectFile.deleted_at.is_(None),
+                    )
+                    .order_by(ProjectFile.version_number.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
+        head_id = resolve_head_file_id(document, list(versions))
+        head = next((v for v in versions if v.id == head_id), None)
+        if head is not None:
+            try:
+                await rerun_ifc_extraction(
+                    session,
+                    head,
+                    settings=settings,
+                    organization_id=active_org_id,
+                    user=user,
+                    discipline=document.discipline.value,
+                )
+            except HTTPException as exc:
+                # At the org job limit — keep the discipline change; the user can
+                # re-extract later. Any other error propagates.
+                if exc.status_code != status.HTTP_429_TOO_MANY_REQUESTS:
+                    raise
+                logger.warning(
+                    "Re-extraction after discipline change skipped (job limit) "
+                    "for document %s",
+                    document.id,
+                )
 
     return document
 

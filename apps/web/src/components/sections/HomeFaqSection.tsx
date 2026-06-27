@@ -9,9 +9,9 @@ import { SectionHeading } from '@/components/shared/SectionHeading';
 type FaqItem = { q: string; a: string };
 
 /**
- * Homepage FAQ. Resolves the objections that peak right before the closing CTA
- * — what "private pilot" means, data/DPA, BIM-vs-PDF, instrument boundary, tool
- * fit, pilot cost. Mirrors the feature-page FAQ markup (`<dl>` so every answer is
+ * Homepage FAQ. Resolves the objections that peak right before the closing CTA:
+ * what becoming a founding partner means, data/DPA, BIM-vs-PDF, instrument boundary,
+ * tool fit, founding-partner cost. Mirrors the feature-page FAQ markup (`<dl>` so every answer is
  * in the SSR HTML) but reads its Q&A list from the homepage `faq.items` catalog
  * (en + nl) via `t.raw`.
  */

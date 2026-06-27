@@ -9,16 +9,16 @@
     "features": "Features",
     "faq": "FAQ",
     "blog": "Blog",
-    "requestAccess": "Request access",
+    "requestAccess": "Become a partner",
     "contactSales": "Contact sales",
     "themeToggle": "Toggle theme"
   },
   "hero": {
-    "badge": "Private pilot · a few open spots for Dutch contractors",
+    "badge": "Founding partners · a few spots open for Dutch contractors",
     "headline": "The construction quality platform, built on your model. From first snag to final dossier.",
     "subtitle": "Pin every snag on your 3D model, or on a PDF floor plan if you don't have a model yet. Add photos, assign the fix, and follow it through to done. Deadlines track themselves, so your Wkb dossier stays ready from bouwmelding to gereedmelding.",
-    "trust": "In private pilot with Dutch contractors · EU-hosted, DPA included · Works alongside any kwaliteitsborger and instrument",
-    "ctaPrimary": "Request early access",
+    "trust": "Building it with founding partners in the Netherlands · EU-hosted, DPA included · Works alongside any kwaliteitsborger and instrument",
+    "ctaPrimary": "Become a founding partner",
     "ctaDemo": "See it on the model"
   },
   "features": {
@@ -110,8 +110,8 @@
   },
   "cta": {
     "headline": "Stop chasing paperwork. Prove the work was done right.",
-    "subtitle": "Snagging, inspections and your Wkb dossier, all on your model. Join the private pilot and walk into your next gereedmelding already done.",
-    "button": "Request early access"
+    "subtitle": "Snagging, inspections and your Wkb dossier, all on your model. Join as a founding partner and walk into your next gereedmelding already done.",
+    "button": "Become a founding partner"
   },
   "footer": {
     "product": "Product",
@@ -155,10 +155,13 @@
     "eyebrow": "Quality assurance, live",
     "headline": "Catch defects before they cost you.",
     "subtitle": "Drag to rotate the model. Snags are flagged right on it as inspectors find and fix them.",
-    "cta": "Request early access",
+    "cta": "Become a founding partner",
     "hintDrag": "Drag to rotate",
     "hintWatch": "Each pin flags a real snag",
     "learnMoreBlog": "See how snagging works on the blog",
+    "tab3d": "3D model",
+    "tab2d": "Floor plan",
+    "plan2dHint": "Same snags, on the floor plan.",
     "fallbackTitle": "Interactive 3D snag inspection",
     "fallbackBody": "Your browser can't show the live 3D model, but here are the snags it carries:",
     "fallbackAlt": "Interactive 3D building model with quality-assurance snags",
@@ -185,6 +188,13 @@
       "ventilation": "Ventilation flow below requirement",
       "balustrade": "Balustrade height below minimum",
       "rebar": "Rebar spacing out of tolerance"
+    },
+    "rooms": {
+      "living": "Living room",
+      "kitchen": "Kitchen",
+      "bath": "Bathroom",
+      "bed": "Bedroom",
+      "hall": "Hall"
     }
   },
   "fromBlog": {
@@ -195,12 +205,12 @@
   },
   "trust": {
     "eyebrow": "Why you can trust it",
-    "headline": "Built for a regulated pilot, and honest about it",
+    "headline": "Built for regulated work, and honest about it",
     "subtitle": "Your dossier is legally load-bearing. So here's exactly who builds the platform, where your data lives, and where our responsibility ends.",
     "items": {
       "hosting": {
         "title": "EU-hosted, DPA included",
-        "body": "Your data runs on EU infrastructure and never leaves it. We sign a verwerkersovereenkomst (DPA) with every pilot partner."
+        "body": "Your data runs on EU infrastructure and never leaves it. We sign a verwerkersovereenkomst (DPA) with every founding partner."
       },
       "instrument": {
         "title": "Works alongside your kwaliteitsborger",
@@ -208,7 +218,7 @@
       },
       "team": {
         "title": "A Dutch team, reachable",
-        "body": "Built in the Netherlands by the team behind BimDossier. During the pilot you reach us directly. No ticket queue."
+        "body": "Built in the Netherlands by the team behind BimDossier. As a founding partner you reach us directly. No ticket queue."
       }
     },
     "dpaLink": "Read our DPA"
@@ -218,12 +228,12 @@
     "headline": "What contractors ask us first",
     "items": [
       {
-        "q": "What does \"private pilot\" mean for me?",
-        "a": "We onboard a small group of Dutch aannemers by hand. You get early access, a direct line to the team, and a say in what we build next. In exchange, we ask for honest real-world feedback."
+        "q": "What does becoming a founding partner mean for me?",
+        "a": "We onboard a small group of Dutch aannemers by hand. As a founding partner you get in early, a direct line to the team, and a real say in what we build next. In exchange, we ask for honest real-world feedback."
       },
       {
         "q": "Where does my data live, and is there a DPA?",
-        "a": "Everything runs on EU infrastructure and never leaves it. We sign a verwerkersovereenkomst (DPA) with every pilot partner. Read our DPA for the details."
+        "a": "Everything runs on EU infrastructure and never leaves it. We sign a verwerkersovereenkomst (DPA) with every founding partner. Read our DPA for the details."
       },
       {
         "q": "Do I need BIM models, or do PDF floor plans work too?",
@@ -238,8 +248,8 @@
         "a": "Findings import and export over BCF, so issues round-trip with your kwaliteitsborger's tools instead of living in a silo."
       },
       {
-        "q": "What does the pilot cost?",
-        "a": "Pilot pricing depends on your team and projects. Request access and we'll talk it through. Starting the conversation commits you to nothing."
+        "q": "What does it cost to be a founding partner?",
+        "a": "Founding-partner pricing depends on your team and projects. Start the conversation and we'll talk it through. It commits you to nothing."
       }
     ]
   }

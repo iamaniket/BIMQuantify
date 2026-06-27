@@ -9,7 +9,7 @@ export const sharedNlMessages: SharedMessages = {
     tagline: 'Het Wkb-dossierplatform voor Nederlandse aannemers.',
     productDescription:
       'Het Wkb-dossierplatform voor Nederlandse aannemers. Houd deadlines bij, beheer documenten, los bevindingen op en dien op tijd in.',
-    pilotHeading: 'Doe mee aan de BimDossier-pilot.',
+    pilotHeading: 'Word founding partner van BimDossier.',
   },
   legal: {
     privacy: 'Privacy',

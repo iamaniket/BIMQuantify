@@ -20,6 +20,16 @@
 export { IfcViewer } from './IfcViewer.js';
 export { decodeFloorPlans } from './plugins/3d/shared/floorplan-codec.js';
 
+// Outline plugin — the pdfjs-free 3D hard-edge renderer. The main barrel ('.')
+// also exports it, but that path pulls pdfjs (via DocumentViewer); the marketing
+// snag showcase adds it as a user plugin under the 'minimal' preset, so it must
+// come from this embed-safe entry.
+export { outlinePlugin } from './plugins/3d/outline/index.js';
+export type {
+  OutlinePluginOptions,
+  OutlinePluginAPI,
+} from './plugins/3d/outline/index.js';
+
 // Raycast helper for custom plugins that need to hit-test the loaded models
 // (e.g. the marketing snag showcase pinning markers onto the model surface).
 // `core/Raycaster` is pdfjs-free, so it's safe in this embed entry.

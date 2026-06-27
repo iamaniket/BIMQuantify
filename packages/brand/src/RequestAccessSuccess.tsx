@@ -36,7 +36,7 @@ export function RequestAccessSuccess({
           Thanks, {firstName}. We&rsquo;ll be in touch shortly.
         </h2>
         <p className="mt-2 text-[13px] leading-snug text-foreground-tertiary">
-          We&rsquo;ve logged your pilot application for{' '}
+          We&rsquo;ve logged your founding-partner application for{' '}
           <strong className="text-foreground-secondary">{company}</strong> and will send a
           personalised invitation to <strong className="text-foreground-secondary">{email}</strong> after
           a quick review.
