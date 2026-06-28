@@ -13,7 +13,7 @@ import {
 import { useFileFindings } from '@/features/findings/useFindings';
 import { useModelFindingMarkers } from '@/features/viewer/shared/useEntityMarkers';
 import type { Finding } from '@/lib/api/schemas';
-import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
+import { useFlattenedPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import { elevationBand } from './elevationBand';
 
@@ -102,7 +102,7 @@ export function useFloorPlanFindingMarkers(opts: FloorPlanFindingMarkersOptions)
   }, [fpHandle, viewerHandle, enabled, union, levels, activeLevel, markers3D, calibratedNonce]);
 
   // Resolve marker clicks back to findings.
-  const findings = flattenPages(useFileFindings(projectId, scopedFileId).data);
+  const findings = useFlattenedPages(useFileFindings(projectId, scopedFileId).data);
   const findingMap = useMemo(() => new Map(findings.map((f) => [f.id, f])), [findings]);
   const cbRef = useRef(opts.onFindingClick);
   cbRef.current = opts.onFindingClick;

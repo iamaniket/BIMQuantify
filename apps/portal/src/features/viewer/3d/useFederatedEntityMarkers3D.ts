@@ -6,7 +6,7 @@ import type { ViewerHandle } from '@bimdossier/viewer';
 
 import { useFindings } from '@/features/findings/useFindings';
 import type { Finding, ProjectViewerDocumentEntry } from '@/lib/api/schemas';
-import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
+import { useFlattenedPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import type { EntityMarker3D } from '../shared/entityMarkerTypes';
 import { federatedModelId } from './federation/federatedModelId';
@@ -27,7 +27,7 @@ export function useFederatedEntityMarkers3D(
   viewerReady: boolean,
   enabled: boolean,
 ): { clickedFinding: Finding | null; clearClicked: () => void } {
-  const allFindings = flattenPages(useFindings(projectId).data);
+  const allFindings = useFlattenedPages(useFindings(projectId).data);
 
   const loadedFileIds = useMemo(
     () => new Set(entries.map((e) => e.file_id)),

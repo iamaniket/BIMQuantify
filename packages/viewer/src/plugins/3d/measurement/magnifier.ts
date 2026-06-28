@@ -30,6 +30,16 @@ export class Magnifier {
   private canvas: HTMLCanvasElement;
   private ctx2d: CanvasRenderingContext2D;
 
+  /**
+   * Render-target resolution (px). Fixed at construction (the RT never resizes),
+   * so the GPU readback buffer and the canvas ImageData below are allocated once
+   * and reused every {@link update} — previously each pointer-move allocated a
+   * fresh ~2.5 MB Uint8Array + ImageData, the dominant GC source while measuring.
+   */
+  private readonly res: number;
+  private readonly readbackBuf: Uint8Array;
+  private readonly loupeImageData: ImageData;
+
   private size: number;
   private zoom: number;
   private corner: Corner = 'top-left';
@@ -51,10 +61,13 @@ export class Magnifier {
     this.zoom = options?.zoom ?? DEFAULT_ZOOM;
 
     const res = this.size * Math.min(window.devicePixelRatio, 2);
+    this.res = res;
     this.renderTarget = new THREE.WebGLRenderTarget(res, res, {
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
     });
+    // Reused every frame (see field docs) — sized once to the fixed RT.
+    this.readbackBuf = new Uint8Array(res * res * 4);
 
     this.el = document.createElement('div');
     this.el.style.cssText =
@@ -70,6 +83,8 @@ export class Magnifier {
     this.canvas.style.cssText = `width:100%;height:100%;display:block;`;
     this.el.appendChild(this.canvas);
     this.ctx2d = this.canvas.getContext('2d')!;
+    // Reused every frame (see field docs) — sized once to the fixed RT.
+    this.loupeImageData = this.ctx2d.createImageData(res, res);
 
     this.setCorner('top-left');
   }
@@ -207,12 +222,13 @@ export class Magnifier {
     this.renderer.setRenderTarget(currentTarget);
     this.renderer.xr.enabled = currentXrEnabled;
 
-    // Read pixels and draw to canvas
-    const res = this.renderTarget.width;
-    const buf = new Uint8Array(res * res * 4);
+    // Read pixels and draw to canvas — buffer + ImageData are reused across
+    // frames (allocated once in the constructor) to avoid ~5 MB of per-move GC.
+    const res = this.res;
+    const buf = this.readbackBuf;
     this.renderer.readRenderTargetPixels(this.renderTarget, 0, 0, res, res, buf);
 
-    const imageData = this.ctx2d.createImageData(res, res);
+    const imageData = this.loupeImageData;
     // WebGL readPixels is bottom-up, flip vertically
     for (let y = 0; y < res; y++) {
       const srcRow = (res - 1 - y) * res * 4;

@@ -61,17 +61,29 @@ export async function pick(
   const canvas = ctx.canvas;
   const mouse = ndcToClientMouse(canvas, ndc);
 
+  // Dispatch every model's worker raycast concurrently rather than awaiting each
+  // in turn — on a federated (multi-discipline) scene the serial loop paid N
+  // sequential worker round-trips (~5–50ms each) per pick. The per-model
+  // `.catch(() => null)` preserves the old per-model fault isolation (one model
+  // failing must not abort the others), and the nearest-distance reduction below
+  // is order-independent, so the chosen hit is identical to the serial version.
+  const models = [...ctx.models().values()];
+  const hits = await Promise.all(
+    models.map(async (model) => {
+      try {
+        const result = await model.raycast({ camera, mouse, dom: canvas });
+        return result ? { model, result } : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+
   let best: PickResult | null = null;
-  for (const model of ctx.models().values()) {
-    let result: FRAGS.RaycastResult | null;
-    try {
-      result = await model.raycast({ camera, mouse, dom: canvas });
-    } catch {
-      continue;
-    }
-    if (!result) continue;
-    if (!best || result.distance < best.distance) {
-      best = toPickResult(ctx, model, result);
+  for (const hit of hits) {
+    if (!hit) continue;
+    if (!best || hit.result.distance < best.distance) {
+      best = toPickResult(ctx, hit.model, hit.result);
     }
   }
   return best;
@@ -93,17 +105,26 @@ export async function pickAll(
   const canvas = ctx.canvas;
   const mouse = ndcToClientMouse(canvas, ndc);
 
+  // Concurrent per-model dispatch (see `pick`). The final near→far sort is over
+  // the union of all models' hits, so it is order-independent — results are
+  // identical to the old serial loop, only the dispatch is parallel.
+  const models = [...ctx.models().values()];
+  const perModel = await Promise.all(
+    models.map(async (model) => {
+      try {
+        const results = await model.raycastAll({ camera, mouse, dom: canvas });
+        return results ? { model, results } : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+
   const hits: PickResult[] = [];
-  for (const model of ctx.models().values()) {
-    let results: FRAGS.RaycastResult[] | null;
-    try {
-      results = await model.raycastAll({ camera, mouse, dom: canvas });
-    } catch {
-      continue;
-    }
-    if (!results) continue;
-    for (const result of results) {
-      hits.push(toPickResult(ctx, model, result));
+  for (const entry of perModel) {
+    if (!entry) continue;
+    for (const result of entry.results) {
+      hits.push(toPickResult(ctx, entry.model, result));
     }
   }
   hits.sort((a, b) => a.distance - b.distance);

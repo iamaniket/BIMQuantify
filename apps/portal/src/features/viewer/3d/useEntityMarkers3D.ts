@@ -7,7 +7,7 @@ import type { ItemId, ViewerHandle } from '@bimdossier/viewer';
 import { useFileFindings } from '@/features/findings/useFindings';
 import type { Finding } from '@/lib/api/schemas';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
-import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
+import { useFlattenedPages } from '@/lib/query/useAuthInfiniteQuery';
 import { parseEntityKey, useViewerEntityStore } from '@/stores/viewerEntityStore';
 
 import { buildGlobalIdToLocalId } from '../shared/buildGlobalIdToLocalId';
@@ -44,7 +44,7 @@ export function useEntityMarkers3D(
   const findingMarkers = useModelFindingMarkers(projectId, fileId);
 
   const findingsQuery = useFileFindings(projectId, fileId);
-  const findings = flattenPages(findingsQuery.data);
+  const findings = useFlattenedPages(findingsQuery.data);
   const findingById = useMemo(() => new Map(findings.map((f) => [f.id, f])), [findings]);
 
   // GlobalId -> localId (expressID). The modelId passed is irrelevant here —

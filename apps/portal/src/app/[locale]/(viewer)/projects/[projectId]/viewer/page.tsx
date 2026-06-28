@@ -53,7 +53,7 @@ import { useDrawingMetadata } from '@/features/viewer/2d/drawing/useDrawingMetad
 import { useEntityMarkers3D } from '@/features/viewer/3d/useEntityMarkers3D';
 import { useFederatedEntityMarkers3D } from '@/features/viewer/3d/useFederatedEntityMarkers3D';
 import { useEntityMarkers2D } from '@/features/viewer/2d/useEntityMarkers2D';
-import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
+import { useFlattenedPages } from '@/lib/query/useAuthInfiniteQuery';
 import { useFileFindings } from '@/features/findings/useFindings';
 import { buildGlobalIdToLocalId } from '@/features/viewer/shared/buildGlobalIdToLocalId';
 import { SidePanel } from '@/components/shared/viewer/shared/SidePanel';
@@ -619,7 +619,7 @@ export default function ViewerPage(): JSX.Element {
   // Deep-link: open a finding's detail when arriving via `?finding=<id>` (the
   // "View in model" link from /findings → Locations). The finding is anchored to
   // this file, so it's already in the file-scoped query the markers fetch.
-  const fileFindings = flattenPages(useFileFindings(projectId, fileId).data);
+  const fileFindings = useFlattenedPages(useFileFindings(projectId, fileId).data);
   const deepLinkOpenedRef = useRef(false);
   useEffect(() => { deepLinkOpenedRef.current = false; }, [fileId, deepLinkFindingId]);
   useEffect(() => {

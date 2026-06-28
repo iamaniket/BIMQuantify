@@ -108,6 +108,7 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
   let clickUnsub: (() => void) | null = null;
   let moveUnsub: (() => void) | null = null;
   let dblclickUnsub: (() => void) | null = null;
+  let modelEventUnsubs: Array<() => void> = [];
   // Clicks are serialized through this promise chain: a double-click is two
   // `pointer:click` events (each async via raycasting) followed by a sync
   // `pointer:doubleclick`. Chaining guarantees both points settle before the
@@ -180,11 +181,19 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
 
   // ----- geometry helpers -----
 
+  // Cached largest-model-dimension scalar. Model boxes only change on
+  // load/unload, but getModelScale is called several times per preview pointer-
+  // move (createDot, createDashedLine, area/volume edge builders), each time
+  // unioning every model box + allocating. Compute once, reuse until a model
+  // load/unload invalidates it (subscriptions in install()).
+  let modelScaleCache: number | null = null;
   const getModelScale = (): number => {
+    if (modelScaleCache !== null) return modelScaleCache;
     if (!ctxRef) return 10;
     const boxes: Array<THREE.Box3 | undefined> = [];
     for (const model of ctxRef.models().values()) boxes.push(model.box);
-    return getModelScaleImpl(boxes);
+    modelScaleCache = getModelScaleImpl(boxes);
+    return modelScaleCache;
   };
 
   const createDot = (pos: THREE.Vector3): THREE.Mesh =>
@@ -1477,6 +1486,16 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
       ctxRef = ctx;
       overlay = acquireCss2dOverlay(ctx);
 
+      // Model bounds change only on load/unload — drop the cached model scale so
+      // the next call recomputes it once (see getModelScale above).
+      const invalidateScale = (): void => {
+        modelScaleCache = null;
+      };
+      modelEventUnsubs = [
+        ctx.events.on('model:loaded', invalidateScale),
+        ctx.events.on('model:unloaded', invalidateScale),
+      ];
+
       ctx.commands.register('measure.activate', (args: unknown) => activate(args), {
         title: 'Start measuring',
       });
@@ -1541,6 +1560,9 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     uninstall() {
       deactivate();
       clear();
+      for (const off of modelEventUnsubs) off();
+      modelEventUnsubs = [];
+      modelScaleCache = null;
       magnifier?.dispose();
       magnifier = null;
       hideAxisLockLabel();
