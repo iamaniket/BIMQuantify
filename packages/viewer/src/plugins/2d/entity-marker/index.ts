@@ -154,6 +154,9 @@ export function entityMarker2DPlugin(): DocumentPlugin & EntityMarker2DAPI {
   const raycaster = new THREE.Raycaster();
   const markers = new Map<string, MarkerEntry>();
   const cleanups: Array<() => void> = [];
+  // Reused scratch for the per-pointer-move pick (no per-move alloc).
+  const _ndc = new THREE.Vector2();
+  const _broad = new THREE.Vector3();
 
   let visible = true;
   let hoveredId: string | null = null;
@@ -218,9 +221,31 @@ export function entityMarker2DPlugin(): DocumentPlugin & EntityMarker2DAPI {
     if (!ctx || !sceneApi || !layer || markers.size === 0) return null;
     const rect = ctx.container.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return null;
-    const ndc = new THREE.Vector2(
-      ((clientX - rect.left) / rect.width) * 2 - 1,
-      -((clientY - rect.top) / rect.height) * 2 + 1,
+    const cssX = clientX - rect.left;
+    const cssY = clientY - rect.top;
+
+    // Broad phase: each glyph occupies ~GLYPH_R screen-px around its projected
+    // center. If the cursor is far from every marker, skip the recursive raycast
+    // entirely — the common case while panning/hovering empty space. Threshold
+    // padded (×2 + 4px) for the hover up-scale and non-circular glyphs, so it
+    // never short-circuits a hit the raycast would have found.
+    const cam = sceneApi.camera;
+    const reach = GLYPH_R * 2 + 4;
+    let near = false;
+    for (const entry of markers.values()) {
+      const p = _broad.set(entry.group.position.x, entry.group.position.y, 0).project(cam);
+      const sx = ((p.x + 1) / 2) * rect.width;
+      const sy = ((1 - p.y) / 2) * rect.height;
+      if (Math.hypot(sx - cssX, sy - cssY) <= reach) {
+        near = true;
+        break;
+      }
+    }
+    if (!near) return null;
+
+    const ndc = _ndc.set(
+      (cssX / rect.width) * 2 - 1,
+      -(cssY / rect.height) * 2 + 1,
     );
     raycaster.setFromCamera(ndc, sceneApi.camera);
     const hits = raycaster.intersectObjects(layer.children, true);

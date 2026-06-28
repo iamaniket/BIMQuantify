@@ -74,6 +74,9 @@ export class ViewCubeWidget {
   private readonly builder: GeometryBuilder;
   private readonly camera: THREE.PerspectiveCamera;
   private readonly pointer = new THREE.Vector2();
+  // Reused scratch for the per-camera:change syncTo (no per-frame alloc).
+  private readonly _dir = new THREE.Vector3();
+  private readonly _dirN = new THREE.Vector3();
   private readonly options: ViewCubeWidgetOptions;
   private readonly labels: ViewCubeLabels;
   private readonly tooltip: HTMLDivElement;
@@ -157,10 +160,12 @@ export class ViewCubeWidget {
   /** Slave the cube to the main camera's orientation + update ring + highlight. */
   syncTo(camera: THREE.PerspectiveCamera | THREE.OrthographicCamera, target: THREE.Vector3): void {
     if (this.disposed) return;
-    const dir = camera.position.clone().sub(target);
+    const dir = this._dir.copy(camera.position).sub(target);
     if (dir.lengthSq() === 0) dir.set(0, 0, 1);
-    const dirN = dir.clone().normalize();
-    this.camera.position.copy(dirN.clone().multiplyScalar(4.6));
+    const dirN = this._dirN.copy(dir).normalize();
+    // copy dirN into position then scale in place — leaves dirN intact for the
+    // updateHighlight / updateCompassRotation reads below.
+    this.camera.position.copy(dirN).multiplyScalar(4.6);
     this.camera.up.copy(camera.up);
     this.camera.lookAt(0, 0, 0);
 
