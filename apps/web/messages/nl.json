@@ -9,6 +9,7 @@
     "features": "Functies",
     "faq": "Veelgestelde vragen",
     "blog": "Blog",
+    "security": "Beveiliging",
     "requestAccess": "Word partner",
     "contactSales": "Neem contact op",
     "themeToggle": "Thema wisselen"
@@ -17,9 +18,10 @@
     "badge": "Founding partners · beperkt aantal plekken voor Nederlandse aannemers",
     "headline": "Het bouwkwaliteitsplatform, gebouwd op uw model. Van eerste opleverpunt tot definitief dossier.",
     "subtitle": "Zet elke bevinding vast op uw 3D-model, of op een PDF-plattegrond als u nog geen model heeft. Voeg foto's toe, wijs de oplossing toe en volg hem tot hij klaar is. Deadlines bewaken zichzelf, zodat uw Wkb-dossier klaarligt van bouwmelding tot gereedmelding.",
-    "trust": "Samen met founding partners in Nederland gebouwd · EU-gehost, inclusief verwerkersovereenkomst · Werkt naast elke kwaliteitsborger en elk instrument",
+    "trust": "Samen met founding partners in Nederland gebouwd · EU-gehost, AVG-conform, inclusief verwerkersovereenkomst · Werkt naast elke kwaliteitsborger en elk instrument",
     "ctaPrimary": "Word founding partner",
-    "ctaDemo": "Bekijk het op het model"
+    "ctaDemo": "Bekijk het op het model",
+    "ctaFree": "Bekijk uw model gratis"
   },
   "features": {
     "eyebrow": "Mogelijkheden",
@@ -40,6 +42,22 @@
       "inspections": {
         "title": "Inspecties",
         "body": "Loop de bouwplaats, leg vast wat u ziet en maak van de ronde een PDF-rapport."
+      },
+      "photos": {
+        "title": "Foto's",
+        "body": "Maak foto's op de bouwplaats en zet ze op het model, zodat het bewijs staat waar het werk is gedaan."
+      },
+      "onsite": {
+        "title": "Op locatie",
+        "body": "Loop met uw telefoon door het gebouw, leg vast wat u ziet, en het staat op het model voor u weg bent."
+      },
+      "teamwork": {
+        "title": "Samenwerken",
+        "body": "Wijs werk toe, laat een notitie achter en houd iedereen op hetzelfde model."
+      },
+      "certificates": {
+        "title": "Certificaten",
+        "body": "Verzamel product- en installatiecertificaten bij het project, klaar voor de oplevering."
       },
       "handover": {
         "title": "Oplevering",
@@ -119,7 +137,8 @@
   "cta": {
     "headline": "Stop met achter papierwerk aan jagen. Laat zien dat het werk goed is gedaan.",
     "subtitle": "Opleverpunten, inspecties en uw Wkb-dossier, allemaal op uw model. Word founding partner en sta er bij uw volgende gereedmelding helemaal klaar voor.",
-    "button": "Word founding partner"
+    "button": "Word founding partner",
+    "buttonFree": "Bekijk uw model gratis"
   },
   "footer": {
     "product": "Product",
@@ -164,6 +183,7 @@
     "headline": "Vang gebreken voordat ze geld kosten.",
     "subtitle": "Sleep om het model te draaien. Bevindingen worden er direct op gemarkeerd zodra inspecteurs ze vinden en oplossen.",
     "cta": "Word founding partner",
+    "ctaFree": "Bekijk uw model gratis",
     "hintDrag": "Sleep om te draaien",
     "hintWatch": "Elke speld markeert een echte bevinding",
     "learnMoreBlog": "Lees op de blog hoe opleveren werkt",
@@ -218,7 +238,7 @@
     "items": {
       "hosting": {
         "title": "EU-gehost, inclusief verwerkersovereenkomst",
-        "body": "Uw gegevens draaien op EU-infrastructuur en verlaten die nooit. Met elke founding partner sluiten we een verwerkersovereenkomst (DPA)."
+        "body": "Uw gegevens draaien op EU-infrastructuur en verlaten die nooit, conform de AVG (GDPR). Met elke founding partner sluiten we een verwerkersovereenkomst (DPA)."
       },
       "instrument": {
         "title": "Werkt naast uw kwaliteitsborger",
@@ -229,7 +249,8 @@
         "body": "Gebouwd in Nederland door het team achter BimDossier. Als founding partner heeft u direct contact met ons. Geen ticketwachtrij."
       }
     },
-    "dpaLink": "Lees onze verwerkersovereenkomst"
+    "dpaLink": "Lees onze verwerkersovereenkomst",
+    "securityLink": "Zo beschermen we uw gegevens"
   },
   "faq": {
     "eyebrow": "Vragen",
@@ -260,5 +281,89 @@
         "a": "Het founding-partner-tarief hangt af van uw team en projecten. Begin het gesprek, dan bespreken we het. Het verplicht u tot niets."
       }
     ]
+  },
+  "securityPage": {
+    "metadata": {
+      "title": "Beveiliging",
+      "description": "Hoe BimDossier uw gegevens beschermt: EU-hosting, scheiding per organisatie, encryptie, geharde authenticatie en audit logging. Gebouwd voor juridisch dragende dossiers."
+    },
+    "hero": {
+      "eyebrow": "Beveiliging",
+      "headline": "Gebouwd voor gereguleerd werk, en om uw gegevens veilig te houden",
+      "lead": "Uw dossier is juridisch dragend en moet jaren mee. Hier leest u precies hoe het platform het beschermt, in gewone taal en zonder mooie praatjes.",
+      "residency": "Gehost op EU-infrastructuur. Uw gegevens blijven in de EU en verlaten die nooit."
+    },
+    "controls": {
+      "eyebrow": "Zo beschermen we uw gegevens",
+      "headline": "Beveiliging in elke laag",
+      "subtitle": "Dit zit allemaal vandaag al in het platform, het is geen belofte voor later.",
+      "items": {
+        "isolation": {
+          "title": "Uw gegevens in een eigen kluis",
+          "body": "Elke organisatie krijgt een eigen, gescheiden databaseschema. Uw gegevens staan fysiek los van die van elke andere klant, niet alleen gefilterd met een query, en een database-rol zonder extra rechten dwingt dit af."
+        },
+        "encryption": {
+          "title": "Versleuteld onderweg en in opslag",
+          "body": "Verkeer is beveiligd met TLS, en opgeslagen bestanden en gegevens zijn versleuteld in rust op EU-infrastructuur."
+        },
+        "auth": {
+          "title": "Geharde aanmelding",
+          "body": "Sessies gebruiken kortlevende tokens die bij elke vernieuwing roteren, met automatische detectie van gestolen tokens. Herhaalde mislukte aanmeldingen vergrendelen het account met een oplopende wachttijd, en uitloggen trekt toegang direct in."
+        },
+        "access": {
+          "title": "Toegang met minimale rechten",
+          "body": "De applicatie draait als een beperkte database-rol, bestandsopslag is per organisatie afgeschermd zodat geen enkel verzoek bij de bestanden van een andere klant kan, en row-level security beschermt de gedeelde tabellen."
+        },
+        "audit": {
+          "title": "Elke actie vastgelegd",
+          "body": "Beveiligingsrelevante acties worden vastgelegd in een audittrail, en één request-id verbindt de logs, het auditrecord en foutmonitoring zodat alles van begin tot eind te herleiden is."
+        },
+        "platform": {
+          "title": "Een gehard platform",
+          "body": "Strikte content-security- en transport-headers, rate limiting op gevoelige endpoints en een opstartcontrole die weigert te starten met onveilige instellingen houden het platform standaard op slot."
+        }
+      }
+    },
+    "compliance": {
+      "eyebrow": "Compliance en uw rechten",
+      "headline": "In lijn met EU- en Nederlandse regels",
+      "subtitle": "Wij zijn verwerker van uw gegevens, en zo behandelen we ze ook.",
+      "items": {
+        "residency": {
+          "title": "EU-dataresidentie",
+          "body": "Alle gegevens worden binnen de EU gehost en verlaten die nooit."
+        },
+        "gdpr": {
+          "title": "AVG / GDPR",
+          "body": "De verwerking volgt de AVG (GDPR). U kunt persoonsgegevens inzien, corrigeren, exporteren of verwijderen, en een klacht indienen bij de Autoriteit Persoonsgegevens."
+        },
+        "dpa": {
+          "title": "Verwerkersovereenkomst (DPA)",
+          "body": "Met elke klant sluiten we een verwerkersovereenkomst. Lees hem voordat u zich ergens aan verbindt."
+        },
+        "retention": {
+          "title": "Wkb-bewaartermijn",
+          "body": "Dossiergegevens bewaren we de wettelijke Wkb-termijn van tien jaar na oplevering, daarna geven we ze terug of verwijderen we ze."
+        },
+        "breach": {
+          "title": "Melding bij datalek",
+          "body": "Raakt een datalek uw gegevens, dan melden we dat zonder onnodige vertraging en in elk geval binnen 72 uur nadat we ervan op de hoogte zijn, conform artikel 33 AVG."
+        },
+        "boundary": {
+          "title": "Een eerlijke grens",
+          "body": "BimDossier is geen erkend Wkb-instrument en vervangt uw kwaliteitsborger niet. Het draait uw dossier naast het instrument dat u al gebruikt."
+        }
+      },
+      "dpaLink": "Lees onze verwerkersovereenkomst",
+      "privacyLink": "Lees onze privacyverklaring"
+    },
+    "disclosure": {
+      "eyebrow": "Kwetsbaarheid melden",
+      "headline": "Een beveiligingsprobleem gevonden?",
+      "body": "We verwelkomen meldingen van beveiligingsonderzoekers. Mail ons en we reageren snel. Geef ons een redelijke kans om een probleem op te lossen voordat u het openbaar maakt.",
+      "email": "security@bimdossier.nl",
+      "emailLabel": "Mail het beveiligingsteam",
+      "txtLabel": "Bekijk security.txt"
+    }
   }
 }

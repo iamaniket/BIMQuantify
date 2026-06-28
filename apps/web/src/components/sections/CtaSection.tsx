@@ -1,16 +1,19 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { HeroGrid } from '@bimdossier/brand';
+import { Button } from '@bimdossier/ui';
 
 import { Reveal } from '@/components/shared/Reveal';
+import { portalHref } from '@/lib/portalLinks';
 
 import { BrandAccentCta } from './BrandAccentCta';
 
 export function CtaSection(): JSX.Element {
   const t = useTranslations('cta');
+  const locale = useLocale();
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-[var(--brand-gradient-start)] to-[var(--brand-gradient-end)]">
@@ -23,7 +26,18 @@ export function CtaSection(): JSX.Element {
           <p className="max-w-xl text-title3 text-white/80">
             {t('subtitle')}
           </p>
-          <BrandAccentCta>{t('button')}</BrandAccentCta>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <BrandAccentCta>{t('button')}</BrandAccentCta>
+            <a href={portalHref(locale, '/free-viewer')}>
+              <Button
+                variant="ghost"
+                size="lg"
+                className="border border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
+              >
+                {t('buttonFree')}
+              </Button>
+            </a>
+          </div>
         </div>
       </Reveal>
     </section>

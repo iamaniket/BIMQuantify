@@ -164,7 +164,8 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
       if (accessToken === null) throw new Error('Not authenticated');
       return getProjectViewerBundle(accessToken, projectId);
     },
-    enabled: ready && !isSingle && accessToken !== null,
+    // Drawings mode (persona A) renders its own by-Level browser — no IFC manifest.
+    enabled: ready && !isSingle && target.kind !== 'drawings' && accessToken !== null,
     staleTime: 60_000,
   });
 

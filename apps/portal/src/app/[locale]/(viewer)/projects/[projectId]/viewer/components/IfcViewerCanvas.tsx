@@ -238,6 +238,7 @@ export function IfcViewerCanvas({
           <CalibrationPane
             projectId={projectId}
             planApiModelId={planApiModelId}
+            entries={scope.entries}
             viewerHandle={viewerHandleRef.current}
             viewerReady={viewerReady}
             metadata={planMetadata}
@@ -255,6 +256,7 @@ export function IfcViewerCanvas({
             projectId={projectId}
             fileId={scope.planFileId ?? fileId}
             planModelId={planApiModelId}
+            entries={scope.entries}
             viewMode={viewMode}
             onFindingClick={onFindingClick}
             onRequestFindings={onRequestFloorPlanFindings}

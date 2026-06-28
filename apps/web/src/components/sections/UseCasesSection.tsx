@@ -5,9 +5,13 @@ import { cn } from '@bimdossier/ui';
 // `@bimdossier/ui/icons` barrel exports (Lucide-compat aliases over Phosphor).
 import {
   CalendarClock,
+  Camera,
   ClipboardCheck,
+  FileBadge,
   MapPin,
   ShieldCheck,
+  Smartphone,
+  Users,
   type AppIcon,
 } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
@@ -16,7 +20,15 @@ import type { JSX } from 'react';
 import { Reveal } from '@/components/shared/Reveal';
 import { SectionHeading } from '@/components/shared/SectionHeading';
 
-type UseCaseKey = 'snagging' | 'inspections' | 'handover' | 'wkb';
+type UseCaseKey =
+  | 'snagging'
+  | 'inspections'
+  | 'photos'
+  | 'onsite'
+  | 'teamwork'
+  | 'certificates'
+  | 'handover'
+  | 'wkb';
 
 type UseCaseItem = {
   /** i18n key under `useCases.items.*`. */
@@ -36,6 +48,10 @@ type UseCaseItem = {
 const USE_CASES: UseCaseItem[] = [
   { key: 'snagging', icon: MapPin, flagship: false },
   { key: 'inspections', icon: ClipboardCheck, flagship: false },
+  { key: 'photos', icon: Camera, flagship: false },
+  { key: 'onsite', icon: Smartphone, flagship: false },
+  { key: 'teamwork', icon: Users, flagship: false },
+  { key: 'certificates', icon: FileBadge, flagship: false },
   { key: 'handover', icon: ShieldCheck, flagship: false },
   { key: 'wkb', icon: CalendarClock, flagship: true },
 ];

@@ -25,6 +25,7 @@ export function MarketingHeader(): JSX.Element {
   const navItems: NavItem[] = [
     { label: t('features'), href: '/#features' },
     { label: t('faq'), href: '/#faq' },
+    { label: t('security'), href: '/security', activeMatch: '/security' },
     { label: t('blog'), href: '/blog', activeMatch: '/blog' },
     // Request access lives in the portal — link out, no in-site active state.
     { label: t('requestAccess'), href: portalHref(locale, '/request-access'), external: true },

@@ -69,7 +69,9 @@ import { useFindingPinVisibility } from '@/features/viewer/shared/useFindingPinV
 import {
   setViewerTarget,
   useViewerSelectionHydrated,
+  useViewerTarget,
 } from '@/features/viewer/shared/viewerSelectionStore';
+import { LevelDrawingPane } from '@/features/viewer/2d/LevelDrawingPane';
 import { useViewerBridge } from '@/features/viewer/3d/useViewerBridge';
 import { useSpaceVisibility } from '@/features/viewer/3d/spaces';
 import { usePerformanceCulling } from '@/features/viewer/3d/performanceCulling';
@@ -109,6 +111,9 @@ export default function ViewerPage(): JSX.Element {
   // until the store rehydrates so a refresh restores the exact scene.
   const hydrated = useViewerSelectionHydrated();
   const scope = useViewerScope(projectId, hydrated);
+  // Persona-A drawings mode: a model-less, by-Level PDF browser. Renders its own
+  // self-contained pane and skips the IFC/PDF scope machinery + chrome.
+  const isDrawingsMode = useViewerTarget(projectId).kind === 'drawings';
   // `modelId` / `fileId` are the ACTIVE model's API ids (single: the target
   // file; multi: the selected/primary model). Aliased so the existing panel
   // wiring below reads them unchanged.
@@ -537,7 +542,7 @@ export default function ViewerPage(): JSX.Element {
   // as the page mounts — the only thing we wait for is the bundle URL, and
   // even that is usually prefetched on hover. The canvas area shows its own
   // skeleton/progress UI underneath while the file loads.
-  const showChrome = error === null;
+  const showChrome = error === null && !isDrawingsMode;
   const showToolbarPlaceholder = showChrome && !ifcShellReady && !pdfShellReady && !isDrawing;
 
   // GlobalId → ItemId for the open model, so a marker click can select the
@@ -803,7 +808,10 @@ export default function ViewerPage(): JSX.Element {
   });
 
   let canvas: JSX.Element | null = null;
-  if (error !== null) {
+  if (isDrawingsMode) {
+    // Persona A: a PDF-only project browsed by project Level (no 3D model).
+    canvas = <LevelDrawingPane projectId={projectId} />;
+  } else if (error !== null) {
     canvas = (
       <ErrorBanner message={error} tone="soft" className="m-6 text-body2" />
     );
@@ -1125,16 +1133,18 @@ export default function ViewerPage(): JSX.Element {
           </div>
         ) : null}
       </div>
-      <StatusBar
-        format={format}
-        metadata={metadata}
-        drawingMetadata={drawingMetadata}
-        viewerReady={viewerReady}
-        currentPage={pdfCurrentPage}
-        numPages={pdfNumPages}
-        projectId={projectId}
-        fileId={fileId}
-      />
+      {!isDrawingsMode ? (
+        <StatusBar
+          format={format}
+          metadata={metadata}
+          drawingMetadata={drawingMetadata}
+          viewerReady={viewerReady}
+          currentPage={pdfCurrentPage}
+          numPages={pdfNumPages}
+          projectId={projectId}
+          fileId={fileId}
+        />
+      ) : null}
 
       </div>
       {showChrome && bundle !== null ? (

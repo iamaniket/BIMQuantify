@@ -182,6 +182,9 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
     }
   }
   const single2d = readyPdfTargets.length === 1 ? readyPdfTargets[0]! : null;
+  // ≥2 ready drawings → the by-Level drawing browser (persona A/D). A lone drawing
+  // keeps the richer single-file viewer (markup, findings, measurement).
+  const multiDrawings = readyPdfTargets.length >= 2;
 
   const toggleSelected = (documentId: string): void => {
     setSelectedDocumentIds((prev) => {
@@ -214,6 +217,7 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
   // Main click: 3D when any document can federate, else the lone 2D document.
   const loadAllSmart = (): void => {
     if (canLoad3d) loadAll3d();
+    else if (multiDrawings) goViewer({ kind: 'drawings' });
     else if (single2d !== null) loadAll2d();
   };
 
@@ -235,7 +239,15 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
       onSelect: loadAll2d,
     });
   }
-  const canLoadAll = canLoad3d || single2d !== null;
+  if (multiDrawings) {
+    loadItems.push({
+      id: 'browse-2d',
+      label: t('browseDrawings'),
+      icon: <FileText className="h-4 w-4" />,
+      onSelect: () => { goViewer({ kind: 'drawings' }); },
+    });
+  }
+  const canLoadAll = canLoad3d || single2d !== null || multiDrawings;
 
   // Only the loadable subset of the selection can join a federated scene.
   const loadableSelected = documents.filter((m) => selectedDocumentIds.has(m.id) && isLoadable(m.id));

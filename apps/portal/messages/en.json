@@ -1,4 +1,14 @@
 {
+  "freeViewer": {
+    "eyebrow": "Free preview",
+    "heading": "View your IFC model in the browser. Free.",
+    "subtitle": "Upload a model, open it in 3D, and pin snags right on it. No desktop software, no setup. We're opening it to early users first.",
+    "bullet1": "Drag and drop an IFC file and view it in 3D in your browser",
+    "bullet2": "Pin snags on the model and share them with your team",
+    "bullet3": "Compliance checks and the full Wkb dossier come with a project",
+    "cta": "Join the free preview",
+    "note": "The free viewer is rolling out to early users. Add your details and we'll let you in as soon as it opens."
+  },
   "imageAnnotator": {
     "title": "Annotate photo",
     "subtitle": "Draw arrows, shapes, text or blur over the photo. The original is always kept.",
@@ -1295,6 +1305,7 @@
         "loadAll": "Load all",
         "loadAll3d": "Load all 3D",
         "loadAll2d": "Load all 2D",
+        "browseDrawings": "Open drawings",
         "loadAllMenu": "Load options",
         "selectedCount": "{count, plural, =1 {1 container selected} other {# containers selected}}",
         "clearSelection": "Clear",
@@ -1952,7 +1963,8 @@
       "remove": "Remove",
       "pickerTitle": "Select a document",
       "pickerDescription": "Choose a project document to reference.",
-      "empty": "No documents available"
+      "empty": "No documents available",
+      "openInViewer": "Open document"
     }
   },
   "findingsBoard": {
@@ -3801,8 +3813,24 @@
       "showGeneratedPlan": "Show generated plan",
       "source": {
         "alignedPdf": "Aligned PDF",
-        "generated": "Generated plan"
+        "generated": "Generated plan",
+        "pickerLabel": "Drawing",
+        "sheetLabel": "{discipline} — p{page}"
+      },
+      "discipline": {
+        "architectural": "Architectural",
+        "structural": "Structural",
+        "mep": "MEP",
+        "coordination": "Coordination",
+        "other": "Other"
       }
+    },
+    "drawings": {
+      "empty": "No drawings yet",
+      "emptyHint": "Upload PDF drawings and assign them to a level to browse them here.",
+      "unassigned": "Unassigned",
+      "levelLabel": "Level",
+      "drawingLabel": "Drawing"
     },
     "viewMode": {
       "label": "View",
@@ -3817,6 +3845,7 @@
     },
     "aligned": {
       "pickPdfModel": "PDF drawing",
+      "calibrateAgainst": "Calibrate against this 3D model",
       "pickPage": "Page {n}",
       "pickLevel": "Level",
       "pickPdf": "Click the same point on the PDF",
@@ -4517,5 +4546,21 @@
     "cancelled": "Cancelled",
     "jobAlreadyRunning": "Job already started and can't be cancelled",
     "progressLabel": "{percent}%"
+  },
+  "onboarding": {
+    "welcome": {
+      "eyebrow": "Welcome",
+      "title": "Welcome to {org}",
+      "subtitleAdmin": "You've joined as an administrator. Here's how to get started:",
+      "subtitleMember": "You've joined as a member. Here's how to get started:",
+      "capAdminManageTeam": "Manage your team and invite colleagues",
+      "capAdminCreateProjects": "Create projects and set filing deadlines",
+      "capAdminFullAccess": "Full access to dossiers, findings, and reports",
+      "capMemberViewProjects": "View your organization's projects",
+      "capMemberUploadDocs": "Upload documents and drawings",
+      "capMemberTrackFindings": "Track findings and deadlines",
+      "getStarted": "Get started",
+      "dismiss": "Later"
+    }
   }
 }

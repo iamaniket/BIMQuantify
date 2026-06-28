@@ -9,6 +9,7 @@ import type { JSX } from 'react';
 
 import { Reveal } from '@/components/shared/Reveal';
 import { SectionHeading } from '@/components/shared/SectionHeading';
+import { Link } from '@/i18n/navigation';
 import { portalHref } from '@/lib/portalLinks';
 
 type TrustKey = 'hosting' | 'instrument' | 'team';
@@ -57,13 +58,22 @@ export function TrustBandSection(): JSX.Element {
                     </p>
                   </div>
                   {key === 'hosting' ? (
-                    <a
-                      href={portalHref(locale, '/legal/dpa')}
-                      className="mt-auto inline-flex items-center gap-1.5 text-body2 font-medium text-primary hover:underline"
-                    >
-                      {t('dpaLink')}
-                      <ArrowRight className="h-4 w-4" aria-hidden />
-                    </a>
+                    <div className="mt-auto flex flex-col gap-2">
+                      <Link
+                        href="/security"
+                        className="inline-flex items-center gap-1.5 text-body2 font-medium text-primary hover:underline"
+                      >
+                        {t('securityLink')}
+                        <ArrowRight className="h-4 w-4" aria-hidden />
+                      </Link>
+                      <a
+                        href={portalHref(locale, '/legal/dpa')}
+                        className="inline-flex items-center gap-1.5 text-body2 font-medium text-primary hover:underline"
+                      >
+                        {t('dpaLink')}
+                        <ArrowRight className="h-4 w-4" aria-hidden />
+                      </a>
+                    </div>
                   ) : null}
                 </CardBody>
               </Card>

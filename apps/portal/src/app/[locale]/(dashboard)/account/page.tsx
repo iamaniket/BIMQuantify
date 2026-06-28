@@ -46,6 +46,7 @@ import {
 import type { InvitationRead } from '@/lib/api/schemas';
 import { formatDate } from '@/lib/formatting/dates';
 import { useAuth } from '@/providers/AuthProvider';
+import { WelcomeDialog } from '@/features/onboarding/WelcomeDialog';
 
 function toInitials(nameOrEmail: string): string {
   const words = nameOrEmail.split(/\s+/).filter(Boolean);
@@ -589,6 +590,7 @@ export default function AccountPage(): JSX.Element {
   const [invitationsLoading, setInvitationsLoading] = useState(true);
   const [pendingOrgId, setPendingOrgId] = useState<string | null>(null);
   const [invError, setInvError] = useState<string | null>(null);
+  const [welcome, setWelcome] = useState<{ orgName: string; isAdmin: boolean } | null>(null);
 
   const loadInvitations = useCallback(async (): Promise<void> => {
     if (accessToken === null) return;
@@ -609,13 +611,19 @@ export default function AccountPage(): JSX.Element {
 
   const onAccept = async (orgId: string): Promise<void> => {
     if (accessToken === null) return;
+    // Capture before the list reload clears it — drives the welcome dialog.
+    const invitation = invitations.find((inv) => inv.organization_id === orgId);
     setInvError(null);
     setPendingOrgId(orgId);
     try {
       await acceptInvitation(accessToken, orgId);
       await refreshMe();
       await loadInvitations();
-      toast.success(t('acceptSuccess'));
+      if (invitation !== undefined) {
+        setWelcome({ orgName: invitation.organization_name, isAdmin: invitation.is_org_admin });
+      } else {
+        toast.success(t('acceptSuccess'));
+      }
     } catch (err) {
       setInvError(err instanceof ApiError ? err.detail : t('errors.acceptFailed'));
     } finally {
@@ -673,6 +681,7 @@ export default function AccountPage(): JSX.Element {
   }[tab] ?? { eyebrow: '', title: '' };
 
   return (
+    <>
     <TabbedPageShell
       hero={
         <AccountHero
@@ -738,5 +747,12 @@ export default function AccountPage(): JSX.Element {
             />
           </TabsContent>
     </TabbedPageShell>
+    <WelcomeDialog
+      open={welcome !== null}
+      orgName={welcome?.orgName ?? ''}
+      isAdmin={welcome?.isAdmin ?? false}
+      onClose={() => { setWelcome(null); }}
+    />
+    </>
   );
 }

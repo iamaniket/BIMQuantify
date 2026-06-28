@@ -69,6 +69,8 @@ export function Footer(): JSX.Element {
     {
       title: tFooter('legal'),
       links: [
+        // Security lives on the marketing site (not the portal) — link in-site.
+        { label: tHeader('security'), href: '/security', external: undefined },
         { label: tLegal('privacy'), href: portalHref(locale, '/legal/privacy'), external: true },
         { label: tLegal('terms'), href: portalHref(locale, '/legal/terms'), external: true },
         { label: tLegal('dpa'), href: portalHref(locale, '/legal/dpa'), external: true },

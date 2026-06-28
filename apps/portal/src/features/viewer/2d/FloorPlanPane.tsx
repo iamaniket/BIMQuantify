@@ -40,19 +40,29 @@ import {
 } from '@/components/shared/viewer/shared/_toolbarPrimitives';
 import type { ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import { useAlignedSheets } from '@/features/aligned-sheets/hooks';
+import { useDocumentsWithVersions } from '@/features/documents/useDocumentsWithVersions';
+import { federatedModelId } from '@/features/viewer/3d/federation/federatedModelId';
 import { resolveColor } from '@/features/viewer/3d/minimap/spatialNames';
 import { buildStoreyMembership } from '@/features/viewer/3d/minimap/storeyMembership';
+import { useFederatedLevelMembership } from '@/features/viewer/3d/minimap/useFederatedLevelMembership';
+import { useModelMetadata } from '@/features/viewer/3d/useModelMetadata';
 import { useStoreys } from '@/features/storeys/useStoreys';
 import { useViewerBundle } from '@/features/viewer/shared/useViewerBundle';
-import type { AlignedSheet, Finding } from '@/lib/api/schemas';
+import type { AlignedSheet, Finding, ProjectViewerDocumentEntry } from '@/lib/api/schemas';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 
 import { stashPendingElementPoint } from '@/features/viewer/shared/inspector/pendingElementPoint';
 
 import { DocumentContextMenu } from './DocumentContextMenu';
+import {
+  buildSourceLevels,
+  groupSheetsByLevel,
+  resolveActiveSheet,
+  sourceActiveLevelIndex,
+} from './drawingSources';
 import { toSheetTransform } from './sheetTransform';
 import { useAlignedSheetMarkers } from './useAlignedSheetMarkers';
-import { useFloorPlanData } from './useFloorPlanData';
+import { useFloorPlanData, type FloorPlanDisplayLevel } from './useFloorPlanData';
 import { useFloorPlanFindingMarkers } from './useFloorPlanFindingMarkers';
 import { useFloorPlanLink } from './useFloorPlanLink';
 import { useSplitEntryCamera } from './useSplitEntryCamera';
@@ -73,8 +83,12 @@ type Props = {
   metadata: ModelMetadata | undefined;
   projectId: string;
   fileId: string;
-  /** The 3D model's API UUID — owns storeys + aligned sheets (for substitution). */
+  /** The plan model's API UUID — owns storeys + the generated plan. */
   planModelId: string | null;
+  /** Every loaded federated model — so a sheet calibrated against a discipline
+   * model can be projected against THAT model (not just the plan model). Empty in
+   * single-file mode (falls back to the plan model). */
+  entries: ProjectViewerDocumentEntry[];
   /** Current viewer layout — drives the Split-entry camera/first-person behavior. */
   viewMode: ViewMode;
   onFindingClick: (finding: Finding) => void;
@@ -109,6 +123,7 @@ export function FloorPlanPane({
   projectId,
   fileId,
   planModelId,
+  entries,
   viewMode,
   onFindingClick,
   onRequestFindings,
@@ -138,8 +153,6 @@ export function FloorPlanPane({
   const [docHandle, setDocHandle] = useState<DocumentViewerHandle | null>(null);
   const [planRendered, setPlanRendered] = useState(false);
   const [docReady, setDocReady] = useState(false);
-  /** User override: prefer the generated plan even when a sheet is available. */
-  const [showGenerated, setShowGenerated] = useState(false);
 
   const handleFpRef = useCallback((h: DocumentViewerHandle | null) => {
     setFpHandle(h);
@@ -164,17 +177,26 @@ export function FloorPlanPane({
 
   const safeLevel = Math.min(activeLevel, Math.max(0, levels.length - 1));
 
-  // ---- Aligned-sheet substitution: resolve a calibrated PDF for this level ----
+  // ---- Drawing-source resolution (per project Level, across disciplines) ----
+  // The PLAN model's storeys drive the level dropdown + the generated plan, and
+  // map each plan storey to its shared project Level.
   const storeysQuery = useStoreys(projectId, planModelId ?? '');
   const storeys = useMemo(() => storeysQuery.data ?? [], [storeysQuery.data]);
-  const sheetsQuery = useAlignedSheets(
-    projectId,
-    planModelId ? { modelId: planModelId } : {},
-  );
+  // ALL calibrated sheets in the project (any discipline), grouped by the shared
+  // project Level — so a federated scene surfaces the structural plan of Level 2
+  // next to the architectural one, not just the plan model's single sheet.
+  const sheetsQuery = useAlignedSheets(projectId, {});
   const sheets = useMemo(() => sheetsQuery.data ?? [], [sheetsQuery.data]);
+  // Discipline labels for the source picker (AlignedSheet has no discipline; the
+  // PDF Document carries it).
+  const documentsQuery = useDocumentsWithVersions(projectId);
+  const disciplineByPdfDocId = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const d of documentsQuery.data ?? []) m.set(d.id, d.discipline ?? 'other');
+    return m;
+  }, [documentsQuery.data]);
 
-  // The active floor maps express_id -> storey -> its reconciled project level,
-  // and sheets pin to that level. So resolve the active level id, then the sheet.
+  // The active floor maps express_id -> storey -> its reconciled project level.
   const levelIdByExpress = useMemo(() => {
     const m = new Map<number, string>();
     for (const s of storeys) {
@@ -183,20 +205,36 @@ export function FloorPlanPane({
     return m;
   }, [storeys]);
 
-  const sheetByLevelId = useMemo(() => {
-    const m = new Map<string, AlignedSheet>();
-    for (const sh of sheets) {
-      if (sh.is_calibrated && sh.calibrated_pdf_file_id && !m.has(sh.level_id)) {
-        m.set(sh.level_id, sh);
-      }
-    }
-    return m;
-  }, [sheets]);
+  // level_id -> all its calibrated sheets (architectural first, then by page).
+  const sheetsByLevelId = useMemo(
+    () => groupSheetsByLevel(sheets, disciplineByPdfDocId),
+    [sheets, disciplineByPdfDocId],
+  );
 
   const activeExpressId = levels[safeLevel]?.storeyExpressID;
   const activeLevelId =
     activeExpressId != null ? levelIdByExpress.get(activeExpressId) : undefined;
-  const activeSheet = activeLevelId ? (sheetByLevelId.get(activeLevelId) ?? null) : null;
+  const sheetsHere = useMemo(
+    () => (activeLevelId ? (sheetsByLevelId.get(activeLevelId) ?? []) : []),
+    [activeLevelId, sheetsByLevelId],
+  );
+
+  // Cross-model element union for the active Level (every discipline's storey),
+  // so isolation hides off-level elements across the whole federated scene.
+  const levelMembership = useFederatedLevelMembership(projectId, entries);
+  const crossModelItems = useMemo(
+    () => (activeLevelId ? (levelMembership.get(activeLevelId) ?? null) : null),
+    [levelMembership, activeLevelId],
+  );
+
+  // Active drawing source, sticky by discipline (or 'generated'): switching levels
+  // keeps the chosen discipline when present, else falls back to the generated
+  // plan (always available — the active level is a plan-model storey).
+  const [preferredDiscipline, setPreferredDiscipline] = useState<string>('generated');
+  const activeSheet = useMemo<AlignedSheet | null>(
+    () => resolveActiveSheet(sheetsHere, preferredDiscipline, disciplineByPdfDocId),
+    [preferredDiscipline, sheetsHere, disciplineByPdfDocId],
+  );
 
   // Stable transform identity (recompute only when the solved fields change).
   const transform = useMemo(
@@ -213,7 +251,7 @@ export function FloorPlanPane({
   );
 
   const sheetAvailable = transform !== null && !!activeSheet?.calibrated_pdf_file_id;
-  const pdfMode = sheetAvailable && !showGenerated;
+  const pdfMode = sheetAvailable;
   const sheetTransformForLink = pdfMode ? transform : null;
 
   const bundleQuery = useViewerBundle(
@@ -222,6 +260,47 @@ export function FloorPlanPane({
     activeSheet?.calibrated_pdf_file_id ?? '',
   );
   const fileUrl = bundleQuery.data?.file_url ?? null;
+
+  // ---- Active source MODEL: the 3D model the active drawing belongs to ----
+  // Generated plan / plan-model sheet -> the plan model (props metadata/axes).
+  // A discipline sheet -> the model it was calibrated against (document_id): its
+  // bbox/axes are what the sheet transform was solved in, so the minimap MUST be
+  // calibrated with them for projection to line up (R1/R2).
+  const activeSourceModelId = activeSheet?.document_id ?? planModelId;
+  const isPlanSource = activeSheet == null || activeSourceModelId === planModelId;
+  const sourceEntry = useMemo(
+    () => entries.find((e) => e.model_id === activeSourceModelId) ?? null,
+    [entries, activeSourceModelId],
+  );
+  const sourceMetaQuery = useModelMetadata(
+    isPlanSource ? null : (sourceEntry?.metadata_url ?? null),
+  );
+  const sourceMetadata = isPlanSource ? metadata : sourceMetaQuery.data;
+  const sourceFloorPlansUrl = isPlanSource ? floorPlansUrl : (sourceEntry?.floor_plans_url ?? null);
+  const sourceFp = useFloorPlanData(sourceFloorPlansUrl, sourceMetadata, levelFallback);
+  // Axes: the source model's when it has a floor-plan artifact, else the plan
+  // model's (axes are a shared site-coordinate property).
+  const linkAxisX = sourceFloorPlansUrl ? sourceFp.planAxisX : planAxisX;
+  const linkAxisY = sourceFloorPlansUrl ? sourceFp.planAxisY : planAxisY;
+  // The source model's storeys -> link/marker levels (elevation + storeyExpressID).
+  const sourceStoreysQuery = useStoreys(projectId, isPlanSource ? '' : (activeSourceModelId ?? ''));
+  const sourceLevels = useMemo<FloorPlanDisplayLevel[]>(
+    () => (isPlanSource ? levels : buildSourceLevels(sourceStoreysQuery.data ?? [], levelFallback)),
+    [isPlanSource, levels, sourceStoreysQuery.data, levelFallback],
+  );
+  const sourceActiveLevel = useMemo(
+    () =>
+      isPlanSource
+        ? safeLevel
+        : sourceActiveLevelIndex(sourceLevels, sourceStoreysQuery.data ?? [], activeLevelId),
+    [isPlanSource, safeLevel, activeLevelId, sourceStoreysQuery.data, sourceLevels],
+  );
+  const linkMetadata = isPlanSource ? metadata : sourceMetadata;
+  const linkFileId = isPlanSource ? fileId : (sourceEntry?.file_id ?? fileId);
+  const linkViewerModelId = federatedModelId(linkFileId);
+  // The active floor's elevation in the ACTIVE SOURCE model's space.
+  const activeElevation =
+    sourceLevels[sourceActiveLevel]?.elevation ?? levels[safeLevel]?.elevation ?? 0;
 
   // Re-arm the PDF "ready" gate when the rendered sheet/page changes.
   useEffect(() => {
@@ -238,12 +317,17 @@ export function FloorPlanPane({
     fpHandle,
     viewerHandle: handle,
     viewerReady,
-    levels,
-    activeLevel: safeLevel,
+    // The active SOURCE model drives calibration + isolation (the plan model for
+    // the generated plan / a plan-model sheet; the discipline model for a sheet
+    // calibrated against it). For the generated plan these equal the plan model.
+    levels: sourceLevels,
+    activeLevel: sourceActiveLevel,
     isolate,
-    metadata,
-    planAxisX,
-    planAxisY,
+    crossModelItems,
+    metadata: linkMetadata,
+    modelId: linkViewerModelId,
+    planAxisX: linkAxisX,
+    planAxisY: linkAxisY,
     sheetTransform: sheetTransformForLink,
     // The "you are here" camera marker only makes sense alongside the 3D pane.
     linkCamera: viewMode === 'split',
@@ -271,15 +355,16 @@ export function FloorPlanPane({
     onFindingClick,
   });
 
-  // Aligned-sheet markers: model findings projected through the sheet transform.
+  // Aligned-sheet markers: the SOURCE model's findings projected through the sheet
+  // transform, banded by the source model's storey elevation.
   useAlignedSheetMarkers({
     docHandle,
     viewerHandle: handle,
     viewerReady,
     projectId,
-    fileId,
-    levels,
-    activeLevel: safeLevel,
+    fileId: linkFileId,
+    levels: sourceLevels,
+    activeLevel: sourceActiveLevel,
     sheetTransform: transform,
     enabled: pdfMode,
     onFindingClick,
@@ -291,7 +376,7 @@ export function FloorPlanPane({
   useEffect(() => {
     if (!docHandle || !handle || !pdfMode) return undefined;
     return docHandle.events.on('document:pick', (ev) => {
-      const elevation = levels[safeLevel]?.elevation ?? 0;
+      const elevation = activeElevation;
       void handle.commands
         .execute('minimap.navigateTo', { planX: ev.x, planY: ev.y, elevation })
         .catch(() => undefined);
@@ -305,7 +390,7 @@ export function FloorPlanPane({
   useEffect(() => {
     if (!docHandle || !handle || !pdfMode) return undefined;
     return docHandle.events.on('document:cameraPose', (ev) => {
-      const elevation = levels[safeLevel]?.elevation ?? 0;
+      const elevation = activeElevation;
       void handle.commands
         .execute('minimap.placeCamera', {
           planX: ev.hereX,
@@ -378,7 +463,7 @@ export function FloorPlanPane({
   const handleAddFinding = useCallback(
     async (menu: DocumentEvents['contextmenu:open']): Promise<void> => {
       if (!fpHandle || !handle) return;
-      const elevation = levels[safeLevel]?.elevation ?? 0;
+      const elevation = activeElevation;
       const planPoint = await fpHandle.commands
         .execute<{ planX: number; planY: number } | null>('floorplan.planPointAt', {
           containerX: menu.position.x,
@@ -405,7 +490,7 @@ export function FloorPlanPane({
   const handlePdfAddFinding = useCallback(
     async (menu: DocumentEvents['contextmenu:open']): Promise<void> => {
       if (!handle || !menu.pagePoint) return;
-      const elevation = levels[safeLevel]?.elevation ?? 0;
+      const elevation = activeElevation;
       const world = await handle.commands
         .execute<{ x: number; y: number; z: number } | null>('minimap.planToWorld', {
           planX: menu.pagePoint.x,
@@ -421,8 +506,10 @@ export function FloorPlanPane({
   // Report the active storey elevation so the inspector's plan-pick can lift the
   // picked point to the correct floor (same elevation `handleAddFinding` uses).
   useEffect(() => {
-    onActiveElevationChange?.(levels[safeLevel]?.elevation ?? null);
-  }, [levels, safeLevel, onActiveElevationChange]);
+    onActiveElevationChange?.(
+      sourceLevels[sourceActiveLevel]?.elevation ?? levels[safeLevel]?.elevation ?? null,
+    );
+  }, [sourceLevels, sourceActiveLevel, levels, safeLevel, onActiveElevationChange]);
 
   // Reverse storey membership (element express id → storey express id) so a 3D
   // selection can auto-follow the PDF sheet to its floor.
@@ -550,6 +637,23 @@ export function FloorPlanPane({
   const levelName = level !== undefined ? level.name : '';
   const ctxHandle = pdfMode ? docHandle : fpHandle;
 
+  // Localized discipline name (literal keys so next-intl type-checks).
+  const disciplineLabel = (d: string): string => {
+    switch (d) {
+      case 'architectural': return t('discipline.architectural');
+      case 'structural': return t('discipline.structural');
+      case 'mep': return t('discipline.mep');
+      case 'coordination': return t('discipline.coordination');
+      default: return t('discipline.other');
+    }
+  };
+  const activeSourceLabel = activeSheet
+    ? t('source.sheetLabel', {
+        discipline: disciplineLabel(disciplineByPdfDocId.get(activeSheet.pdf_document_id) ?? 'other'),
+        page: activeSheet.page_index + 1,
+      })
+    : t('source.generated');
+
   const levelPicker = levels.length > 1 ? (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -599,26 +703,38 @@ export function FloorPlanPane({
           >
             <StackIcon className="h-4 w-4" />
           </ToolButton>
-          {sheetAvailable && (
+          {sheetsHere.length > 0 && (
             <>
               <ToolbarDivider />
-              {/* Active 2D source label — which drawing the pane currently shows */}
-              <span className="px-1 text-caption font-medium text-foreground-tertiary">
-                {pdfMode ? t('source.alignedPdf') : t('source.generated')}
-              </span>
-              {/* Toggle between the calibrated PDF sheet and the generated plan */}
-              <ToolButton
-                isActive={pdfMode}
-                onClick={() => {
-                  setShowGenerated((v) => !v);
-                }}
-                aria-pressed={pdfMode}
-                aria-label={pdfMode ? t('showGeneratedPlan') : t('showAlignedSheet')}
-                title={pdfMode ? t('showGeneratedPlan') : t('showAlignedSheet')}
-                className="h-8 w-8"
-              >
-                <Image className="h-4 w-4" />
-              </ToolButton>
+              {/* Drawing-source picker: the generated plan + every calibrated sheet
+                  on this Level, labelled by discipline (so a federated scene lets
+                  you pick "structural plan of Level 2" vs the architectural one). */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    title={t('source.pickerLabel')}
+                    className="inline-flex h-8 max-w-[180px] items-center gap-1 rounded-md px-2 text-caption font-medium text-foreground/80 hover:bg-foreground/[0.06] focus-visible:outline-none"
+                  >
+                    <Image className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{activeSourceLabel}</span>
+                    <CaretDownIcon className="h-3 w-3 shrink-0 opacity-50" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" sideOffset={6} className="max-h-60 overflow-y-auto">
+                  <DropdownMenuItem onSelect={() => { setPreferredDiscipline('generated'); }}>
+                    {t('source.generated')}
+                  </DropdownMenuItem>
+                  {sheetsHere.map((s) => {
+                    const disc = disciplineByPdfDocId.get(s.pdf_document_id) ?? 'other';
+                    return (
+                      <DropdownMenuItem key={s.id} onSelect={() => { setPreferredDiscipline(disc); }}>
+                        {t('source.sheetLabel', { discipline: disciplineLabel(disc), page: s.page_index + 1 })}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           )}
           {viewMode === 'split' && canCalibrate && (

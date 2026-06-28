@@ -100,7 +100,7 @@ test.describe.serial('Request-access journey', () => {
         (r) => r.url().includes('/access-requests') && r.request().method() === 'POST',
         { timeout: 20_000 },
       ),
-      page.getByRole('button', { name: 'Apply to join the pilot' }).click(),
+      page.getByRole('button', { name: 'Apply to become a founding partner' }).click(),
     ]);
     if (!submitResp.ok()) {
       throw new Error(
@@ -324,7 +324,7 @@ test.describe.serial('Request-access pilot questions', () => {
         (r) => r.url().includes('/access-requests') && r.request().method() === 'POST',
         { timeout: 20_000 },
       ),
-      page.getByRole('button', { name: 'Apply to join the pilot' }).click(),
+      page.getByRole('button', { name: 'Apply to become a founding partner' }).click(),
     ]);
     if (!submitResp.ok()) {
       throw new Error(
@@ -338,7 +338,7 @@ test.describe.serial('Request-access pilot questions', () => {
     // assertion doesn't hinge on the exact dash codepoint.
     const sentNotes =
       (submitResp.request().postDataJSON() as { notes?: string }).notes ?? '';
-    expect(sentNotes).toContain('Pilot questions');
+    expect(sentNotes).toContain('Founding-partner questions');
     expect(sentNotes).toMatch(/Start: Within 1.3 months/);
     expect(sentNotes).toMatch(/Projects\/year: 21.50/);
     expect(sentNotes).toContain('Live project: Yes, ready to go');
@@ -376,7 +376,7 @@ test.describe.serial('Request-access pilot questions', () => {
     // Every pilot answer composeAccessRequestNotes folded in is visible to the
     // reviewer. getByText normalizes whitespace, so the multi-line notes blob
     // matches each line as a substring; `.` stands in for the en-dash.
-    await expect(page.getByText('Pilot questions')).toBeVisible();
+    await expect(page.getByText('Founding-partner questions')).toBeVisible();
     await expect(page.getByText(/Start:\s*Within 1.3 months/)).toBeVisible();
     await expect(page.getByText(/Projects\/year:\s*21.50/)).toBeVisible();
     await expect(page.getByText(/Live project:\s*Yes, ready to go/)).toBeVisible();
@@ -426,7 +426,7 @@ test.describe.serial('Request-access duplicate handling', () => {
         (r) => r.url().includes('/access-requests') && r.request().method() === 'POST',
         { timeout: 20_000 },
       ),
-      page.getByRole('button', { name: 'Apply to join the pilot' }).click(),
+      page.getByRole('button', { name: 'Apply to become a founding partner' }).click(),
     ]);
     return resp;
   }
@@ -475,9 +475,9 @@ test.describe.serial('Request-access duplicate handling', () => {
     const { email, password } = requireSuperAdminCreds();
     await loginViaAPI(page, email, password);
 
-    // The main-flow run state's `orgName` (R3) was provisioned successfully —
-    // reuse that exact name to trigger the collision check.
-    const reusedOrgName = runState.orgName;
+    // "Acme Construction" is always provisioned by the E2E seed, so it's a
+    // guaranteed collision without depending on R3 having run first.
+    const reusedOrgName = 'Acme Construction';
 
     await page.goto('/en/admin/access-requests');
     // Pieter's pending request from D1a is the candidate to approve.

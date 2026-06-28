@@ -1,4 +1,14 @@
 {
+  "freeViewer": {
+    "eyebrow": "Gratis preview",
+    "heading": "Bekijk uw IFC-model in de browser. Gratis.",
+    "subtitle": "Upload een model, bekijk het in 3D en zet bevindingen er direct op vast. Geen desktopsoftware, geen installatie. We openen hem eerst voor de eerste gebruikers.",
+    "bullet1": "Sleep een IFC-bestand erin en bekijk het in 3D in uw browser",
+    "bullet2": "Zet bevindingen op het model en deel ze met uw team",
+    "bullet3": "Wkb-controles en het volledige dossier horen bij een project",
+    "cta": "Doe mee aan de gratis preview",
+    "note": "De gratis viewer wordt uitgerold onder de eerste gebruikers. Laat uw gegevens achter en we geven u toegang zodra hij opengaat."
+  },
   "imageAnnotator": {
     "title": "Foto annoteren",
     "subtitle": "Teken pijlen, vormen, tekst of vervaging over de foto. Het origineel blijft altijd bewaard.",
@@ -1295,6 +1305,7 @@
         "loadAll": "Alles laden",
         "loadAll3d": "Alle 3D laden",
         "loadAll2d": "Alle 2D laden",
+        "browseDrawings": "Tekeningen openen",
         "loadAllMenu": "Laadopties",
         "selectedCount": "{count, plural, =1 {1 informatiecontainer geselecteerd} other {# informatiecontainers geselecteerd}}",
         "clearSelection": "Wissen",
@@ -1952,7 +1963,8 @@
       "remove": "Verwijderen",
       "pickerTitle": "Selecteer een document",
       "pickerDescription": "Kies een projectdocument als referentie.",
-      "empty": "Geen documenten beschikbaar"
+      "empty": "Geen documenten beschikbaar",
+      "openInViewer": "Document openen"
     }
   },
   "findingsBoard": {
@@ -3801,8 +3813,24 @@
       "showGeneratedPlan": "Gegenereerde plattegrond tonen",
       "source": {
         "alignedPdf": "Uitgelijnde PDF",
-        "generated": "Gegenereerde plattegrond"
+        "generated": "Gegenereerde plattegrond",
+        "pickerLabel": "Tekening",
+        "sheetLabel": "{discipline} — p{page}"
+      },
+      "discipline": {
+        "architectural": "Bouwkundig",
+        "structural": "Constructief",
+        "mep": "Installaties",
+        "coordination": "Coördinatie",
+        "other": "Overig"
       }
+    },
+    "drawings": {
+      "empty": "Nog geen tekeningen",
+      "emptyHint": "Upload PDF-tekeningen en wijs ze toe aan een verdieping om ze hier te bekijken.",
+      "unassigned": "Niet toegewezen",
+      "levelLabel": "Verdieping",
+      "drawingLabel": "Tekening"
     },
     "viewMode": {
       "label": "Weergave",
@@ -3817,6 +3845,7 @@
     },
     "aligned": {
       "pickPdfModel": "PDF-tekening",
+      "calibrateAgainst": "Kalibreren tegen dit 3D-model",
       "pickPage": "Pagina {n}",
       "pickLevel": "Verdieping",
       "pickPdf": "Klik hetzelfde punt op de PDF",
@@ -4517,5 +4546,21 @@
     "cancelled": "Geannuleerd",
     "jobAlreadyRunning": "Taak is al gestart en kan niet worden geannuleerd",
     "progressLabel": "{percent}%"
+  },
+  "onboarding": {
+    "welcome": {
+      "eyebrow": "Welkom",
+      "title": "Welkom bij {org}",
+      "subtitleAdmin": "Je bent toegevoegd als beheerder. Zo ga je aan de slag:",
+      "subtitleMember": "Je bent toegevoegd als lid. Zo ga je aan de slag:",
+      "capAdminManageTeam": "Beheer je team en nodig collega's uit",
+      "capAdminCreateProjects": "Maak projecten aan en stel meldingsdeadlines in",
+      "capAdminFullAccess": "Volledige toegang tot dossiers, bevindingen en rapporten",
+      "capMemberViewProjects": "Bekijk de projecten van je organisatie",
+      "capMemberUploadDocs": "Upload documenten en tekeningen",
+      "capMemberTrackFindings": "Volg bevindingen en deadlines",
+      "getStarted": "Aan de slag",
+      "dismiss": "Later"
+    }
   }
 }
