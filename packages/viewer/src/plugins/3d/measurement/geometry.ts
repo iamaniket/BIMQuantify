@@ -155,6 +155,11 @@ export function createPolygonFill(
   color: number,
   opacity: number,
   parent: THREE.Object3D,
+  // Optional pre-made material to reuse instead of allocating one. The rubber-
+  // band preview passes a shared, cached material here so a fresh material isn't
+  // created (and discarded) on every pointer-move; committed measurements omit
+  // it and get their own persistent material.
+  material?: THREE.MeshBasicMaterial,
 ): THREE.Mesh {
   const normal = computePolygonNormal(pts);
   const up = Math.abs(normal.y) > 0.99
@@ -188,7 +193,7 @@ export function createPolygonFill(
   positions.needsUpdate = true;
   geo.computeVertexNormals();
 
-  const mat = new THREE.MeshBasicMaterial({
+  const mat = material ?? new THREE.MeshBasicMaterial({
     color,
     transparent: true,
     opacity,
