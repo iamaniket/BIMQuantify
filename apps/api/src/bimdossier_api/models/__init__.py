@@ -46,6 +46,17 @@ from bimdossier_api.models.finding_attachment import (
     FindingAttachment,
 )
 from bimdossier_api.models.finding_comment import FindingComment, FindingCommentMention
+from bimdossier_api.models.free_model import (
+    FREE_EXTRACTION_STATUSES,
+    FREE_MODEL_STATUSES,
+    FreeModel,
+)
+from bimdossier_api.models.free_snag import (
+    FREE_SNAG_NOTE_MAX,
+    FREE_SNAG_SEVERITIES,
+    FREE_SNAG_STATUSES,
+    FreeSnag,
+)
 from bimdossier_api.models.job import _JOB_TERMINAL, Job, JobStatus, JobType
 from bimdossier_api.models.levels import Level, LevelSource
 from bimdossier_api.models.notification import (
@@ -89,6 +100,11 @@ __all__ = [
     "ATTACHMENT_ALLOWED_EXTENSIONS",
     "CHECKLIST_RESULT_ATTACHMENT_KINDS",
     "FINDING_ATTACHMENT_KINDS",
+    "FREE_EXTRACTION_STATUSES",
+    "FREE_MODEL_STATUSES",
+    "FREE_SNAG_NOTE_MAX",
+    "FREE_SNAG_SEVERITIES",
+    "FREE_SNAG_STATUSES",
     "TRANSFORM_TYPE_SIMILARITY",
     "_JOB_TERMINAL",
     "_REPORT_TERMINAL",
@@ -134,6 +150,8 @@ __all__ = [
     "FindingCommentMention",
     "FindingSeverity",
     "FindingStatus",
+    "FreeModel",
+    "FreeSnag",
     "IfcSchema",
     "InspectionVerdict",
     "Job",

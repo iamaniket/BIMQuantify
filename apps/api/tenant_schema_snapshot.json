@@ -512,6 +512,7 @@
         "deadline_date": "DATE|NULL",
         "deleted_at": "TIMESTAMP WITH TIME ZONE|NULL",
         "description": "TEXT|NOT NULL",
+        "duplicate_of_finding_id": "UUID|NULL|FK=findings.id#SET NULL",
         "id": "UUID|NOT NULL|PK",
         "idempotency_key": "VARCHAR(200)|NULL",
         "linked_document_id": "UUID|NULL|FK=documents.id#SET NULL",
@@ -813,6 +814,7 @@
         "description": "TEXT|NULL",
         "house_number": "VARCHAR(20)|NULL",
         "id": "UUID|NOT NULL|PK",
+        "instrument_ref": "VARCHAR(50)|NULL",
         "latitude": "FLOAT|NULL",
         "lifecycle_state": "projectlifecyclestate|NOT NULL|has_server_default",
         "longitude": "FLOAT|NULL",
@@ -917,5 +919,5 @@
       "unique_constraints": []
     }
   },
-  "tenant_head": "0001_tenant"
+  "tenant_head": "0002_dup_and_instrument"
 }

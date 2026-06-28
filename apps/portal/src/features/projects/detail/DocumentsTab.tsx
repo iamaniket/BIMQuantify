@@ -11,7 +11,7 @@ import {
 } from '@bimdossier/ui';
 
 import { ResourceList, TabToolbar } from '@/components/shared/resource';
-import type { Document, Level, ModelDisciplineValue, ProjectFile } from '@/lib/api/schemas';
+import type { Document, ModelDisciplineValue, ProjectFile } from '@/lib/api/schemas';
 import { useAlignedSheets } from '@/features/aligned-sheets/hooks';
 import { useProjectLevels } from '@/features/levels/hooks';
 import { LevelAssignSelect } from '@/features/levels/LevelAssignSelect';

@@ -1,18 +1,13 @@
 import type { JSX } from 'react';
 
-import { FreeViewerComingSoon } from '@/features/free-viewer/FreeViewerComingSoon';
-import { AuthLayoutShell } from '@/features/auth/AuthLayoutShell';
+import { FreeViewerApp } from '@/features/free-viewer/FreeViewerApp';
 
 /**
- * Phase 0 landing for the free IFC viewer wedge (see
- * docs/free-wedge-implementation-plan.md). Every "View your model free" CTA on
- * the marketing site lands here, so this is the single instrumented surface for
- * measuring free-tier demand before the backend tier is built.
+ * Free IFC viewer — upload + my-models list (Phase 3). The Phase-0 coming-soon
+ * landing is now rendered by `FreeViewerApp` only when the API reports the tier
+ * is disabled (FREE_TIER_DISABLED); otherwise this is the real app. The
+ * org-less auth shell lives in this segment's layout.tsx.
  */
 export default function FreeViewerPage(): JSX.Element {
-  return (
-    <AuthLayoutShell>
-      <FreeViewerComingSoon />
-    </AuthLayoutShell>
-  );
+  return <FreeViewerApp />;
 }

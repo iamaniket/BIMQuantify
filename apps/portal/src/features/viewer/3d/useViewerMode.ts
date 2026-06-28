@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import type { ViewerHandle, ViewerMode } from '@bimdossier/viewer';
 
-export interface ViewerModeState {
+export type ViewerModeState = {
   mode: ViewerMode;
   toolName: string | null;
   toolLabel: string | null;

@@ -11,7 +11,7 @@ import type { ModelMetadata } from '@/lib/api/viewerTypes';
 import type { SheetTransform } from './sheetTransform';
 import type { FloorPlanDisplayLevel } from './useFloorPlanData';
 
-interface FloorPlanLinkOptions {
+type FloorPlanLinkOptions = {
   fpHandle: DocumentViewerHandle | null;
   viewerHandle: ViewerHandle | null;
   viewerReady: boolean;

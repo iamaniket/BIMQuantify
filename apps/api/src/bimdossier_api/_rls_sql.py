@@ -137,6 +137,54 @@ def enable_rls_statements() -> list[str]:
     return stmts
 
 
+# Pooled free-tier tables in `public`. Unlike the master tables above (keyed on
+# the org GUC), these are keyed on the OWNER directly — a free account is
+# org-less, so `get_free_session` sets only `app.current_user_id`.
+FREE_RLS_TABLES = (
+    "free_models",
+    "free_snags",
+)
+
+
+def enable_free_tier_rls_statements() -> list[str]:
+    """ENABLE + FORCE RLS on the pooled free-tier tables with an owner-keyed
+    policy. The policy is load-bearing: free reads/writes run as `bim_app` with
+    only `app.current_user_id` set, so this is what stops user A touching user
+    B's free rows. The free callback runs as the superuser (bypasses RLS), so it
+    must additionally validate keys via `assert_free_key_scoped`.
+
+    Idempotent (DROP POLICY IF EXISTS before CREATE), like enable_rls_statements.
+    """
+    stmts: list[str] = []
+    for table in FREE_RLS_TABLES:
+        stmts.append(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
+        stmts.append(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
+        stmts.append(f"DROP POLICY IF EXISTS {table}_owner_isolation ON {table};")
+        stmts.append(
+            f"""
+            CREATE POLICY {table}_owner_isolation ON {table}
+            USING (
+                owner_user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
+            )
+            WITH CHECK (
+                owner_user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
+            );
+            """
+        )
+    return stmts
+
+
+def disable_free_tier_rls_statements() -> list[str]:
+    """Reverse of `enable_free_tier_rls_statements` (migration downgrade /
+    test teardown)."""
+    stmts: list[str] = []
+    for table in FREE_RLS_TABLES:
+        stmts.append(f"DROP POLICY IF EXISTS {table}_owner_isolation ON {table};")
+        stmts.append(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY;")
+        stmts.append(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")
+    return stmts
+
+
 def disable_rls_statements() -> list[str]:
     """Reverse of `enable_rls_statements`; used by migration downgrade."""
     stmts: list[str] = []

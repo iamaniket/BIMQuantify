@@ -15,7 +15,7 @@ import {
   Button, Input, Label, Textarea,
 } from '@bimdossier/ui';
 
-import { useRegisterField } from '@/hooks/useRegisterField';
+import { registerField } from '@/hooks/registerField';
 import type { ProjectFormValues } from '../projectFormSchema';
 
 import {
@@ -64,7 +64,7 @@ export function StepBasics({
   const nameError = getFieldErrorMessage(errors, 'name');
   const descriptionError = getFieldErrorMessage(errors, 'description');
 
-  const nameRegister = useRegisterField(form, 'name');
+  const nameRegister = registerField(form, 'name');
 
   const handleOpenFilePicker = (): void => {
     const input = thumbnailInputRef.current;
@@ -85,7 +85,7 @@ export function StepBasics({
           ref={(node) => {
             nameRegister.ref(node);
             if (firstFieldRef !== undefined) {
-              // eslint-disable-next-line no-param-reassign
+               
               firstFieldRef.current = node;
             }
           }}
@@ -102,7 +102,7 @@ export function StepBasics({
           rows={3}
           invalid={descriptionError !== undefined}
           disabled={isReadOnly}
-          {...useRegisterField(form, 'description')}
+          {...registerField(form, 'description')}
         />
         {descriptionError !== undefined && (
           <span role="alert" className={fieldErrorClass}>{descriptionError}</span>

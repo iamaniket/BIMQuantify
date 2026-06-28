@@ -13,12 +13,15 @@ from `draft` to `open` by setting a deadline and an assignee.
 
 import csv
 import io
+import json
+import zipfile
 from collections.abc import AsyncIterator
+from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -34,12 +37,20 @@ from bimdossier_api.access import (
 from bimdossier_api.attachment_links import replace_attachment_links
 from bimdossier_api.auth.fastapi_users import current_verified_user
 from bimdossier_api.auth.permissions import Action, Resource, require_permission
+from bimdossier_api.bcf.findings import finding_to_parsed_topic, parsed_topic_to_finding_fields
+from bimdossier_api.bcf.generator import generate_bcf_archive
+from bimdossier_api.bcf.parser import BcfArchiveTooLargeError, parse_bcf_archive
+from bimdossier_api.bcf.types import ParsedBcf, ParsedComment, Vec3
+from bimdossier_api.config import get_settings
+from bimdossier_api.content_disposition import safe_content_disposition
 from bimdossier_api.finding_custom_values import build_custom_values
 from bimdossier_api.i18n import resolve_org_locale, resolve_user_locale, t
 from bimdossier_api.idempotency import idempotency_key_header, is_idempotency_conflict
+from bimdossier_api.instruments import build_bundle_manifest
 from bimdossier_api.models.audit_log import AuditLog
 from bimdossier_api.models.finding import Finding, FindingSeverity, FindingStatus
 from bimdossier_api.models.finding_attachment import FindingAttachment
+from bimdossier_api.models.finding_comment import FindingComment
 from bimdossier_api.models.notification import NotificationEventType
 from bimdossier_api.models.org_template import OrgTemplate
 from bimdossier_api.models.project_file import FileType, ProjectFile, ProjectFileRole
@@ -51,10 +62,19 @@ from bimdossier_api.notifications.service import (
 )
 from bimdossier_api.pdf_pages import find_or_create_pdf_page
 from bimdossier_api.schemas.finding import (
+    FindingBcfExportRequest,
+    FindingBulkItemResult,
+    FindingBulkOp,
+    FindingBulkRequest,
+    FindingBulkResult,
     FindingCreate,
+    FindingDuplicateCandidate,
+    FindingExport,
     FindingHistoryChange,
     FindingHistoryEntry,
+    FindingMarkDuplicate,
     FindingRead,
+    FindingReopen,
     FindingUpdate,
 )
 from bimdossier_api.tenancy import (
@@ -104,6 +124,9 @@ def _finding_snapshot(finding: Finding) -> dict[str, object]:
         "anchor_z": finding.anchor_z,
         "anchor_page": finding.anchor_page,
         "resolution_note": finding.resolution_note,
+        "duplicate_of_finding_id": (
+            str(finding.duplicate_of_finding_id) if finding.duplicate_of_finding_id else None
+        ),
         "has_references": bool(finding.reference_attachment_ids),
         # Counts (not the id lists) so the history diff can render "added 2
         # photos" without leaking attachment ids into the audit snapshot.
@@ -320,13 +343,23 @@ async def create_finding(
     return finding
 
 
+# Statuses that count as still-actionable for the "overdue" smart view — a
+# resolved/verified finding past its deadline is not overdue, it's done.
+_OVERDUE_OPEN_STATUSES: frozenset[FindingStatus] = frozenset(
+    {FindingStatus.draft, FindingStatus.open, FindingStatus.in_progress}
+)
+
+
 @router.get("", response_model=list[FindingRead])
 async def list_findings(
     project_id: UUID,
     response: Response,
     status_filter: FindingStatus | None = None,
+    statuses: list[FindingStatus] | None = Query(default=None),
     severity: FindingSeverity | None = None,
     assignee_user_id: UUID | None = None,
+    mine: bool = False,
+    overdue: bool = False,
     linked_document_id: UUID | None = None,
     linked_file_id: UUID | None = None,
     linked_element_global_id: str | None = Query(default=None, max_length=255),
@@ -337,16 +370,36 @@ async def list_findings(
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> list[Finding]:
+    """List a project's findings.
+
+    Smart-view filters (power-user "my open overdue points" on login):
+    `mine=true` scopes to the caller as assignee, `overdue=true` to findings
+    past their deadline that are still actionable, and `statuses=` accepts a
+    multi-value status set (the single `status_filter` is kept for back-compat;
+    both compose with AND).
+    """
     project = await load_project_or_404(session, project_id)
     await require_project_read_access(session, project.id, user, active_org_id)
 
     stmt = select(Finding).where(Finding.project_id == project.id, Finding.deleted_at.is_(None))
     if status_filter is not None:
         stmt = stmt.where(Finding.status == status_filter)
+    if statuses:
+        stmt = stmt.where(Finding.status.in_(statuses))
     if severity is not None:
         stmt = stmt.where(Finding.severity == severity)
+    # `mine` keys off the authenticated caller; an explicit assignee_user_id can
+    # still be passed (e.g. a lead inspecting one teammate's queue). Both AND.
+    if mine:
+        stmt = stmt.where(Finding.assignee_user_id == user.id)
     if assignee_user_id is not None:
         stmt = stmt.where(Finding.assignee_user_id == assignee_user_id)
+    if overdue:
+        stmt = stmt.where(
+            Finding.deadline_date.is_not(None),
+            Finding.deadline_date < date.today(),
+            Finding.status.in_(_OVERDUE_OPEN_STATUSES),
+        )
     # Version-independent identity: model + GlobalId. This is what the viewer
     # element panel queries so a finding follows the element across versions.
     if linked_document_id is not None:
@@ -431,6 +484,57 @@ def _finding_csv_row(f: Finding) -> dict[str, str]:
     }
 
 
+def _findings_export_base(
+    project_id: UUID,
+    status_filter: FindingStatus | None,
+    severity: FindingSeverity | None,
+    assignee_user_id: UUID | None,
+) -> Select[tuple[Finding]]:
+    """The filtered `select(Finding)` shared by every export format (CSV/XLSX/JSON).
+    Honours the same filters as the list endpoint; soft-deleted rows excluded."""
+    base = select(Finding).where(Finding.project_id == project_id, Finding.deleted_at.is_(None))
+    if status_filter is not None:
+        base = base.where(Finding.status == status_filter)
+    if severity is not None:
+        base = base.where(Finding.severity == severity)
+    if assignee_user_id is not None:
+        base = base.where(Finding.assignee_user_id == assignee_user_id)
+    return base
+
+
+async def _audit_findings_export(
+    session: AsyncSession,
+    *,
+    project_id: UUID,
+    fmt: str,
+    total: int,
+    status_filter: FindingStatus | None,
+    severity: FindingSeverity | None,
+    assignee_user_id: UUID | None,
+    request: Request,
+    user: User,
+) -> None:
+    """Forensic trail for a bulk findings dump (count + format + filters + actor +
+    IP), never the rows themselves. Commits with the request's tenant session."""
+    await audit.record(
+        session,
+        action="finding.exported",
+        resource_type="finding",
+        actor_user_id=user.id,
+        project_id=project_id,
+        request=request,
+        after={
+            "format": fmt,
+            "count": total,
+            "filters": {
+                "status": status_filter.value if status_filter is not None else None,
+                "severity": severity.value if severity is not None else None,
+                "assignee_user_id": str(assignee_user_id) if assignee_user_id else None,
+            },
+        },
+    )
+
+
 @router.get("/export.csv", response_class=Response)
 async def export_findings_csv(
     project_id: UUID,
@@ -452,13 +556,7 @@ async def export_findings_csv(
     project = await load_project_or_404(session, project_id)
     await require_project_read_access(session, project.id, user, active_org_id)
 
-    base = select(Finding).where(Finding.project_id == project.id, Finding.deleted_at.is_(None))
-    if status_filter is not None:
-        base = base.where(Finding.status == status_filter)
-    if severity is not None:
-        base = base.where(Finding.severity == severity)
-    if assignee_user_id is not None:
-        base = base.where(Finding.assignee_user_id == assignee_user_id)
+    base = _findings_export_base(project.id, status_filter, severity, assignee_user_id)
 
     # Bulk PII/data export — leave a forensic trail (count + filters + actor +
     # IP). Read endpoints don't normally audit, but a full-project CSV dump is
@@ -468,23 +566,16 @@ async def export_findings_csv(
     # Tenant session → lands in the active org's schema and commits with the
     # wrapping `session.begin()`; only metadata is stored, never the rows.
     total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
-    await audit.record(
+    await _audit_findings_export(
         session,
-        action="finding.exported",
-        resource_type="finding",
-        actor_user_id=user.id,
         project_id=project.id,
+        fmt="csv",
+        total=total,
+        status_filter=status_filter,
+        severity=severity,
+        assignee_user_id=assignee_user_id,
         request=request,
-        after={
-            "count": total,
-            "filters": {
-                "status": status_filter.value if status_filter is not None else None,
-                "severity": severity.value if severity is not None else None,
-                "assignee_user_id": (
-                    str(assignee_user_id) if assignee_user_id is not None else None
-                ),
-            },
-        },
+        user=user,
     )
 
     # The CSV is streamed: a StreamingResponse body is produced AFTER the
@@ -528,6 +619,402 @@ async def export_findings_csv(
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+_XLSX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+@router.get("/export.xlsx", response_class=Response)
+async def export_findings_xlsx(
+    project_id: UUID,
+    request: Request,
+    status_filter: FindingStatus | None = None,
+    severity: FindingSeverity | None = None,
+    assignee_user_id: UUID | None = None,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> Response:
+    """The findings export as a single-sheet .xlsx (NL contractors live in Excel).
+
+    Same columns + filters + audit trail as the CSV. The workbook is built with
+    openpyxl's write-only mode (streams cells to a temp file) so memory stays
+    bounded; it's returned as one body since xlsx is a zip and can't be chunked.
+    """
+    from openpyxl import Workbook  # type: ignore[import-untyped]  # local import, app cold path
+
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
+    base = _findings_export_base(project.id, status_filter, severity, assignee_user_id)
+
+    stmt = (
+        base.options(selectinload(Finding.assignee), selectinload(Finding.created_by))
+        .order_by(Finding.created_at.desc())
+        .execution_options(yield_per=_CSV_STREAM_BATCH)
+    )
+    wb = Workbook(write_only=True)
+    ws = wb.create_sheet("Findings")
+    ws.append(list(_FINDINGS_CSV_COLUMNS))
+    total = 0
+    result = await session.stream(stmt)
+    async for finding in result.scalars():
+        row = _finding_csv_row(finding)
+        ws.append([row[c] for c in _FINDINGS_CSV_COLUMNS])
+        total += 1
+
+    await _audit_findings_export(
+        session,
+        project_id=project.id,
+        fmt="xlsx",
+        total=total,
+        status_filter=status_filter,
+        severity=severity,
+        assignee_user_id=assignee_user_id,
+        request=request,
+        user=user,
+    )
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    filename = f"findings-{project_id}.xlsx"
+    return Response(
+        content=buf.getvalue(),
+        media_type=_XLSX_MEDIA_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/export.json", response_model=FindingExport)
+async def export_findings_json(
+    project_id: UUID,
+    request: Request,
+    status_filter: FindingStatus | None = None,
+    severity: FindingSeverity | None = None,
+    assignee_user_id: UUID | None = None,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> FindingExport:
+    """Re-importable JSON export — a superset of the CSV carrying anchors, photo/
+    evidence/reference ids and custom values. The data-portability + GDPR story,
+    and the findings half of the instrument export bundle."""
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
+    base = _findings_export_base(project.id, status_filter, severity, assignee_user_id)
+
+    findings = list(
+        (await session.execute(base.order_by(Finding.created_at.desc()))).scalars().all()
+    )
+    await _audit_findings_export(
+        session,
+        project_id=project.id,
+        fmt="json",
+        total=len(findings),
+        status_filter=status_filter,
+        severity=severity,
+        assignee_user_id=assignee_user_id,
+        request=request,
+        user=user,
+    )
+    return FindingExport(
+        project_id=project.id,
+        count=len(findings),
+        findings=[FindingRead.model_validate(f) for f in findings],
+    )
+
+
+# BCF 2.1 is the most universally re-attachable format across Solibri / BIMcollab
+# / Navisworks, so finding↔BCF round-trips on 2.1 for the widest tool reach.
+_FINDING_BCF_VERSION = "2.1"
+
+
+async def _load_findings_for_export(
+    session: AsyncSession, project_id: UUID, finding_ids: list[UUID] | None
+) -> list[Finding]:
+    stmt = (
+        select(Finding)
+        .where(Finding.project_id == project_id, Finding.deleted_at.is_(None))
+        .options(selectinload(Finding.assignee), selectinload(Finding.created_by))
+        .order_by(Finding.created_at.asc())
+    )
+    if finding_ids:
+        stmt = stmt.where(Finding.id.in_(finding_ids))
+    return list((await session.execute(stmt)).scalars().all())
+
+
+async def _findings_to_bcf_bytes(session: AsyncSession, findings: list[Finding]) -> bytes:
+    """Map findings → BCF topics (element GlobalId in the viewpoint selection so the
+    issue re-attaches in BIMcollab/Solibri) and serialize a BCF 2.1 archive."""
+    comments_by_finding: dict[UUID, list[ParsedComment]] = {}
+    if findings:
+        comment_rows = (
+            (
+                await session.execute(
+                    select(FindingComment)
+                    .where(
+                        FindingComment.finding_id.in_([f.id for f in findings]),
+                        FindingComment.deleted_at.is_(None),
+                    )
+                    .order_by(FindingComment.date.asc())
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for c in comment_rows:
+            comments_by_finding.setdefault(c.finding_id, []).append(
+                ParsedComment(
+                    guid=str(c.id),
+                    text=c.comment_text,
+                    author=c.author,
+                    date=c.date,
+                    modified_author=c.modified_author,
+                    modified_date=c.modified_date,
+                )
+            )
+
+    topics = []
+    for f in findings:
+        anchor = (
+            Vec3(f.anchor_x, f.anchor_y, f.anchor_z)
+            if f.linked_file_type == "ifc"
+            and f.anchor_x is not None
+            and f.anchor_y is not None
+            and f.anchor_z is not None
+            else None
+        )
+        topics.append(
+            finding_to_parsed_topic(
+                finding_id=str(f.id),
+                title=f.title,
+                description=f.description,
+                status=f.status,
+                severity=f.severity,
+                created_at=f.created_at,
+                bbl_article_ref=f.bbl_article_ref,
+                deadline_date=f.deadline_date.isoformat() if f.deadline_date else None,
+                assignee_email=f.assignee.email if f.assignee else None,
+                creator_email=f.created_by.email if f.created_by else None,
+                linked_element_global_id=f.linked_element_global_id,
+                anchor=anchor,
+                comments=comments_by_finding.get(f.id, []),
+            )
+        )
+    return generate_bcf_archive(ParsedBcf(version=_FINDING_BCF_VERSION, topics=topics))
+
+
+@router.post("/bcf-export", response_class=Response)
+async def export_findings_bcf(
+    project_id: UUID,
+    payload: FindingBcfExportRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> Response:
+    """Export findings as a BCF archive so they re-open on the right element in
+    the architect's authoring tool (BIMcollab / Solibri / Navisworks).
+
+    Each finding becomes a BCF topic whose viewpoint *selects* the IFC element by
+    GlobalId — the payload those tools read to re-attach the issue to the exact
+    component. The discussion thread maps to BCF comments. Omit `finding_ids` to
+    export the whole project.
+    """
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
+
+    findings = await _load_findings_for_export(session, project.id, payload.finding_ids)
+    archive = await _findings_to_bcf_bytes(session, findings)
+    await audit.record(
+        session,
+        action="finding.exported",
+        resource_type="finding",
+        actor_user_id=user.id,
+        project_id=project.id,
+        request=request,
+        after={"format": "bcf", "count": len(findings)},
+    )
+    filename = f"findings-{project_id}.bcfzip"
+    return Response(
+        content=archive,
+        media_type="application/zip",
+        headers={"Content-Disposition": safe_content_disposition(filename)},
+    )
+
+
+@router.post("/instrument-export", response_class=Response)
+async def export_instrument_bundle(
+    project_id: UUID,
+    request: Request,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> Response:
+    """The manual Wkb-instrument hand-off bundle (v0 of the KiK/WKI bridge).
+
+    With no live instrument API yet, this packages the project's findings as
+    BCF + JSON plus a `manifest.json` documenting the neutral schema, so the
+    kwaliteitsborger imports our evidence into their admitted instrument by hand
+    instead of re-keying it. The seam (`instruments/`) becomes a live push the
+    day a partnership lands.
+    """
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
+
+    findings = await _load_findings_for_export(session, project.id, None)
+    bcf_bytes = await _findings_to_bcf_bytes(session, findings)
+    export = FindingExport(
+        project_id=project.id,
+        count=len(findings),
+        findings=[FindingRead.model_validate(f) for f in findings],
+    )
+    json_bytes = export.model_dump_json(indent=2).encode("utf-8")
+
+    bcf_name = "findings.bcfzip"
+    json_name = "findings.json"
+    manifest = build_bundle_manifest(
+        project_id=str(project.id),
+        project_name=project.name,
+        country=project.country,
+        instrument_ref=project.instrument_ref,
+        finding_count=len(findings),
+        bcf_filename=bcf_name,
+        json_filename=json_name,
+    )
+    manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("manifest.json", manifest_bytes)
+        zf.writestr(bcf_name, bcf_bytes)
+        zf.writestr(json_name, json_bytes)
+
+    await audit.record(
+        session,
+        action="finding.exported",
+        resource_type="finding",
+        actor_user_id=user.id,
+        project_id=project.id,
+        request=request,
+        after={"format": "instrument_bundle", "count": len(findings),
+               "instrument": project.instrument_ref},
+    )
+    filename = f"wkb-evidence-{project_id}.zip"
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": safe_content_disposition(filename)},
+    )
+
+
+@router.post("/bcf-import", response_model=list[FindingRead], status_code=status.HTTP_201_CREATED)
+async def import_findings_from_bcf(
+    project_id: UUID,
+    file: UploadFile,
+    request: Request,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> list[Finding]:
+    """Import a BCF archive as DRAFT findings (coordination issues → snags).
+
+    Each BCF topic becomes a draft finding re-anchored to its element GlobalId
+    (read from the topic's viewpoint selection). Imported findings always start
+    as `draft` — a human triages before promotion; we never trust an inbound BCF
+    to set our lifecycle. Reuses the hardened `parse_bcf_archive` (zip-bomb guards).
+    """
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
+    try:
+        require_permission(membership.role, Resource.finding, Action.create)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.finding.value,
+            action=Action.create.value,
+            actor_user_id=user.id,
+            request=request,
+        )
+        raise
+    require_project_writable(project)
+
+    max_bytes = get_settings().bcf_import_max_bytes
+    data = await file.read(max_bytes + 1)
+    if len(data) > max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="BCF_ARCHIVE_TOO_LARGE",
+        )
+    try:
+        parsed = parse_bcf_archive(data)
+    except BcfArchiveTooLargeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="BCF_ARCHIVE_TOO_LARGE",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="INVALID_BCF_ARCHIVE",
+        ) from exc
+
+    created: list[Finding] = []
+    for topic in parsed.topics:
+        fields = parsed_topic_to_finding_fields(topic)
+        finding = Finding(
+            project_id=project.id,
+            created_by_user_id=user.id,
+            status=FindingStatus.draft,
+            **fields,
+        )
+        session.add(finding)
+        await session.flush()
+        loaded = await _load_finding_or_404(session, project.id, finding.id)
+        await audit.record(
+            session,
+            action="finding.created",
+            resource_type="finding",
+            resource_id=loaded.id,
+            after=_finding_snapshot(loaded),
+            actor_user_id=user.id,
+            project_id=project.id,
+            request=request,
+        )
+        created.append(loaded)
+
+    return created
+
+
+@router.get("/duplicate-candidates", response_model=list[FindingDuplicateCandidate])
+async def list_duplicate_candidates(
+    project_id: UUID,
+    linked_document_id: UUID = Query(...),
+    linked_element_global_id: str = Query(..., max_length=255),
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> list[Finding]:
+    """Still-open findings already anchored to the same (document, element).
+
+    The viewer queries this when the user starts a new finding on an element so
+    it can warn "an open finding already exists here" before a duplicate is
+    created. Terminal (resolved/verified) and soft-deleted rows are excluded —
+    only actionable findings count as a clash. Backed by ix_findings_linked_element.
+    """
+    project = await load_project_or_404(session, project_id)
+    await require_project_read_access(session, project.id, user, active_org_id)
+    stmt = (
+        select(Finding)
+        .where(
+            Finding.project_id == project.id,
+            Finding.deleted_at.is_(None),
+            Finding.linked_document_id == linked_document_id,
+            Finding.linked_element_global_id == linked_element_global_id,
+            Finding.status.not_in([FindingStatus.resolved, FindingStatus.verified]),
+        )
+        .order_by(Finding.created_at.desc())
+    )
+    return list((await session.execute(stmt)).scalars().all())
 
 
 @router.get("/{finding_id}", response_model=FindingRead)
@@ -849,6 +1336,145 @@ async def update_finding(
     return await _load_finding_or_404(session, project.id, finding.id)
 
 
+@router.post("/{finding_id}/mark-duplicate", response_model=FindingRead)
+async def mark_finding_duplicate(
+    project_id: UUID,
+    finding_id: UUID,
+    payload: FindingMarkDuplicate,
+    request: Request,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> Finding:
+    """Close a finding as a duplicate of another (keeps the dossier clean).
+
+    Sets `duplicate_of_finding_id` and moves the duplicate to `resolved` with a
+    synthetic note, deliberately bypassing the resolve evidence gate — the link
+    is the evidence. A verified finding is terminal and cannot be re-closed; a
+    finding can't be a duplicate of itself or of an already-duplicate (no chains).
+    """
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
+    try:
+        require_permission(membership.role, Resource.finding, Action.update)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.finding.value,
+            action=Action.update.value,
+            actor_user_id=user.id,
+            resource_id=finding_id,
+            request=request,
+        )
+        raise
+    require_project_writable(project)
+
+    finding = await _load_finding_or_404(session, project.id, finding_id)
+    if payload.duplicate_of_finding_id == finding_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="FINDING_DUPLICATE_OF_SELF",
+        )
+    # 404 if the canonical target is missing or under a sibling project.
+    target = await _load_finding_or_404(session, project.id, payload.duplicate_of_finding_id)
+    if target.duplicate_of_finding_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="FINDING_DUPLICATE_TARGET_IS_DUPLICATE",
+        )
+    if finding.status is FindingStatus.verified:
+        # Terminal — re-closing a verified finding as a duplicate is disallowed.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="FINDING_ILLEGAL_TRANSITION",
+        )
+
+    before = _finding_snapshot(finding)
+    finding.duplicate_of_finding_id = target.id
+    finding.status = FindingStatus.resolved
+    if not (finding.resolution_note or "").strip():
+        locale = resolve_org_locale(project.country)
+        finding.resolution_note = t("findings.duplicate_note", locale, id=str(target.id))
+    await session.flush()
+    await audit.record(
+        session,
+        action="finding.marked_duplicate",
+        resource_type="finding",
+        resource_id=finding.id,
+        before=before,
+        after=_finding_snapshot(finding),
+        actor_user_id=user.id,
+        project_id=project.id,
+        request=request,
+    )
+    return await _load_finding_or_404(session, project.id, finding.id)
+
+
+@router.post("/{finding_id}/reopen", response_model=FindingRead)
+async def reopen_finding(
+    project_id: UUID,
+    finding_id: UUID,
+    payload: FindingReopen,
+    request: Request,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> Finding:
+    """Re-open a verified finding whose defect re-emerged after sign-off.
+
+    `verified` stays terminal for the normal PATCH path; this is the only
+    sanctioned revert. Inspector-only (the kwaliteitsborger owns acceptance, so
+    they own un-acceptance) and only from `verified`. The mandatory reason
+    replaces the now-invalid resolution note, so it surfaces in the history diff
+    (`resolution_note`) while the audit `before` snapshot preserves the prior
+    resolution. The finding lands in `in_progress` for re-work.
+    """
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
+    try:
+        require_permission(membership.role, Resource.finding, Action.update)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.finding.value,
+            action=Action.update.value,
+            actor_user_id=user.id,
+            resource_id=finding_id,
+            request=request,
+        )
+        raise
+    require_project_writable(project)
+
+    finding = await _load_finding_or_404(session, project.id, finding_id)
+    if membership.role is not ProjectRole.inspector:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="FINDING_REOPEN_REQUIRES_INSPECTOR",
+        )
+    if finding.status is not FindingStatus.verified:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="FINDING_ILLEGAL_TRANSITION",
+        )
+
+    before = _finding_snapshot(finding)
+    finding.status = FindingStatus.in_progress
+    finding.resolution_note = payload.reason.strip()
+    await session.flush()
+    await audit.record(
+        session,
+        action="finding.reopened",
+        resource_type="finding",
+        resource_id=finding.id,
+        before=before,
+        after=_finding_snapshot(finding),
+        actor_user_id=user.id,
+        project_id=project.id,
+        request=request,
+    )
+    return await _load_finding_or_404(session, project.id, finding.id)
+
+
 @router.delete("/{finding_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_finding(
     project_id: UUID,
@@ -889,3 +1515,189 @@ async def delete_finding(
         request=request,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+async def _apply_bulk_finding_op(
+    session: AsyncSession,
+    project_id: UUID,
+    membership_role: ProjectRole,
+    finding: Finding,
+    req: FindingBulkRequest,
+) -> str:
+    """Apply one bulk op to a single finding, reusing the single-finding gates.
+
+    Mutates `finding` in place and returns the audit action verb. Raises the same
+    domain `HTTPException`s as `update_finding` (illegal transition, promote /
+    resolve / verify gates, non-member assignee) so the caller can isolate the
+    failure to this row. Never flushes — the caller owns the savepoint.
+    """
+    if req.op is FindingBulkOp.delete:
+        finding.soft_delete()
+        return "finding.deleted"
+
+    if req.op is FindingBulkOp.assign:
+        if (
+            req.assignee_user_id is not None
+            and await get_membership(session, project_id, req.assignee_user_id) is None
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="ASSIGNEE_NOT_A_PROJECT_MEMBER",
+            )
+        finding.assignee_user_id = req.assignee_user_id
+        return "finding.updated"
+
+    if req.op is FindingBulkOp.set_deadline:
+        finding.deadline_date = req.deadline_date
+        return "finding.updated"
+
+    # op == set_status. A status change may piggy-back assignee + deadline so a
+    # batch draft→open promotion satisfies the promote gate in one call.
+    previous_status = finding.status
+    if req.assignee_user_id is not None:
+        if await get_membership(session, project_id, req.assignee_user_id) is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="ASSIGNEE_NOT_A_PROJECT_MEMBER",
+            )
+        finding.assignee_user_id = req.assignee_user_id
+    if req.deadline_date is not None:
+        finding.deadline_date = req.deadline_date
+
+    new_status = req.status
+    assert new_status is not None  # guaranteed by FindingBulkRequest validator
+    status_changed = new_status is not previous_status
+    if status_changed and new_status not in _FINDING_TRANSITIONS[previous_status]:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="FINDING_ILLEGAL_TRANSITION",
+        )
+    finding.status = new_status
+
+    resolving = status_changed and new_status is FindingStatus.resolved
+    verifying = status_changed and new_status is FindingStatus.verified
+    promoted = previous_status is FindingStatus.draft and new_status is FindingStatus.open
+
+    if new_status is FindingStatus.open and (
+        finding.deadline_date is None or finding.assignee_user_id is None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="FINDING_PROMOTE_REQUIRES_DEADLINE_ASSIGNEE",
+        )
+    if resolving and (
+        not (finding.resolution_note or "").strip() or not finding.resolution_evidence_ids
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="FINDING_RESOLVE_REQUIRES_EVIDENCE",
+        )
+    if verifying and membership_role is not ProjectRole.inspector:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="FINDING_VERIFY_REQUIRES_INSPECTOR",
+        )
+
+    if resolving:
+        return "finding.resolved"
+    if verifying:
+        return "finding.verified"
+    if promoted:
+        return "finding.promoted"
+    return "finding.updated"
+
+
+@router.post("/bulk", response_model=FindingBulkResult)
+async def bulk_update_findings(
+    project_id: UUID,
+    payload: FindingBulkRequest,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+) -> FindingBulkResult:
+    """Apply one operation to many findings at once (coordinator triage).
+
+    Each row runs in its own SAVEPOINT and reuses the single-finding gate logic,
+    so an illegal transition (or a missing finding) fails just that row and the
+    rest still commit — the response is a 207-style per-row result. One
+    `audit.record` per successful row keeps each finding's history correct; a
+    *single* coalesced notification fires when the batch resolved anything, so a
+    50-row close-out doesn't flood the team feed.
+    """
+    project = await load_project_or_404(session, project_id)
+    membership = await require_membership(session, project.id, user.id)
+    action = Action.delete if payload.op is FindingBulkOp.delete else Action.update
+    try:
+        require_permission(membership.role, Resource.finding, action)
+    except HTTPException:
+        await audit.log_permission_denied(
+            role=membership.role.value,
+            resource=Resource.finding.value,
+            action=action.value,
+            actor_user_id=user.id,
+            request=request,
+        )
+        raise
+    require_project_writable(project)
+
+    # De-dup so a repeated id can't re-touch (and re-flush) an in-memory row whose
+    # savepoint was rolled back. Order preserved.
+    seen: set[UUID] = set()
+    finding_ids: list[UUID] = []
+    for fid in payload.finding_ids:
+        if fid not in seen:
+            seen.add(fid)
+            finding_ids.append(fid)
+
+    results: list[FindingBulkItemResult] = []
+    resolved_count = 0
+    for finding_id in finding_ids:
+        try:
+            async with session.begin_nested():
+                finding = await _load_finding_or_404(session, project.id, finding_id)
+                before = _finding_snapshot(finding)
+                audit_action = await _apply_bulk_finding_op(
+                    session, project.id, membership.role, finding, payload
+                )
+                await session.flush()
+                await audit.record(
+                    session,
+                    action=audit_action,
+                    resource_type="finding",
+                    resource_id=finding.id,
+                    before=before,
+                    after=None if audit_action == "finding.deleted" else _finding_snapshot(finding),
+                    actor_user_id=user.id,
+                    project_id=project.id,
+                    request=request,
+                )
+            results.append(
+                FindingBulkItemResult(finding_id=finding_id, status="ok", action=audit_action)
+            )
+            if audit_action == "finding.resolved":
+                resolved_count += 1
+        except HTTPException as exc:
+            detail = exc.detail if isinstance(exc.detail, str) else "FINDING_BULK_ROW_FAILED"
+            results.append(
+                FindingBulkItemResult(finding_id=finding_id, status="error", error_code=detail)
+            )
+
+    # One coalesced, org-wide notification for the whole batch (M-en1 publish-on-write)
+    # rather than one per resolved finding — closing 50 points shouldn't ping 50 times.
+    if resolved_count > 0:
+        locale = resolve_org_locale(project.country)
+        notification = await create_notification(
+            session,
+            event_type=NotificationEventType.finding_resolved,
+            title=t("notifications.findings_bulk_resolved.title", locale),
+            body=t("notifications.findings_bulk_resolved.body", locale, count=resolved_count),
+            project_id=project.id,
+        )
+        await publish_notification(notification, organization_id=active_org_id)
+
+    failed = sum(1 for r in results if r.status == "error")
+    if failed:
+        response.status_code = status.HTTP_207_MULTI_STATUS
+    return FindingBulkResult(results=results, succeeded=len(results) - failed, failed=failed)

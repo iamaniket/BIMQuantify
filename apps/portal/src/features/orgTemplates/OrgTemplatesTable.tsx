@@ -55,7 +55,7 @@ export function OrgTemplatesTable({
       sortKey: 'type',
       cell: (row) => (
         <span className="font-sans text-body3 text-foreground-secondary">
-          {t(`typeLabel.${row.data.template_type}` as Parameters<typeof t>[0])}
+          {t(`typeLabel.${row.data.template_type}`)}
         </span>
       ),
     },

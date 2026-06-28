@@ -7,7 +7,43 @@
     "bullet2": "Zet bevindingen op het model en deel ze met uw team",
     "bullet3": "Wkb-controles en het volledige dossier horen bij een project",
     "cta": "Doe mee aan de gratis preview",
-    "note": "De gratis viewer wordt uitgerold onder de eerste gebruikers. Laat uw gegevens achter en we geven u toegang zodra hij opengaat."
+    "note": "De gratis viewer wordt uitgerold onder de eerste gebruikers. Laat uw gegevens achter en we geven u toegang zodra hij opengaat.",
+    "app": {
+      "title": "Uw gratis modellen",
+      "uploadHeading": "Upload een IFC-model",
+      "capNote": "{count} van {max} modellen gebruikt",
+      "uploading": "Uploaden…",
+      "uploadButton": "IFC uploaden",
+      "empty": "Nog geen modellen. Upload een IFC-bestand om het in 3D te bekijken.",
+      "open": "Openen",
+      "delete": "Verwijderen",
+      "upgradeHeading": "Wkb-controles en een dossier nodig?",
+      "upgradeBody": "Die horen bij een project. Vraag toegang aan om uw werkruimte te upgraden.",
+      "upgradeCta": "Toegang aanvragen",
+      "status": {
+        "none": "Niet verwerkt",
+        "queued": "In wachtrij…",
+        "running": "Verwerken…",
+        "succeeded": "Klaar om te bekijken",
+        "failed": "Verwerking mislukt"
+      }
+    },
+    "viewer": {
+      "back": "Terug",
+      "title": "Gratis viewer",
+      "loading": "Model laden…",
+      "loadError": "Dit model kon niet worden geladen.",
+      "snags": "Bevindingen",
+      "snagTitle": "Titel bevinding",
+      "snagNote": "Notitie (optioneel)",
+      "sevLow": "Laag",
+      "sevMedium": "Midden",
+      "sevHigh": "Hoog",
+      "addSnag": "Bevinding toevoegen",
+      "close": "Sluiten",
+      "reopen": "Heropenen",
+      "delete": "Verwijderen"
+    }
   },
   "imageAnnotator": {
     "title": "Foto annoteren",

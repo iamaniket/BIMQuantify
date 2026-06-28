@@ -122,11 +122,11 @@ export function use2dBcfController(
       canCapture: documentHandle !== null,
       captureMode: '2d',
       capture,
-      applyViewpoint: async (vp) => {
+      applyViewpoint: (vp) => {
         const vs = vp.view_state_2d as
           | { page?: number; center_x?: number; center_y?: number; zoom?: number }
           | null;
-        if (vs === null) return;
+        if (vs === null) return Promise.resolve();
         // Sync the React page state (drives the page indicator + controlled prop).
         if (typeof vs.page === 'number') onRestorePage(vs.page);
         // Pan + zoom the document to the stored framing. The command jumps to
@@ -145,6 +145,7 @@ export function use2dBcfController(
             })
             .catch(() => undefined);
         }
+        return Promise.resolve();
       },
       activateMarkup: (tool: MarkupTool = 'rect') => {
         if (documentHandle === null) return;
@@ -157,7 +158,7 @@ export function use2dBcfController(
         void documentHandle.commands.execute('markup.clearDraft');
       },
       onDraftChange: (cb: (hasDraft: boolean) => void) => {
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
+         
         if (documentHandle === null) return () => {};
         documentHandle.commands.execute<MarkupDraft | null>('markup.getDraft')
           .then((d) => { cb(d !== null); })

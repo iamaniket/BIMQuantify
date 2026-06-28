@@ -149,3 +149,9 @@ CAPTURE_INITIATE_LIMITER = ResilientRateLimiter(
     seconds=3600,
     identifier=make_identifier("capture_initiate"),
 )
+# Per-user presign churn on the free-tier upload-initiate endpoint.
+FREE_UPLOAD_INITIATE_LIMITER = ResilientRateLimiter(
+    times=_settings.rate_limit_free_upload_initiate_per_hour,
+    seconds=3600,
+    identifier=make_identifier("free_upload_initiate"),
+)

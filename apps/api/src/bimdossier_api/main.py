@@ -32,6 +32,10 @@ from bimdossier_api.i18n.http_errors import (
     validation_exception_handler,
 )
 from bimdossier_api.jobs.dispatcher import close_http_client
+from bimdossier_api.free_reconcile import (
+    FreeExtractionReconcileSweeper,
+    IdleFreeModelSweeper,
+)
 from bimdossier_api.jobs.reconcile import JobReconcileSweeper
 from bimdossier_api.logging_config import configure_logging
 from bimdossier_api.middleware import (
@@ -81,6 +85,9 @@ from bimdossier_api.routers.documents import router as documents_router
 from bimdossier_api.routers.element_inspections import router as element_inspections_router
 from bimdossier_api.routers.finding import router as finding_router
 from bimdossier_api.routers.finding_comment import router as finding_comment_router
+from bimdossier_api.routers.free_conversion import router as free_conversion_router
+from bimdossier_api.routers.free_viewer import internal_router as free_internal_router
+from bimdossier_api.routers.free_viewer import router as free_viewer_router
 from bimdossier_api.routers.health import router as health_router
 from bimdossier_api.routers.inspection import router as inspection_router
 from bimdossier_api.routers.jobs import router as jobs_router
@@ -228,6 +235,19 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         settings.job_stuck_timeout_minutes,
     )
     job_reconcile_sweeper.start()
+    # Free-tier extractions have no tenant Job row, so JobReconcileSweeper can't
+    # see them — this is their reconciliation backstop (reuses the same interval +
+    # stuck timeout).
+    free_reconcile_sweeper = FreeExtractionReconcileSweeper(
+        settings.job_reconcile_interval_minutes,
+        settings.job_stuck_timeout_minutes,
+    )
+    free_reconcile_sweeper.start()
+    free_idle_sweeper = IdleFreeModelSweeper(
+        settings.free_idle_sweep_interval_minutes,
+        settings.free_model_idle_ttl_days,
+    )
+    free_idle_sweeper.start()
     # Data-lifecycle reapers (L11): abandoned pending uploads + expired/revoked
     # unused capture links.
     pending_upload_sweeper = PendingUploadSweeper(
@@ -249,6 +269,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         await close_http_client()
         await capture_link_sweeper.stop()
         await pending_upload_sweeper.stop()
+        await free_idle_sweeper.stop()
+        await free_reconcile_sweeper.stop()
         await job_reconcile_sweeper.stop()
         await deadline_sweeper.stop()
         await invitation_sweeper.stop()
@@ -408,6 +430,9 @@ def create_app() -> FastAPI:
     app.include_router(project_files_router)
     app.include_router(project_viewer_router)
     app.include_router(jobs_internal_router)
+    app.include_router(free_viewer_router)
+    app.include_router(free_internal_router)
+    app.include_router(free_conversion_router)
     app.include_router(compliance_router)
     app.include_router(compliance_project_router)
     app.include_router(deadlines_router)

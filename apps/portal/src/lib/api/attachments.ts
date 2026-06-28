@@ -7,7 +7,6 @@ import {
   AttachmentInitiateResponseSchema,
   AttachmentListSchema,
   AttachmentSchema,
-  type CaptureLink,
   type CaptureLinkList,
   type CreateCaptureLinkResponse,
   type Attachment,

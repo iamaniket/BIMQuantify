@@ -859,6 +859,473 @@ async def test_verified_is_terminal_no_revert(
 
 
 # ---------------------------------------------------------------------------
+# Bulk operations (coordinator triage) — POST /findings/bulk
+# ---------------------------------------------------------------------------
+
+
+async def _create_finding(
+    client: AsyncClient, token: str, project_id: str, **overrides: object
+) -> dict:
+    resp = await client.post(
+        f"/projects/{project_id}/findings",
+        json=_payload(**overrides),
+        headers=_auth(token),
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()
+
+
+async def test_bulk_set_status_moves_many_findings(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    a = await _create_finding(client, token, project["id"])
+    b = await _create_finding(client, token, project["id"])
+    await _promote_to_open(client, token, project["id"], a["id"], org_user["id"])
+    await _promote_to_open(client, token, project["id"], b["id"], org_user["id"])
+
+    resp = await client.post(
+        f"/projects/{project['id']}/findings/bulk",
+        json={"finding_ids": [a["id"], b["id"]], "op": "set_status", "status": "in_progress"},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["succeeded"] == 2 and body["failed"] == 0
+    assert {r["finding_id"] for r in body["results"]} == {a["id"], b["id"]}
+    assert all(r["status"] == "ok" for r in body["results"])
+
+    for fid in (a["id"], b["id"]):
+        got = await client.get(f"/projects/{project['id']}/findings/{fid}", headers=_auth(token))
+        assert got.json()["status"] == "in_progress"
+
+
+async def test_bulk_partial_failure_is_207_and_isolated(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    """An illegal-transition row fails in isolation; the legal row still lands."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    open_f = await _create_finding(client, token, project["id"])
+    await _promote_to_open(client, token, project["id"], open_f["id"], org_user["id"])
+    draft_f = await _create_finding(client, token, project["id"])  # draft -> in_progress is illegal
+
+    resp = await client.post(
+        f"/projects/{project['id']}/findings/bulk",
+        json={
+            "finding_ids": [open_f["id"], draft_f["id"]],
+            "op": "set_status",
+            "status": "in_progress",
+        },
+        headers=_auth(token),
+    )
+    assert resp.status_code == 207, resp.text
+    body = resp.json()
+    assert body["succeeded"] == 1 and body["failed"] == 1
+    by_id = {r["finding_id"]: r for r in body["results"]}
+    assert by_id[open_f["id"]]["status"] == "ok"
+    assert by_id[draft_f["id"]]["status"] == "error"
+    assert by_id[draft_f["id"]]["error_code"] == "FINDING_ILLEGAL_TRANSITION"
+
+    # The failed row's savepoint rolled back — it's still a draft.
+    draft = await client.get(
+        f"/projects/{project['id']}/findings/{draft_f['id']}", headers=_auth(token)
+    )
+    assert draft.json()["status"] == "draft"
+    open_now = await client.get(
+        f"/projects/{project['id']}/findings/{open_f['id']}", headers=_auth(token)
+    )
+    assert open_now.json()["status"] == "in_progress"
+
+
+async def test_bulk_promote_with_shared_deadline_and_assignee(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    a = await _create_finding(client, token, project["id"])
+    b = await _create_finding(client, token, project["id"])
+
+    resp = await client.post(
+        f"/projects/{project['id']}/findings/bulk",
+        json={
+            "finding_ids": [a["id"], b["id"]],
+            "op": "set_status",
+            "status": "open",
+            "assignee_user_id": org_user["id"],
+            "deadline_date": "2026-09-01",
+        },
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["succeeded"] == 2
+    got = await client.get(f"/projects/{project['id']}/findings/{a['id']}", headers=_auth(token))
+    assert got.json()["status"] == "open"
+    assert got.json()["assignee_user_id"] == org_user["id"]
+    assert got.json()["deadline_date"] == "2026-09-01"
+
+
+async def test_bulk_assign_validates_membership(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    a = await _create_finding(client, token, project["id"])
+
+    # A non-member assignee fails that row (clean 422 code, isolated).
+    resp = await client.post(
+        f"/projects/{project['id']}/findings/bulk",
+        json={"finding_ids": [a["id"]], "op": "assign", "assignee_user_id": str(uuid4())},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 207, resp.text
+    assert resp.json()["results"][0]["error_code"] == "ASSIGNEE_NOT_A_PROJECT_MEMBER"
+
+    # The project owner is a member → assign sticks.
+    ok = await client.post(
+        f"/projects/{project['id']}/findings/bulk",
+        json={"finding_ids": [a["id"]], "op": "assign", "assignee_user_id": org_user["id"]},
+        headers=_auth(token),
+    )
+    assert ok.status_code == 200, ok.text
+    got = await client.get(f"/projects/{project['id']}/findings/{a['id']}", headers=_auth(token))
+    assert got.json()["assignee_user_id"] == org_user["id"]
+
+
+async def test_bulk_delete_soft_deletes(client: AsyncClient, org_user: dict[str, str]) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    a = await _create_finding(client, token, project["id"])
+    b = await _create_finding(client, token, project["id"])
+
+    resp = await client.post(
+        f"/projects/{project['id']}/findings/bulk",
+        json={"finding_ids": [a["id"], b["id"]], "op": "delete"},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["succeeded"] == 2
+    for fid in (a["id"], b["id"]):
+        got = await client.get(f"/projects/{project['id']}/findings/{fid}", headers=_auth(token))
+        assert got.status_code == 404
+
+
+async def test_bulk_resolve_emits_single_coalesced_notification(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    a = await _create_finding(client, token, project["id"])
+    b = await _create_finding(client, token, project["id"])
+    for fid in (a["id"], b["id"]):
+        await _promote_to_open(client, token, project["id"], fid, org_user["id"])
+        # Pre-load the evidence the resolve gate needs (status stays open).
+        evidence = [await _create_attachment_row(project["id"])]
+        patched = await client.patch(
+            f"/projects/{project['id']}/findings/{fid}",
+            json={"resolution_note": EVIDENCE_NOTE, "resolution_evidence_ids": evidence},
+            headers=_auth(token),
+        )
+        assert patched.status_code == 200, patched.text
+
+    resp = await client.post(
+        f"/projects/{project['id']}/findings/bulk",
+        json={"finding_ids": [a["id"], b["id"]], "op": "set_status", "status": "resolved"},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["succeeded"] == 2
+
+    notifs = await client.get("/notifications", headers=_auth(token))
+    resolved = [n for n in notifs.json()["items"] if n["event_type"] == "finding_resolved"]
+    assert len(resolved) == 1  # one coalesced ping, not one per finding
+    assert "2" in resolved[0]["body"]
+
+
+async def test_bulk_verify_requires_inspector(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    await _add_member(client, token, project["id"], same_org_non_admin_user["id"], "inspector")
+    a = await _create_finding(client, token, project["id"])
+    await _promote_to_open(client, token, project["id"], a["id"], org_user["id"])
+    await _resolve(client, token, project["id"], a["id"])
+
+    # The admin owner is not an inspector → the verify row fails.
+    denied = await client.post(
+        f"/projects/{project['id']}/findings/bulk",
+        json={"finding_ids": [a["id"]], "op": "set_status", "status": "verified"},
+        headers=_auth(token),
+    )
+    assert denied.status_code == 207, denied.text
+    assert denied.json()["results"][0]["error_code"] == "FINDING_VERIFY_REQUIRES_INSPECTOR"
+
+    # The inspector can bulk-verify.
+    ok = await client.post(
+        f"/projects/{project['id']}/findings/bulk",
+        json={"finding_ids": [a["id"]], "op": "set_status", "status": "verified"},
+        headers=_auth(same_org_non_admin_user["access_token"]),
+    )
+    assert ok.status_code == 200, ok.text
+    got = await client.get(f"/projects/{project['id']}/findings/{a['id']}", headers=_auth(token))
+    assert got.json()["status"] == "verified"
+
+
+# ---------------------------------------------------------------------------
+# Duplicate detection — mark-duplicate + duplicate-candidates
+# ---------------------------------------------------------------------------
+
+
+async def test_mark_duplicate_closes_finding(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    canonical = await _create_finding(client, token, project["id"], title="Crack in wall")
+    dup = await _create_finding(client, token, project["id"], title="Same crack again")
+
+    resp = await client.post(
+        f"/projects/{project['id']}/findings/{dup['id']}/mark-duplicate",
+        json={"duplicate_of_finding_id": canonical["id"]},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "resolved"
+    assert body["duplicate_of_finding_id"] == canonical["id"]
+    assert body["resolution_note"]  # synthetic note written (bypasses evidence gate)
+
+    # Recorded in history.
+    hist = await client.get(
+        f"/projects/{project['id']}/findings/{dup['id']}/history", headers=_auth(token)
+    )
+    assert "finding.marked_duplicate" in [e["action"] for e in hist.json()]
+
+
+async def test_mark_duplicate_of_self_rejected(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    f = await _create_finding(client, token, project["id"])
+    resp = await client.post(
+        f"/projects/{project['id']}/findings/{f['id']}/mark-duplicate",
+        json={"duplicate_of_finding_id": f["id"]},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == "FINDING_DUPLICATE_OF_SELF"
+
+
+async def test_mark_duplicate_no_chains(client: AsyncClient, org_user: dict[str, str]) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    canonical = await _create_finding(client, token, project["id"])
+    dup = await _create_finding(client, token, project["id"])
+    third = await _create_finding(client, token, project["id"])
+    # dup -> canonical is fine
+    await client.post(
+        f"/projects/{project['id']}/findings/{dup['id']}/mark-duplicate",
+        json={"duplicate_of_finding_id": canonical["id"]},
+        headers=_auth(token),
+    )
+    # third -> dup must be rejected (dup is itself a duplicate; no chains)
+    resp = await client.post(
+        f"/projects/{project['id']}/findings/{third['id']}/mark-duplicate",
+        json={"duplicate_of_finding_id": dup["id"]},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == "FINDING_DUPLICATE_TARGET_IS_DUPLICATE"
+
+
+async def test_duplicate_candidates_lists_open_findings_on_element(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    document = await _create_document(client, token, project["id"])
+
+    on_element = await _create_finding(
+        client,
+        token,
+        project["id"],
+        linked_document_id=document["id"],
+        linked_element_global_id=ELEMENT_GLOBAL_ID,
+    )
+    # A finding on a different element must not show up.
+    await _create_finding(
+        client,
+        token,
+        project["id"],
+        linked_document_id=document["id"],
+        linked_element_global_id="differentElementGuid00",
+    )
+
+    resp = await client.get(
+        f"/projects/{project['id']}/findings/duplicate-candidates",
+        params={
+            "linked_document_id": document["id"],
+            "linked_element_global_id": ELEMENT_GLOBAL_ID,
+        },
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    ids = [c["id"] for c in resp.json()]
+    assert ids == [on_element["id"]]
+
+
+# ---------------------------------------------------------------------------
+# Reopen a verified finding (inspector-only escape hatch)
+# ---------------------------------------------------------------------------
+
+
+async def _verify(
+    client: AsyncClient, inspector_token: str, owner_token: str, project_id: str, finding_id: str
+) -> None:
+    resp = await client.patch(
+        f"/projects/{project_id}/findings/{finding_id}",
+        json={"status": "verified"},
+        headers=_auth(inspector_token),
+    )
+    assert resp.status_code == 200, resp.text
+
+
+async def test_inspector_can_reopen_verified(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    token = org_user["access_token"]
+    insp = same_org_non_admin_user["access_token"]
+    project = await _create_project(client, token)
+    await _add_member(client, token, project["id"], same_org_non_admin_user["id"], "inspector")
+    f = await _create_finding(client, token, project["id"])
+    await _promote_to_open(client, token, project["id"], f["id"], org_user["id"])
+    await _resolve(client, token, project["id"], f["id"])
+    await _verify(client, insp, token, project["id"], f["id"])
+
+    resp = await client.post(
+        f"/projects/{project['id']}/findings/{f['id']}/reopen",
+        json={"reason": "Kit opnieuw losgeraakt bij herinspectie."},
+        headers=_auth(insp),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "in_progress"
+    assert resp.json()["resolution_note"] == "Kit opnieuw losgeraakt bij herinspectie."
+
+    hist = await client.get(
+        f"/projects/{project['id']}/findings/{f['id']}/history", headers=_auth(token)
+    )
+    assert "finding.reopened" in [e["action"] for e in hist.json()]
+
+
+async def test_non_inspector_cannot_reopen(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    token = org_user["access_token"]
+    insp = same_org_non_admin_user["access_token"]
+    project = await _create_project(client, token)
+    await _add_member(client, token, project["id"], same_org_non_admin_user["id"], "inspector")
+    f = await _create_finding(client, token, project["id"])
+    await _promote_to_open(client, token, project["id"], f["id"], org_user["id"])
+    await _resolve(client, token, project["id"], f["id"])
+    await _verify(client, insp, token, project["id"], f["id"])
+
+    # The admin owner (not an inspector) cannot reopen.
+    resp = await client.post(
+        f"/projects/{project['id']}/findings/{f['id']}/reopen",
+        json={"reason": "x"},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == "FINDING_REOPEN_REQUIRES_INSPECTOR"
+
+
+async def test_reopen_only_from_verified(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_non_admin_user: dict[str, str],
+) -> None:
+    token = org_user["access_token"]
+    insp = same_org_non_admin_user["access_token"]
+    project = await _create_project(client, token)
+    await _add_member(client, token, project["id"], same_org_non_admin_user["id"], "inspector")
+    f = await _create_finding(client, token, project["id"])  # still draft
+    resp = await client.post(
+        f"/projects/{project['id']}/findings/{f['id']}/reopen",
+        json={"reason": "x"},
+        headers=_auth(insp),
+    )
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == "FINDING_ILLEGAL_TRANSITION"
+
+
+# ---------------------------------------------------------------------------
+# Smart-view filters (mine / overdue / multi-status)
+# ---------------------------------------------------------------------------
+
+
+async def test_list_findings_mine_and_overdue_filters(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    # Overdue: assigned to me with a past deadline, still open.
+    overdue = await _create_finding(client, token, project["id"], title="Overdue point")
+    await client.patch(
+        f"/projects/{project['id']}/findings/{overdue['id']}",
+        json={"status": "open", "deadline_date": "2020-01-01", "assignee_user_id": org_user["id"]},
+        headers=_auth(token),
+    )
+    # Future deadline, assigned to me — not overdue.
+    future = await _create_finding(client, token, project["id"], title="Future point")
+    await _promote_to_open(client, token, project["id"], future["id"], org_user["id"])
+
+    mine = await client.get(
+        f"/projects/{project['id']}/findings", params={"mine": True}, headers=_auth(token)
+    )
+    assert {f["id"] for f in mine.json()} == {overdue["id"], future["id"]}
+
+    od = await client.get(
+        f"/projects/{project['id']}/findings",
+        params={"mine": True, "overdue": True},
+        headers=_auth(token),
+    )
+    assert [f["id"] for f in od.json()] == [overdue["id"]]
+
+
+async def test_list_findings_multi_status_filter(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    draft = await _create_finding(client, token, project["id"])
+    opened = await _create_finding(client, token, project["id"])
+    await _promote_to_open(client, token, project["id"], opened["id"], org_user["id"])
+
+    resp = await client.get(
+        f"/projects/{project['id']}/findings",
+        params=[("statuses", "draft"), ("statuses", "open")],
+        headers=_auth(token),
+    )
+    assert {f["id"] for f in resp.json()} == {draft["id"], opened["id"]}
+
+    only_open = await client.get(
+        f"/projects/{project['id']}/findings",
+        params=[("statuses", "open")],
+        headers=_auth(token),
+    )
+    assert [f["id"] for f in only_open.json()] == [opened["id"]]
+
+
+# ---------------------------------------------------------------------------
 # History timeline (#26) — GET /findings/{id}/history
 # ---------------------------------------------------------------------------
 

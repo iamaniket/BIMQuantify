@@ -18,7 +18,7 @@ import {
   Input, Label, Textarea,
 } from '@bimdossier/ui';
 
-import { useRegisterField } from '@/hooks/useRegisterField';
+import { registerField } from '@/hooks/registerField';
 
 import {
   fieldErrorClass, fieldLabelClass, getFieldErrorMessage,
@@ -49,7 +49,7 @@ export function BlogStepDutch({
   const titleError = getFieldErrorMessage(errors, 'title_nl');
   const contentError = getFieldErrorMessage(errors, 'content_nl');
 
-  const titleRegister = useRegisterField(form, 'title_nl');
+  const titleRegister = registerField(form, 'title_nl');
   const { setValue } = form;
 
   const handleMarkdownFile = useCallback(async (file: File) => {
@@ -70,7 +70,7 @@ export function BlogStepDutch({
     for (const file of files) {
       const lower = file.name.toLowerCase();
       if (MDX_EXTENSIONS.some((ext) => lower.endsWith(ext))) {
-        // eslint-disable-next-line no-await-in-loop
+         
         await handleMarkdownFile(file);
       } else {
         toast.error(t('errors.unknownDrop', { filename: file.name }));
@@ -94,7 +94,7 @@ export function BlogStepDutch({
           ref={(node) => {
             titleRegister.ref(node);
             if (firstFieldRef !== undefined) {
-              // eslint-disable-next-line no-param-reassign
+               
               firstFieldRef.current = node;
             }
           }}
@@ -153,7 +153,7 @@ export function BlogStepDutch({
           placeholder={t('placeholders.contentNl')}
           invalid={contentError !== undefined}
           disabled={isSubmitting}
-          {...useRegisterField(form, 'content_nl')}
+          {...registerField(form, 'content_nl')}
         />
         <span className="text-caption text-foreground-tertiary">
           {t('hints.content')}

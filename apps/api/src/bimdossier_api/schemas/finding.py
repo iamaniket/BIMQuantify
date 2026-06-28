@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from enum import StrEnum
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -126,8 +128,123 @@ class FindingRead(FindingBase):
     reference_attachment_ids: list[str] | None
     template_id: UUID | None
     custom_values: dict[str, object] | None
+    duplicate_of_finding_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class FindingBcfExportRequest(BaseModel):
+    """Export findings as a BCF archive. Omit `finding_ids` to export them all."""
+
+    finding_ids: list[UUID] | None = Field(default=None, max_length=2000)
+
+
+class FindingExport(BaseModel):
+    """Machine-readable, re-importable export of a project's findings — a
+    superset of the CSV (carries 3D/2D anchors, photo/evidence/reference ids,
+    template + custom values). Backs the data-portability + instrument-bundle paths."""
+
+    project_id: UUID
+    count: int
+    findings: list[FindingRead]
+
+
+class FindingReopen(BaseModel):
+    """Re-open a verified finding (a signed-off defect that re-failed).
+
+    Inspector-only, verified→in_progress, with a mandatory reason recorded in
+    the history. Keeps `verified` terminal for the normal PATCH path — this is
+    the one sanctioned escape hatch.
+    """
+
+    reason: str = Field(min_length=1, max_length=4000)
+
+
+class FindingMarkDuplicate(BaseModel):
+    """Mark this finding as a duplicate of `duplicate_of_finding_id`.
+
+    Closes the duplicate (status→resolved) with a synthetic note, bypassing the
+    normal resolve evidence gate — the duplicate link is the evidence.
+    """
+
+    duplicate_of_finding_id: UUID
+
+
+class FindingDuplicateCandidate(BaseModel):
+    """A pre-existing, still-open finding on the same element — surfaced at
+    create time so the inspector can avoid snagging the same defect twice."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    title: str
+    status: FindingStatus
+    severity: FindingSeverity
+    assignee_user_id: UUID | None
+    created_at: datetime
+
+
+class FindingBulkOp(StrEnum):
+    """The mutation a bulk request applies uniformly to every listed finding.
+
+    `set_status` may also carry `assignee_user_id` + `deadline_date` so a batch
+    draft→open promotion (which the lifecycle gate requires both for) lands in a
+    single call. Language-neutral codes; the portal labels them.
+    """
+
+    set_status = "set_status"
+    assign = "assign"
+    set_deadline = "set_deadline"
+    delete = "delete"
+
+
+class FindingBulkRequest(BaseModel):
+    """Apply one operation to many findings at once (coordinator triage).
+
+    Per-row gates (legal transition, promote-needs-deadline+assignee,
+    resolve-needs-evidence, verify-needs-inspector) are reused from the
+    single-finding path, so an illegal row fails in isolation rather than
+    failing the batch — see the 207-style `FindingBulkResult`.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    finding_ids: list[UUID] = Field(min_length=1, max_length=200)
+    op: FindingBulkOp
+    # Op-specific payload. Validated per-op below so a missing field is a clean
+    # 422 VALIDATION_ERROR (no new error code needed).
+    status: FindingStatus | None = None
+    assignee_user_id: UUID | None = None
+    deadline_date: date | None = None
+
+    @model_validator(mode="after")
+    def _require_op_fields(self) -> FindingBulkRequest:
+        if self.op is FindingBulkOp.set_status and self.status is None:
+            raise ValueError("op=set_status requires `status`")
+        if self.op is FindingBulkOp.set_deadline and self.deadline_date is None:
+            raise ValueError("op=set_deadline requires `deadline_date`")
+        # op=assign with assignee_user_id=None is a deliberate bulk un-assign.
+        return self
+
+
+class FindingBulkItemResult(BaseModel):
+    """Outcome for a single finding in a bulk request."""
+
+    finding_id: UUID
+    status: Literal["ok", "error"]
+    # The audit action applied (finding.promoted/resolved/verified/updated/deleted)
+    # on success; the domain error code (e.g. FINDING_ILLEGAL_TRANSITION) on failure.
+    action: str | None = None
+    error_code: str | None = None
+
+
+class FindingBulkResult(BaseModel):
+    """207-style aggregate result: per-row success/failure plus tallies. The
+    HTTP status is 200 when every row succeeded, 207 when any row failed."""
+
+    results: list[FindingBulkItemResult]
+    succeeded: int
+    failed: int
 
 
 class FindingHistoryChange(BaseModel):

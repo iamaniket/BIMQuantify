@@ -16,7 +16,38 @@ callback, or a random-uuid asset key minted at `initiate` and echoed back at
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from fastapi import HTTPException, status
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
+
+def free_key_prefix(user_id: UUID) -> str:
+    """Canonical free-tier object-key prefix for a user: ``free/<user_id>/``."""
+    return f"free/{user_id}/"
+
+
+def assert_free_key_scoped(
+    key: str | None,
+    user_id: UUID,
+    *,
+    detail: str = "INVALID_FREE_STORAGE_KEY",
+) -> None:
+    """Reject a free-tier key not scoped to ``free/<user_id>/`` (``None`` passes).
+
+    Load-bearing on the free extraction callback: that path runs as the
+    superuser (RLS-bypassing) and writes artifact keys onto ``free_models``, so
+    this prefix check is the only thing binding a callback's keys to their
+    owner's namespace — without it user A's callback could stamp a key under
+    user B's prefix. Raises ``HTTPException(400, detail=detail)`` on mismatch.
+    """
+    if key is not None and not key.startswith(free_key_prefix(user_id)):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=detail,
+        )
 
 
 def assert_key_scoped(

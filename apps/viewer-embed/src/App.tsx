@@ -5,21 +5,27 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { IfcViewer } from '@bimdossier/viewer/viewer-3d';
 import type { ViewerBundle } from '@bimdossier/viewer';
 
-import { createBridge, type Bridge, type EntityMarker2D, type HostMessage } from './bridge';
+import { createBridge, type Bridge, type EntityMarker2D, type HostMessage, type ViewMode } from './bridge';
 import { FloorPlanPane } from './FloorPlanPane';
 import { useFloorPlanData } from './useFloorPlanData';
 
 /**
- * v1 is **2D-only**: the embed renders the unified `DocumentViewer` (floor plans
- * + PDFs) with an in-webview 2D toolbar and finding pins — no 3D, no Split, no
- * view-mode switcher. The 3D `IfcViewer` stays imported but dormant behind
- * `ENABLE_3D`; flipping it on re-mounts the 3D pane (the richer 3D snagging
- * wiring — markers/place/isolation/split — is restorable from git history).
+ * The embed renders the unified 2D `DocumentViewer` (floor plans + PDFs) and,
+ * when built 3D-capable AND the host requests a 3D layout, the `IfcViewer` 3D
+ * pane. 3D is gated at TWO layers:
+ *   1. BUILD: `ENABLE_3D` (below) is the compile-time `VITE_ENABLE_3D` flag — a
+ *      hard kill-switch. When off the `IfcViewer` branch is statically dead, so a
+ *      v1 build can NEVER mount 3D no matter what the native shell sends. (The 2D
+ *      floor-plan viewer is itself three/web-ifc-based, so those deps ship either
+ *      way — this is a safety gate, not a bundle-size lever.)
+ *   2. RUNTIME: the native shell only requests `viewMode: '3d'` when its own
+ *      `EXPO_PUBLIC_ENABLE_3D_VIEWER` flag is on, so a 3D-capable bundle still
+ *      renders 2D-only until the user opts in.
  *
  * Native owns all state; this bundle is a stateless render-and-report surface
  * driven over the postMessage bridge.
  */
-const ENABLE_3D = false as boolean;
+const ENABLE_3D = import.meta.env.VITE_ENABLE_3D === 'true';
 
 const EMPTY_MARKERS: EntityMarker2D[] = [];
 
@@ -29,6 +35,10 @@ export function App() {
   // PDF document: the page-image manifest URL (2D-only, no IFC model).
   const [pdfDocUrl, setPdfDocUrl] = useState<string | null>(null);
   const [markers, setMarkers] = useState<EntityMarker2D[]>(EMPTY_MARKERS);
+  // The layout the host requested. Defaults to 2D so a 3D-capable bundle still
+  // renders 2D-only until the native shell sends a 3D `loadModel.viewMode` /
+  // `setViewMode` (which it only does when EXPO_PUBLIC_ENABLE_3D_VIEWER is on).
+  const [viewMode, setViewMode] = useState<ViewMode>('2d');
 
   const bridgeRef = useRef<Bridge | null>(null);
 
@@ -42,11 +52,16 @@ export function App() {
         setPdfDocUrl(null);
         setMarkers(EMPTY_MARKERS);
         setBundle(msg.bundle);
+        if (msg.viewMode !== undefined) setViewMode(msg.viewMode);
         break;
       case 'loadPdf':
         setBundle(null);
         setMarkers(EMPTY_MARKERS);
         setPdfDocUrl(msg.pdfPagesUrl);
+        setViewMode('2d');
+        break;
+      case 'setViewMode':
+        setViewMode(msg.mode);
         break;
       case 'syncMarkers2D':
         setMarkers(msg.markers);
@@ -54,8 +69,9 @@ export function App() {
       case 'clearMarkers':
         setMarkers(EMPTY_MARKERS);
         break;
-      // 3D-only messages (setViewMode / syncMarkers / enter|exitPlaceMode /
-      // setMarkersVisible / loadAnnotations) are inert in the 2D-only v1.
+      // 3D marker / placement messages (syncMarkers / enter|exitPlaceMode /
+      // setMarkersVisible / loadAnnotations) are owned by the IfcViewer pane and
+      // wired in a later phase; inert here.
       default:
         break;
     }
@@ -85,8 +101,10 @@ export function App() {
     bridgeRef.current?.send({ type: 'findingPlaced', page, x, y });
   }, []);
 
-  // Dormant 3D path — flip ENABLE_3D to re-enable (v1 never takes this branch).
-  if (ENABLE_3D && bundle) {
+  // 3D pane — only when built 3D-capable (VITE_ENABLE_3D) AND the host requested a
+  // 3D layout. `split` is a Phase-3 item; it currently falls through to the 2D
+  // pane below until the side-by-side layout lands.
+  if (ENABLE_3D && bundle && viewMode === '3d') {
     return (
       <div style={containerStyle}>
         <IfcViewer

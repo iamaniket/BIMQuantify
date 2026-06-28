@@ -3,7 +3,7 @@ import type { JSX } from 'react';
 import { ActivatePanel } from '@/features/auth/ActivatePanel';
 import { AuthLayoutShell } from '@/features/auth/AuthLayoutShell';
 
-export default async function ActivatePage(): Promise<JSX.Element> {
+export default function ActivatePage(): JSX.Element {
   return (
     <AuthLayoutShell>
       <ActivatePanel />

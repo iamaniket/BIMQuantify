@@ -15,7 +15,7 @@ import {
   Button, Input, Label, Select, Textarea,
 } from '@bimdossier/ui';
 
-import { useRegisterField } from '@/hooks/useRegisterField';
+import { registerField } from '@/hooks/registerField';
 import { THUMBNAIL_ACCEPT } from '@/lib/images/compressImage';
 
 import {
@@ -58,7 +58,7 @@ export function BlogStepMeta({
   const authorError = getFieldErrorMessage(errors, 'author');
   const tagsError = getFieldErrorMessage(errors, 'tags');
 
-  const dateRegister = useRegisterField(form, 'date');
+  const dateRegister = registerField(form, 'date');
 
   const handleOpenFilePicker = (): void => {
     const input = coverInputRef.current;
@@ -129,7 +129,7 @@ export function BlogStepMeta({
           placeholder={t('placeholders.description')}
           invalid={descriptionError !== undefined}
           disabled={isSubmitting}
-          {...useRegisterField(form, 'description')}
+          {...registerField(form, 'description')}
         />
         {descriptionError !== undefined && (
           <span role="alert" className={fieldErrorClass}>{descriptionError}</span>
@@ -150,7 +150,7 @@ export function BlogStepMeta({
             ref={(node) => {
               dateRegister.ref(node);
               if (firstFieldRef !== undefined) {
-                // eslint-disable-next-line no-param-reassign
+                 
                 firstFieldRef.current = node;
               }
             }}
@@ -167,7 +167,7 @@ export function BlogStepMeta({
           <Select
             id={statusId}
             disabled={isSubmitting}
-            {...useRegisterField(form, 'status')}
+            {...registerField(form, 'status')}
           >
             <option value="published">{t('statuses.published')}</option>
             <option value="draft">{t('statuses.draft')}</option>
@@ -184,7 +184,7 @@ export function BlogStepMeta({
             placeholder={t('placeholders.author')}
             invalid={authorError !== undefined}
             disabled={isSubmitting}
-            {...useRegisterField(form, 'author')}
+            {...registerField(form, 'author')}
           />
           {authorError !== undefined && (
             <span role="alert" className={fieldErrorClass}>{authorError}</span>
@@ -202,7 +202,7 @@ export function BlogStepMeta({
           placeholder={t('placeholders.tags')}
           invalid={tagsError !== undefined}
           disabled={isSubmitting}
-          {...useRegisterField(form, 'tags')}
+          {...registerField(form, 'tags')}
         />
         <span className="text-caption text-foreground-tertiary">
           {t('hints.tags')}

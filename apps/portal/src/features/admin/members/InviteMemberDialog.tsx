@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { AppDialog, Checkbox, Input } from '@bimdossier/ui';
 
 import { Field } from '@/components/shared/forms/Field';
-import { useRegisterField } from '@/hooks/useRegisterField';
+import { registerField } from '@/hooks/registerField';
 import { ApiError } from '@/lib/api/client';
 import { useInviteMember } from './useInviteMember';
 
@@ -105,7 +105,7 @@ export function InviteMemberDialog({
               type="email"
               autoFocus
               placeholder={t('placeholders.email')}
-              {...useRegisterField(form, 'email')}
+              {...registerField(form, 'email')}
             />
           )}
         </Field>
@@ -114,7 +114,7 @@ export function InviteMemberDialog({
             <Input
               id={id}
               placeholder={t('placeholders.fullName')}
-              {...useRegisterField(form, 'full_name')}
+              {...registerField(form, 'full_name')}
             />
           )}
         </Field>

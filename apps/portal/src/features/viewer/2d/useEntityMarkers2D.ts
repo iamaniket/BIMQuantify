@@ -10,7 +10,7 @@ import { useFlattenedPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import { usePageFindingMarkers } from '../shared/useEntityMarkers';
 
-interface EntityMarkers2DOptions {
+type EntityMarkers2DOptions = {
   projectId: string;
   fileId: string | null;
   /** 1-based current PDF page, or null when not a PDF. */

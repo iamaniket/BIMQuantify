@@ -83,6 +83,10 @@ nl_messages: Catalog = {
     "notifications.finding_assigned.body": "{title}",
     "notifications.finding_resolved.title": "Bevinding opgelost",
     "notifications.finding_resolved.body": "{title}",
+    "notifications.findings_bulk_resolved.title": "Bevindingen opgelost",
+    "notifications.findings_bulk_resolved.body": "{count} bevindingen zijn opgelost",
+    # Synthetic resolution note written when a finding is closed as a duplicate.
+    "findings.duplicate_note": "Duplicaat van bevinding {id}",
     "notifications.finding_mentioned.title": "Je bent genoemd bij een bevinding",
     "notifications.finding_mentioned.body": "{title}",
     "notifications.org_member_invited.title": "Teamuitnodiging verzonden",
@@ -281,6 +285,16 @@ nl_messages: Catalog = {
     "errors.REQUEST_BODY_TOO_LARGE": "De aanvraag is te groot.",
     "errors.FILE_VERSION_HAS_DESCENDANTS": "Deze versie heeft nog nieuwere versies. Verwijder die eerst.",
 
+    # --- gratis tier ---
+    "errors.FREE_TIER_DISABLED": "De gratis viewer is op dit moment niet beschikbaar.",
+    "errors.FREE_MODEL_CAP_REACHED": "Je hebt de limiet voor gratis modellen bereikt. Verwijder een model of upgrade om er meer toe te voegen.",
+    "errors.FREE_UPLOAD_TOO_LARGE": "Dit bestand is te groot voor de gratis viewer.",
+    "errors.FREE_MODEL_NOT_FOUND": "Dat model kon niet worden gevonden.",
+    "errors.FREE_SNAG_NOT_FOUND": "Die melding kon niet worden gevonden.",
+    "errors.INVALID_FREE_STORAGE_KEY": "Die bestandsverwijzing is ongeldig.",
+    "errors.FREE_NOT_READY": "Dit model is nog niet klaar om te bekijken.",
+    "errors.FREE_EXTRACTION_BUSY": "We verwerken op dit moment veel modellen. Probeer het over een paar minuten opnieuw.",
+
     # --- extractie / viewer ---
     "errors.EXTRACTION_NOT_COMPLETE": "Het extraheren van het document is nog niet voltooid.",
     "errors.EXTRACTION_NOT_FAILED": "Deze extractie is niet mislukt en kan dus niet opnieuw worden geprobeerd.",
@@ -298,8 +312,11 @@ nl_messages: Catalog = {
     # --- bevindingen ---
     "errors.FINDING_NOT_FOUND": "Die bevinding kon niet worden gevonden.",
     "errors.FINDING_ILLEGAL_TRANSITION": "Die statuswijziging is niet toegestaan voor deze bevinding.",
+    "errors.FINDING_DUPLICATE_OF_SELF": "Een bevinding kan geen duplicaat van zichzelf zijn.",
+    "errors.FINDING_DUPLICATE_TARGET_IS_DUPLICATE": "Die bevinding is al gemarkeerd als duplicaat.",
     "errors.FINDING_RESOLVE_REQUIRES_EVIDENCE": "Voeg bewijs toe voordat u deze bevinding oplost.",
     "errors.FINDING_VERIFY_REQUIRES_INSPECTOR": "Alleen een inspecteur kan deze bevinding verifiëren.",
+    "errors.FINDING_REOPEN_REQUIRES_INSPECTOR": "Alleen een inspecteur kan een geverifieerde bevinding heropenen.",
     "errors.FINDING_PROMOTE_REQUIRES_DEADLINE_ASSIGNEE": "Stel een deadline en een toegewezen persoon in voordat u deze bevinding promoveert.",
     "errors.FINDING_TEMPLATE_NOT_FOUND": "Dat bevindingssjabloon bestaat niet meer.",
     "errors.FINDING_TEMPLATE_REQUIRED_FIELD": "Vul alle verplichte velden in.",

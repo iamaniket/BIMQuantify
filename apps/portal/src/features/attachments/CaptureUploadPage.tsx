@@ -79,7 +79,7 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
           computeFileSha256(file),
           buildCaptureMetadata(file, captureMethodRef.current, geoRef.current),
         ]);
-        await uploadViaCaptureLink(orgId, token, file, sha256, metadata as unknown as Record<string, unknown>);
+        await uploadViaCaptureLink(orgId, token, file, sha256, metadata);
 
         const currentRemaining = state.kind === 'success'
           ? state.remainingUses

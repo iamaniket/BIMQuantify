@@ -46,7 +46,7 @@ export function renderFieldInput(args: {
         <Input
           id={id}
           type="number"
-          value={value === undefined || value === null ? '' : String(value)}
+          value={typeof value === 'number' || typeof value === 'string' ? value : ''}
           onChange={(e) => { onChange(e.target.value); }}
           {...(field.min != null ? { min: field.min } : {})}
           {...(field.max != null ? { max: field.max } : {})}

@@ -66,6 +66,26 @@ export function FindingDetailPanel({ projectId, finding, onClose, onExpand }: Pr
     panelRef.current?.focus();
   }, [findingId]);
 
+  // Close on Escape. Attached as a native listener (not a JSX `onKeyDown`) so the
+  // `<aside>` keeps its `complementary` landmark role without carrying an event
+  // handler. Events still bubble from inside the rail to this node, so Escape
+  // closes the panel from anywhere within it — identical to the JSX handler.
+  useEffect(() => {
+    const node = panelRef.current;
+    if (node === null) {
+      return;
+    }
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    node.addEventListener('keydown', handleKeyDown);
+    return () => {
+      node.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [findingId, onClose]);
+
   if (finding === null) {
     return <></>;
   }
@@ -78,7 +98,6 @@ export function FindingDetailPanel({ projectId, finding, onClose, onExpand }: Pr
       ref={panelRef}
       tabIndex={-1}
       aria-label={t('title')}
-      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
       className="flex w-[26rem] shrink-0 flex-col border-l border-border bg-surface-main outline-none"
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3">

@@ -30,13 +30,11 @@ if (!parsed.success) {
   );
 }
 
-/* eslint-disable no-restricted-syntax -- Zod's `.optional()` produces an
-   optional-key shape; under exactOptionalPropertyTypes the surface type must
-   match `?:` exactly. */
+ 
 export const env: Readonly<{
   NEXT_PUBLIC_API_URL: string;
   NEXT_PUBLIC_POSTHOG_KEY?: string | undefined;
   NEXT_PUBLIC_POSTHOG_HOST: string;
   NEXT_PUBLIC_E2E?: string | undefined;
 }> = Object.freeze(parsed.data);
-/* eslint-enable no-restricted-syntax */
+ 

@@ -59,7 +59,7 @@ class BcfErrorBoundary extends Component<
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
-    // eslint-disable-next-line no-console
+     
     console.error('[BcfPanel] render error:', error, info);
   }
 

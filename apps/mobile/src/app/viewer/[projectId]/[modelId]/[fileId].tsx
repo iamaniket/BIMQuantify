@@ -22,15 +22,22 @@ import {
   parseClientMessage,
   type EmbedMarker2D,
   type HostMessage,
+  type ViewMode,
 } from '@/features/viewer/embedBridge';
 import { resolveEmbedSource } from '@/features/viewer/embedSource';
+import { ViewModeMenu } from '@/features/viewer/ViewModeMenu';
 import { usePinForOffline } from '@/features/viewer/offline/usePinForOffline';
 import { usePdfPagesUrl, useViewerBundle } from '@/features/viewer/queries';
 import { useProjectFindings } from '@/features/findings/queries';
 import type { EmbedViewerBundle } from '@/lib/api/viewerBundle';
+import { env } from '@/lib/env';
 import { useNetworkStatus } from '@/lib/offline/networkStatus';
 import { useAuth } from '@/providers/AuthProvider';
 import { colors } from '@/theme';
+
+// Phase 1 offers only 3D + 2D; Split (side-by-side) lands with the 2D↔3D locate
+// work. The flag-gated switcher hides Split via this allow-list.
+const VIEW_MODES_P1: ViewMode[] = ['3d', '2d'];
 
 /**
  * The embedded 3D viewer. A react-native-webview hosts the apps/viewer-embed
@@ -54,6 +61,9 @@ export default function ViewerScreen() {
   const [modelLoaded, setModelLoaded] = useState(false);
   const [viewerError, setViewerError] = useState<string | null>(null);
   const [webCrashed, setWebCrashed] = useState(false);
+  // Requested viewer layout. Only meaningful when the 3D viewer flag is on; the
+  // embed otherwise ignores it and stays 2D.
+  const [viewMode, setViewMode] = useState<ViewMode>('2d');
   // loadModel/loadPdf is sent exactly once, after both the web bridge and the
   // bundle are ready (whichever order they arrive in).
   const sentLoadRef = useRef(false);
@@ -64,6 +74,9 @@ export default function ViewerScreen() {
   const pdfPagesQuery = usePdfPagesUrl(projectId ?? '', modelId ?? '', fileId ?? '');
   const pdfPagesUrl = pdfPagesQuery.data ?? null;
   const embedSource = resolveEmbedSource();
+  // Experimental, off by default (NOT in v1). Gates the 3D/2D switcher and the
+  // 3D layout messages; flag off ⇒ the screen behaves exactly as the 2D-only app.
+  const threeDEnabled = env.EXPO_PUBLIC_ENABLE_3D_VIEWER;
   const online = useNetworkStatus();
   const pin = usePinForOffline(projectId ?? '', modelId ?? '', fileId ?? '');
   // Prefer the live (presigned) bundle online; fall back to the pinned local
@@ -101,12 +114,26 @@ export default function ViewerScreen() {
     webRef.current?.injectJavaScript(hostMessageToInjectedJs(msg));
   }, []);
 
+  const handleViewModeChange = useCallback((mode: ViewMode): void => {
+    setViewMode(mode);
+    // Show the loading overlay until the freshly-mounted pane reports ready.
+    setModelLoaded(false);
+    send({ type: 'setViewMode', mode });
+  }, [send]);
+
   useEffect(() => {
     if (!webReady || sentLoadRef.current) return;
     const bundle = effectiveBundle;
     if (bundle) {
-      // 2D-only v1: the embed renders the model's floor plan (no 3D / view mode).
-      send({ type: 'loadModel', bundle });
+      if (threeDEnabled) {
+        // Initial layout: 2D when the model has a generated floor plan, else 3D.
+        const initialMode: ViewMode = bundle.floorPlansUrl != null ? '2d' : '3d';
+        setViewMode(initialMode);
+        send({ type: 'loadModel', bundle, viewMode: initialMode });
+      } else {
+        // Flag off → unchanged 2D-only behaviour (embed defaults to its 2D pane).
+        send({ type: 'loadModel', bundle });
+      }
       sentLoadRef.current = true;
       return;
     }
@@ -115,7 +142,7 @@ export default function ViewerScreen() {
       send({ type: 'loadPdf', pdfPagesUrl });
       sentLoadRef.current = true;
     }
-  }, [webReady, effectiveBundle, pdfPagesUrl, send]);
+  }, [webReady, effectiveBundle, pdfPagesUrl, send, threeDEnabled]);
 
   // Push the file's 2D finding pins once the viewer has loaded, and on changes.
   useEffect(() => {
@@ -241,6 +268,14 @@ export default function ViewerScreen() {
           headerRight: effectiveBundle
             ? () => (
                 <View style={styles.headerActions}>
+                  {threeDEnabled ? (
+                    <ViewModeMenu
+                      mode={viewMode}
+                      modes={VIEW_MODES_P1}
+                      floorPlansAvailable={effectiveBundle.floorPlansUrl != null}
+                      onChange={handleViewModeChange}
+                    />
+                  ) : null}
                   <PinToggle
                     pinned={pin.pinned}
                     busy={pin.busy}

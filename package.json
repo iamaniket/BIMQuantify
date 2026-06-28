@@ -13,10 +13,13 @@
     "check:fontsize-sync": "node scripts/check-fontsize-sync.mjs",
     "type-check": "turbo run type-check",
     "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,md,css,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json,md,css,yml,yaml}\"",
     "clean": "turbo run clean && rimraf node_modules"
   },
   "devDependencies": {
     "eslint-plugin-i18next": "^6.1.4",
+    "prettier": "^3.4.2",
     "rimraf": "^5.0.10",
     "turbo": "^2.5.3",
     "typescript": "^5.8.3"

@@ -38,7 +38,7 @@ export function OrgDetailView({
   membersError,
   auditEntries,
   auditLoading,
-  auditError,
+  auditError: _auditError,
   onInvite,
   heroActions,
   tabBarActions,

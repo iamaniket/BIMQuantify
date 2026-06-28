@@ -20,14 +20,14 @@ export function parseEntityKey(key: EntityKey): { modelId: string; localId: numb
 
 export type ViewerFeature = 'hover' | 'selection' | 'xray' | 'visibility';
 
-export interface ViewerFeatureFlags {
+export type ViewerFeatureFlags = {
   hover: boolean;
   selection: boolean;
   xray: boolean;
   visibility: boolean;
 }
 
-interface ViewerEntityState {
+type ViewerEntityState = {
   modelId: string | null;
   totalElements: number;
 

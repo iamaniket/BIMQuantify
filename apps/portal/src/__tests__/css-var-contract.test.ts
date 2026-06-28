@@ -28,7 +28,7 @@ import { buildCssVariables, cssVarNames, darkTheme, lightTheme } from '@bimdossi
 const require = createRequire(import.meta.url);
 
 /** Minimal shape we introspect; `@bimdossier/tailwind-config` ships no type declarations. */
-interface TailwindPreset {
+type TailwindPreset = {
   theme?: { extend?: Record<string, unknown> };
 }
 

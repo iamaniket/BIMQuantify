@@ -101,6 +101,31 @@ describe('POST /jobs', () => {
     expect(enqueueMock).toHaveBeenCalledTimes(1);
     expect(enqueueMock).toHaveBeenCalledWith(expect.objectContaining(validBody));
   });
+
+  it('forwards an explicit priority to enqueue', async () => {
+    enqueueMock.mockResolvedValue(undefined);
+    const app = await buildApp();
+    const resp = await app.inject({
+      method: 'POST',
+      url: '/jobs',
+      headers: { authorization: `Bearer ${SECRET}` },
+      payload: { ...validBody, priority: 100 },
+    });
+    expect(resp.statusCode).toBe(202);
+    expect(enqueueMock).toHaveBeenCalledWith(expect.objectContaining({ priority: 100 }));
+  });
+
+  it('returns 400 when priority is out of range', async () => {
+    const app = await buildApp();
+    const resp = await app.inject({
+      method: 'POST',
+      url: '/jobs',
+      headers: { authorization: `Bearer ${SECRET}` },
+      payload: { ...validBody, priority: 2_097_153 },
+    });
+    expect(resp.statusCode).toBe(400);
+    expect(enqueueMock).not.toHaveBeenCalled();
+  });
 });
 
 describe('POST /jobs/:jobId/cancel', () => {

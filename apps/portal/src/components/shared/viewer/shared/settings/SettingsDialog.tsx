@@ -635,10 +635,10 @@ export function SettingsDialog(props: Props): JSX.Element {
   } = props;
 
   const [viewer3D, setViewer3D] = useState<ViewerSettings>(
-    mode === '3d' ? settings as ViewerSettings : loadViewerSettings,
+    mode === '3d' ? settings : loadViewerSettings,
   );
   const [doc2D, setDoc2D] = useState<DocumentSettings>(
-    mode === '2d' ? settings as DocumentSettings : loadDocumentSettings,
+    mode === '2d' ? settings : loadDocumentSettings,
   );
   const [activeTab, setActiveTab] = useState('appearance');
   const snapshotRef = useRef<ViewerSettings | null>(null);
@@ -646,11 +646,11 @@ export function SettingsDialog(props: Props): JSX.Element {
   useEffect(() => {
     if (open) {
       if (mode === '3d') {
-        setViewer3D(settings as ViewerSettings);
+        setViewer3D(settings);
         setDoc2D(loadDocumentSettings());
-        snapshotRef.current = structuredClone(settings as ViewerSettings);
+        snapshotRef.current = structuredClone(settings);
       } else {
-        setDoc2D(settings as DocumentSettings);
+        setDoc2D(settings);
         setViewer3D(loadViewerSettings());
       }
     }
@@ -675,7 +675,7 @@ export function SettingsDialog(props: Props): JSX.Element {
     saveDocumentSettings(doc2D);
 
     if (mode === '3d') {
-      (onSettingsChange as (s: ViewerSettings) => void)(viewer3D);
+      (onSettingsChange)(viewer3D);
       const snap = snapshotRef.current;
       snapshotRef.current = null;
       if (snap && needsReload(snap, viewer3D)) {
@@ -686,7 +686,7 @@ export function SettingsDialog(props: Props): JSX.Element {
         applyLiveCommands3D(props.handle, snap, viewer3D);
       }
     } else {
-      (onSettingsChange as (s: DocumentSettings) => void)(doc2D);
+      (onSettingsChange)(doc2D);
     }
     onClose();
   };

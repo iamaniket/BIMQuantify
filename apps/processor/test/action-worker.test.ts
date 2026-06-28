@@ -63,4 +63,50 @@ describe('enqueueJob routing', () => {
     expect(jobsAddMock).toHaveBeenCalledTimes(1);
     expect(actionsAddMock).not.toHaveBeenCalled();
   });
+
+  it('passes an explicit priority to the jobs queue', async () => {
+    const { enqueueJob } = await import('../src/queue/queue.js');
+    await enqueueJob({
+      job_id: 'eee-fff',
+      job_type: 'ifc_extraction',
+      organization_id: '00000000-0000-0000-0000-000000000000',
+      payload: { file_id: 'f1', storage_key: 'test.ifc' },
+      priority: 100,
+    });
+
+    expect(jobsAddMock).toHaveBeenCalledWith(
+      'ifc_extraction',
+      expect.anything(),
+      expect.objectContaining({ priority: 100 }),
+    );
+  });
+
+  it('defaults a missing priority to the paying tier (10)', async () => {
+    const { enqueueJob } = await import('../src/queue/queue.js');
+    await enqueueJob({
+      job_id: 'ggg-hhh',
+      job_type: 'ifc_extraction',
+      organization_id: '00000000-0000-0000-0000-000000000000',
+      payload: { file_id: 'f1', storage_key: 'test.ifc' },
+    });
+
+    expect(jobsAddMock).toHaveBeenCalledWith(
+      'ifc_extraction',
+      expect.anything(),
+      expect.objectContaining({ priority: 10 }),
+    );
+  });
+
+  it('leaves the actions queue FIFO (no priority on send_email)', async () => {
+    const { enqueueJob } = await import('../src/queue/queue.js');
+    await enqueueJob({
+      job_id: 'iii-jjj',
+      job_type: 'send_email',
+      organization_id: '00000000-0000-0000-0000-000000000000',
+      payload: { to: 'user@example.com', subject: 'Test', body: 'Hello' },
+    });
+
+    const opts = actionsAddMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    expect(opts).not.toHaveProperty('priority');
+  });
 });

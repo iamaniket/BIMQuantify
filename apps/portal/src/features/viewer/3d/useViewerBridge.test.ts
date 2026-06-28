@@ -38,7 +38,7 @@ class FakeEventBus {
   };
 
   emit<K extends keyof ViewerEvents>(key: K, payload: ViewerEvents[K]): void {
-    for (const handler of [...(this.handlers.get(key as string) ?? [])]) {
+    for (const handler of [...(this.handlers.get(key) ?? [])]) {
       handler(payload);
     }
   }

@@ -35,6 +35,10 @@ const JobBody = z.object({
   // Where the worker should POST its callbacks (L13). Optional for backwards
   // compatibility with a pre-fix API; absent → the baked API_BASE_URL is used.
   callback_url: z.string().url().optional(),
+  // Single-queue priority by user tier (free-wedge D5). BullMQ range 0..2^21,
+  // lower = higher priority. Optional so a pre-priority API still validates;
+  // enqueueJob defaults a missing value to the paying priority.
+  priority: z.number().int().min(0).max(2_097_152).optional(),
 });
 
 export function registerRoutes(app: FastifyInstance): void {

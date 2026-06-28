@@ -21,7 +21,7 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => {
 // runs in production.
 const dbg = (...parts: unknown[]): void => {
   if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
-    // eslint-disable-next-line no-console
+     
     console.warn('[snag-debug]', ...parts);
   }
 };
@@ -156,7 +156,7 @@ export function snagPlacementPlugin(): Plugin {
     let boxes: Awaited<ReturnType<typeof model.getBoxes>> = [];
     for (let attempt = 0; attempt < 8 && ids.length > 0; attempt += 1) {
       try {
-        // eslint-disable-next-line no-await-in-loop
+         
         boxes = await model.getBoxes(ids);
       } catch (err) {
         dbg('getBoxes threw:', err);
@@ -165,7 +165,7 @@ export function snagPlacementPlugin(): Plugin {
       const usable = boxes.filter((b) => b && !b.isEmpty()).length;
       dbg(`attempt ${attempt}: ids=${ids.length} boxes=${boxes.length} usable=${usable}`);
       if (usable > 0) break;
-      // eslint-disable-next-line no-await-in-loop
+       
       await sleep(250);
     }
 

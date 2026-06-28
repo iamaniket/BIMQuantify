@@ -214,8 +214,8 @@ async def get_project_viewer_bundle(
     entries = [
         ProjectViewerDocumentEntry(
             file_id=row.id,
-            document_id=document.id,
-            document_name=document.name,
+            model_id=document.id,
+            model_name=document.name,
             discipline=document.discipline,
             detected_kind=row.detected_kind,
             fragments_url=bundle["fragments_url"],

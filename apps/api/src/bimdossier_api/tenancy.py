@@ -211,6 +211,47 @@ async def get_tenant_session(
         yield session
 
 
+@asynccontextmanager
+async def open_free_session(user_id: UUID) -> AsyncIterator[AsyncSession]:
+    """Pooled free-tier session — distinct from `open_tenant_session`.
+
+    Free accounts are ORG-LESS pooled rows in `public`, so there is no tenant
+    schema and no `app.current_org_id`. We set:
+      1. `SET LOCAL ROLE bim_app`          — drop to the non-bypass role so the
+                                             owner-keyed RLS on free_models /
+                                             free_snags actually enforces.
+      2. `SET LOCAL search_path = public`  — free tables live in `public`.
+      3. `app.current_user_id` GUC         — the only key the free RLS policy
+                                             reads (no org GUC).
+
+    Same hard rule as the tenant session: endpoints under this MUST NOT call
+    `session.commit()`. The wrapping `session.begin()` owns commit/rollback; an
+    explicit commit drops the GUC + role and leaks isolation to the next pooled
+    request.
+    """
+    session_maker = get_session_maker()
+    async with session_maker() as session, session.begin():
+        await session.execute(text("SET LOCAL ROLE bim_app"))
+        await session.execute(text("SET LOCAL search_path = public"))
+        await session.execute(
+            text("SELECT set_config('app.current_user_id', :uid, true)"),
+            {"uid": str(user_id)},
+        )
+        yield session
+
+
+async def get_free_session(
+    user: User = Depends(current_verified_user),
+) -> AsyncGenerator[AsyncSession, None]:
+    """Yield a pooled free-tier session scoped to the calling user.
+
+    Used by the free-viewer endpoints. The caller need not have any org
+    membership — a free account is org-less by design.
+    """
+    async with open_free_session(user.id) as session:
+        yield session
+
+
 # Backwards-compat shim: pre-refactor code imported `require_org_user` which
 # returned the `User` after verifying they had an org_id. The semantics now
 # live in `require_active_organization` (returns the org id from JWT), but

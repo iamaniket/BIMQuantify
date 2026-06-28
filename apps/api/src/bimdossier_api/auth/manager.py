@@ -1,3 +1,4 @@
+import logging
 import secrets
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
@@ -29,6 +30,8 @@ from bimdossier_api.models.organization_member import (
     OrganizationMemberStatus,
 )
 from bimdossier_api.models.user import User
+
+logger = logging.getLogger(__name__)
 
 # Minimum password length enforced by `UserManager.validate_password`. fastapi-users
 # ships a no-op validator (any password — even a single char — is accepted); this is
@@ -291,6 +294,27 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
         await session.execute(
             sql_delete(OrganizationMember).where(OrganizationMember.user_id == user.id)
         )
+
+        # Free-tier data (GDPR): anonymize does NOT hard-delete the user row, so
+        # the `ON DELETE CASCADE` from public.users never fires and the user's
+        # pooled free models/snags + their S3 objects would leak. Delete them
+        # explicitly. The DB delete cascades free_snags; the object cleanup is
+        # best-effort (the idle reaper is the backstop for any leftover prefix).
+        from bimdossier_api.models.free_model import FreeModel
+
+        await session.execute(
+            sql_delete(FreeModel).where(FreeModel.owner_user_id == user.id)
+        )
+        try:
+            from bimdossier_api.storage import get_storage
+
+            await get_storage().delete_prefix(f"free/{user.id}/")
+        except Exception:
+            logger.warning(
+                "free-tier object cleanup failed for anonymized user %s "
+                "(idle reaper will backstop)",
+                user.id,
+            )
 
         now = datetime.now(UTC)
         # `update` persists + commits via the user_db session, which also commits

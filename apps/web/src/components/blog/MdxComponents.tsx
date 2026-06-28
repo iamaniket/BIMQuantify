@@ -28,9 +28,9 @@ export const mdxComponents: MDXComponents = {
   h2: heading('h2'),
   h3: heading('h3'),
   h4: heading('h4'),
-  a: (props: AnchorHTMLAttributes<HTMLAnchorElement>) => {
+  a: ({ children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => {
     const { href } = props;
-    // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
+
     const isExternal = href != null
       && href.startsWith('http');
     return (
@@ -39,7 +39,9 @@ export const mdxComponents: MDXComponents = {
         className="text-primary underline decoration-primary underline-offset-2"
         target={isExternal ? '_blank' : undefined}
         rel={isExternal ? 'noopener noreferrer' : undefined}
-      />
+      >
+        {children}
+      </a>
     );
   },
   blockquote: (props: HTMLAttributes<HTMLQuoteElement>) => (

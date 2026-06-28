@@ -115,8 +115,8 @@ export function useOrgTemplateForm({ open, onOpenChange, editTarget }: UseOrgTem
     () =>
       rawSteps.map((step) => ({
         ...step,
-        title: t(`builder.steps.${step.id}.title` as Parameters<typeof t>[0]),
-        description: t(`builder.steps.${step.id}.description` as Parameters<typeof t>[0]),
+        title: t(`builder.steps.${step.id}.title`),
+        description: t(`builder.steps.${step.id}.description`),
       })),
     [rawSteps, t],
   );
@@ -260,7 +260,7 @@ export function useOrgTemplateForm({ open, onOpenChange, editTarget }: UseOrgTem
     });
   };
   const patchSection = (index: number, patch: Partial<ContentEntry> & Partial<TextEntry>): void => {
-    setSections((prev) => prev.map((s, i) => (i === index ? ({ ...s, ...patch } as SectionEntry) : s)));
+    setSections((prev) => prev.map((s, i) => (i === index ? ({ ...s, ...patch }) : s)));
   };
   const addTextBlock = (): void => {
     setSections((prev) => [...prev, { kind: 'text', id: makeId('t'), title: '', body: '' }]);
@@ -371,7 +371,7 @@ export function useOrgTemplateForm({ open, onOpenChange, editTarget }: UseOrgTem
     return tReport('builder.checkFields');
   }
 
-  const handleSubmit = useCallback(async (): Promise<void> => {
+  const handleSubmit = useCallback((): void => {
     setError(null);
     const trimmedDesc = description.trim();
 

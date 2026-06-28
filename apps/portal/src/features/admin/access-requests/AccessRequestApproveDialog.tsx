@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { AppDialog, Input } from '@bimdossier/ui';
 
 import { Field } from '@/components/shared/forms/Field';
-import { useRegisterField } from '@/hooks/useRegisterField';
+import { registerField } from '@/hooks/registerField';
 import { ApiError } from '@/lib/api/client';
 import type { AccessRequestRead } from '@/lib/api/schemas';
 
@@ -112,7 +112,7 @@ export function AccessRequestApproveDialog({ request, open, onOpenChange }: Prop
               id={id}
               placeholder={t('placeholders.orgName')}
               autoFocus
-              {...useRegisterField(form, 'org_name')}
+              {...registerField(form, 'org_name')}
             />
           )}
         </Field>
@@ -129,7 +129,7 @@ export function AccessRequestApproveDialog({ request, open, onOpenChange }: Prop
               min={1}
               inputMode="numeric"
               placeholder={t('placeholders.seatLimit')}
-              {...useRegisterField(form, 'seat_limit')}
+              {...registerField(form, 'seat_limit')}
             />
           )}
         </Field>

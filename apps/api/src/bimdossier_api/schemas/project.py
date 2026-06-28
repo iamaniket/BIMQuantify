@@ -38,6 +38,9 @@ class ProjectBase(BaseModel):
     municipality: str | None = Field(default=None, max_length=255)
     bag_id: str | None = Field(default=None, max_length=50)
     permit_number: str | None = Field(default=None, max_length=100)
+    # The admitted Wkb instrument (KiK/WKI/KGW/VKB) the project's kwaliteitsborger
+    # works in; shapes the evidence-bundle hand-off.
+    instrument_ref: str | None = Field(default=None, max_length=50)
 
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
@@ -69,6 +72,7 @@ class ProjectUpdate(BaseModel):
     municipality: str | None = Field(default=None, max_length=255)
     bag_id: str | None = Field(default=None, max_length=50)
     permit_number: str | None = Field(default=None, max_length=100)
+    instrument_ref: str | None = Field(default=None, max_length=50)
 
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)

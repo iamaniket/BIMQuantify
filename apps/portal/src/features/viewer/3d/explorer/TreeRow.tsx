@@ -3,6 +3,7 @@
 import {
   type CSSProperties,
   type JSX,
+  type KeyboardEvent,
   type MouseEvent,
   useCallback,
   useRef,
@@ -99,6 +100,26 @@ function TreeRowInner({
     [node.entityKeys, isRowSelected, select, clearSelection, hidden],
   );
 
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (node.entityKeys.length === 0) return;
+      if (clickTimer.current) {
+        clearTimeout(clickTimer.current);
+        clickTimer.current = null;
+      }
+      if (isRowSelected) {
+        clearSelection();
+      } else {
+        const visible = node.entityKeys.filter((k) => !hidden.has(k));
+        if (visible.length > 0) select(visible);
+      }
+    },
+    [node.entityKeys, isRowSelected, select, clearSelection, hidden],
+  );
+
   const handleDoubleClick = useCallback(
     (e: MouseEvent) => {
       e.stopPropagation();
@@ -148,10 +169,12 @@ function TreeRowInner({
     <div style={style}>
       <div
         role="treeitem"
+        tabIndex={0}
         aria-expanded={hasChildren ? isExpanded : undefined}
         aria-selected={isRowSelected}
         onClick={handleSelect}
         onDoubleClick={handleDoubleClick}
+        onKeyDown={handleKeyDown}
         className={cn(
           'group flex h-full select-none items-center gap-2 pr-2 text-[13px]',
           'cursor-pointer',

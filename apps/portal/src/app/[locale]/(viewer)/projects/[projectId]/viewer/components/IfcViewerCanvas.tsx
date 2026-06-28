@@ -23,7 +23,7 @@ const IfcViewer = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
 );
 
-export interface IfcViewerCanvasProps {
+export type IfcViewerCanvasProps = {
   scope: ViewerScope;
   viewerEpoch: number;
   viewerHandleRef: React.MutableRefObject<ViewerHandle | null>;

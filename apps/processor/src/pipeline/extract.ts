@@ -95,6 +95,10 @@ export async function runExtraction(
   onProgress?: ProgressReporter,
 ): Promise<void> {
   const payload = parseIfcPayload(job.payload);
+  // Optional per-job geometry tessellation threshold (free-tier passes a higher
+  // value for cheaper meshing); `undefined` → generateFragments' config default.
+  const rawThreshold = job.payload['geometry_threshold'];
+  const geometryThreshold = typeof rawThreshold === 'number' ? rawThreshold : undefined;
   const startedAt = new Date().toISOString();
   const startedAtMs = performance.now();
   const version = await getExtractorVersion();
@@ -197,7 +201,7 @@ export async function runExtraction(
     const threadsStart = performance.now();
     try {
       fragWorker = startExtractionWorker(
-        { task: 'frag-outline', bytes: ifcBytes },
+        { task: 'frag-outline', bytes: ifcBytes, threshold: geometryThreshold },
         [ifcBytes.buffer as ArrayBuffer],
         (msg) => {
           if (msg.type === 'fragments') {

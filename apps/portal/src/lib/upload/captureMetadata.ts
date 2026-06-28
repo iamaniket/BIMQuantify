@@ -6,7 +6,7 @@ import exifr from 'exifr';
 
 export type CaptureMethod = 'camera' | 'file_picker' | 'drag_drop';
 
-export interface GeolocationData {
+export type GeolocationData = {
   latitude: number;
   longitude: number;
   accuracy: number | null;
@@ -15,7 +15,7 @@ export interface GeolocationData {
   low_accuracy: boolean;
 }
 
-export interface ExifData {
+export type ExifData = {
   make: string | null;
   model: string | null;
   date_time_original: string | null;
@@ -32,7 +32,7 @@ export interface ExifData {
   software: string | null;
 }
 
-export interface CaptureMetadata {
+export type CaptureMetadata = {
   captured_at: string;
   capture_method: CaptureMethod;
   device: { user_agent: string };

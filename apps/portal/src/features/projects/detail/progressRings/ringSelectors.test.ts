@@ -42,7 +42,7 @@ function finding(overrides: Partial<Finding> = {}): Finding {
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
-  } as Finding;
+  };
 }
 
 function deadline(overrides: Partial<Deadline> = {}): Deadline {
@@ -61,7 +61,7 @@ function deadline(overrides: Partial<Deadline> = {}): Deadline {
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
-  } as Deadline;
+  };
 }
 
 describe('ringPct', () => {

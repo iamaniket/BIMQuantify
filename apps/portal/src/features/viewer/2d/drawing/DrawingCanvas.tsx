@@ -131,7 +131,7 @@ export function DrawingCanvas({ page }: Props): JSX.Element {
       <g transform={`matrix(1 0 0 -1 0 ${h})`}>
         {page.l.map((line, i) => (
           <line
-            // eslint-disable-next-line react/no-array-index-key
+             
             key={i}
             x1={line[0]}
             y1={line[1]}
@@ -150,7 +150,7 @@ export function DrawingCanvas({ page }: Props): JSX.Element {
         const rotDeg = entry.r !== undefined ? -(entry.r * 180) / Math.PI : 0;
         return (
           <text
-            // eslint-disable-next-line react/no-array-index-key
+             
             key={i}
             x={tx}
             y={ty}

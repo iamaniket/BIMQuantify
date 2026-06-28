@@ -95,18 +95,6 @@ function mapToIssues(resp: ComplianceCheckResponse): ComplianceIssue[] {
     }));
 }
 
-function useComplianceData(
-  projectId: string,
-  fileId?: string,
-  modelId?: string,
-) {
-  return useAuthQuery({
-    queryKey: complianceDataKey(projectId, fileId, modelId),
-    queryFn: (accessToken) => getComplianceLatest(accessToken, projectId, modelId!, fileId!),
-    enabled: projectId.length > 0 && !!fileId && !!modelId,
-  });
-}
-
 export function useComplianceSummary(
   projectId: string,
   fileId?: string,

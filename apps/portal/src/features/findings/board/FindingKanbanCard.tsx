@@ -56,7 +56,10 @@ function formatCustomValue(type: string, value: unknown, locale: Locale): string
   if (type === 'date' && typeof value === 'string') {
     return formatDate(value, locale, '');
   }
-  return String(value).trim();
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' || typeof value === 'bigint') return String(value);
+  // Objects/arrays have no meaningful compact chip representation.
+  return '';
 }
 
 function MetaChip({

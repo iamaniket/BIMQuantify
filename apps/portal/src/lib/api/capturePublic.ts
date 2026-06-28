@@ -16,7 +16,7 @@ import {
  * HTTP status text. Narrows with `in` so the access needs no loose cast. */
 function errorDetail(raw: unknown, fallback: string): string {
   return typeof raw === 'object' && raw !== null && 'detail' in raw
-    ? String((raw as { detail: unknown }).detail)
+    ? String((raw).detail)
     : fallback;
 }
 

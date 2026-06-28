@@ -1,0 +1,32 @@
+# Build output / generated
+**/.next/
+**/dist/
+**/.turbo/
+**/node_modules/
+**/coverage/
+**/playwright-report/
+**/test-results/
+**/next-env.d.ts
+
+# Generated / vendored assets (wasm, models, brand, fragments worker)
+apps/portal/public/
+apps/web/public/
+**/web-ifc/
+**/fragments/
+**/*.min.js
+
+# Lockfiles & tabular data
+pnpm-lock.yaml
+**/package-lock.json
+*.csv
+
+# Python-owned trees (ruff format owns these)
+apps/api/
+apps/arbiter/
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Mobile (Expo) — separate toolchain
+apps/mobile/

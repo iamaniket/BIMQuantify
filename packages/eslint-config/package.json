@@ -5,12 +5,10 @@
   "type": "module",
   "description": "Shared ESLint flat config for BimDossier apps. ESLint owns correctness + conventions; Prettier owns formatting; TypeScript owns type-safety.",
   "exports": {
-    ".": "./index.mjs",
-    "./node": "./node.mjs"
+    ".": "./index.mjs"
   },
   "files": [
-    "index.mjs",
-    "node.mjs"
+    "index.mjs"
   ],
   "dependencies": {
     "@eslint/js": "^9.17.0",

@@ -94,7 +94,7 @@ async function _multipartUpload<TSchema extends { parse: (value: unknown) => unk
         errBody &&
         typeof errBody === 'object' &&
         'detail' in errBody &&
-        typeof (errBody as { detail: unknown }).detail === 'string'
+        typeof (errBody).detail === 'string'
       ) {
         detail = (errBody as { detail: string }).detail;
       }

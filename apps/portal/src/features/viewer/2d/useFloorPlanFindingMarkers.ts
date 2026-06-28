@@ -17,7 +17,7 @@ import { useFlattenedPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import { elevationBand } from './elevationBand';
 
-interface FloorPlanFindingMarkersOptions {
+type FloorPlanFindingMarkersOptions = {
   fpHandle: DocumentViewerHandle | null;
   viewerHandle: ViewerHandle | null;
   viewerReady: boolean;

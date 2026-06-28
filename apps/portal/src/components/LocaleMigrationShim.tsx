@@ -3,7 +3,7 @@
 import { useLocale } from 'next-intl';
 import { useEffect } from 'react';
 
-import { isLocale, localeStorageKey, type Locale } from '@bimdossier/i18n';
+import { isLocale, localeStorageKey } from '@bimdossier/i18n';
 
 import { setApiLocale } from '@/lib/api/client';
 import { usePathname, useRouter } from '@/i18n/navigation';
@@ -34,7 +34,7 @@ export function LocaleMigrationShim(): null {
       // ignore
     }
     if (isLocale(stored) && stored !== locale) {
-      router.replace(pathname, { locale: stored as Locale });
+      router.replace(pathname, { locale: stored });
     }
   }, [locale, pathname, router]);
 

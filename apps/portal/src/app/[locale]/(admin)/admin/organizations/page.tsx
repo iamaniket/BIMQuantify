@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  Activity, BookOpen, Building2, ChevronRight, Download, Inbox, LayoutGrid, Plus, Table2, Users,
+  Activity, BookOpen, Building2, ChevronRight, Download, Inbox, LayoutGrid, Plus, Table2,
 } from '@bimdossier/ui/icons';
 import { useLocale, useTranslations } from 'next-intl';
 
@@ -30,7 +30,6 @@ import { useAccessRequests } from '@/features/admin/access-requests/useAccessReq
 import { useRejectAccessRequest } from '@/features/admin/access-requests/useAccessRequestActions';
 import { BlogPostCreateDialog } from '@/features/admin/blog/BlogPostCreateDialog';
 import { BlogPostsTable } from '@/features/admin/blog/BlogPostsTable';
-import { useAdminBlogPosts } from '@/features/admin/blog/useAdminBlogPosts';
 import { useDeleteBlogPost } from '@/features/admin/blog/useDeleteBlogPost';
 import { useUpdateBlogPost } from '@/features/admin/blog/useUpdateBlogPost';
 import { OrgCreateDialog } from '@/features/admin/organizations/OrgCreateDialog';

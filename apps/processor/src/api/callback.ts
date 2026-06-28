@@ -1,6 +1,6 @@
 import { getConfig } from '../config.js';
 import { logger } from '../log.js';
-import { callbackBaseUrl } from './callbackContext.js';
+import { callbackBaseUrl, callbackPath } from './callbackContext.js';
 
 export type CallbackStatus = 'running' | 'succeeded' | 'failed';
 
@@ -51,7 +51,9 @@ export type CallbackPayload = {
 
 export async function postCallback(payload: CallbackPayload): Promise<void> {
   const cfg = getConfig();
-  const url = `${callbackBaseUrl()}/internal/jobs/callback`;
+  // Free-tier IFC jobs override the path (→ /internal/jobs/free-callback); every
+  // tenant job uses the default. See callbackContext.runWithCallbackUrl.
+  const url = `${callbackBaseUrl()}${callbackPath() ?? '/internal/jobs/callback'}`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {

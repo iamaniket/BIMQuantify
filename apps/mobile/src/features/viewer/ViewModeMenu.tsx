@@ -18,6 +18,8 @@ type Props = {
   mode: ViewMode;
   /** 2D + Split are disabled when the model has no generated floor plans. */
   floorPlansAvailable: boolean;
+  /** Which modes to offer. Defaults to all three; pass a subset to hide e.g. Split. */
+  modes?: ViewMode[];
   onChange: (mode: ViewMode) => void;
 };
 
@@ -27,13 +29,14 @@ type Props = {
  * anchors just below it on any device. Mirrors the embed's `ViewMode` and drives
  * it over the WebView bridge (`setViewMode`).
  */
-export function ViewModeMenu({ mode, floorPlansAvailable, onChange }: Props) {
+export function ViewModeMenu({ mode, floorPlansAvailable, modes, onChange }: Props) {
   const { t } = useT();
   const triggerRef = useRef<View>(null);
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<{ top: number; right: number }>({ top: 56, right: 12 });
 
-  const current = OPTIONS.find((o) => o.mode === mode) ?? OPTIONS[0];
+  const options = modes ? OPTIONS.filter((o) => modes.includes(o.mode)) : OPTIONS;
+  const current = options.find((o) => o.mode === mode) ?? options[0] ?? OPTIONS[0];
 
   const openMenu = (): void => {
     const node = triggerRef.current;
@@ -65,7 +68,7 @@ export function ViewModeMenu({ mode, floorPlansAvailable, onChange }: Props) {
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => { setOpen(false); }}>
         <Pressable style={styles.backdrop} onPress={() => { setOpen(false); }}>
           <View style={[styles.menu, { top: anchor.top, right: anchor.right }]}>
-            {OPTIONS.map((o) => {
+            {options.map((o) => {
               const disabled = o.mode !== '3d' && !floorPlansAvailable;
               const selected = o.mode === mode;
               return (

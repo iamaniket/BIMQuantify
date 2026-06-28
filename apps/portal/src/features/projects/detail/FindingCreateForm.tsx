@@ -13,7 +13,7 @@ import type { DocumentViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 import { Field } from '@/components/shared/forms/Field';
 import { renderFieldInput } from '@/features/findingTemplates/fieldTypes';
 import { useCreateFinding } from '@/features/findings/useCreateFinding';
-import { useRegisterField } from '@/hooks/useRegisterField';
+import { registerField } from '@/hooks/registerField';
 import type { FindingTemplate, LinkedFileTypeValue } from '@/lib/api/schemas';
 
 import { FindingPinButton, type AnchorState } from './FindingPinButton';
@@ -112,10 +112,10 @@ export function FindingCreateForm({
     defaultValues: EMPTY,
   });
 
-  const titleField = useRegisterField(form, 'title');
-  const descriptionField = useRegisterField(form, 'description');
-  const severityField = useRegisterField(form, 'severity');
-  const bblField = useRegisterField(form, 'bbl_article_ref');
+  const titleField = registerField(form, 'title');
+  const descriptionField = registerField(form, 'description');
+  const severityField = registerField(form, 'severity');
+  const bblField = registerField(form, 'bbl_article_ref');
 
   const builtins = template?.builtin_fields ?? {};
   const showSeverity = builtins['severity']?.visible !== false;

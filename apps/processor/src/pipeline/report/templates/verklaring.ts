@@ -11,7 +11,6 @@ import { layout } from './_layout.js';
 import {
   addressLine,
   buildMergeContext,
-  escapeHtml,
   fmtDate,
   or,
   renderSections,

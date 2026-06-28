@@ -66,7 +66,6 @@ export function InspectionScreen({ projectId, moment }: Props): JSX.Element {
 
   const currentItem: ChecklistItem | undefined = items[currentIdx];
   const isTerminal = moment.status === 'passed' || moment.status === 'failed' || moment.status === 'skipped';
-  const isInProgress = moment.status === 'in_progress';
 
   const handleStart = useCallback(() => {
     startMutation.mutate();

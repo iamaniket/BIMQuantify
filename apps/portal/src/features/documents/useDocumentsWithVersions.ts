@@ -28,7 +28,7 @@ export function useDocumentsWithVersions(
           if (query.state.status === 'error') return false;
           const documents = query.state.data;
           if (documents == null) return false;
-          const hasInFlight = (documents as DocumentWithVersionsList).some((m) =>
+          const hasInFlight = (documents).some((m) =>
             m.versions.some(
               (f: { extraction_status: string }) =>
                 f.extraction_status === 'queued' || f.extraction_status === 'running',

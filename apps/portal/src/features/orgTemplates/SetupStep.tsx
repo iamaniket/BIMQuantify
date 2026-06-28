@@ -64,17 +64,22 @@ export function SetupStep({
           />
         </div>
         {!isEditing && (
-          <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-low px-3 py-2">
+          <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-low px-3 py-2">
             <span className="flex flex-col">
-              <span className="font-sans text-body3 font-medium text-foreground">
+              <span id="tmpl-default-label" className="font-sans text-body3 font-medium text-foreground">
                 {category === 'finding' ? tFinding('builder.defaultLabel') : tReport('builder.defaultLabel')}
               </span>
-              <span className="font-sans text-caption text-foreground-tertiary">
+              <span id="tmpl-default-hint" className="font-sans text-caption text-foreground-tertiary">
                 {category === 'finding' ? tFinding('builder.defaultHint') : tReport('builder.defaultHint')}
               </span>
             </span>
-            <Switch checked={isDefault} onChange={(e) => { setIsDefault(e.target.checked); }} />
-          </label>
+            <Switch
+              aria-labelledby="tmpl-default-label"
+              aria-describedby="tmpl-default-hint"
+              checked={isDefault}
+              onChange={(e) => { setIsDefault(e.target.checked); }}
+            />
+          </div>
         )}
       </div>
 

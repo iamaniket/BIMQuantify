@@ -122,6 +122,12 @@ class Project(TimestampMixin, TenantBase):
     bag_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
     permit_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
+    # The admitted Wkb instrument (KiK / WKI / KGW / VKB …) the project's
+    # kwaliteitsborger works in, if any. The evidence bundle is shaped for hand-
+    # off to this instrument. String (not enum) per the enum-evolution rule —
+    # the admitted-instrument set grows and is jurisdiction data, not schema.
+    instrument_ref: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
     # WGS84 (EPSG:4326) site coordinates. Populated from PDOK Locatieserver
     # lookup so the portal can render a free PDOK aerial thumbnail without
     # needing a user-uploaded image.

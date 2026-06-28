@@ -506,7 +506,6 @@ export default function AccountPage(): JSX.Element {
   const user = me?.user;
   const userName = user?.full_name?.trim() || user?.email || 'User';
   const email = user?.email ?? '—';
-  const initials = toInitials(userName);
   const roleLabel = activeMembership?.is_org_admin ? t('roleAdmin') : t('roleMember');
   const orgName = activeMembership?.organization_name ?? '—';
 

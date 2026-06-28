@@ -17,7 +17,6 @@ import type { FullConfig } from '@playwright/test';
 import { PID_FILE, SETUP_LOCK, killProcessOnPort } from './e2eApiProcess';
 
 const API_DIR = resolve(__dirname, '../../../api');
-const REPO_ROOT = resolve(__dirname, '../../../..');
 
 // All configurable — run-e2e.mjs overrides these for test containers.
 const DB_URL = process.env['E2E_DATABASE_URL']

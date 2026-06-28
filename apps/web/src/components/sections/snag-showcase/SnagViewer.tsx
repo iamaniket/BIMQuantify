@@ -214,13 +214,13 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
             } satisfies ElementPointsArgs)
             .catch((err: unknown) => {
               if (process.env.NODE_ENV !== 'production') {
-                // eslint-disable-next-line no-console
+                 
                 console.warn('[snag-debug] elementPoints command failed:', err);
               }
               return [] as Vec3[];
             });
           if (process.env.NODE_ENV !== 'production' && points.length < DEMO_SNAGS.length) {
-            // eslint-disable-next-line no-console
+             
             console.warn(
               `[snag-debug] elementPoints returned only ${String(points.length)}/${String(DEMO_SNAGS.length)} points`
               + ' — some snags fell back to authored coords',

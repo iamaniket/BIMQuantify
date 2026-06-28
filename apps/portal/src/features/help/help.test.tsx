@@ -13,7 +13,6 @@ vi.mock('@/i18n/navigation', () => ({
   ),
 }));
 
-// eslint-disable-next-line import/first, import/order
 import { Sparkles } from '@bimdossier/ui/icons';
 
 import { HelpArticleView } from './HelpArticleView';

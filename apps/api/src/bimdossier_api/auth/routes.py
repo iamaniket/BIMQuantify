@@ -1,3 +1,4 @@
+import secrets
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -9,7 +10,7 @@ from fastapi_users.jwt import decode_jwt
 from pydantic import BaseModel, EmailStr
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api import audit
@@ -28,6 +29,7 @@ from bimdossier_api.cache import get_redis_dep
 from bimdossier_api.cache.blocklist import revoke_jti
 from bimdossier_api.config import get_settings
 from bimdossier_api.db import get_async_session, get_session_maker
+from bimdossier_api.i18n import coerce_locale
 from bimdossier_api.models.organization import Organization, OrganizationStatus
 from bimdossier_api.models.organization_member import (
     OrganizationMember,
@@ -45,6 +47,12 @@ FORGOT_RATE_LIMITER = ResilientRateLimiter(
 # activation link, so an unthrottled endpoint is an email-bomb vector.
 VERIFY_REQUEST_RATE_LIMITER = ResilientRateLimiter(
     times=get_settings().rate_limit_verify_request_per_hour, seconds=3600
+)
+# Per-IP/hour throttle on the public free-tier signup endpoint (same email-bomb
+# posture as forgot-password / request-verify). Only wired when the route is
+# mounted (FREE_TIER_ENABLED).
+SIGNUP_RATE_LIMITER = ResilientRateLimiter(
+    times=get_settings().rate_limit_signup_per_hour, seconds=3600
 )
 
 
@@ -93,6 +101,17 @@ class ForgotPasswordRequest(BaseModel):
 
 class RequestVerifyTokenRequest(BaseModel):
     email: EmailStr
+
+
+class SignupRequest(BaseModel):
+    """Public free-tier signup body. `locale` is the new account's preferred
+    language (coerced to a supported locale, platform default otherwise) so
+    later single-locale emails (password reset) and the portal render correctly.
+    The activation email itself is bilingual — the recipient has no verified
+    locale yet."""
+
+    email: EmailStr
+    locale: str | None = None
 
 
 async def _decode_verify_token_to_user(
@@ -696,6 +715,69 @@ def build_auth_router() -> APIRouter:
             return
 
     router.include_router(forgot_router)
+
+    # --- public free-tier signup (mounted only when FREE_TIER_ENABLED) ----
+    # We are invite-only by default: there is no /auth/register, and org /
+    # founding-partner onboarding stays invite-only and unchanged. The free
+    # wedge needs ONE public door — a real, email-verified, ORG-LESS account.
+    #
+    # Threat model: reintroducing public signup reopens (a) email-bomb via the
+    # activation mail, (b) account enumeration, (c) mass fake signups.
+    # Mitigations: per-IP ResilientRateLimiter (SIGNUP_RATE_LIMITER), an
+    # always-202 enumeration-safe response, email-verify-before-upload (free
+    # uploads require a verified session), and this FREE_TIER_ENABLED
+    # kill-switch — the route is not even mounted when the flag is off, so the
+    # attack surface is physically closed, not merely guarded.
+    #
+    # The created user is deliberately ORG-LESS: signup MUST NOT insert an
+    # OrganizationMember. Admin invites do; a stray pending membership would let
+    # `_flip_pending_memberships` auto-accept it on first login and silently turn
+    # a free user into an org member (defeating the pooled-tenant design).
+    if get_settings().free_tier_enabled:
+        signup_router = APIRouter(prefix="/auth", tags=["auth"])
+
+        @signup_router.post(
+            "/signup",
+            status_code=status.HTTP_202_ACCEPTED,
+            dependencies=[Depends(SIGNUP_RATE_LIMITER)],
+        )
+        async def signup(
+            request: Request,
+            payload: SignupRequest,
+            user_manager: UserManager = Depends(get_user_manager),
+            session: AsyncSession = Depends(get_async_session),
+        ) -> None:
+            # Enumeration-safe: identical 202 whether or not the email exists.
+            # `get_async_session` is dependency-cached within the request, so this
+            # is the same master session `user_manager.user_db` writes through.
+            normalized = payload.email.strip().lower()
+            existing = await session.scalar(
+                select(User).where(func.lower(User.email) == normalized)
+            )
+            if existing is not None:
+                # Already a user (free or paid, verified or not). Resending an
+                # activation link is the dedicated /auth/request-verify-token
+                # endpoint's job; here we stay silent so we leak no signal.
+                return
+            # Mirror the admin-invite `_find_or_create_user` pattern: insert with
+            # an unguessable pre-hashed password (the activation flow sets the
+            # real one) so we never trip `validate_password`, then send the
+            # activation email via the same request_verify hook.
+            user = User(
+                email=payload.email,
+                hashed_password=user_manager.password_helper.hash(secrets.token_hex(32)),
+                is_active=True,
+                is_verified=False,
+                is_superuser=False,
+                locale=coerce_locale(payload.locale),
+            )
+            session.add(user)
+            await session.commit()
+            # Best-effort email (send failures are swallowed in
+            # on_after_request_verify); the account already persists.
+            await user_manager.request_verify(user, request)
+
+        router.include_router(signup_router)
 
     # --- request-verify-token shadow with rate limiting -------------------
     # FastAPI Users' get_verify_router() bundles /auth/request-verify-token AND

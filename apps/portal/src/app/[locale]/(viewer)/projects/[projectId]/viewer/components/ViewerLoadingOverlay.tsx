@@ -5,7 +5,7 @@ import { type JSX } from 'react';
 
 import { ModelLoadingOverlay } from '@/components/shared/viewer/shared/ModelLoadingOverlay';
 
-export interface ViewerLoadingOverlayProps {
+export type ViewerLoadingOverlayProps = {
   progress: { loaded: number; total: number } | null;
   overlayFading: boolean;
   isIfc: boolean;

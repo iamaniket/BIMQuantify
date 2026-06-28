@@ -18,7 +18,7 @@ export default function SelectTenantPage() {
       if (membership === undefined) return;
       // Only one tenant, auto-select and redirect
       if (me.active_organization_id !== membership.organization_id) {
-        switchOrganization(membership.organization_id).then(() => {
+        void switchOrganization(membership.organization_id).then(() => {
           router.replace("/projects");
         });
       } else {

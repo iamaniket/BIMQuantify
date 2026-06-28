@@ -53,6 +53,11 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'package.json'
 
+  # NOTE: A `format` job running `pnpm run format:check` (Prettier) is intended here,
+  # mirroring the Python `ruff format --check` gate. It is DEFERRED until a one-time
+  # `pnpm run format` baseline is committed on a clean working tree (doing the repo-wide
+  # reformat now would entangle unrelated in-flight changes). Re-add this job in the same
+  # PR as that reformat commit. Prettier config + scripts are already in place.
   api:
     name: API (Python)
     needs: detect-changes

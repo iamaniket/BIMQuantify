@@ -2,6 +2,7 @@
 
 import { ArrowRight, Mail } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
+import Link from 'next/link';
 import { useId, useState, type FormEvent, type JSX } from 'react';
 
 import { Button, FormField, Input } from '@bimdossier/ui';
@@ -42,9 +43,9 @@ export function ForgotPasswordPanel(): JSX.Element {
           subtitle={t('sentBody')}
         />
         <p className="text-sm">
-          <a href="/login" className="font-semibold text-primary no-underline">
+          <Link href="/login" className="font-semibold text-primary no-underline">
             {t('backToLogin')}
-          </a>
+          </Link>
         </p>
       </>
     );

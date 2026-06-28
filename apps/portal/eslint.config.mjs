@@ -14,6 +14,11 @@ export default nextAppConfig({
     'test-results/**',
     'playwright.config.ts',
     'tailwind.config.ts',
+    'vitest.config.ts',
+    // Sentry init files live at the app root, outside tsconfig's include, so
+    // type-aware linting can't resolve them — they're tooling config, not app src.
+    'sentry.*.config.ts',
+    'instrumentation.ts',
     'scripts/**',
     'public/**',
   ],

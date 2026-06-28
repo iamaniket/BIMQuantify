@@ -180,7 +180,7 @@ export function BcfTopicList({
         id: 'export',
         label: t('export'),
         icon: <Download className="h-3.5 w-3.5" />,
-        onSelect: handleExport,
+        onSelect: () => { void handleExport(); },
         disabled: exportMutation.isPending,
       },
     ],

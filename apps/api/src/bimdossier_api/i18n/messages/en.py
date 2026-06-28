@@ -103,6 +103,10 @@ en_messages: Catalog = {
     "notifications.finding_assigned.body": "{title}",
     "notifications.finding_resolved.title": "Finding resolved",
     "notifications.finding_resolved.body": "{title}",
+    "notifications.findings_bulk_resolved.title": "Findings resolved",
+    "notifications.findings_bulk_resolved.body": "{count} findings were resolved",
+    # Synthetic resolution note written when a finding is closed as a duplicate.
+    "findings.duplicate_note": "Duplicate of finding {id}",
     "notifications.finding_mentioned.title": "You were mentioned on a finding",
     "notifications.finding_mentioned.body": "{title}",
     "notifications.org_member_invited.title": "Team invitation sent",
@@ -314,6 +318,16 @@ en_messages: Catalog = {
     "errors.REQUEST_BODY_TOO_LARGE": "The request body is too large.",
     "errors.FILE_VERSION_HAS_DESCENDANTS": "This version still has newer versions. Delete those first.",
 
+    # --- free tier ---
+    "errors.FREE_TIER_DISABLED": "The free viewer isn't available right now.",
+    "errors.FREE_MODEL_CAP_REACHED": "You've reached the free model limit. Delete a model or upgrade to add more.",
+    "errors.FREE_UPLOAD_TOO_LARGE": "This file is too large for the free viewer.",
+    "errors.FREE_MODEL_NOT_FOUND": "That model could not be found.",
+    "errors.FREE_SNAG_NOT_FOUND": "That snag could not be found.",
+    "errors.INVALID_FREE_STORAGE_KEY": "That file reference is invalid.",
+    "errors.FREE_NOT_READY": "This model isn't ready to view yet.",
+    "errors.FREE_EXTRACTION_BUSY": "We're processing a lot of models right now. Please try again in a few minutes.",
+
     # --- extraction / viewer ---
     "errors.EXTRACTION_NOT_COMPLETE": "Document extraction hasn't finished yet.",
     "errors.EXTRACTION_NOT_FAILED": "This extraction hasn't failed, so it can't be retried.",
@@ -331,8 +345,11 @@ en_messages: Catalog = {
     # --- findings ---
     "errors.FINDING_NOT_FOUND": "That finding could not be found.",
     "errors.FINDING_ILLEGAL_TRANSITION": "That status change isn't allowed for this finding.",
+    "errors.FINDING_DUPLICATE_OF_SELF": "A finding can't be a duplicate of itself.",
+    "errors.FINDING_DUPLICATE_TARGET_IS_DUPLICATE": "That finding is already marked as a duplicate.",
     "errors.FINDING_RESOLVE_REQUIRES_EVIDENCE": "Add evidence before resolving this finding.",
     "errors.FINDING_VERIFY_REQUIRES_INSPECTOR": "Only an inspector can verify this finding.",
+    "errors.FINDING_REOPEN_REQUIRES_INSPECTOR": "Only an inspector can re-open a verified finding.",
     "errors.FINDING_PROMOTE_REQUIRES_DEADLINE_ASSIGNEE": "Set a deadline and an assignee before promoting this finding.",
     "errors.FINDING_TEMPLATE_NOT_FOUND": "That finding template no longer exists.",
     "errors.FINDING_TEMPLATE_REQUIRED_FIELD": "Please fill in all required fields.",

@@ -83,7 +83,7 @@ export function cameraDebugPlugin(): Plugin {
     // Derived cameraZoomPlugin knobs:
     //   factorWide: zoomIn dollies to D0*(1-f), so f = 1 - distance/D0.
     //   panFraction == on-screen shift (focal offset sized against final distance).
-    const factorWide = okD0 ? r3(1 - distance / (d0 as number)) : null;
+    const factorWide = okD0 ? r3(1 - distance / (d0)) : null;
     const screenShiftFraction =
       Number.isFinite(tanH) && tanH !== 0 ? r3(-focalOffset.x / (distance * tanH)) : null;
     const panFraction = screenShiftFraction;
@@ -105,7 +105,7 @@ export function cameraDebugPlugin(): Plugin {
         panFraction, // → panFraction (desktop right-shift)
         polarDeg: r3((cc.polarAngle * 180) / Math.PI), // → polarDeg (tilt)
         azimuthDeg: r3((cc.azimuthAngle * 180) / Math.PI), // → azimuthDeg (facing)
-        fitDistance: okD0 ? r3(d0 as number) : '(no perspective/model yet)',
+        fitDistance: okD0 ? r3(d0) : '(no perspective/model yet)',
       },
     });
   };

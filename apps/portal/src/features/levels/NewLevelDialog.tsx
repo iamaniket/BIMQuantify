@@ -10,7 +10,7 @@ import { Input } from '@bimdossier/ui';
 
 import { FormDialog } from '@/components/shared/FormDialog';
 import { Field } from '@/components/shared/forms/Field';
-import { useRegisterField } from '@/hooks/useRegisterField';
+import { registerField } from '@/hooks/registerField';
 import { ApiError } from '@/lib/api/client';
 
 import { useCreateLevel } from './hooks';
@@ -88,7 +88,7 @@ export function NewLevelDialog({ open, onOpenChange, projectId }: Props): JSX.El
               autoComplete="off"
               autoFocus
               invalid={invalid}
-              {...useRegisterField(form, 'name')}
+              {...registerField(form, 'name')}
             />
           )}
         </Field>
@@ -102,7 +102,7 @@ export function NewLevelDialog({ open, onOpenChange, projectId }: Props): JSX.El
               inputMode="decimal"
               placeholder={t('fields.elevationPlaceholder')}
               disabled={isSubmitting}
-              {...useRegisterField(form, 'elevation_m')}
+              {...registerField(form, 'elevation_m')}
             />
           )}
         </Field>

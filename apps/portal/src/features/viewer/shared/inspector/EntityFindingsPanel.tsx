@@ -213,7 +213,7 @@ export function EntityFindingsPanel({
     body = (
       <EntityFindingsBody
         projectId={projectId}
-        scope={{ kind: 'file', fileId: openFindingFileId! }}
+        scope={{ kind: 'file', fileId: openFindingFileId }}
         autoOpenNonce={autoOpenNonce}
         onAutoOpenConsumed={handleAutoOpenConsumed}
         openFindingId={openFindingId}

@@ -12,7 +12,7 @@ import {
 
 import { FormDialog } from '@/components/shared/FormDialog';
 import { Field } from '@/components/shared/forms/Field';
-import { useRegisterField } from '@/hooks/useRegisterField';
+import { registerField } from '@/hooks/registerField';
 import { ApiError } from '@/lib/api/client';
 import { DISCIPLINE_OPTIONS, STATUS_OPTIONS } from '@/lib/formatting/models';
 import {
@@ -99,7 +99,7 @@ export function NewDocumentDialog({ open, onOpenChange, projectId }: Props): JSX
               autoComplete="off"
               autoFocus
               invalid={invalid}
-              {...useRegisterField(form, 'name')}
+              {...registerField(form, 'name')}
             />
           )}
         </Field>
@@ -109,7 +109,7 @@ export function NewDocumentDialog({ open, onOpenChange, projectId }: Props): JSX
             <Select
               id={id}
               disabled={isSubmitting}
-              {...useRegisterField(form, 'discipline')}
+              {...registerField(form, 'discipline')}
             >
               {DISCIPLINE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -125,7 +125,7 @@ export function NewDocumentDialog({ open, onOpenChange, projectId }: Props): JSX
             <Select
               id={id}
               disabled={isSubmitting}
-              {...useRegisterField(form, 'status')}
+              {...registerField(form, 'status')}
             >
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>

@@ -76,7 +76,7 @@ export function WizardStepper({
 }: WizardStepperProps): JSX.Element {
   const t = useTranslations('common');
   return (
-    <ol role="list" className={cn(stepperBase, className)}>
+    <ol className={cn(stepperBase, className)}>
       {steps.map((step, index) => {
         const isActive = index === currentStep;
         const isComplete = index < currentStep || (index < highestVisited && index !== currentStep);

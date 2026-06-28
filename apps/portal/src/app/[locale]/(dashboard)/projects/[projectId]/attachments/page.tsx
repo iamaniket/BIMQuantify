@@ -154,7 +154,7 @@ export default function ProjectAttachmentsPage(): JSX.Element {
   );
 
   const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (files === null) return;
       for (let i = 0; i < files.length; i++) {
@@ -162,7 +162,7 @@ export default function ProjectAttachmentsPage(): JSX.Element {
         if (file !== undefined) {
           void buildCaptureMetadata(file, 'file_picker', geoRef.current).then((metadata) => {
             uploadMutation.mutate(
-              { file, capture_metadata: metadata as unknown as Record<string, unknown> },
+              { file, capture_metadata: metadata },
               { onSuccess: () => { toast.success(tAtt('uploadSuccess', { name: file.name })); } },
             );
           });

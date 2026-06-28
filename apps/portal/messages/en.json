@@ -7,7 +7,43 @@
     "bullet2": "Pin snags on the model and share them with your team",
     "bullet3": "Compliance checks and the full Wkb dossier come with a project",
     "cta": "Join the free preview",
-    "note": "The free viewer is rolling out to early users. Add your details and we'll let you in as soon as it opens."
+    "note": "The free viewer is rolling out to early users. Add your details and we'll let you in as soon as it opens.",
+    "app": {
+      "title": "Your free models",
+      "uploadHeading": "Upload an IFC model",
+      "capNote": "{count} of {max} models used",
+      "uploading": "Uploading…",
+      "uploadButton": "Upload IFC",
+      "empty": "No models yet. Upload an IFC file to view it in 3D.",
+      "open": "Open",
+      "delete": "Delete",
+      "upgradeHeading": "Need compliance checks and a Wkb dossier?",
+      "upgradeBody": "Those come with a project. Request access to upgrade your workspace.",
+      "upgradeCta": "Request access",
+      "status": {
+        "none": "Not processed",
+        "queued": "Queued…",
+        "running": "Processing…",
+        "succeeded": "Ready to view",
+        "failed": "Processing failed"
+      }
+    },
+    "viewer": {
+      "back": "Back",
+      "title": "Free viewer",
+      "loading": "Loading model…",
+      "loadError": "This model couldn't be loaded.",
+      "snags": "Snags",
+      "snagTitle": "Snag title",
+      "snagNote": "Note (optional)",
+      "sevLow": "Low",
+      "sevMedium": "Medium",
+      "sevHigh": "High",
+      "addSnag": "Add snag",
+      "close": "Close",
+      "reopen": "Reopen",
+      "delete": "Delete"
+    }
   },
   "imageAnnotator": {
     "title": "Annotate photo",

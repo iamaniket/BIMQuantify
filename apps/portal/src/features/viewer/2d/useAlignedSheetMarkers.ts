@@ -16,7 +16,7 @@ import { useFlattenedPages } from '@/lib/query/useAuthInfiniteQuery';
 import { elevationBand } from './elevationBand';
 import type { SheetTransform } from './sheetTransform';
 
-interface AlignedSheetMarkersOptions {
+type AlignedSheetMarkersOptions = {
   docHandle: DocumentViewerHandle | null;
   viewerHandle: ViewerHandle | null;
   viewerReady: boolean;

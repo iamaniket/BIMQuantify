@@ -77,9 +77,15 @@ function meshContentKey(mesh: {
   return `h${(h >>> 0).toString(36)}`;
 }
 
-async function runFragOutline(port: MessagePort, bytes: Uint8Array): Promise<void> {
+async function runFragOutline(
+  port: MessagePort,
+  bytes: Uint8Array,
+  threshold?: number,
+): Promise<void> {
   const fragStart = performance.now();
-  const fragBytes = await generateFragments(bytes);
+  // `undefined` falls back to generateFragments' JOB_GEOMETRY_THRESHOLD default
+  // (paid path); the free path passes FREE_JOB_GEOMETRY_THRESHOLD for cheaper meshing.
+  const fragBytes = await generateFragments(bytes, threshold);
   const fragMs = Math.round(performance.now() - fragStart);
 
   // The model gets its own copy so the original buffer can transfer to the
@@ -295,7 +301,7 @@ async function main(): Promise<void> {
   const data = workerData as ExtractionTask;
   switch (data.task) {
     case 'frag-outline':
-      await runFragOutline(port, data.bytes);
+      await runFragOutline(port, data.bytes, data.threshold);
       break;
     case 'walk':
       await runWalk(port, data.bytes, data.discipline);

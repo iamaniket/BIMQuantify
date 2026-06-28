@@ -44,7 +44,6 @@ vi.mock('@/features/attachments/ImageAnnotatorDialog', () => ({
     ) : null,
 }));
 
-// eslint-disable-next-line import/first
 import { FindingPhotos } from './FindingPhotos';
 
 afterEach(() => {

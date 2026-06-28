@@ -67,6 +67,64 @@ def test_prod_region_accepts_secure_config() -> None:
     assert validate_production_config(settings) == []
 
 
+def test_free_tier_disabled_skips_free_checks() -> None:
+    # Dangerous free values are ignored entirely while the wedge is off.
+    settings = get_settings().model_copy(
+        update={
+            "deploy_region": "prod",
+            **_SECURE_OVERRIDES,
+            "free_tier_enabled": False,
+            "free_extraction_concurrency_global": 100000,
+            "free_max_models_per_user": 0,
+        }
+    )
+    assert validate_production_config(settings) == []
+
+
+def test_free_tier_enabled_flags_unbounded_global_cap() -> None:
+    settings = get_settings().model_copy(
+        update={
+            "deploy_region": "prod",
+            **_SECURE_OVERRIDES,
+            "free_tier_enabled": True,
+            "free_extraction_concurrency_global": 100000,
+        }
+    )
+    joined = "\n".join(validate_production_config(settings))
+    assert "FREE_EXTRACTION_CONCURRENCY_GLOBAL" in joined
+
+
+def test_free_tier_enabled_flags_zero_caps() -> None:
+    settings = get_settings().model_copy(
+        update={
+            "deploy_region": "prod",
+            **_SECURE_OVERRIDES,
+            "free_tier_enabled": True,
+            "free_extraction_concurrency_global": 0,
+            "free_max_models_per_user": 0,
+            "free_upload_max_bytes": 0,
+        }
+    )
+    joined = "\n".join(validate_production_config(settings))
+    assert "FREE_EXTRACTION_CONCURRENCY_GLOBAL" in joined
+    assert "FREE_MAX_MODELS_PER_USER" in joined
+    assert "FREE_UPLOAD_MAX_BYTES" in joined
+
+
+def test_free_tier_enabled_with_sane_caps_passes() -> None:
+    settings = get_settings().model_copy(
+        update={
+            "deploy_region": "prod",
+            **_SECURE_OVERRIDES,
+            "free_tier_enabled": True,
+            "free_extraction_concurrency_global": 1,
+            "free_max_models_per_user": 5,
+            "free_upload_max_bytes": 250 * 1024 * 1024,
+        }
+    )
+    assert validate_production_config(settings) == []
+
+
 def test_prod_region_flags_only_the_offending_secret() -> None:
     # A single dev default among otherwise-secure values yields exactly one error.
     update = {"deploy_region": "prod", **_SECURE_OVERRIDES}

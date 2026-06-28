@@ -7,7 +7,6 @@ import type {
   EffectsQuality,
   InteractivePerformanceOptions,
   MouseBindingMap,
-  OutlinePluginOptions,
   ShadowMode,
   ShortcutMap,
   ZoomOptions,

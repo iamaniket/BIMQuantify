@@ -7,7 +7,7 @@ export type CheckState = 'on' | 'off' | 'mixed';
 type TriCheckboxProps = {
   state: CheckState;
   onChange: () => void;
-  size?: number; // eslint-disable-line no-restricted-syntax -- optional with default value
+  size?: number;  
 };
 
 function TriCheckboxInner({

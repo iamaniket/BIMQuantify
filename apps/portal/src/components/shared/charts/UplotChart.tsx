@@ -31,7 +31,7 @@ export function UplotChart({
     if (el === null) return undefined;
 
     const width = Math.max(1, Math.floor(el.clientWidth));
-    // eslint-disable-next-line new-cap -- uPlot is a lowercase-named constructor
+     
     const chart = new uPlot(makeOptions(width), data, el);
     chartRef.current = chart;
 
