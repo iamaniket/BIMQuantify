@@ -29,6 +29,7 @@ async def _seed_free_model(
     owner_id: str,
     *,
     with_snag: bool = True,
+    snag_status: str = "open",
 ) -> tuple[UUID, str]:
     """Insert a ready+succeeded free model (+ optional snag) for `owner_id` and
     seed its source object in fake storage. Returns (model_id, storage_key)."""
@@ -56,7 +57,7 @@ async def _seed_free_model(
                     title="Cracked beam",
                     note="grid C3",
                     severity="high",
-                    status="open",
+                    status=snag_status,
                     linked_file_type="ifc",
                     anchor_x=1.5,
                     anchor_y=2.5,
@@ -200,3 +201,33 @@ async def test_import_other_users_free_model_404(
     )
     assert resp.status_code == 404
     assert resp.json()["detail"] == "FREE_MODEL_NOT_FOUND"
+
+
+async def test_import_maps_snag_status_one_to_one(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """Free snag status is value-identical to FindingStatus, so a snag in any of
+    the five states converts to a finding in the SAME state (no remap)."""
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token, name="StatusProj")
+    model_id, _ = await _seed_free_model(
+        session_maker, fake, org_user["id"], snag_status="in_progress"
+    )
+
+    resp = await client.post(
+        f"/projects/{project['id']}/import-free-model",
+        json={"free_model_id": str(model_id)},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["findings_created"] == 1
+
+    schema = schema_name_for(UUID(org_user["organization_id"]))
+    async with session_maker() as s:
+        await s.execute(text(f'SET search_path = "{schema}", public'))
+        status_value = await s.scalar(select(Finding.status))
+    assert status_value is not None
+    assert status_value.value == "in_progress"

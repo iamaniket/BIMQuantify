@@ -51,6 +51,12 @@ from bimdossier_api.models.free_model import (
     FREE_MODEL_STATUSES,
     FreeModel,
 )
+from bimdossier_api.models.free_project import (
+    FREE_PROJECT_BUILDING_TYPES,
+    FREE_PROJECT_LIFECYCLE_STATES,
+    FREE_PROJECT_PHASES,
+    FreeProject,
+)
 from bimdossier_api.models.free_snag import (
     FREE_SNAG_NOTE_MAX,
     FREE_SNAG_SEVERITIES,
@@ -151,6 +157,7 @@ __all__ = [
     "FindingSeverity",
     "FindingStatus",
     "FreeModel",
+    "FreeProject",
     "FreeSnag",
     "IfcSchema",
     "InspectionVerdict",

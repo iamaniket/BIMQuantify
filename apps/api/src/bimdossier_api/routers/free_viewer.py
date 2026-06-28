@@ -50,6 +50,7 @@ from bimdossier_api.jobs import (
     require_worker_secret,
 )
 from bimdossier_api.models.free_model import FreeModel
+from bimdossier_api.models.free_project import FreeProject
 from bimdossier_api.models.free_snag import (
     FREE_SNAG_NOTE_MAX,
     FREE_SNAG_SEVERITIES,
@@ -96,6 +97,9 @@ class FreeModelInitiateRequest(BaseModel):
     size_bytes: int = Field(ge=1)
     content_type: str = Field(default="application/octet-stream", max_length=255)
     content_sha256: str | None = Field(default=None, max_length=64)
+    # Optionally upload the model straight into a free project (grouping). The
+    # project must be the caller's own — verified before the row is created.
+    free_project_id: UUID | None = None
 
 
 class FreeModelInitiateResponse(BaseModel):
@@ -116,6 +120,7 @@ class FreeModelRead(BaseModel):
     rejection_reason: str | None
     extraction_error: str | None
     converted_to_file_id: UUID | None
+    free_project_id: UUID | None
 
     @classmethod
     def of(cls, m: FreeModel) -> "FreeModelRead":
@@ -130,7 +135,15 @@ class FreeModelRead(BaseModel):
             rejection_reason=m.rejection_reason,
             extraction_error=m.extraction_error,
             converted_to_file_id=m.converted_to_file_id,
+            free_project_id=m.free_project_id,
         )
+
+
+class FreeModelUpdate(BaseModel):
+    # Rename or (re)assign a model to a free project. `free_project_id` may be set
+    # to null to ungroup. Omitted fields are left unchanged (exclude_unset).
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    free_project_id: UUID | None = None
 
 
 class FreeViewerBundle(BaseModel):
@@ -248,11 +261,15 @@ async def initiate_free_upload(
             status_code=status.HTTP_403_FORBIDDEN, detail="FREE_MODEL_CAP_REACHED"
         )
 
+    if payload.free_project_id is not None:
+        await _assert_free_project_owned(session, payload.free_project_id, user.id)
+
     model_id = uuid4()
     storage_key = f"{free_key_prefix(user.id)}{model_id}/source{ext}"
     model = FreeModel(
         id=model_id,
         owner_user_id=user.id,
+        free_project_id=payload.free_project_id,
         name=payload.filename,
         original_filename=payload.filename,
         storage_key=storage_key,
@@ -404,6 +421,24 @@ async def get_free_model(
     session: AsyncSession = Depends(get_free_session),
 ) -> FreeModelRead:
     model = await _load_free_model_or_404(session, model_id, user.id)
+    return FreeModelRead.of(model)
+
+
+@router.patch("/models/{model_id}", response_model=FreeModelRead)
+async def update_free_model(
+    model_id: UUID,
+    payload: FreeModelUpdate,
+    user: User = Depends(current_verified_user),
+    session: AsyncSession = Depends(get_free_session),
+) -> FreeModelRead:
+    model = await _load_free_model_or_404(session, model_id, user.id)
+    data = payload.model_dump(exclude_unset=True)
+    if "free_project_id" in data:
+        if data["free_project_id"] is not None:
+            await _assert_free_project_owned(session, data["free_project_id"], user.id)
+        model.free_project_id = data["free_project_id"]
+    if data.get("name") is not None:
+        model.name = data["name"]
     return FreeModelRead.of(model)
 
 
@@ -621,6 +656,22 @@ async def _load_free_model_or_404(
             status_code=status.HTTP_404_NOT_FOUND, detail="FREE_MODEL_NOT_FOUND"
         )
     return model
+
+
+async def _assert_free_project_owned(
+    session: AsyncSession, project_id: UUID, user_id: UUID
+) -> None:
+    exists = (
+        await session.execute(
+            select(FreeProject.id).where(
+                FreeProject.id == project_id, FreeProject.owner_user_id == user_id
+            )
+        )
+    ).scalar_one_or_none()
+    if exists is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="FREE_PROJECT_NOT_FOUND"
+        )
 
 
 async def _load_free_snag_or_404(

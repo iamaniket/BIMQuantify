@@ -35,7 +35,15 @@ from bimdossier_api.db import MasterBase
 # conversion is a direct map. Imported by the router/schemas to keep CHECK and
 # API validation aligned.
 FREE_SNAG_SEVERITIES: tuple[str, ...] = ("low", "medium", "high")
-FREE_SNAG_STATUSES: tuple[str, ...] = ("open", "closed")
+# Value-identical to FindingStatus (models.finding) so the board UI is reused
+# unchanged and conversion maps 1:1.
+FREE_SNAG_STATUSES: tuple[str, ...] = (
+    "draft",
+    "open",
+    "in_progress",
+    "resolved",
+    "verified",
+)
 FREE_SNAG_NOTE_MAX = 4000
 
 
@@ -66,7 +74,7 @@ class FreeSnag(MasterBase):
         String(8), nullable=False, default="medium", server_default="medium"
     )
     status: Mapped[str] = mapped_column(
-        String(8), nullable=False, default="open", server_default="open"
+        String(16), nullable=False, default="open", server_default="open"
     )
 
     linked_file_type: Mapped[str] = mapped_column(

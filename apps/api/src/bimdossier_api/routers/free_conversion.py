@@ -54,9 +54,6 @@ from bimdossier_api.tenancy import open_tenant_session, require_active_organizat
 
 router = APIRouter(tags=["free-conversion"])
 
-# Free snag status → tenant finding status. `open` stays open; a closed free snag
-# becomes a `resolved` finding (the nearest paid-lifecycle equivalent).
-_STATUS_MAP = {"open": FindingStatus.open, "closed": FindingStatus.resolved}
 
 
 class ImportFreeModelRequest(BaseModel):
@@ -88,12 +85,20 @@ def _map_snag_to_finding(
         severity = FindingSeverity(snag.severity)
     except ValueError:
         severity = FindingSeverity.medium
+    # Free snag status is value-identical to FindingStatus (the free board reuses
+    # the paid lifecycle), so this is a 1:1 map with a safe fallback.
+    try:
+        finding_status = FindingStatus(snag.status)
+    except ValueError:
+        finding_status = FindingStatus.open
     return Finding(
         project_id=project_id,
         title=snag.title,
-        description=snag.note or "",
+        # Finding.description is non-empty (FindingRead requires min_length=1);
+        # free notes are optional, so fall back to the title.
+        description=snag.note or snag.title,
         severity=severity,
-        status=_STATUS_MAP.get(snag.status, FindingStatus.open),
+        status=finding_status,
         created_by_user_id=user_id,
         linked_document_id=document_id,
         linked_file_id=file_id,

@@ -62,6 +62,14 @@ class FreeModel(MasterBase):
         ForeignKey("public.users.id", ondelete="CASCADE"),
         nullable=False,
     )
+    # Optional grouping into a pooled free project. ON DELETE SET NULL — deleting
+    # a free project never destroys the user's uploaded models (they fall back to
+    # ungrouped). NULL = not yet assigned to any project.
+    free_project_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("public.free_projects.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -119,5 +127,6 @@ class FreeModel(MasterBase):
         ),
         Index("ix_free_models_owner", "owner_user_id"),
         Index("ix_free_models_owner_status", "owner_user_id", "status"),
+        Index("ix_free_models_free_project", "free_project_id"),
         {"schema": "public"},
     )

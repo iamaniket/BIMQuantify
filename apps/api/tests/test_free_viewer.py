@@ -7,6 +7,7 @@ CRUD, the global extraction cap, and — the critical security gate — RLS
 isolation between two free users running as bim_app.
 """
 
+import os
 from uuid import UUID, uuid4
 
 import pytest
@@ -289,11 +290,11 @@ async def test_snag_crud(
 
     patched = await client.patch(
         f"/free/snags/{snag_id}",
-        json={"status": "closed", "severity": "low"},
+        json={"status": "resolved", "severity": "low"},
         headers=_auth(token),
     )
     assert patched.status_code == 200
-    assert patched.json()["status"] == "closed"
+    assert patched.json()["status"] == "resolved"
     assert patched.json()["severity"] == "low"
 
     deleted = await client.delete(f"/free/snags/{snag_id}", headers=_auth(token))
@@ -427,10 +428,21 @@ async def test_free_endpoints_403_when_disabled(
     client: AsyncClient,
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
-    """With FREE_TIER_ENABLED off (the default `client`), an authenticated call
-    to /free/* is refused with 403 FREE_TIER_DISABLED — the router is mounted
-    but every user endpoint is flag-gated."""
-    token = await _free_token(client, session_maker, "free-disabled@example.com")
-    resp = await client.get("/free/models", headers=_auth(token))
-    assert resp.status_code == 403
-    assert resp.json()["detail"] == "FREE_TIER_DISABLED"
+    """With FREE_TIER_ENABLED off, an authenticated call to /free/* is refused
+    with 403 FREE_TIER_DISABLED — the router is mounted but every user endpoint
+    is flag-gated. Force the flag off explicitly (the dev `.env` may enable it),
+    restoring the env + settings cache afterward so nothing leaks to later tests."""
+    prev = os.environ.get("FREE_TIER_ENABLED")
+    os.environ["FREE_TIER_ENABLED"] = "false"
+    get_settings.cache_clear()
+    try:
+        token = await _free_token(client, session_maker, "free-disabled@example.com")
+        resp = await client.get("/free/models", headers=_auth(token))
+        assert resp.status_code == 403
+        assert resp.json()["detail"] == "FREE_TIER_DISABLED"
+    finally:
+        if prev is None:
+            os.environ.pop("FREE_TIER_ENABLED", None)
+        else:
+            os.environ["FREE_TIER_ENABLED"] = prev
+        get_settings.cache_clear()

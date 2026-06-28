@@ -146,17 +146,23 @@ FREE_RLS_TABLES = (
 )
 
 
-def enable_free_tier_rls_statements() -> list[str]:
+def enable_free_tier_rls_statements(
+    tables: tuple[str, ...] = FREE_RLS_TABLES,
+) -> list[str]:
     """ENABLE + FORCE RLS on the pooled free-tier tables with an owner-keyed
     policy. The policy is load-bearing: free reads/writes run as `bim_app` with
     only `app.current_user_id` set, so this is what stops user A touching user
     B's free rows. The free callback runs as the superuser (bypasses RLS), so it
     must additionally validate keys via `assert_free_key_scoped`.
 
+    `tables` defaults to the original pair so the 0002 migration is unchanged;
+    a later migration (0003 `free_projects`) passes its own one-element tuple so
+    it does not try to policy a table that does not exist yet at 0002 time.
+
     Idempotent (DROP POLICY IF EXISTS before CREATE), like enable_rls_statements.
     """
     stmts: list[str] = []
-    for table in FREE_RLS_TABLES:
+    for table in tables:
         stmts.append(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
         stmts.append(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
         stmts.append(f"DROP POLICY IF EXISTS {table}_owner_isolation ON {table};")
@@ -174,11 +180,13 @@ def enable_free_tier_rls_statements() -> list[str]:
     return stmts
 
 
-def disable_free_tier_rls_statements() -> list[str]:
+def disable_free_tier_rls_statements(
+    tables: tuple[str, ...] = FREE_RLS_TABLES,
+) -> list[str]:
     """Reverse of `enable_free_tier_rls_statements` (migration downgrade /
     test teardown)."""
     stmts: list[str] = []
-    for table in FREE_RLS_TABLES:
+    for table in tables:
         stmts.append(f"DROP POLICY IF EXISTS {table}_owner_isolation ON {table};")
         stmts.append(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY;")
         stmts.append(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")

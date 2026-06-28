@@ -127,7 +127,10 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         # Drop policies/enum left behind from a prior aborted run, then recreate
         # the schema from metadata. `create_all` is DDL-only — RLS policies are
         # applied separately below to mirror what the migration does.
-        for stmt in (*disable_free_tier_rls_statements(), *disable_rls_statements()):
+        for stmt in (
+            *disable_free_tier_rls_statements(("free_models", "free_snags", "free_projects")),
+            *disable_rls_statements(),
+        ):
             await conn.exec_driver_sql(
                 f"DO $$ BEGIN {stmt} EXCEPTION WHEN others THEN NULL; END $$;"
             )
@@ -198,7 +201,9 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
             await conn.exec_driver_sql(stmt)
         # Pooled free-tier tables get owner-keyed RLS (mirrors the 0002 migration)
         # so the free RLS-isolation tests exercise the real boundary as bim_app.
-        for stmt in enable_free_tier_rls_statements():
+        for stmt in enable_free_tier_rls_statements(
+            ("free_models", "free_snags", "free_projects")
+        ):
             await conn.exec_driver_sql(stmt)
 
     yield eng
@@ -209,7 +214,10 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         )
         for (schema,) in rows.fetchall():
             await conn.exec_driver_sql(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
-        for stmt in (*disable_free_tier_rls_statements(), *disable_rls_statements()):
+        for stmt in (
+            *disable_free_tier_rls_statements(("free_models", "free_snags", "free_projects")),
+            *disable_rls_statements(),
+        ):
             await conn.exec_driver_sql(
                 f"DO $$ BEGIN {stmt} EXCEPTION WHEN others THEN NULL; END $$;"
             )
@@ -315,7 +323,7 @@ async def _clean_tables(
                     text(
                         "TRUNCATE TABLE checklist_item_results, checklist_items, "
                         "borgingsmomenten, borgingsplans, deadlines, "
-                        "capture_links, blog_posts, free_snags, free_models, "
+                        "capture_links, blog_posts, free_snags, free_models, free_projects, "
                         "risks, access_requests, reports, jobs, project_files, documents, "
                         "project_members, projects, notification_user_state, "
                         "notifications, audit_log, certificates, org_certificates, "
