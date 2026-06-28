@@ -2,17 +2,12 @@
 access_requests, blog_posts, blog_post_tags.
 
 Creates the identity layer in the `public` schema via `Base.metadata.create_all`
-over the live models — anything the master-side models declare lands here. Tenant
-tables (projects, jobs, audit_log, etc.) are NOT created here — they live in
-per-org schemas managed by the tenant chain. The former 0002 (users.locale) and
-0003 (blog_posts) deltas were folded in here; blog tags are normalized into the
-`blog_post_tags` table (no JSONB).
-
-A later squash folded in the former 0002 (organizations.active_storage_limit_gb)
-and 0003 (users.tokens_valid_after, the per-user token epoch / sign-out-everywhere
-column) deltas. Because the upgrade is driven by `create_all` over the live
-models, those columns are emitted automatically — there was nothing to add here
-beyond deleting the now-redundant delta revisions.
+over the live models — anything the master-side models declare lands here, so the
+schema follows the models with no per-column DDL. Tenant tables (projects, jobs,
+audit_log, etc.) are NOT created here — they live in per-org schemas managed by
+the tenant chain. Blog tags are normalized into the `blog_post_tags` table (no
+JSONB). The lone index create_all can't express — the partial-unique
+lower(work_email) dedup on active access-requests — is raw SQL in upgrade() below.
 
 Revision ID: 0001_master
 Revises:

@@ -34,12 +34,12 @@ async def test_check_tenant_schema_drift_warns_on_behind(monkeypatch, caplog) ->
     async def fake_read(schemas: list[str], engine: AsyncEngine | None = None):
         # org_aaa at head; org_bbb on an older rev; org_ccc never migrated.
         return {
-            "org_aaa": "0003_finding_comments",
-            "org_bbb": "0002_pdf_pages_raster",
+            "org_aaa": "0001_tenant",
+            "org_bbb": "0000_older",
             "org_ccc": None,
         }
 
-    monkeypatch.setattr(migrations_check, "tenant_heads", lambda: {"0003_finding_comments"})
+    monkeypatch.setattr(migrations_check, "tenant_heads", lambda: {"0001_tenant"})
     monkeypatch.setattr(migrations_check, "list_active_schemas", fake_list)
     monkeypatch.setattr(migrations_check, "read_schema_revisions", fake_read)
 
@@ -60,9 +60,9 @@ async def test_check_tenant_schema_drift_silent_when_all_at_head(monkeypatch, ca
         return ["org_aaa", "org_bbb"]
 
     async def fake_read(schemas: list[str], engine: AsyncEngine | None = None):
-        return {"org_aaa": "0003_finding_comments", "org_bbb": "0003_finding_comments"}
+        return {"org_aaa": "0001_tenant", "org_bbb": "0001_tenant"}
 
-    monkeypatch.setattr(migrations_check, "tenant_heads", lambda: {"0003_finding_comments"})
+    monkeypatch.setattr(migrations_check, "tenant_heads", lambda: {"0001_tenant"})
     monkeypatch.setattr(migrations_check, "list_active_schemas", fake_list)
     monkeypatch.setattr(migrations_check, "read_schema_revisions", fake_read)
 
@@ -81,7 +81,7 @@ async def test_check_tenant_schema_drift_noop_without_schemas(monkeypatch, caplo
     async def boom(schemas: list[str], engine: AsyncEngine | None = None):
         raise AssertionError("read_schema_revisions must not be called when there are no schemas")
 
-    monkeypatch.setattr(migrations_check, "tenant_heads", lambda: {"0003_finding_comments"})
+    monkeypatch.setattr(migrations_check, "tenant_heads", lambda: {"0001_tenant"})
     monkeypatch.setattr(migrations_check, "list_active_schemas", fake_list)
     monkeypatch.setattr(migrations_check, "read_schema_revisions", boom)
 
@@ -105,7 +105,7 @@ async def test_read_schema_revisions_reads_stamp_and_handles_missing(
         )
         await conn.exec_driver_sql(
             f'INSERT INTO "{schema}".alembic_version (version_num) '
-            "VALUES ('0002_pdf_pages_raster')"
+            "VALUES ('0001_tenant')"
         )
     try:
         revs = await read_schema_revisions([schema, "org_missing_zzz"], engine=engine)
@@ -113,5 +113,5 @@ async def test_read_schema_revisions_reads_stamp_and_handles_missing(
         async with engine.begin() as conn:
             await conn.exec_driver_sql(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
 
-    assert revs[schema] == "0002_pdf_pages_raster"
+    assert revs[schema] == "0001_tenant"
     assert revs["org_missing_zzz"] is None

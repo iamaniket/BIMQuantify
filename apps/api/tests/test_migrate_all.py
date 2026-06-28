@@ -14,7 +14,7 @@ from bimdossier_api.scripts import migrate_all as m
 
 def test_classify_splits_by_head() -> None:
     schemas = ["org_a", "org_b", "org_c"]
-    # Head is the single squashed baseline (0001_tenant). org_b sits on a
+    # Head is the single baseline (0001_tenant). org_b sits on a
     # hypothetical older rev, org_c was never migrated — both count as behind.
     revs = {"org_a": "0001_tenant", "org_b": "0000_older", "org_c": None}
     heads = {"0001_tenant"}

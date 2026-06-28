@@ -1,71 +1,16 @@
-"""Initial tenant schema (squashed baseline).
+"""Initial tenant schema — the single baseline for the tenant chain.
 
-Tables: projects, project_members, models, project_files, jobs, reports,
-notifications, notification_user_state, risks,
-borgingsplans, borgingsmomenten, checklist_items, checklist_item_results,
-checklist_item_result_attachments, capture_links, findings, finding_attachments,
-org_templates, certificates, org_certificates, org_certificate_tags,
-bcf_topics, bcf_topic_labels, bcf_comments, bcf_viewpoints, audit_log,
-deadline_notification_log, deadline_notification_settings.
+The upgrade is driven by `Base.metadata.create_all` over the live tenant models
+(enumerated in upgrade()'s import block), so anything the models declare — every
+table, column, enum, and model-declared index (including expression / partial /
+unique indexes via `Index(text(...), postgresql_where=...)`) — lands here
+automatically. Only the handful of indexes the model layer cannot express are
+created explicitly in upgrade() below.
 
-This is the single squashed baseline for the tenant chain — the former
-0002 (org_certificates), 0003 (bcf_tables), 0004 (document_versioning) and the
-later anchor-generalization migration were folded in here. The anchor geometry
-is now dedicated `anchor_x/y/z` + `anchor_page` columns (no JSONB), and the
-former JSONB id/tag arrays are normalized into `finding_attachments`,
-`checklist_item_result_attachments`, `org_certificate_tags` and
-`bcf_topic_labels`. Because the upgrade is driven by `Base.metadata.create_all`
-over the live models, anything the models declare — every table, column, enum,
-and model-declared index (including expression / partial / unique indexes via
-`Index(text(...), postgresql_where=...)`) — lands here automatically. Only the
-handful of indexes the model layer cannot express are created explicitly in
-upgrade() below.
-
-A later squash folded in the former 0002–0006 add-ons (org_templates;
-the unified finding-form + report-layout template table — formerly
-finding_templates — with a single `config` JSONB; reports.template_id;
-project_files.floor_plans_storage_key, formerly the standalone 0002 migration;
-bcf_viewpoints.xray/measurements; deadlines.reference_number/filing_notes/
-filed_at; project_files.outline_storage_key; project_files.detected_kind
-(content-based discipline classification: architectural/structural/mep/mixed/
-none); bcf_topics.linked_file_id/is_2d)
-and flattened the bcf_viewpoints camera vectors from three JSONB columns
-(camera_view_point/camera_direction/camera_up_vector) into nine dedicated Float
-columns (camera_vp_x/y/z, camera_dir_x/y/z, camera_up_x/y/z) — same fixed-shape
-{x,y,z} JSONB removal as the anchor flattening above.
-and dropped model anchoring from attachments and certificates: `project_files`
-(role='attachment') and `certificates` no longer carry the
-`linked_element_global_id` / `linked_model_id` / `linked_file_id` /
-`linked_file_type` / `anchor_x/y/z` / `anchor_page` columns. Findings keep
-their anchor (the only coordinate-anchored entity marker); the shared validator
-lives in `schemas/anchor.py`.
-
-There is no longer a separate `attachments` table: attachments are rows in the
-unified `project_files` table, distinguished by `role = 'attachment'`. The
-per-role dedup and version-group indexes are declared on the `ProjectFile`
-model, so create_all emits them — nothing attachment-specific is needed here.
-
-A still-later squash folded in the former 0002–0006 deltas:
-  - 0002 project_files.annotation_state (JSONB image-markup document)
-  - 0003 models.head_file_id (restore-version-as-head pointer)
-  - 0004 the `buildingtype` enum's Bbl gebruiksfuncties (assembly, cell,
-    healthcare, industrial, office, accommodation, education, sport, retail,
-    non_building) on top of the original dwelling/commercial/other
-  - 0005 reporttype.snag_list + jobtype.snag_list_report (per-recipient snag-list PDF)
-  - 0006 findings.idempotency_key + project_files.idempotency_key, each with a
-    creator/uploader-scoped partial-unique index (offline-replay dedup)
-All of these — columns, the full enum value sets, and the two idempotency
-partial-unique indexes — are declared on the live ORM models, so create_all
-emits them. Folding them in meant only deleting the redundant delta revisions.
-
-A further squash folded in the PDF<->3D alignment chain (former tenant 0002 +
-0003): the `storeys` and `aligned_sheets` tables; the project-owned `levels`
-spine with `level_id` on `models` / `storeys` / `aligned_sheets`; and the
-model-owned `pdf_pages` table. `aligned_sheets` references a logical page via
-`page_id` (the former 0-indexed `page_index` column is gone); the same change
-added `findings.anchor_page_id` and `project_files.page_count`. All are declared
-on the live ORM models, so create_all emits them — folding in meant deleting the
-redundant 0002/0003 revisions.
+The `audit_log` append-only guard (a REVOKE plus a BEFORE UPDATE/DELETE trigger)
+is the one thing create_all does NOT express. It is applied per schema by the
+provisioning saga / seed via `grant_schema_to_app_role`
+(`audit_log_append_only_statements`), not by this baseline.
 
 Runs against the schema named in BIMDOSSIER_TENANT_SCHEMA. FKs to master tables
 (users) are emitted as `public.users(id)` so they resolve regardless of

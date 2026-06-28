@@ -917,5 +917,5 @@
       "unique_constraints": []
     }
   },
-  "tenant_head": "0005_audit_log_append_only"
+  "tenant_head": "0001_tenant"
 }
