@@ -44,6 +44,7 @@ import type {
   MarkupToolContext,
   MarkupToolDefinition,
 } from './api.js';
+import { makeLineMaterial } from './draw.js';
 import { normCentroid } from './normalize.js';
 import { compositeSnapshot, type ViewportCrop } from './snapshot.js';
 
@@ -80,6 +81,18 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
   let activeInteraction: MarkupInteraction | null = null;
   let live: LiveShape | null = null; // in-progress drawing
   let draft: LiveShape | null = null; // completed-but-unsaved
+
+  // Persistent line for the in-progress FREEHAND stroke only. Freehand samples a
+  // point every ~3px of cursor travel, so going through the generic
+  // rebuildPreview (clearGroup + fresh geometry + material per sample) is O(N²)
+  // allocation over a stroke. Instead we keep one line whose position buffer is
+  // grown geometrically and written in place. Lives directly under layerGroup so
+  // clearGroup(previewGroup) never touches it. Draft/committed/other tools stay
+  // on the generic path.
+  let freehandLine: THREE.Line | null = null;
+  let freehandGeom: THREE.BufferGeometry | null = null;
+  let freehandMat: THREE.LineBasicMaterial | null = null;
+  let freehandCap = 0; // current vertex capacity of the position buffer
   let committed: CommittedMarkupItem[] = [];
   let savedTool: DocumentTool | null = null;
 
@@ -149,14 +162,70 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
     rebuildPreview();
   }
 
+  // ---- in-progress freehand line (persistent, written in place) ----
+
+  function updateFreehandPreview(pts: Pt[], color: string): void {
+    if (!layerGroup) return;
+    const n = pts.length;
+    if (!freehandLine || !freehandGeom || !freehandMat) {
+      freehandMat = makeLineMaterial(color);
+      freehandGeom = new THREE.BufferGeometry();
+      freehandCap = Math.max(64, n);
+      freehandGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(freehandCap * 3), 3));
+      freehandLine = new THREE.Line(freehandGeom, freehandMat);
+      freehandLine.frustumCulled = false;
+      // Match the generic freehand build: polylineObject renderOrder 2, then
+      // buildInto adds RENDER_ORDER.
+      freehandLine.renderOrder = RENDER_ORDER + 2;
+      layerGroup.add(freehandLine);
+    }
+    if (n > freehandCap) {
+      freehandCap = Math.max(n, freehandCap * 2);
+      freehandGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(freehandCap * 3), 3));
+    }
+    const attr = freehandGeom.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < n; i++) {
+      const pt = pts[i]!;
+      attr.setXYZ(i, pt[0], pt[1], 0);
+    }
+    attr.needsUpdate = true;
+    freehandGeom.setDrawRange(0, n);
+    freehandGeom.computeBoundingSphere();
+    freehandMat.color.set(color);
+    freehandLine.visible = true;
+  }
+
+  /** Hide the in-progress freehand line (kept for reuse on the next stroke). */
+  function clearFreehandPreview(): void {
+    if (freehandLine) freehandLine.visible = false;
+    freehandGeom?.setDrawRange(0, 0);
+  }
+
+  function disposeFreehandPreview(): void {
+    if (freehandLine && layerGroup) layerGroup.remove(freehandLine);
+    freehandGeom?.dispose();
+    freehandMat?.dispose();
+    freehandLine = null;
+    freehandGeom = null;
+    freehandMat = null;
+    freehandCap = 0;
+  }
+
   function rebuildPreview(): void {
     if (!previewGroup) return;
     clearGroup(previewGroup);
+    const liveFreehand = live !== null && live.tool === 'freehand' && live.pts.length > 0;
     const p = wparams();
     if (p) {
       if (draft) buildInto(previewGroup, draft.tool, draft.pts, draft.text, style);
-      if (live && live.pts.length > 0) buildInto(previewGroup, live.tool, live.pts, live.text, style);
+      if (liveFreehand) {
+        // High-frequency in-progress freehand stroke → persistent line.
+        updateFreehandPreview(live!.pts, style.color);
+      } else if (live && live.pts.length > 0) {
+        buildInto(previewGroup, live.tool, live.pts, live.text, style);
+      }
     }
+    if (!liveFreehand) clearFreehandPreview();
     sceneApi?.requestRender();
   }
 
@@ -511,6 +580,7 @@ export function markupCorePlugin(): DocumentPlugin & MarkupCoreAPI {
       for (const c of cleanups.splice(0)) c();
       deactivate();
       committed = [];
+      disposeFreehandPreview();
       clearGroup(committedGroup);
       clearGroup(previewGroup);
       if (sceneApi) sceneApi.removeLayer(LAYER);
