@@ -42,20 +42,54 @@ vi.mock('@/lib/analytics', () => ({
 }));
 vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }));
 
+import { getAuthMe } from '@/lib/api/organizations';
+import type { AuthMeResponse } from '@/lib/api/schemas';
+
 import { AuthProvider, useAuth } from './AuthProvider';
 
 const STORAGE_KEY = 'bimdossier.tokens';
+const mockGetAuthMe = vi.mocked(getAuthMe);
 
 function tok(access: string): { access_token: string; refresh_token: string; token_type: string } {
   return { access_token: access, refresh_token: `r-${access}`, token_type: 'bearer' };
 }
 
+/** A parseable (unsigned) JWT carrying an `org` claim, so the provider's
+ * `orgClaimOf` can read it the way a real access token would. */
+function jwtForOrg(
+  org: string,
+  nonce = 's',
+): { access_token: string; refresh_token: string; token_type: string } {
+  const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ org })).toString('base64url');
+  return tok(`${header}.${payload}.${nonce}`);
+}
+
+/** A promise whose resolution the test controls, so we can observe the
+ * in-flight (pre-resolution) state of an /auth/me refetch. */
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+}
+
+/** Minimal /auth/me payload for the given active org. Cast loosely — the Probe
+ * only reads `active_organization_id`. */
+function meFor(org: string): AuthMeResponse {
+  return { active_organization_id: org, memberships: [] } as unknown as AuthMeResponse;
+}
+
 function Probe(): React.JSX.Element {
-  const { tokens, hasHydrated } = useAuth();
+  const { tokens, hasHydrated, me } = useAuth();
   return (
-    <div data-testid="tok">
-      {hasHydrated ? (tokens?.access_token ?? 'NONE') : 'HYDRATING'}
-    </div>
+    <>
+      <div data-testid="tok">
+        {hasHydrated ? (tokens?.access_token ?? 'NONE') : 'HYDRATING'}
+      </div>
+      <div data-testid="me">{me === null ? 'NOME' : (me.active_organization_id ?? 'NOORG')}</div>
+    </>
   );
 }
 
@@ -128,5 +162,46 @@ describe('AuthProvider cross-tab token sync', () => {
     fireStorage('unrelated.key');
 
     expect(screen.getByTestId('tok')).toHaveTextContent('A');
+  });
+
+  // M-fe2: after a cross-tab org switch the previous org's profile (name/role)
+  // must NOT keep rendering during the /auth/me refetch gap.
+  it('drops the stale profile while /auth/me re-fetches a different org', async () => {
+    const pending = deferred<AuthMeResponse>();
+    mockGetAuthMe.mockResolvedValueOnce(meFor('org-1')); // initial load
+    mockGetAuthMe.mockReturnValueOnce(pending.promise); // post-switch (held)
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(jwtForOrg('org-1')));
+    renderProvider();
+    await waitFor(() => expect(screen.getByTestId('me')).toHaveTextContent('org-1'));
+
+    // Another tab switched to org-2; this tab adopts the token. /auth/me is
+    // in-flight (held), so the only correct render is "loading", not org-1.
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(jwtForOrg('org-2')));
+    fireStorage(STORAGE_KEY);
+    await waitFor(() => expect(screen.getByTestId('me')).toHaveTextContent('NOME'));
+
+    pending.resolve(meFor('org-2'));
+    await waitFor(() => expect(screen.getByTestId('me')).toHaveTextContent('org-2'));
+  });
+
+  // The complement: a same-org cross-tab token refresh (new access token, same
+  // `org` claim) must keep the profile so it doesn't needlessly flash to loading.
+  it('keeps the profile on a same-org token refresh', async () => {
+    const pending = deferred<AuthMeResponse>();
+    mockGetAuthMe.mockResolvedValueOnce(meFor('org-1')); // initial load
+    mockGetAuthMe.mockReturnValueOnce(pending.promise); // post-refresh (held)
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(jwtForOrg('org-1', 's1')));
+    renderProvider();
+    await waitFor(() => expect(screen.getByTestId('me')).toHaveTextContent('org-1'));
+
+    // Same org, fresh access token (rotated in another tab).
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(jwtForOrg('org-1', 's2')));
+    fireStorage(STORAGE_KEY);
+
+    // The refetch still fires, but `me` never blanks — org is unchanged.
+    await waitFor(() => expect(mockGetAuthMe).toHaveBeenCalledTimes(2));
+    expect(screen.getByTestId('me')).toHaveTextContent('org-1');
   });
 });

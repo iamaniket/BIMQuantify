@@ -2,6 +2,7 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import * as Sentry from '@sentry/nextjs';
+import { jwtDecode } from 'jwt-decode';
 import {
   createContext,
   useCallback,
@@ -81,6 +82,19 @@ function writeStoredTokens(tokens: TokenPair | null): void {
   }
 }
 
+/** Active-org id from an access token's `org` claim (the tenant the JWT is
+ * scoped to). Returns null on a malformed token — "can't tell" is treated as
+ * "no specific org", which at worst triggers one extra /auth/me refresh, never
+ * a wrong-org render. Mirrors the claim read in PostHogProvider. */
+function orgClaimOf(accessToken: string | null | undefined): string | null {
+  if (accessToken === null || accessToken === undefined) return null;
+  try {
+    return jwtDecode<{ org?: string }>(accessToken).org ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: Props): JSX.Element {
   const queryClient = useQueryClient();
   const [tokens, setTokensState] = useState<TokenPair | null>(null);
@@ -138,8 +152,19 @@ export function AuthProvider({ children }: Props): JSX.Element {
     if (!hasHydrated) return;
     if (tokens === null) {
       setMe(null);
+      setMeError(null);
       return;
     }
+    // Drop the rendered profile when the token's active org no longer matches it
+    // — an org switch in this tab (switchOrganization) or another (the cross-tab
+    // `storage` handler below). Without this the previous org's name + role keep
+    // rendering during the /auth/me refetch gap (M-fe2); since role/admin flags
+    // derive from `me`, clearing drops to least-privilege (never briefly grants
+    // elevated UI) and re-enters the same loading state layouts already handle on
+    // first load. A same-org silent refresh keeps `me`, avoiding a needless flash.
+    // Functional updater so `me` need not be an effect dep.
+    const nextOrg = orgClaimOf(tokens.access_token);
+    setMe((prev) => (prev !== null && nextOrg !== prev.active_organization_id ? null : prev));
     refreshMe().catch(() => undefined);
   }, [hasHydrated, tokens]); // eslint-disable-line react-hooks/exhaustive-deps -- refreshMe is stable (no state deps)
 
