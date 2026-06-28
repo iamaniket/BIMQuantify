@@ -8,7 +8,12 @@ import { List } from 'react-window';
 import { TreeRow } from './TreeRow';
 import type { TreeNodeData } from './TreeNode';
 
-export type FlatRow = { node: TreeNodeData; depth: number };
+// `isExpanded` is precomputed here (the walk already reads `expanded.has`) so
+// TreeRow takes a primitive boolean instead of the whole `expanded` Set. The
+// Set's identity changes on every toggle, which forced every mounted TreeRow's
+// memo to invalidate; a per-row boolean lets memo(TreeRow) bail out for rows
+// whose own state didn't change.
+export type FlatRow = { node: TreeNodeData; depth: number; isExpanded: boolean };
 
 function flattenTree(
   roots: TreeNodeData[],
@@ -16,8 +21,9 @@ function flattenTree(
 ): FlatRow[] {
   const rows: FlatRow[] = [];
   const walk = (node: TreeNodeData, depth: number): void => {
-    rows.push({ node, depth });
-    if (expanded.has(node.key) && node.children) {
+    const isExpanded = expanded.has(node.key);
+    rows.push({ node, depth, isExpanded });
+    if (isExpanded && node.children) {
       for (const child of node.children) {
         walk(child, depth + 1);
       }
@@ -31,7 +37,6 @@ const ROW_HEIGHT = 30;
 
 type RowProps = {
   rows: FlatRow[];
-  expanded: Set<string>;
   onToggleExpand: (key: string) => void;
 };
 
@@ -39,7 +44,6 @@ function VirtualRow({
   index,
   style,
   rows,
-  expanded,
   onToggleExpand,
 }: {
   index: number;
@@ -53,7 +57,7 @@ function VirtualRow({
       style={style}
       node={row.node}
       depth={row.depth}
-      expanded={expanded}
+      isExpanded={row.isExpanded}
       onToggleExpand={onToggleExpand}
     />
   );
@@ -73,8 +77,8 @@ export function VirtualizedTree({
   const rows = useMemo(() => flattenTree(roots, expanded), [roots, expanded]);
 
   const rowProps = useMemo<RowProps>(
-    () => ({ rows, expanded, onToggleExpand }),
-    [rows, expanded, onToggleExpand],
+    () => ({ rows, onToggleExpand }),
+    [rows, onToggleExpand],
   );
 
   return (

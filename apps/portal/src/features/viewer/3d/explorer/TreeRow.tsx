@@ -36,7 +36,10 @@ type TreeRowProps = {
   style: CSSProperties;
   node: TreeNodeData;
   depth: number;
-  expanded: Set<string>;
+  // Precomputed by the tree flattener — a primitive so memo(TreeRow) can bail
+  // out for unchanged rows (was the whole `expanded` Set, which changed identity
+  // on every toggle and invalidated every row).
+  isExpanded: boolean;
   onToggleExpand: (key: string) => void;
 };
 
@@ -44,11 +47,10 @@ function TreeRowInner({
   style,
   node,
   depth,
-  expanded,
+  isExpanded,
   onToggleExpand,
 }: TreeRowProps): JSX.Element {
   const t = useTranslations('viewer.explorer');
-  const isExpanded = expanded.has(node.key);
   const hasChildren = node.children != null && node.children.length > 0;
   const leftPad = 8 + depth * 16;
 
