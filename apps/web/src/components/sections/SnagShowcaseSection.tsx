@@ -220,7 +220,7 @@ export function SnagShowcaseSection(): JSX.Element {
                     {t('cta')}
                   </Button>
                 </a>
-                <a href={portalHref(locale, '/free-viewer')}>
+                <a href={portalHref(locale, '/signup')}>
                   <Button variant="secondary" size="lg">
                     {t('ctaFree')}
                   </Button>

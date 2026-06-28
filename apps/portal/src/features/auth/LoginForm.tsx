@@ -129,6 +129,10 @@ export function LoginForm(): JSX.Element {
               {t('intro')}{' '}
               <span className="whitespace-nowrap">
                 {t('newHere')}{' '}
+                <Link href="/signup" className="font-semibold text-primary no-underline">
+                  {t('signupFreeCta')}
+                </Link>
+                {' · '}
                 <Link href="/request-access" className="font-semibold text-primary no-underline">
                   {t('requestAccessCta')}
                 </Link>

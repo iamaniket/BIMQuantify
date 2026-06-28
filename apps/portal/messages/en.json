@@ -1,4 +1,28 @@
 {
+  "signup": {
+    "eyebrow": "Free preview",
+    "title": "Create your free account",
+    "subtitle": "Enter your email and we'll send you a link to set a password. Then you can upload an IFC model and view it in 3D — free.",
+    "emailPlaceholder": "you@company.nl",
+    "field": {
+      "email": "Email address"
+    },
+    "cta": "Create free account",
+    "submitting": "Sending…",
+    "sentTitle": "Check your inbox",
+    "sentBody": "If that email can be used, an activation link is on its way. Open it to set a password and sign in.",
+    "backToLogin": "Back to sign in",
+    "legal": "By continuing, you agree to our <terms>Terms</terms> and <privacy>Privacy Policy</privacy>.",
+    "disabledTitle": "Free signup isn't open yet",
+    "disabledBody": "We're rolling out the free viewer to early users. Request access and we'll let you in as soon as it opens.",
+    "requestAccessCta": "Request access",
+    "errors": {
+      "emailRequired": "Enter your email address.",
+      "emailInvalid": "Enter a valid email address.",
+      "rateLimited": "Too many signups from your network — please try again in an hour.",
+      "generic": "We couldn't complete signup. Please try again in a moment."
+    }
+  },
   "freeViewer": {
     "eyebrow": "Free preview",
     "heading": "View your IFC model in the browser. Free.",
@@ -96,12 +120,14 @@
     "subtitle": "Set a password to finish activating your BimDossier account.",
     "field": {
       "password": "New password",
-      "passwordConfirm": "Confirm password"
+      "passwordConfirm": "Confirm password",
+      "passwordHint": "At least 12 characters."
     },
     "cta": "Activate account",
     "errors": {
       "tokenMissing": "Activation link is missing the token. Please use the link from your invitation email.",
       "passwordMismatch": "Passwords do not match.",
+      "passwordTooShort": "Password must be at least {min} characters.",
       "activationFailed": "Activation failed. The link may have expired — ask your admin to resend the invite."
     },
     "success": "Account activated. You can sign in now."
@@ -2626,6 +2652,7 @@
       "heading": "Welcome back.",
       "intro": "Sign in to continue.",
       "newHere": "New here?",
+      "signupFreeCta": "Sign up free →",
       "requestAccessCta": "Request access →",
       "emailLabel": "Work email",
       "emailPlaceholder": "you@company.nl",

@@ -31,7 +31,7 @@ export function HeroSection(): JSX.Element {
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <BrandAccentCta>{t('ctaPrimary')}</BrandAccentCta>
-        <a href={portalHref(locale, '/free-viewer')}>
+        <a href={portalHref(locale, '/signup')}>
           <Button
             variant="ghost"
             size="lg"

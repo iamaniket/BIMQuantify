@@ -6,11 +6,13 @@ import type { JSX } from 'react';
 import { X } from '@bimdossier/ui/icons';
 import { TooltipProvider } from '@bimdossier/ui';
 
+import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { DossierLogo } from '@/components/shared/charts/StitchLogo';
 import { SidebarWorkspaceNav } from '@/features/projects/SidebarWorkspaceNav';
 
 import { SidebarCollapseToggle } from './SidebarCollapseToggle';
+import { SidebarFreeNav } from './SidebarFreeNav';
 import { SidebarNav } from './SidebarNav';
 import { SidebarTenantCard } from './SidebarTenantCard';
 import { SidebarUserChip } from './SidebarUserChip';
@@ -46,6 +48,11 @@ export function Sidebar(): JSX.Element {
   const { collapsed, forceCollapsed, hydrated, transitionsReady, mobileOpen, setMobileOpen } = useSidebar();
   const t = useTranslations('common');
   const isMobile = useIsMobile();
+  const { isFreeUser, ready } = useIsFreeUser();
+  // Org-less free users get a trimmed "Projects"-only workspace nav (no
+  // Certificates/Templates/Calendar, no `useProjects` 409). Defer until
+  // /auth/me resolves so we never flash the org-scoped nav.
+  const workspaceNav = !ready ? null : isFreeUser ? <SidebarFreeNav /> : <SidebarWorkspaceNav />;
 
   if (isMobile) {
     return (
@@ -81,7 +88,7 @@ export function Sidebar(): JSX.Element {
 
             <SidebarUserChip />
             <SidebarTenantCard />
-            <SidebarWorkspaceNav />
+            {workspaceNav}
 
             <div className="flex-1" />
 
@@ -111,7 +118,7 @@ export function Sidebar(): JSX.Element {
         <SidebarUserChip />
         {!forceCollapsed && <SidebarCollapseToggle />}
         <SidebarTenantCard />
-        <SidebarWorkspaceNav />
+        {workspaceNav}
 
         <div className="flex-1" />
 

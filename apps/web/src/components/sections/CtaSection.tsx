@@ -28,7 +28,7 @@ export function CtaSection(): JSX.Element {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <BrandAccentCta>{t('button')}</BrandAccentCta>
-            <a href={portalHref(locale, '/free-viewer')}>
+            <a href={portalHref(locale, '/signup')}>
               <Button
                 variant="ghost"
                 size="lg"

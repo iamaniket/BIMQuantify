@@ -1,4 +1,28 @@
 {
+  "signup": {
+    "eyebrow": "Gratis preview",
+    "title": "Maak uw gratis account",
+    "subtitle": "Vul uw e-mailadres in en we sturen u een link om een wachtwoord in te stellen. Daarna kunt u een IFC-model uploaden en gratis in 3D bekijken.",
+    "emailPlaceholder": "jij@bedrijf.nl",
+    "field": {
+      "email": "E-mailadres"
+    },
+    "cta": "Gratis account aanmaken",
+    "submitting": "Versturen…",
+    "sentTitle": "Controleer uw inbox",
+    "sentBody": "Als dit e-mailadres bruikbaar is, is er een activatielink onderweg. Open deze om een wachtwoord in te stellen en in te loggen.",
+    "backToLogin": "Terug naar inloggen",
+    "legal": "Door verder te gaan gaat u akkoord met onze <terms>Voorwaarden</terms> en <privacy>Privacyverklaring</privacy>.",
+    "disabledTitle": "Gratis aanmelden is nog niet open",
+    "disabledBody": "We rollen de gratis viewer uit naar de eerste gebruikers. Vraag toegang aan en we laten u binnen zodra het opengaat.",
+    "requestAccessCta": "Toegang aanvragen",
+    "errors": {
+      "emailRequired": "Vul uw e-mailadres in.",
+      "emailInvalid": "Vul een geldig e-mailadres in.",
+      "rateLimited": "Te veel aanmeldingen vanaf uw netwerk — probeer het over een uur opnieuw.",
+      "generic": "We konden de aanmelding niet voltooien. Probeer het zo opnieuw."
+    }
+  },
   "freeViewer": {
     "eyebrow": "Gratis preview",
     "heading": "Bekijk uw IFC-model in de browser. Gratis.",
@@ -96,12 +120,14 @@
     "subtitle": "Stel een wachtwoord in om uw BimDossier-account te activeren.",
     "field": {
       "password": "Nieuw wachtwoord",
-      "passwordConfirm": "Bevestig wachtwoord"
+      "passwordConfirm": "Bevestig wachtwoord",
+      "passwordHint": "Minimaal 12 tekens."
     },
     "cta": "Account activeren",
     "errors": {
       "tokenMissing": "Activatielink mist het token. Gebruik de link uit uw uitnodigingsmail.",
       "passwordMismatch": "Wachtwoorden komen niet overeen.",
+      "passwordTooShort": "Het wachtwoord moet minimaal {min} tekens bevatten.",
       "activationFailed": "Activatie mislukt. De link is mogelijk verlopen — vraag uw beheerder de uitnodiging opnieuw te versturen."
     },
     "success": "Account geactiveerd. U kunt nu inloggen."
@@ -2626,6 +2652,7 @@
       "heading": "Welkom terug.",
       "intro": "Meld je aan om verder te gaan.",
       "newHere": "Nieuw hier?",
+      "signupFreeCta": "Gratis aanmelden →",
       "requestAccessCta": "Toegang aanvragen →",
       "emailLabel": "Werk-e-mail",
       "emailPlaceholder": "jij@bedrijf.nl",

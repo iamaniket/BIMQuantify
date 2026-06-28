@@ -63,7 +63,7 @@ export function FreeModelViewer({ modelId }: { modelId: string }): JSX.Element {
     <div className="flex h-screen">
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-3 border-b border-border bg-surface-main px-4 py-2">
-          <Link href="/free-viewer">
+          <Link href="/projects">
             <Button variant="ghost" size="sm">
               {t('viewer.back')}
             </Button>
