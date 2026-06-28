@@ -2,7 +2,14 @@
 
 import { Camera, X } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
-import { useCallback, useRef, useState, type JSX } from 'react';
+import {
+  useCallback,
+  useRef,
+  useState,
+  type Dispatch,
+  type JSX,
+  type SetStateAction,
+} from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@bimdossier/ui';
@@ -47,7 +54,7 @@ function Thumbnail({ projectId, attachmentId, onRemove, disabled }: ThumbnailPro
 type Props = {
   projectId: string;
   photoIds: string[];
-  onChange: (ids: string[]) => void;
+  onChange: Dispatch<SetStateAction<string[]>>;
   disabled?: boolean;
   maxPhotos?: number;
 };
@@ -86,10 +93,10 @@ export function PhotoCapture({
         }
       }
       if (added.length > 0) {
-        onChange([...photoIds, ...added]);
+        onChange((prev) => [...prev, ...added]);
       }
     },
-    [mutation, onChange, photoIds, t],
+    [mutation, onChange, t],
   );
 
   const atMax = photoIds.length >= maxPhotos;

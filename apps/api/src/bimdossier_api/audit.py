@@ -11,14 +11,18 @@ before persistence.
 
 from __future__ import annotations
 
-from typing import Any
-from uuid import UUID
+from typing import TYPE_CHECKING, Any
 
-from fastapi import Request
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from bimdossier_api.logging_utils import get_request_id
 from bimdossier_api.models.audit_log import AuditLog
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
+    from fastapi import Request
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 # Sensitive fields per table. When a row's dict is captured for before/after,
 # any key in this set is dropped before serialization.
@@ -48,20 +52,29 @@ def _redact(table_name: str, payload: dict[str, Any] | None) -> dict[str, Any] |
 
 
 def _extract_request_context(request: Request | None) -> tuple[str | None, str | None, str | None]:
-    """Pull (request_id, ip_address, user_agent) from the FastAPI Request.
+    """Pull (request_id, ip_address, user_agent) for the audit row.
 
-    `request_id` is sourced from the `X-Request-Id` header if present —
-    consumers behind a load balancer that injects this header get the same
-    id across the audit log and any external tracing.
+    `request_id` comes from the request-scoped context var that
+    `RequestIdMiddleware` sets for every request (an inbound `X-Request-Id`
+    when valid, otherwise a generated id) — so the audit row, the log lines,
+    and the Sentry event for one request all carry the same id, and the column
+    is never NULL during a request (the original bug). The context var works
+    even without a `Request` object (e.g. `record_event_independent`, which
+    runs in the same request task), so id propagation no longer depends on a
+    route threading the Request through. The raw inbound header is only a
+    fallback for the rare caller that ran without the middleware (some unit
+    tests). The value is capped to the `audit_log.request_id` column width.
     """
+    request_id = get_request_id()
     if request is None:
-        return None, None, None
-    request_id = request.headers.get("x-request-id")
+        return (request_id[:64] if request_id else None), None, None
+    if request_id is None:
+        request_id = request.headers.get("x-request-id")
     ip = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
     if user_agent is not None:
         user_agent = user_agent[:255]
-    return request_id, ip, user_agent
+    return (request_id[:64] if request_id else None), ip, user_agent
 
 
 def _resolve_impersonator(
@@ -190,6 +203,59 @@ async def record_for_org(
     await session.execute(text("SET LOCAL search_path TO public"))
 
 
+async def record_event_independent(
+    organization_id: UUID | None,
+    *,
+    action: str,
+    resource_type: str,
+    resource_id: str | UUID | None = None,
+    before: dict[str, Any] | None = None,
+    after: dict[str, Any] | None = None,
+    actor_user_id: UUID | None = None,
+    project_id: UUID | None = None,
+    request: Request | None = None,
+    impersonator_user_id: UUID | None = None,
+) -> None:
+    """Record an audit entry in its OWN best-effort transaction.
+
+    For events fired *after* their mutation has already committed — chiefly the
+    FastAPI Users credential hooks (forgot / reset / password-change) and the
+    activate route — where same-session atomicity is impossible because the
+    credential change is already durable. The mutation is the source of truth,
+    so a failed audit write must never raise back into the auth flow (a broken
+    audit path turning a successful password reset into a 500 would be worse
+    than the missing row): failures are logged and swallowed.
+
+    Opens an independent session via `get_session_maker()` and commits the row
+    in its own transaction (the same shape as `log_permission_denied`, which now
+    delegates here).
+    """
+    import logging  # stdlib, always available
+
+    from bimdossier_api.db import get_session_maker  # lazy to avoid circular import
+
+    try:
+        sm = get_session_maker()
+        async with sm() as ds, ds.begin():
+            await record_for_org(
+                ds,
+                organization_id,
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                before=before,
+                after=after,
+                actor_user_id=actor_user_id,
+                project_id=project_id,
+                request=request,
+                impersonator_user_id=impersonator_user_id,
+            )
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "Failed to record %s audit entry", action, exc_info=True
+        )
+
+
 async def log_permission_denied(
     *,
     role: str,
@@ -225,24 +291,12 @@ async def log_permission_denied(
     Failures are caught and logged — a broken audit path must never mask the
     original 403 response.
     """
-    import logging  # stdlib, always available
-
-    from bimdossier_api.db import get_session_maker  # lazy to avoid circular import
-
-    try:
-        sm = get_session_maker()
-        async with sm() as ds, ds.begin():
-            await record_for_org(
-                ds,
-                organization_id,
-                action="permission.denied",
-                resource_type=resource,
-                resource_id=resource_id,
-                before={"role": role, "resource": resource, "action": action},
-                actor_user_id=actor_user_id,
-                request=request,
-            )
-    except Exception:
-        logging.getLogger(__name__).warning(
-            "Failed to record permission denial audit entry", exc_info=True
-        )
+    await record_event_independent(
+        organization_id,
+        action="permission.denied",
+        resource_type=resource,
+        resource_id=resource_id,
+        before={"role": role, "resource": resource, "action": action},
+        actor_user_id=actor_user_id,
+        request=request,
+    )

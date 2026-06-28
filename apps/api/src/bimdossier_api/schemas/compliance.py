@@ -53,6 +53,30 @@ class CategorySummaryItem(BaseModel):
     warned: int
 
 
+class ArbiterComplianceResult(BaseModel):
+    """Strict validation gate for the Arbiter's ``check_compliance`` payload.
+
+    The structural keys must be PRESENT — ``routers/compliance.py`` reads the
+    result with ``result.get(key, <empty default>)``, so a malformed/empty
+    Arbiter payload would otherwise be persisted as a SUCCEEDED but 0-rule
+    "clean" report (a silent false-pass). Requiring the keys here forces a
+    ``ComplianceCheckError`` instead. The nested item types are the same models
+    the response is built from, so a payload that validates here is guaranteed to
+    build a ``ComplianceCheckResponse``. Extra keys the Arbiter sends (``file_id``,
+    ``framework``, ``details[].reasoning``, ``format_coverage``) are tolerated;
+    the caller stores the original dict, so nothing is dropped.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    checked_at: str
+    total_rules: int
+    total_elements_checked: int
+    rules_summary: list[RuleSummaryItem]
+    category_summary: list[CategorySummaryItem]
+    details: list[CheckResultItem]
+
+
 class ComplianceCheckResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

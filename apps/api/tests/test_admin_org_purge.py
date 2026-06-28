@@ -193,6 +193,45 @@ async def test_purge_is_idempotent(
     assert second.status_code == 200, second.text  # idempotent no-op
 
 
+async def test_concurrent_purge_is_single_flight(
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session: AsyncSession,
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """M-con5: two concurrent purges of the same org must not both tear it down.
+
+    The per-org advisory run-lock makes purge single-flight: exactly one writes
+    the `organization.purged` audit row (and wipes storage); the other either
+    409s (lock held) or 200-no-ops (already purged). Never a 500, never a double
+    purge.
+    """
+    import asyncio
+
+    client, fake = fake_storage_client
+    token = await _superadmin_token(client, session)
+    org = await _seed_org(
+        session, "Race", status=OrganizationStatus.deleted, deleted_days_ago=40,
+        image_key="org-images/race.png",
+    )
+    fake.objects["org-images/race.png"] = b"logo"
+
+    async def _purge() -> object:
+        return await client.post(
+            f"/admin/organizations/{org.id}/purge", headers=_auth(token)
+        )
+
+    r1, r2 = await asyncio.gather(_purge(), _purge())
+
+    # No 500s; the loser is a clean 409 (lock held) or a 200 idempotent no-op.
+    assert {r1.status_code, r2.status_code} <= {200, 409}, (r1.text, r2.text)
+    assert 200 in {r1.status_code, r2.status_code}
+
+    # The run-lock held: exactly ONE purge happened, not two.
+    rows = await _audit_rows(session_maker, "organization.purged")
+    assert len(rows) == 1
+    assert (await _get_org(session_maker, org.id)).purged_at is not None
+
+
 # ── list view exposes retention metadata ─────────────────────────────────────
 
 

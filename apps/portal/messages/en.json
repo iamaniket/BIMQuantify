@@ -1835,6 +1835,7 @@
       "expand": "Open in dialog",
       "tabs": {
         "edit": "Edit",
+        "comments": "Comments",
         "history": "History"
       },
       "fields": {
@@ -1925,6 +1926,17 @@
         "edited": "edited",
         "added": "added",
         "removed": "removed"
+      },
+      "comments": {
+        "empty": "No comments yet. Start the discussion.",
+        "placeholder": "Write a comment…  use @ to mention",
+        "send": "Send",
+        "save": "Save",
+        "cancel": "Cancel",
+        "edit": "Edit",
+        "delete": "Delete",
+        "confirmDelete": "Delete",
+        "edited": "edited"
       }
     },
     "photos": {
@@ -3170,6 +3182,8 @@
         "reactivate": "Reactivate",
         "remove": "Remove from tenant",
         "leaveOrg": "Leave tenant",
+        "unlock": "Unlock account",
+        "lockedBadge": "Locked",
         "tooltips": {
           "lastAdmin": "The tenant must have at least one admin. Promote another member before changing this role.",
           "selfAction": "Use the leave-tenant action instead.",
@@ -3295,7 +3309,9 @@
         "activate": "Enable",
         "deactivate": "Disable",
         "promote": "Promote",
-        "demote": "Demote"
+        "demote": "Demote",
+        "unlock": "Unlock",
+        "lockedBadge": "Locked"
       }
     },
     "audit": {
@@ -3666,6 +3682,7 @@
     "certificateUpdated": "Updated certificate {filename}",
     "certificateDeleted": "Removed certificate {filename}",
     "findingCreated": "Created finding: {title}",
+    "findingExported": "Exported {count} findings to CSV",
     "findingUpdated": "Updated finding: {title}",
     "findingPromoted": "Opened finding: {title}",
     "findingResolved": "Resolved finding: {title}",
@@ -4055,7 +4072,8 @@
       "raise": "Raise camera (R)",
       "lower": "Lower camera (F)",
       "slower": "Move slower (−)",
-      "faster": "Move faster (+)"
+      "faster": "Move faster (+)",
+      "speed": "Camera speed"
     },
     "measurement": {
       "modeDistance": "Distance",

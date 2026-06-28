@@ -1,5 +1,6 @@
 import logging
 from functools import lru_cache
+from urllib.parse import urlparse
 
 from pydantic import EmailStr, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -17,6 +18,34 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(alias="JWT_SECRET")
     jwt_access_ttl_seconds: int = Field(default=900, alias="JWT_ACCESS_TTL_SECONDS")
     jwt_refresh_ttl_seconds: int = Field(default=604800, alias="JWT_REFRESH_TTL_SECONDS")
+    # Refresh-token rotation grace window (seconds). Each /auth/jwt/refresh call
+    # rotates the refresh token (mints a new one, retires the presented one) and
+    # detects reuse: replaying a retired token signs the user out everywhere.
+    # Within this short window a retired token is re-honored idempotently —
+    # returning the SAME successor — so a benign cross-tab race or a network
+    # retry doesn't trip reuse detection. Keep it small; it is the only window in
+    # which a just-rotated token still functions. 0 disables the grace entirely.
+    refresh_rotation_grace_seconds: int = Field(
+        default=30, alias="REFRESH_ROTATION_GRACE_SECONDS"
+    )
+    # Strict-Transport-Security max-age (seconds), emitted on https responses only
+    # (the API gates HSTS on request scheme). 31536000 = 1 year. includeSubDomains
+    # is always added; preload is not (it's an irreversible browser commitment).
+    hsts_max_age_seconds: int = Field(default=31536000, alias="HSTS_MAX_AGE_SECONDS")
+    # `/ws/notifications` re-authenticates an open socket on this interval (re-running
+    # the full handshake gate set: blocklist / epoch / is_active / membership) and
+    # hard-caps its lifetime. Together these bound how long a socket keeps streaming
+    # the org feed after a logout-everywhere / password change / deprovision to one
+    # interval, instead of the access token's full natural TTL. The lifetime cap must
+    # stay <= JWT_ACCESS_TTL_SECONDS (enforced by validate_production_config).
+    ws_revalidate_interval_seconds: int = Field(default=30, alias="WS_REVALIDATE_INTERVAL_SECONDS")
+    ws_max_lifetime_seconds: int = Field(default=900, alias="WS_MAX_LIFETIME_SECONDS")
+    # Max concurrent /ws/notifications sockets per (org, user). A live notification
+    # stream is cheap, but unbounded fan-in lets one authenticated member open
+    # thousands of sockets — an in-org DoS / memory-growth vector. The handshake
+    # refuses sockets past this cap with a 4029 close. 10 comfortably covers real
+    # multi-tab / multi-device use.
+    ws_max_connections_per_user: int = Field(default=10, alias="WS_MAX_CONNECTIONS_PER_USER")
     impersonation_token_ttl_seconds: int = Field(
         default=900, alias="IMPERSONATION_TOKEN_TTL_SECONDS"
     )
@@ -31,11 +60,20 @@ class Settings(BaseSettings):
     deadline_sweep_interval_minutes: int = Field(
         default=60, alias="DEADLINE_SWEEP_INTERVAL_MINUTES"
     )
-    job_reconcile_interval_minutes: int = Field(
-        default=5, alias="JOB_RECONCILE_INTERVAL_MINUTES"
+    job_reconcile_interval_minutes: int = Field(default=5, alias="JOB_RECONCILE_INTERVAL_MINUTES")
+    job_stuck_timeout_minutes: int = Field(default=60, alias="JOB_STUCK_TIMEOUT_MINUTES")
+    # Data-lifecycle reapers (L11). Interval 0 disables a sweep.
+    # Abandoned pending uploads: `pending` project_files older than the timeout
+    # (default 24h) are soft-deleted and their object best-effort removed.
+    pending_upload_sweep_interval_minutes: int = Field(
+        default=30, alias="PENDING_UPLOAD_SWEEP_INTERVAL_MINUTES"
     )
-    job_stuck_timeout_minutes: int = Field(
-        default=60, alias="JOB_STUCK_TIMEOUT_MINUTES"
+    pending_upload_timeout_minutes: int = Field(
+        default=1440, alias="PENDING_UPLOAD_TIMEOUT_MINUTES"
+    )
+    # Expired/revoked capture links that were never used are hard-deleted.
+    capture_link_sweep_interval_minutes: int = Field(
+        default=60, alias="CAPTURE_LINK_SWEEP_INTERVAL_MINUTES"
     )
     # Max org schemas a per-org sweep (deadlines, job-reconcile) processes
     # concurrently. Bounds DB connection use while keeping one slow tenant from
@@ -45,6 +83,12 @@ class Settings(BaseSettings):
     smtp_host: str = Field(default="localhost", alias="SMTP_HOST")
     smtp_port: int = Field(default=1025, alias="SMTP_PORT")
     smtp_from: EmailStr = Field(default="no-reply@bimdossier.dev", alias="SMTP_FROM")
+    # Hard ceiling on a single SMTP send (connect + handshake + data), in seconds.
+    # Without it aiosmtplib falls back to its 60s default, so a hung/unreachable
+    # mail server pins the request thread for a full minute. Transactional sends
+    # are best-effort (see email.transport.send_email_best_effort) so a timeout is
+    # logged and swallowed, never surfaced to the caller.
+    smtp_timeout_seconds: float = Field(default=10.0, alias="SMTP_TIMEOUT_SECONDS")
 
     email_transport: str = Field(default="smtp", alias="EMAIL_TRANSPORT")
     postmark_server_token: str | None = Field(default=None, alias="POSTMARK_SERVER_TOKEN")
@@ -78,6 +122,14 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="redis://localhost:6380/0", alias="REDIS_URL")
     test_redis_url: str | None = Field(default=None, alias="TEST_REDIS_URL")
     redis_max_connections: int = Field(default=50, alias="REDIS_MAX_CONNECTIONS")
+    # Fail fast when Redis is unreachable so the rate limiter can fail open and
+    # the blocklist can fail closed within seconds, instead of hanging the
+    # request. health_check_interval pings idle connections so a pool recovers
+    # after a managed failover without an app restart. See the Redis HA note in
+    # CLAUDE.md / PRODUCTION_READINESS.md.
+    redis_socket_timeout: float = Field(default=2.0, alias="REDIS_SOCKET_TIMEOUT")
+    redis_connect_timeout: float = Field(default=2.0, alias="REDIS_CONNECT_TIMEOUT")
+    redis_health_check_interval: int = Field(default=30, alias="REDIS_HEALTH_CHECK_INTERVAL")
 
     db_pool_size: int = Field(default=20, alias="DB_POOL_SIZE")
     db_max_overflow: int = Field(default=40, alias="DB_MAX_OVERFLOW")
@@ -85,18 +137,43 @@ class Settings(BaseSettings):
     db_pool_timeout_seconds: int = Field(default=30, alias="DB_POOL_TIMEOUT_SECONDS")
 
     rate_limit_login_per_min: int = Field(default=5, alias="RATE_LIMIT_LOGIN_PER_MIN")
-    rate_limit_register_per_hour: int = Field(default=3, alias="RATE_LIMIT_REGISTER_PER_HOUR")
     rate_limit_refresh_per_min: int = Field(default=10, alias="RATE_LIMIT_REFRESH_PER_MIN")
     rate_limit_forgot_per_hour: int = Field(default=3, alias="RATE_LIMIT_FORGOT_PER_HOUR")
-    # Per-user/hour budgets on the expensive authenticated endpoints (synchronous
-    # arbiter compliance check, puppeteer report pipeline, upload presign churn).
-    rate_limit_compliance_per_hour: int = Field(
-        default=20, alias="RATE_LIMIT_COMPLIANCE_PER_HOUR"
+    # Per-IP/hour budget on the unauthenticated resend-activation endpoint
+    # (/auth/request-verify-token), which emails an activation link. Mirrors the
+    # forgot-password throttle: account-enumeration-safe (always 202) but an
+    # email-bomb vector without a limit.
+    rate_limit_verify_request_per_hour: int = Field(
+        default=5, alias="RATE_LIMIT_VERIFY_REQUEST_PER_HOUR"
     )
+    # Per-user/hour budgets on the expensive authenticated endpoints (synchronous
+    # arbiter compliance check, puppeteer report pipeline, upload presign churn,
+    # admin invite/resend email fan-out).
+    rate_limit_compliance_per_hour: int = Field(default=20, alias="RATE_LIMIT_COMPLIANCE_PER_HOUR")
     rate_limit_report_per_hour: int = Field(default=10, alias="RATE_LIMIT_REPORT_PER_HOUR")
     rate_limit_upload_initiate_per_hour: int = Field(
         default=100, alias="RATE_LIMIT_UPLOAD_INITIATE_PER_HOUR"
     )
+    # Per-user/hour budget shared by invite_member + resend_invite (each sends an
+    # email, so an unthrottled admin is a mail-bomb / account-enumeration vector).
+    rate_limit_invite_per_hour: int = Field(default=30, alias="RATE_LIMIT_INVITE_PER_HOUR")
+    # Per-IP/hour budget on the PUBLIC capture-link upload-initiate (unauthenticated
+    # presigned-PUT minting). Generous for a real field photo-upload burst, bounded
+    # against abuse. Per-IP, so workers behind one site NAT share it.
+    rate_limit_capture_initiate_per_hour: int = Field(
+        default=120, alias="RATE_LIMIT_CAPTURE_INITIATE_PER_HOUR"
+    )
+    # Per-account login lockout (H6): a second throttle keyed on the normalized
+    # email, independent of source IP, that the per-IP login limiter cannot see.
+    # After `max_attempts` failures within `window` seconds the account locks for
+    # `base` seconds, doubling per consecutive lockout up to `max` seconds. The
+    # counter resets on a successful login / password reset / super-admin unlock.
+    login_lockout_max_attempts: int = Field(default=10, alias="LOGIN_LOCKOUT_MAX_ATTEMPTS")
+    login_lockout_window_seconds: int = Field(
+        default=900, alias="LOGIN_LOCKOUT_WINDOW_SECONDS"
+    )
+    login_lockout_base_seconds: int = Field(default=900, alias="LOGIN_LOCKOUT_BASE_SECONDS")
+    login_lockout_max_seconds: int = Field(default=86400, alias="LOGIN_LOCKOUT_MAX_SECONDS")
     # Comma-separated IPs of trusted reverse proxies sitting directly in front
     # of the API. Rate-limit client identity uses the raw `request.client.host`
     # by default and only honors `X-Forwarded-For` when the immediate peer is
@@ -104,6 +181,15 @@ class Settings(BaseSettings):
     # fresh login/refresh bucket per request and defeats the throttle. Empty
     # (the default) means trust nothing: always key on the real peer IP.
     trusted_proxy_ips: str = Field(default="", alias="TRUSTED_PROXY_IPS")
+    # uvicorn's `--forwarded-allow-ips` / `$FORWARDED_ALLOW_IPS`: the proxy IPs or
+    # CIDRs whose `X-Forwarded-For` uvicorn trusts to rewrite `request.client.host`
+    # (proxy_headers is on by default). Mirrors uvicorn's own default so the boot
+    # guard and the secret-source audit can SEE what uvicorn will trust. The
+    # literal `*` makes uvicorn trust XFF from any peer (taking the spoofable
+    # left-most hop), re-opening the rate-limit bypass below the app identifier —
+    # the production guard rejects it. In prod set the real reverse-proxy /
+    # load-balancer subnet; dev keeps the safe loopback default.
+    forwarded_allow_ips: str = Field(default="127.0.0.1", alias="FORWARDED_ALLOW_IPS")
 
     s3_endpoint_url: str = Field(default="http://localhost:9000", alias="S3_ENDPOINT_URL")
     # The host baked into presigned URLs that *clients* must reach (browser, mobile
@@ -124,9 +210,16 @@ class Settings(BaseSettings):
     s3_bucket_attachments: str = Field(default="attachments", alias="S3_BUCKET_ATTACHMENTS")
     s3_presign_ttl_seconds: int = Field(default=900, alias="S3_PRESIGN_TTL_SECONDS")
     upload_max_bytes: int = Field(default=2 * 1024 * 1024 * 1024, alias="UPLOAD_MAX_BYTES")
-    attachment_max_bytes: int = Field(
-        default=500 * 1024 * 1024, alias="ATTACHMENT_MAX_BYTES"
-    )
+    # Coarse global cap on the raw HTTP request body, enforced by
+    # RequestBodySizeLimitMiddleware. Large files (IFC/3D models, attachments)
+    # bypass the API entirely — they go straight to MinIO via presigned PUT — so
+    # this is deliberately decoupled from (and far smaller than) upload_max_bytes.
+    # The only large body that legitimately transits the API is a BCF import zip.
+    request_body_max_bytes: int = Field(default=100 * 1024 * 1024, alias="REQUEST_BODY_MAX_BYTES")
+    # Per-endpoint cap on the BCF import upload (a zip parsed in-process). Tighter
+    # than the global cap; the structural zip-bomb guards live in bcf/parser.py.
+    bcf_import_max_bytes: int = Field(default=50 * 1024 * 1024, alias="BCF_IMPORT_MAX_BYTES")
+    attachment_max_bytes: int = Field(default=500 * 1024 * 1024, alias="ATTACHMENT_MAX_BYTES")
     thumbnail_max_bytes: int = Field(default=2 * 1024 * 1024, alias="THUMBNAIL_MAX_BYTES")
     thumbnail_allowed_content_types: str = Field(
         default="image/jpeg,image/png,image/webp", alias="THUMBNAIL_ALLOWED_CONTENT_TYPES"
@@ -138,6 +231,12 @@ class Settings(BaseSettings):
     )
 
     processor_url: str = Field(default="http://localhost:8088", alias="PROCESSOR_URL")
+    # Where the processor should POST its job callbacks back to (L13). Stamped on
+    # each dispatch as `callback_url` so the worker reaches THIS API instance
+    # rather than a single baked address — the seam that makes multi-API /
+    # blue-green deployments safe. Must be the address the processor can reach the
+    # API at (behind a proxy/LB: the internal service URL, not localhost).
+    api_base_url: str = Field(default="http://localhost:8000", alias="API_BASE_URL")
     # No dev default (see s3_access_key_id) — a forgotten prod value fails closed
     # instead of shipping the public dev shared secret an attacker could use to
     # forge /internal/jobs/callback requests.
@@ -151,6 +250,14 @@ class Settings(BaseSettings):
     sentry_traces_sample_rate: float = Field(default=0.1, alias="SENTRY_TRACES_SAMPLE_RATE")
     sentry_release: str | None = Field(default=None, alias="SENTRY_RELEASE")
 
+    # Structured application logging (see logging_config.py). LOG_LEVEL is the
+    # root logger level; LOG_FORMAT selects the stdout shape ("json" for log
+    # aggregation, "console" for human-readable dev). LOG_FORMAT left unset
+    # resolves via `resolved_log_format` to json in a production posture and
+    # console under DEPLOY_REGION=dev.
+    log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    log_format: str | None = Field(default=None, alias="LOG_FORMAT")
+
     max_concurrent_jobs_per_org: int = Field(default=10, alias="MAX_CONCURRENT_JOBS_PER_ORG")
 
     # Ceiling on custom fields per finding template (env-authoritative; the
@@ -159,9 +266,27 @@ class Settings(BaseSettings):
 
     arbiter_url: str = Field(default="http://localhost:8090", alias="ARBITER_URL")
     arbiter_timeout_seconds: float = Field(default=30.0, alias="ARBITER_TIMEOUT_SECONDS")
+    # No dev default (see processor_shared_secret) — a forgotten prod value fails
+    # closed instead of calling the rule-rewriting Arbiter MCP unauthenticated.
+    # Both services must agree (mirror of PROCESSOR_SHARED_SECRET).
+    arbiter_shared_secret: str = Field(alias="ARBITER_SHARED_SECRET")
 
     deploy_region: str = Field(default="dev", alias="DEPLOY_REGION")
     deploy_node: str = Field(default="local", alias="DEPLOY_NODE")
+
+    @property
+    def resolved_log_format(self) -> str:
+        """Effective stdout log format: ``"json"`` or ``"console"``.
+
+        An explicit LOG_FORMAT wins (any unrecognised value is ignored). When
+        unset, default to structured ``json`` everywhere except an explicit dev
+        region, which gets human-readable ``console`` output.
+        """
+        if self.log_format:
+            candidate = self.log_format.strip().lower()
+            if candidate in ("json", "console"):
+                return candidate
+        return "console" if self.deploy_region == "dev" else "json"
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -171,9 +296,7 @@ class Settings(BaseSettings):
     def trusted_proxy_ip_set(self) -> frozenset[str]:
         """Set of trusted reverse-proxy IPs whose `X-Forwarded-For` may be
         honored for rate-limit client identity. Empty by default."""
-        return frozenset(
-            ip.strip() for ip in self.trusted_proxy_ips.split(",") if ip.strip()
-        )
+        return frozenset(ip.strip() for ip in self.trusted_proxy_ips.split(",") if ip.strip())
 
     @property
     def s3_cors_origin_list(self) -> list[str]:
@@ -197,6 +320,7 @@ def get_settings() -> Settings:
 DEV_S3_ACCESS_KEY_ID = "bimdossier"
 DEV_S3_SECRET_ACCESS_KEY = "bimdossier-secret"
 DEV_PROCESSOR_SHARED_SECRET = "dev-shared-secret-change-me"
+DEV_ARBITER_SHARED_SECRET = "dev-arbiter-secret-change-me"
 MIN_JWT_SECRET_LENGTH = 32
 
 # (settings attr, env var name, known dev value). The guard refuses to boot when
@@ -205,6 +329,7 @@ _DEV_VALUED_SECRETS: tuple[tuple[str, str, str], ...] = (
     ("s3_access_key_id", "S3_ACCESS_KEY_ID", DEV_S3_ACCESS_KEY_ID),
     ("s3_secret_access_key", "S3_SECRET_ACCESS_KEY", DEV_S3_SECRET_ACCESS_KEY),
     ("processor_shared_secret", "PROCESSOR_SHARED_SECRET", DEV_PROCESSOR_SHARED_SECRET),
+    ("arbiter_shared_secret", "ARBITER_SHARED_SECRET", DEV_ARBITER_SHARED_SECRET),
 )
 
 
@@ -243,9 +368,22 @@ def validate_production_config(settings: Settings) -> list[str]:
             errors.append(f"{env_name} is the dev default; set a real value.")
     if "*" in settings.cors_origin_list:
         errors.append("CORS_ORIGINS contains '*'; set an explicit origin allowlist.")
+    if "*" in [hop.strip() for hop in settings.forwarded_allow_ips.split(",")]:
+        errors.append(
+            "FORWARDED_ALLOW_IPS contains '*'; uvicorn would trust X-Forwarded-For "
+            "from any peer (spoofable). Set the explicit proxy IP/CIDR (e.g. the "
+            "load-balancer subnet)."
+        )
+    if "*" in settings.trusted_proxy_ip_set:
+        errors.append("TRUSTED_PROXY_IPS contains '*'; list explicit proxy IPs.")
     if len(settings.jwt_secret) < MIN_JWT_SECRET_LENGTH:
         errors.append(
             f"JWT_SECRET is shorter than {MIN_JWT_SECRET_LENGTH} chars; use a strong random secret."
+        )
+    if settings.ws_max_lifetime_seconds > settings.jwt_access_ttl_seconds:
+        errors.append(
+            "WS_MAX_LIFETIME_SECONDS exceeds JWT_ACCESS_TTL_SECONDS; a notification socket "
+            "could outlive its access token, defeating the revalidation lifetime cap."
         )
     return errors
 
@@ -279,9 +417,36 @@ def log_secret_sources(settings: Settings) -> None:
         ("s3_access_key_id", "S3_ACCESS_KEY_ID"),
         ("s3_secret_access_key", "S3_SECRET_ACCESS_KEY"),
         ("processor_shared_secret", "PROCESSOR_SHARED_SECRET"),
+        ("arbiter_shared_secret", "ARBITER_SHARED_SECRET"),
     ):
         source = "env" if attr in settings.model_fields_set else "DEFAULT"
         if attr in dev_values and getattr(settings, attr) == dev_values[attr]:
             logger.warning("  %s: source=%s — DEV-DEFAULT VALUE in use", env_name, source)
         else:
             logger.info("  %s: source=%s", env_name, source)
+
+    # Surface the effective reverse-proxy trust so an operator can confirm uvicorn
+    # is resolving real client IPs (rate-limit buckets + audit logs). The loopback
+    # default outside dev usually means "behind a proxy but no trust configured",
+    # so every client collapses onto the proxy IP and shares one rate-limit bucket.
+    fai_source = "env" if "forwarded_allow_ips" in settings.model_fields_set else "DEFAULT"
+    logger.info("  FORWARDED_ALLOW_IPS=%r (source=%s)", settings.forwarded_allow_ips, fai_source)
+    if not dev_skip and settings.forwarded_allow_ips.strip() == "127.0.0.1":
+        logger.warning(
+            "  FORWARDED_ALLOW_IPS is the loopback default in a production posture — "
+            "if the API sits behind a reverse proxy, set it to the proxy IP/CIDR so "
+            "rate limits key on the real client instead of the proxy."
+        )
+
+    # Redis is launch-critical: the rate limiter fails open and the JWT blocklist
+    # fails closed on a Redis outage, so a single-node localhost Redis in prod is a
+    # SPOF for the whole authenticated surface. Warn (not fail) — local-socket /
+    # sidecar deployments are legitimate; production should point at HA Redis with
+    # AOF persistence (see CLAUDE.md / PRODUCTION_READINESS.md).
+    redis_host = (urlparse(settings.redis_url).hostname or "").lower()
+    if not dev_skip and redis_host in {"localhost", "127.0.0.1", "::1"}:
+        logger.warning(
+            "  REDIS_URL points at localhost in a production posture — production "
+            "Redis must be highly available (managed/replicated with failover) and "
+            "have AOF persistence enabled; a single-node Redis is a SPOF for auth."
+        )

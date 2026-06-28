@@ -58,6 +58,15 @@ uv run alembic revision --autogenerate -m "message"
 uv run alembic upgrade head
 uv run alembic downgrade -1
 
+# RELEASE GATE — a deploy that ships a TENANT migration MUST fan it out across
+# every existing org schema, or pre-existing orgs 500 (only newly-provisioned
+# orgs get the delta in-process). Run AFTER the master upgrade:
+uv run python -m bimdossier_api.scripts.migrate_all          # upgrade all org schemas
+uv run python -m bimdossier_api.scripts.migrate_all --check  # exits non-zero on drift
+# The API logs a loud "TENANT SCHEMAS BEHIND" warning at startup if any active
+# org schema is behind the tenant head — a backstop (check_tenant_schema_drift),
+# not a substitute for running migrate_all.
+
 # tests (TDD — run these constantly)
 uv run pytest                        # all
 uv run pytest tests/test_signup.py   # one file
@@ -109,7 +118,7 @@ pnpm --filter=portal test:e2e:full       # starts docker-compose.test.yml, runs 
 FastAPI Users handles registration, verification, password reset, and the `/users/*` router. Two pieces are custom:
 
 1. `auth/routes.py::login` overrides `/auth/jwt/login` to return **both** access + refresh tokens (FastAPI Users' built-in login only returns access). Uses `OAuth2PasswordRequestForm`, gates on `is_verified`, responds with `TokenPair`.
-2. `auth/refresh.py` exposes `POST /auth/jwt/refresh` — decodes the refresh JWT, verifies `typ=refresh`, issues a fresh access token.
+2. `auth/refresh.py` exposes `POST /auth/jwt/refresh` — decodes the refresh JWT, verifies `typ=refresh`, and returns a fresh access token **plus a rotated refresh token** (responds with `TokenPair`). **Refresh-token rotation + reuse detection** (M-auth2): each call retires the presented refresh token and mints a successor (inheriting the original's expiry — an absolute cap, so rotation never extends the 7-day session). A retired token replayed *outside* a short grace window (`REFRESH_ROTATION_GRACE_SECONDS`, default 30s) is treated as theft: it bumps the user's `tokens_valid_after` epoch, signing out **every** session (OAuth BCP "revoke the family"), and emits an `auth.refresh.reuse_detected` audit event. Inside the grace window a replay re-issues the *same* successor idempotently, so a benign cross-tab race / network retry doesn't trip detection. Rotation state lives in Redis under `refresh:rot:`/`refresh:succ:` (kept distinct from the `blk:jti:` logout blocklist so a deliberately-logged-out token's replay stays a plain `REFRESH_TOKEN_REVOKED`, not a sign-out-everywhere). **Every client that calls refresh MUST persist the returned refresh token** (portal + mobile `tokenManager.ts` do) — keeping the old one would trip reuse detection on the next refresh.
 
 **Token separation** (`auth/tokens.py`): access and refresh tokens share the same secret/algorithm but use **different audiences** (`"fastapi-users:auth"` vs `"bimdossier:refresh"`). FastAPI Users' default `JWTStrategy` is pinned to the access audience, so presenting a refresh token at `/users/me` yields 401 — this is the only thing stopping refresh tokens from being accepted as access. Both tokens also carry a `typ` claim, which `decode_token` checks defensively.
 
@@ -123,6 +132,8 @@ There is no public `POST /auth/register` — it is intentionally not mounted (`a
 3. `on_after_request_verify` emails an activation link to `frontend_activate_url` carrying a verify-audience token (lifetime bumped to `INVITE_TOKEN_TTL_SECONDS`).
 4. The invitee calls `POST /auth/activate { token, password }` — a single call that atomically flips `is_verified=true` **and** sets the password. (Replaces the legacy verify + reset-password two-call flow, which failed at step 2 because reset-password decodes a different JWT audience.)
 5. `on_after_verify` (and the mirror check at login, `_flip_pending_memberships`) auto-accepts the user's sole bootstrap pending invite, so they land logged in with an active org rather than a "sign in and accept" prompt.
+
+**No bare `/auth/verify`** (M-auth1): FastAPI Users' `get_verify_router()` bundles `/auth/request-verify-token` *and* a bare `/auth/verify`. We do **not** mount that bundle. `/auth/verify` is dropped entirely — activation goes only through `/auth/activate` (which sets the password atomically with the verify flip). A bare verify route is an onboarding-griefing vector: anyone observing an invite token could POST it to flip `is_verified` *without* a password, after which the legit invitee's `/auth/activate` short-circuits to a no-op and they can never sign in. `/auth/request-verify-token` is re-implemented as a shadow route in `auth/routes.py` (same enumeration-safe behaviour) behind a per-IP limiter (`VERIFY_REQUEST_RATE_LIMITER`, `RATE_LIMIT_VERIFY_REQUEST_PER_HOUR`) since it emails an activation link (email-bomb defense).
 
 **Email transport** is a small `Protocol` with two implementations in `email/transport.py`: `SMTPEmailTransport` (MailHog in dev, real SMTP in prod) and `InMemoryEmailTransport` (tests). The `email_transport` pytest fixture swaps in the in-memory one and exposes `last_for(email)` so tests read the verification token out of the email body directly.
 
@@ -217,7 +228,7 @@ Two new catalog namespaces in `i18n/messages/{en,nl}.py` (same bilingual parity 
 
 The legacy `auth/refresh.py` codes `REFRESH_TOKEN_REVOKED` / `USER_NO_LONGER_ACTIVE` keep their portal keys under `auth.login.errors.*`.
 
-**Rate limiting**: Redis-backed via `fastapi-limiter`. Defaults in `config.py`: login 5/min, register 3/hour, refresh 10/min, forgot-password 3/hour. (The `register` limiter now guards the admin invite path — the public `/auth/register` route is gone — but the knob is unchanged.)
+**Rate limiting**: Redis-backed via `fastapi-limiter`. Unauthenticated/auth limiters (defaults in `config.py`): login 5/min, refresh 10/min, forgot-password 3/hour, request-verify-token (resend-activation) 5/hour, access-request 5/hour — all keyed per-IP. Expensive **authenticated** endpoints carry per-user limiters (built in `auth/ratelimit.py` via `make_identifier(label)`, keyed on the JWT user id with per-IP fallback): compliance-check 20/hour, report-create 10/hour, presigned-PUT upload-initiate 100/hour (one shared `upload_initiate` budget across project-files / attachments / certificates / org-certificates / org-template-assets), and admin invite + resend-invite 30/hour (shared `org_invite` budget — each sends an email, so an unthrottled admin is a mail-bomb vector). The **public** capture-link upload-initiate has its own per-IP `RATE_LIMIT_CAPTURE_INITIATE_PER_HOUR` (120/hour). (There is no public `/auth/register` route, so the old register limiter was removed.) Buckets key on the real caller IP via a trusted-proxy-aware identifier (`auth/ratelimit.py`), so a forged `X-Forwarded-For` can't mint fresh buckets — see the "Reverse-proxy / `X-Forwarded-For` trust" operational rule for the `FORWARDED_ALLOW_IPS` / `TRUSTED_PROXY_IPS` setup.
 
 ### Storage
 
@@ -307,10 +318,13 @@ Python API reads from `apps/api/.env.example` (see that file for the complete li
 - **JWT**: `JWT_SECRET`, `JWT_ACCESS_TTL_SECONDS`, `JWT_REFRESH_TTL_SECONDS`
 - **Email**: `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `FRONTEND_VERIFY_URL`, `FRONTEND_RESET_PASSWORD_URL`
 - **CORS**: `CORS_ORIGINS`, `CORS_ORIGIN_REGEX`
+- **Observability**: `LOG_LEVEL`, `LOG_FORMAT` (`json`|`console`), `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `SENTRY_TRACES_SAMPLE_RATE`
 - **Redis**: `REDIS_URL`, `TEST_REDIS_URL`
-- **Rate limits**: `RATE_LIMIT_LOGIN_PER_MIN`, `RATE_LIMIT_REGISTER_PER_HOUR`, `RATE_LIMIT_REFRESH_PER_MIN`, `RATE_LIMIT_FORGOT_PER_HOUR`
+- **Rate limits**: `RATE_LIMIT_LOGIN_PER_MIN`, `RATE_LIMIT_REFRESH_PER_MIN`, `RATE_LIMIT_FORGOT_PER_HOUR`, `RATE_LIMIT_VERIFY_REQUEST_PER_HOUR`, `RATE_LIMIT_COMPLIANCE_PER_HOUR`, `RATE_LIMIT_REPORT_PER_HOUR`, `RATE_LIMIT_UPLOAD_INITIATE_PER_HOUR`, `RATE_LIMIT_INVITE_PER_HOUR`, `RATE_LIMIT_CAPTURE_INITIATE_PER_HOUR`
+- **JWT / refresh rotation**: `JWT_SECRET`, `JWT_ACCESS_TTL_SECONDS`, `JWT_REFRESH_TTL_SECONDS`, `REFRESH_ROTATION_GRACE_SECONDS`
 - **S3/MinIO**: `S3_ENDPOINT_URL`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET_IFC`, `S3_PRESIGN_TTL_SECONDS`, `UPLOAD_MAX_BYTES`
 - **Processor worker**: `PROCESSOR_URL`, `PROCESSOR_SHARED_SECRET`, `PROCESSOR_DISPATCH_TIMEOUT_SECONDS`
+- **Arbiter compliance MCP**: `ARBITER_URL`, `ARBITER_TIMEOUT_SECONDS`, `ARBITER_SHARED_SECRET`. The API↔Arbiter channel is bearer-authenticated (mirror of `PROCESSOR_SHARED_SECRET`): the Arbiter wraps its FastMCP/streamable-http app in a constant-time bearer gate (`apps/arbiter/src/arbiter/auth.py`), and `compliance/__init__.py` sends `Authorization: Bearer`. No code default → fails closed; `validate_production_config` (both services) flags the dev value outside `DEPLOY_REGION=dev`. The Arbiter reads the shared IFC bucket and rewrites rule packs, so production must keep its port on the internal docker network (never host-published) — dev binds it to `127.0.0.1:8090`.
 
 Portal reads: `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:8000`).
 
@@ -325,6 +339,7 @@ The API itself runs on the host (`uv run uvicorn ...`), not in Docker.
 - `redis` — Redis 7, host port **6380**. Used for rate limiting, JWT blocklist, and BullMQ job queue.
 - `minio` — S3-compatible storage, API on port **9000**, console at **9001**. Root credentials: `bimdossier` / `bimdossier-secret`.
 - `processor` — built from `apps/processor/Dockerfile`, host port **8088**. Reaches API via `host.docker.internal:8000`. Auth: `PROCESSOR_SHARED_SECRET`. Generic Node.js worker for all background jobs (IFC extraction, PDF extraction, PDF report generation).
+- `arbiter` — built from `apps/arbiter/Dockerfile`, compliance MCP server. Bound to **`127.0.0.1:8090`** (loopback only — the host-run API reaches it, the LAN cannot; production keeps it internal-network-only). Auth: `ARBITER_SHARED_SECRET`.
 
 ### Test stack — `docker-compose.test.yml` (repo root)
 
@@ -348,6 +363,12 @@ Lifecycle: `docker compose -f docker-compose.test.yml up -d --wait` / `down -v`.
 **Fragment geometry threshold is config, not code**: the processor's IfcImporter tessellation threshold is `JOB_GEOMETRY_THRESHOLD` (`apps/processor/src/config.ts`), default `1` so every element (incl. small furniture/fixtures) stays visible/clickable. Raising it shrinks `.frag` size + meshing time but drops small-element geometry — change the default only after measuring, and keep the visibility regression test (`apps/processor/test/fragments-threshold.test.ts`) green.
 
 **Alembic revision ID length**: Alembic revision IDs must fit within `VARCHAR(32)`. Keep generated IDs short; long IDs (e.g. 38-char slugs) exceed the column limit and cause rollback failures on upgrade.
+
+**Reverse-proxy / `X-Forwarded-For` trust (two layers, never `*`)**: rate limits and audit-log client IPs must key on the real caller, but `X-Forwarded-For` is client-forgeable, so XFF is trusted only from known proxies. **uvicorn owns resolution in prod**: set `FORWARDED_ALLOW_IPS=<proxy IP/CIDR>` (uvicorn runs with `--proxy-headers`, on by default) so it rewrites `request.client.host` to the real client — both the rate limiter (`auth/ratelimit.py::_client_ip`) and `audit.py` then read it for free. The app-level `TRUSTED_PROXY_IPS` (config.py) is the in-process **fallback** for setups that can't set the env var; leave it empty when uvicorn owns it. **Never `FORWARDED_ALLOW_IPS=*`** (or `TRUSTED_PROXY_IPS=*`) — uvicorn would then trust XFF from any peer and take the spoofable left-most hop, re-opening the brute-force-throttle bypass; `validate_production_config` refuses to boot on `*` outside dev. Canonical prod command: `FORWARDED_ALLOW_IPS=<proxy-subnet-CIDR> uv run uvicorn bimdossier_api.main:app --host 0.0.0.0 --port 8000 --proxy-headers`.
+
+**Redis is a launch-critical dependency (fail-open limiter, fail-closed blocklist)**: Redis backs rate limiting, the JWT blocklist, and the BullMQ queue, and a Redis outage degrades the two auth paths in **opposite** directions on purpose. The **rate limiter fails OPEN** — `ResilientRateLimiter` (`auth/ratelimit.py`) overrides `_check` to log-and-allow on any `RedisError` (re-raising `NoScriptError` so the Lua-script reload still works); a throttle is not an auth gate, so a Redis blip must not 500 login/refresh/upload. **Use `ResilientRateLimiter`, never the bare `fastapi_limiter` `RateLimiter`**, for every new limiter. The **JWT blocklist fails CLOSED** — `cache/blocklist.py::is_revoked` returns `True` (revoked) on `RedisError`; do NOT "fix" this to fail open, it's the security boundary (a stolen/logged-out token must never be honoured while the blocklist is blind). The Redis client (`cache/client.py`) sets `socket_timeout`/`socket_connect_timeout`/`health_check_interval` (the `REDIS_*` settings) so a dead Redis fails fast (~2s) instead of hanging and the pool reconnects after a failover. Outage warnings go through `logging_utils.warn_throttled` (one WARNING per ~30s, not per request). **Operational requirement**: production `REDIS_URL` MUST be HA (managed/replicated with failover) with **AOF persistence** enabled — a single-node Redis is a SPOF for the whole authenticated surface (a localhost `REDIS_URL` outside dev logs a non-fatal boot warning).
+
+**Structured logging + request-id correlation (one id across logs / audit / Sentry)**: every request gets a correlation id so a log line, the `audit_log` row, and the Sentry event for it share one key. `RequestIdMiddleware` (`middleware/request_id.py`, registered OUTERMOST in `create_app`) reuses a valid inbound `X-Request-Id` or generates one, publishes it on `logging_utils.request_id_ctx` (a `ContextVar`), `request.state.request_id`, and the `X-Request-Id` **response** header (exposed via CORS). Three readers close the loop: `logging_config.RequestIdFilter` stamps every log record, `audit._extract_request_context` reads the context var (so `audit_log.request_id` is never NULL during a request — the M-obs1 bug), and the Sentry `before_send` (`observability._tag_request_id`) tags every event. **The middleware is pure-ASGI on purpose** — a `BaseHTTPMiddleware` does not reliably propagate a context var to the endpoint task. `configure_logging` (`logging_config.py`, called from `create_app`) installs a stdout handler — JSON (`LOG_FORMAT=json`, default in a production posture) or human `console` (`DEPLOY_REGION=dev`) — and reroutes uvicorn's own loggers through it; it is **skipped under pytest** (so it never steals caplog's root handler) and guarded to run once. An inbound `X-Request-Id` is accepted only if it matches `^[A-Za-z0-9._\-]{1,64}$` (anti-CRLF-injection + column-width cap); anything else is silently replaced, never 400'd. The processor has its own mirror (`apps/processor/src/sentry.ts` + `unhandledRejection`/`uncaughtException` handlers in `index.ts`) — M-obs2.
 
 **Sibling model bug sweep**: when fixing a bug in one Pydantic request/response model (e.g. a missing field, wrong type, bad validator), immediately grep for the identical pattern across all sibling models in the same router/module and fix them all in the same commit. Isolated fixes leave identical bugs in adjacent models that will surface as 422s later.
 

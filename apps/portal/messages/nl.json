@@ -1835,6 +1835,7 @@
       "expand": "Openen in dialoogvenster",
       "tabs": {
         "edit": "Bewerken",
+        "comments": "Reacties",
         "history": "Geschiedenis"
       },
       "fields": {
@@ -1925,6 +1926,17 @@
         "edited": "bewerkt",
         "added": "toegevoegd",
         "removed": "verwijderd"
+      },
+      "comments": {
+        "empty": "Nog geen reacties. Start de discussie.",
+        "placeholder": "Schrijf een reactie…  gebruik @ om iemand te noemen",
+        "send": "Versturen",
+        "save": "Opslaan",
+        "cancel": "Annuleren",
+        "edit": "Bewerken",
+        "delete": "Verwijderen",
+        "confirmDelete": "Verwijderen",
+        "edited": "bewerkt"
       }
     },
     "photos": {
@@ -3170,6 +3182,8 @@
         "reactivate": "Heractiveren",
         "remove": "Uit tenant verwijderen",
         "leaveOrg": "Tenant verlaten",
+        "unlock": "Account ontgrendelen",
+        "lockedBadge": "Vergrendeld",
         "tooltips": {
           "lastAdmin": "De tenant moet minstens één beheerder hebben. Promoveer eerst een ander lid voordat je deze rol wijzigt.",
           "selfAction": "Gebruik in plaats daarvan de actie 'Tenant verlaten'.",
@@ -3295,7 +3309,9 @@
         "activate": "Inschakelen",
         "deactivate": "Uitschakelen",
         "promote": "Promoveren",
-        "demote": "Degraderen"
+        "demote": "Degraderen",
+        "unlock": "Ontgrendelen",
+        "lockedBadge": "Vergrendeld"
       }
     },
     "audit": {
@@ -3666,6 +3682,7 @@
     "certificateUpdated": "Certificaat bijgewerkt: {filename}",
     "certificateDeleted": "Certificaat verwijderd: {filename}",
     "findingCreated": "Bevinding aangemaakt: {title}",
+    "findingExported": "{count} bevindingen geëxporteerd naar CSV",
     "findingUpdated": "Bevinding bijgewerkt: {title}",
     "findingPromoted": "Bevinding geopend: {title}",
     "findingResolved": "Bevinding opgelost: {title}",
@@ -4055,7 +4072,8 @@
       "raise": "Camera omhoog (R)",
       "lower": "Camera omlaag (F)",
       "slower": "Langzamer (−)",
-      "faster": "Sneller (+)"
+      "faster": "Sneller (+)",
+      "speed": "Camerasnelheid"
     },
     "measurement": {
       "modeDistance": "Afstand",

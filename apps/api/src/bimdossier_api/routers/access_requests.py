@@ -9,11 +9,11 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi_limiter.depends import RateLimiter
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bimdossier_api.auth.ratelimit import ResilientRateLimiter
 from bimdossier_api.db import get_async_session
 from bimdossier_api.models.access_request import AccessRequest, AccessRequestStatus
 from bimdossier_api.schemas.access_request import (
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Limit to 5 submissions per hour per IP. The blocklist on free-email
 # providers covers most accidental misuse; rate limit covers scripted spam.
-ACCESS_REQUEST_RATE_LIMITER = RateLimiter(times=5, seconds=3600)
+ACCESS_REQUEST_RATE_LIMITER = ResilientRateLimiter(times=5, seconds=3600)
 
 router = APIRouter(prefix="/access-requests", tags=["access-requests"])
 

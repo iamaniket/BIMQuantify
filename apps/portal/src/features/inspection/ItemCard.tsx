@@ -2,7 +2,14 @@
 
 import { Mic } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
-import { useCallback, useEffect, useState, type JSX } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type JSX,
+  type SetStateAction,
+} from 'react';
 import { toast } from 'sonner';
 
 import { Badge, Button } from '@bimdossier/ui';
@@ -71,8 +78,18 @@ export function ItemCard({
     onSubmit(verdict, note.trim().length > 0 ? note.trim() : null, photoIds.length > 0 ? photoIds : null, referenceAttachmentIds.length > 0 ? referenceAttachmentIds : null);
   }, [verdict, note, photoIds, referenceAttachmentIds, onSubmit]);
 
+  // Mirror photoIds in a ref so a functional updater from PhotoCapture resolves
+  // against the latest committed list (not a stale closure) before we forward the
+  // result to onSubmit — without running the side effect inside a state updater.
+  const photoIdsRef = useRef(photoIds);
+  useEffect(() => {
+    photoIdsRef.current = photoIds;
+  }, [photoIds]);
+
   const handlePhotosChange = useCallback(
-    (ids: string[]) => {
+    (update: SetStateAction<string[]>) => {
+      const ids = typeof update === 'function' ? update(photoIdsRef.current) : update;
+      photoIdsRef.current = ids;
       setPhotoIds(ids);
       if (verdict !== null && verdict !== 'not_applicable') {
         onSubmit(verdict, note.trim().length > 0 ? note.trim() : null, ids.length > 0 ? ids : null, referenceAttachmentIds.length > 0 ? referenceAttachmentIds : null);

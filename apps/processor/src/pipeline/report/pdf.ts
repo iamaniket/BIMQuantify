@@ -8,6 +8,8 @@
 
 import { PDFDocument } from 'pdf-lib';
 
+import { getConfig } from '../../config.js';
+import { RetriableError } from '../errors.js';
 import { getBrowser, noteRender } from './chromium.js';
 
 export type PdfOptions = {
@@ -17,9 +19,25 @@ export type PdfOptions = {
 };
 
 export async function htmlToPdf(html: string, opts: PdfOptions): Promise<Uint8Array> {
+  const { JOB_TIMEOUT_MS } = getConfig();
   const browser = await getBrowser();
   const page = await browser.newPage();
-  try {
+  // Coordinate the render with the BullMQ lock exactly as extraction does (see
+  // worker-host.ts): the worker's lockDuration is JOB_TIMEOUT_MS + 30s, so the
+  // whole render must abort by JOB_TIMEOUT_MS or a wedged page — a `networkidle0`
+  // that never settles, or a hung `page.pdf()` (which has no built-in timeout) —
+  // would run until BullMQ reclaims the job as stalled. `setDefaultTimeout` binds
+  // setContent to the same budget; the outer race below also bounds `page.pdf()`.
+  page.setDefaultTimeout(JOB_TIMEOUT_MS);
+
+  let deadlineTimer: NodeJS.Timeout | null = null;
+  const deadline = new Promise<never>((_, reject) => {
+    deadlineTimer = setTimeout(() => {
+      reject(new RetriableError(`report render timed out after ${JOB_TIMEOUT_MS}ms`, 'timeout'));
+    }, JOB_TIMEOUT_MS);
+  });
+
+  const render = (async (): Promise<Uint8Array> => {
     await page.emulateMediaType('print');
     await page.setContent(html, { waitUntil: 'networkidle0' });
     const raw = await page.pdf({
@@ -47,8 +65,17 @@ export async function htmlToPdf(html: string, opts: PdfOptions): Promise<Uint8Ar
     doc.setProducer('BimDossier processor');
     doc.setCreator('BimDossier processor');
     return await doc.save({ useObjectStreams: false });
+  })();
+  // If the deadline wins, the page is closed in `finally`, which rejects the
+  // in-flight render later; swallow that so it can't surface as an unhandled
+  // rejection after the race has already settled.
+  render.catch(() => undefined);
+
+  try {
+    return await Promise.race([render, deadline]);
   } finally {
-    await page.close();
+    if (deadlineTimer !== null) clearTimeout(deadlineTimer);
+    await page.close().catch(() => undefined);
     await noteRender();
   }
 }

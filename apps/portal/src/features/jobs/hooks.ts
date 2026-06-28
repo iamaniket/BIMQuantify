@@ -35,6 +35,11 @@ export function useJob(
     },
     enabled: jobId !== null && enabled,
     refetchInterval: (query) => {
+      // Stop polling once a poll errors (e.g. 401 + failed refresh). The query
+      // settles to `error` but `state.data` keeps the last non-terminal snapshot,
+      // so without this guard — and with the global `retry: false` — we'd fire
+      // one doomed request per tick forever (#12).
+      if (query.state.status === 'error') return false;
       const { data } = query.state;
       if (data === undefined) return false;
       return isJobActive(data.status) ? 3000 : false;

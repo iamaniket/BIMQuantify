@@ -55,6 +55,7 @@ from bimdossier_api.schemas.project_file import (
 )
 from bimdossier_api.schemas.report import ReportCallbackRequest, ReportResponse
 from bimdossier_api.storage import StorageBackend, get_storage
+from bimdossier_api.storage.scoping import assert_key_scoped
 from bimdossier_api.tenancy import schema_name_for
 
 logger = logging.getLogger(__name__)
@@ -72,27 +73,6 @@ _VALID_INCOMING = {
     ExtractionStatus.succeeded,
     ExtractionStatus.failed,
 }
-
-
-def _assert_key_scoped(key: str | None, expected_prefix: str) -> None:
-    """Reject a worker-supplied storage key not scoped to ``expected_prefix``.
-
-    The processor is trusted (shared-secret auth), but these callbacks persist
-    object keys verbatim onto rows that are later served to users via presigned
-    GET. A compromised worker — or a leaked shared secret — could otherwise point
-    a row at another tenant's object and have the API hand out a presigned URL
-    for it. Every legitimate artifact key is derived by the worker from the
-    source object key (``fragmentsKeyFor`` et al. swap the suffix), so artifacts
-    live under ``projects/{project_id}/`` and report PDFs under
-    ``reports/{org_id}/{project_id}/``. A prefix check is therefore sufficient
-    to bind the key to the row's own tenant/project. ``None`` (an absent optional
-    artifact) passes. (SOC2 CC6.1 / CC6.6 — tenant isolation.)
-    """
-    if key is not None and not key.startswith(expected_prefix):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="INVALID_STORAGE_KEY",
-        )
 
 
 async def _set_tenant_schema(session: AsyncSession, organization_id: UUID) -> str:
@@ -125,7 +105,7 @@ async def extraction_callback(
     payload: ExtractionCallbackRequest,
     session: AsyncSession = Depends(get_async_session),
     storage: StorageBackend = Depends(get_storage),
-) -> ProjectFile:
+) -> ProjectFileRead:
     if payload.status not in _VALID_INCOMING:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -138,7 +118,7 @@ async def extraction_callback(
 
         if row.extraction_status in _TERMINAL:
             # Idempotent no-op. Don't overwrite what we already recorded.
-            return row
+            return ProjectFileRead.model_validate(row)
 
         if payload.status is ExtractionStatus.running:
             row.extraction_status = ExtractionStatus.running
@@ -180,7 +160,7 @@ async def extraction_callback(
                     )
             else:
                 # Bind every worker-supplied artifact key to this file's project
-                # before persisting — see _assert_key_scoped.
+                # before persisting — see assert_key_scoped.
                 project_prefix = f"projects/{row.project_id}/"
                 for candidate in (
                     payload.fragments_key,
@@ -190,7 +170,7 @@ async def extraction_callback(
                     payload.outline_key,
                     payload.floor_plans_key,
                 ):
-                    _assert_key_scoped(candidate, project_prefix)
+                    assert_key_scoped(candidate, project_prefix)
                 row.extraction_status = ExtractionStatus.succeeded
                 row.fragments_storage_key = payload.fragments_key
                 row.metadata_storage_key = payload.metadata_key
@@ -261,17 +241,32 @@ async def extraction_callback(
             if job is not None and job.status not in _JOB_TERMINAL:
                 _apply_job_update(job, payload)
 
-    # Transaction committed — now create and publish notification.
-    await _emit_notification(session, row, job, payload)
-
-    # Re-anchor the search_path so the implicit refresh transaction reads
-    # `project_files` out of the tenant schema (the previous SET LOCAL is
-    # gone now that the wrapping transaction committed).
-    schema = schema_name_for(payload.organization_id)
-    async with session.begin():
-        await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+        # Flush then refresh inside the transaction so the committed in-memory row
+        # carries server-computed columns (e.g. `updated_at`). The explicit flush
+        # is required: `refresh()` re-SELECTs the row and would otherwise *discard*
+        # the not-yet-flushed status change. With expire_on_commit=False the row
+        # stays populated after commit, so the response is built with no post-commit
+        # DB read — a failure here rolls back the (uncommitted) state and correctly
+        # fails the callback for a legitimate retry.
+        await session.flush()
         await session.refresh(row)
-    return row
+
+    # Transaction committed — the terminal state is durably persisted. Build the
+    # response from the now-complete in-memory row (pure CPU, no DB), then run the
+    # only genuine post-commit side-effect — the bell notification — best-effort:
+    # its failure must NOT propagate, or FastAPI would 500 a callback whose row is
+    # already terminal, the worker would retry, hit the terminal guard above, and
+    # never re-emit, leaving a finished job reported as "callback failed".
+    result = ProjectFileRead.model_validate(row)
+    try:
+        await _emit_notification(session, row, job, payload)
+    except Exception:
+        logger.warning(
+            "Failed to emit extraction notification for file %s (row already terminal)",
+            payload.file_id,
+            exc_info=True,
+        )
+    return result
 
 
 def _apply_job_update(job: Job, payload: ExtractionCallbackRequest) -> None:
@@ -358,9 +353,7 @@ async def _emit_notification(
         stem = _NOTIF_KEY_MAP[payload.status]
         title = t(f"notifications.extraction.{stem}.title", locale)
         if payload.status is ExtractionStatus.failed:
-            error = (
-                payload.error or t("notifications.extraction.unknown_error", locale)
-            )[:200]
+            error = (payload.error or t("notifications.extraction.unknown_error", locale))[:200]
             body = t("notifications.extraction.failed.body", locale, filename=filename, error=error)
         else:
             body = t(f"notifications.extraction.{stem}.body", locale, filename=filename)
@@ -600,7 +593,7 @@ async def _load_job_optional(session: AsyncSession, job_id: UUID) -> Job | None:
 async def pages_rasterization_callback(
     payload: PagesRasterizeCallbackRequest,
     session: AsyncSession = Depends(get_async_session),
-) -> ProjectFile:
+) -> ProjectFileRead:
     """Worker → API callback for `pdf_pages_rasterization` jobs.
 
     Records the page-image manifest key on the file (consumed by the mobile
@@ -618,7 +611,7 @@ async def pages_rasterization_callback(
             else None
         )
         if job is not None and job.status in _JOB_TERMINAL:
-            return row  # idempotent no-op
+            return ProjectFileRead.model_validate(row)  # idempotent no-op
 
         if payload.status == "running":
             if job is not None:
@@ -628,7 +621,7 @@ async def pages_rasterization_callback(
                 if payload.progress is not None:
                     job.progress = payload.progress
         elif payload.status == "succeeded":
-            _assert_key_scoped(payload.pdf_pages_key, f"projects/{row.project_id}/")
+            assert_key_scoped(payload.pdf_pages_key, f"projects/{row.project_id}/")
             if payload.pdf_pages_key is not None:
                 row.pdf_pages_storage_key = payload.pdf_pages_key
             if job is not None:
@@ -651,13 +644,16 @@ async def pages_rasterization_callback(
                 job.retriable = payload.retriable
                 job.error_kind = payload.error_kind
 
-    # Re-anchor the search_path for the refresh (the SET LOCAL above is gone now
-    # that the wrapping transaction committed).
-    schema = schema_name_for(payload.organization_id)
-    async with session.begin():
-        await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+        # Flush then refresh inside the transaction so the committed in-memory row
+        # carries server-computed columns; see the matching note in
+        # `extraction_callback` (the flush is required so refresh doesn't discard
+        # the unflushed change).
+        await session.flush()
         await session.refresh(row)
-    return row
+
+    # Build the response from the now-complete in-memory row. No post-commit work
+    # (this callback emits no notification), so nothing here can fail.
+    return ProjectFileRead.model_validate(row)
 
 
 # ---------------------------------------------------------------------------
@@ -669,7 +665,7 @@ async def pages_rasterization_callback(
 async def report_callback(
     payload: ReportCallbackRequest,
     session: AsyncSession = Depends(get_async_session),
-) -> Report:
+) -> ReportResponse:
     """Worker → API callback for `compliance_report` (and later assurance_plan /
     completion_declaration / dossier) jobs.
 
@@ -687,7 +683,7 @@ async def report_callback(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="REPORT_NOT_FOUND")
 
         if report.status in _REPORT_TERMINAL:
-            return report  # idempotent no-op
+            return ReportResponse.model_validate(report)  # idempotent no-op
 
         if payload.status == "running":
             report.status = ReportStatus.running
@@ -697,7 +693,7 @@ async def report_callback(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="MISSING_STORAGE_KEY",
                 )
-            _assert_key_scoped(
+            assert_key_scoped(
                 payload.storage_key,
                 f"reports/{payload.organization_id}/{report.project_id}/",
             )
@@ -736,7 +732,27 @@ async def report_callback(
                 job.retriable = payload.retriable
                 job.error_kind = payload.error_kind
 
-    # Outside the txn — emit the notification.
+        # Flush then refresh inside the transaction so the committed in-memory
+        # report carries server-computed columns; see the matching note in
+        # `extraction_callback` (the flush is required so refresh doesn't discard
+        # the unflushed change).
+        await session.flush()
+        await session.refresh(report)
+
+    # Transaction committed — build the response from the now-complete in-memory
+    # report, and capture the scalars the post-commit side-effects need while
+    # `report` is still fresh: a failed post-commit transaction (notification /
+    # dossier email) rolls back and *expires* `report`, after which touching any
+    # of its attributes (even in a log line) would trigger a lazy DB load and
+    # crash. Everything below is best-effort and must NOT 500 the terminal row.
+    result = ReportResponse.model_validate(report)
+    report_id = report.id
+    report_title = report.title
+    report_locale = report.locale
+    report_project_id = report.project_id
+    report_type = report.report_type
+    report_created_by = report.created_by_user_id
+
     event_type = {
         "running": NotificationEventType.job_started,
         "ready": NotificationEventType.job_succeeded,
@@ -747,40 +763,47 @@ async def report_callback(
     if payload.status == "running" and payload.progress is not None:
         event_type = None
     if event_type is not None:
-        locale = coerce_locale(report.locale)
-        unknown_error = t("notifications.job.unknown_error", locale)
-        status_value = payload.status  # "running" | "ready" | "failed"
-        notif_title = t(f"notifications.job.{status_value}.title", locale)
-        notif_body = t(
-            f"notifications.job.{status_value}.body",
-            locale,
-            report_title=report.title,
-            error=(payload.error or unknown_error)[:200],
-        )
-        # Re-anchor search_path inside this txn (see the matching comment in
-        # `_emit_notification` above — `SET LOCAL` only persists until commit,
-        # and the outer callback's transaction has already closed).
-        schema = schema_name_for(payload.organization_id)
-        async with session.begin():
-            await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
-            notification = await upsert_job_notification(
-                session,
-                event_type=event_type,
-                title=notif_title,
-                body=notif_body,
-                project_id=report.project_id,
-                file_id=None,
-                job_id=payload.job_id,
+        try:
+            locale = coerce_locale(report_locale)
+            unknown_error = t("notifications.job.unknown_error", locale)
+            status_value = payload.status  # "running" | "ready" | "failed"
+            notif_title = t(f"notifications.job.{status_value}.title", locale)
+            notif_body = t(
+                f"notifications.job.{status_value}.body",
+                locale,
+                report_title=report_title,
+                error=(payload.error or unknown_error)[:200],
             )
-        await publish_notification(notification, organization_id=payload.organization_id)
+            # Re-anchor search_path inside this txn (see the matching comment in
+            # `_emit_notification` above — `SET LOCAL` only persists until commit,
+            # and the outer callback's transaction has already closed).
+            schema = schema_name_for(payload.organization_id)
+            async with session.begin():
+                await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+                notification = await upsert_job_notification(
+                    session,
+                    event_type=event_type,
+                    title=notif_title,
+                    body=notif_body,
+                    project_id=report_project_id,
+                    file_id=None,
+                    job_id=payload.job_id,
+                )
+            await publish_notification(notification, organization_id=payload.organization_id)
+        except Exception:
+            logger.warning(
+                "Failed to emit report notification for report %s (row already terminal)",
+                report_id,
+                exc_info=True,
+            )
 
     # Dossier (#33) is generated asynchronously and can take minutes — email the
     # requester when it's ready, on top of the in-app notification above. Email
     # failure must never break the callback (the row is already terminal).
     if (
         payload.status == "ready"
-        and report.report_type is ReportType.dossier
-        and report.created_by_user_id is not None
+        and report_type is ReportType.dossier
+        and report_created_by is not None
     ):
         try:
             schema = schema_name_for(payload.organization_id)
@@ -789,30 +812,24 @@ async def report_callback(
                 recipient = (
                     await session.execute(
                         text("SELECT email FROM public.users WHERE id = :uid"),
-                        {"uid": str(report.created_by_user_id)},
+                        {"uid": str(report_created_by)},
                     )
                 ).scalar_one_or_none()
             if recipient:
-                locale = coerce_locale(report.locale)
+                locale = coerce_locale(report_locale)
                 subject = t("notifications.dossier_ready_email.subject", locale)
                 body = t(
                     "notifications.dossier_ready_email.body",
                     locale,
-                    title=report.title,
+                    title=report_title,
                 )
                 await get_email_transport().send(recipient, subject, body)
         except Exception:
             logger.warning(
-                "Failed to send dossier-ready email for report %s", report.id, exc_info=True
+                "Failed to send dossier-ready email for report %s", report_id, exc_info=True
             )
 
-    # Re-anchor search_path for the refresh — `SET LOCAL` from the earlier
-    # transaction has reset by now.
-    schema = schema_name_for(payload.organization_id)
-    async with session.begin():
-        await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
-        await session.refresh(report)
-    return report
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -824,7 +841,7 @@ async def report_callback(
 async def attachment_metadata_callback(
     payload: AttachmentCallbackRequest,
     session: AsyncSession = Depends(get_async_session),
-) -> ProjectFile:
+) -> AttachmentRead:
     """Worker → API callback for `image_metadata_extraction` jobs.
 
     Same auth + RLS-bypass as the extraction callback (the worker has no
@@ -870,9 +887,11 @@ async def attachment_metadata_callback(
                 job.retriable = payload.retriable
                 job.error_kind = payload.error_kind
 
-    async with session.begin():
-        schema = schema_name_for(payload.organization_id)
-        await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+        # Re-load inside the transaction with `uploaded_by_user` eager-loaded and
+        # server-computed columns fresh, so the committed in-memory att is fully
+        # serializable for AttachmentRead — `uploaded_by_name` reads that
+        # `lazy="raise"` relationship. expire_on_commit=False keeps it loaded
+        # after commit, so the response needs no post-commit DB read.
         att = (
             await session.execute(
                 select(ProjectFile)
@@ -883,7 +902,8 @@ async def attachment_metadata_callback(
                 )
             )
         ).scalar_one()
-    return att
+
+    return AttachmentRead.model_validate(att)
 
 
 __all__ = ["router"]

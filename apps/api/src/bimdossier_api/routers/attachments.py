@@ -23,6 +23,7 @@ from sqlalchemy.orm import aliased, selectinload
 from bimdossier_api import audit
 from bimdossier_api.auth.fastapi_users import current_verified_user
 from bimdossier_api.auth.permissions import Action, Resource, require_permission
+from bimdossier_api.auth.ratelimit import UPLOAD_INITIATE_LIMITER
 from bimdossier_api.config import Settings, get_settings
 from bimdossier_api.idempotency import idempotency_key_header, is_idempotency_conflict
 from bimdossier_api.jobs import dispatch_job
@@ -127,7 +128,12 @@ async def _load_attachment_or_404(
     return att
 
 
-@router.post("/initiate", response_model=AttachmentInitiateResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/initiate",
+    response_model=AttachmentInitiateResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(UPLOAD_INITIATE_LIMITER)],
+)
 async def initiate_attachment_upload(
     project_id: UUID,
     payload: AttachmentInitiateRequest,
@@ -604,6 +610,26 @@ async def delete_attachment(
         raise
 
     att = await _load_attachment_or_404(session, project.id, attachment_id)
+    # Refuse to delete a version that still has newer versions chained to it
+    # (M-db3). The attachment version group is `coalesce(parent_file_id, id)`;
+    # soft-deleting a lineage root while children exist would hide v1 but leave
+    # v2+ visible (an orphaned version display), and were this ever a hard
+    # delete the parent_file_id SET NULL re-key could collide the version-group
+    # unique index. Delete newest-first instead.
+    has_newer_versions = await session.scalar(
+        select(ProjectFile.id)
+        .where(
+            ProjectFile.parent_file_id == att.id,
+            ProjectFile.role == ProjectFileRole.attachment,
+            ProjectFile.deleted_at.is_(None),
+        )
+        .limit(1)
+    )
+    if has_newer_versions is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="FILE_VERSION_HAS_DESCENDANTS",
+        )
     before = _attachment_snapshot(att)
     storage_key = att.storage_key
     att.soft_delete()

@@ -3,7 +3,14 @@
 import { Label } from '@bimdossier/ui';
 import { ImagePlus, Pencil, X } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
-import { useCallback, useRef, useState, type JSX } from 'react';
+import {
+  useCallback,
+  useRef,
+  useState,
+  type Dispatch,
+  type JSX,
+  type SetStateAction,
+} from 'react';
 import { toast } from 'sonner';
 
 import { ImageAnnotatorDialog } from '@/features/attachments/ImageAnnotatorDialog';
@@ -64,7 +71,7 @@ function PhotoThumbnail({
 type Props = {
   projectId: string;
   photoIds: string[];
-  onChange: (ids: string[]) => void;
+  onChange: Dispatch<SetStateAction<string[]>>;
   disabled?: boolean;
   // Override the heading so the same picker reads as "resolution evidence"
   // when reused in the resolve flow; defaults to the photos label.
@@ -106,11 +113,16 @@ export function FindingPhotos({
           setUploadingCount((n) => n - 1);
         }
       }
+      // Functional updater: an upload batch settles asynchronously, so the
+      // merge must read the *latest* selection — never the render-time
+      // snapshot — or a removal made mid-upload gets silently overwritten and
+      // the deleted photo resurrects (the remove/annotate handlers below merge
+      // functionally for the same reason).
       if (added.length > 0) {
-        onChange([...photoIds, ...added]);
+        onChange((prev) => [...prev, ...added]);
       }
     },
-    [uploadMutation, onChange, photoIds, t],
+    [uploadMutation, onChange, t],
   );
 
   return (
@@ -123,7 +135,7 @@ export function FindingPhotos({
             projectId={projectId}
             attachmentId={id}
             disabled={disabled}
-            onRemove={() => { onChange(photoIds.filter((x) => x !== id)); }}
+            onRemove={() => { onChange((prev) => prev.filter((x) => x !== id)); }}
             onAnnotate={() => { setAnnotatingId(id); }}
           />
         ))}
@@ -159,7 +171,7 @@ export function FindingPhotos({
         open={annotatingId !== null}
         onOpenChange={(o) => { if (!o) setAnnotatingId(null); }}
         onAnnotated={(newId) => {
-          onChange(photoIds.map((x) => (x === annotatingId ? newId : x)));
+          onChange((prev) => prev.map((x) => (x === annotatingId ? newId : x)));
         }}
       />
     </div>

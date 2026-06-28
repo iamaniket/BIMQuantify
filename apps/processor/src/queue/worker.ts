@@ -2,6 +2,7 @@ import { type Job, UnrecoverableError, Worker } from 'bullmq';
 
 import { postAttachmentCallback } from '../api/attachmentCallback.js';
 import { postCallback } from '../api/callback.js';
+import { runWithCallbackUrl } from '../api/callbackContext.js';
 import { postPagesCallback } from '../api/pagesCallback.js';
 import { getConfig, QUEUE_NAME } from '../config.js';
 import { logger } from '../log.js';
@@ -154,7 +155,10 @@ export function startWorker(): Worker<WorkerJob> {
   const cfg = getConfig();
   const worker = new Worker<WorkerJob>(
     QUEUE_NAME,
-    async (job) => {
+    async (job) =>
+      // Bind this job's per-job callback base URL (L13) for the whole pipeline,
+      // so every post*Callback inside resolves the right API instance.
+      runWithCallbackUrl(job.data.callback_url, async () => {
       logger.info({ jobId: job.id, jobType: job.data.job_type }, 'job started');
       const onProgress: ProgressReporter = (pct) => job.updateProgress(pct);
       try {
@@ -202,11 +206,16 @@ export function startWorker(): Worker<WorkerJob> {
         throw toBullError(err);
       }
       logger.info({ jobId: job.id }, 'job finished');
-    },
+      }),
     {
       connection: getRedis(),
       concurrency: cfg.JOB_CONCURRENCY,
       lockDuration: cfg.JOB_TIMEOUT_MS + 30_000,
+      // A large IFC/report job can miss a lock renewal on a single event-loop
+      // stall or Redis blip while still very much alive. The BullMQ default of
+      // maxStalledCount=1 would fail it after one such reclaim; raise it so the
+      // job is retried rather than abandoned. See JOB_MAX_STALLED_COUNT.
+      maxStalledCount: cfg.JOB_MAX_STALLED_COUNT,
     },
   );
 
@@ -219,7 +228,11 @@ export function startWorker(): Worker<WorkerJob> {
     // Reached a terminal failure — report it, then make sure the API row also
     // lands in a terminal state.
     captureException(err, { jobId: job.id, jobType: job.data.job_type });
-    void notifyTerminalFailure(job.data, err).catch((cbErr) => {
+    // The 'failed' event fires outside the processor's callback-url scope, so
+    // re-bind it here too (L13) before the terminal callback.
+    void runWithCallbackUrl(job.data.callback_url, () =>
+      notifyTerminalFailure(job.data, err),
+    ).catch((cbErr) => {
       logger.error({ jobId: job.id, err: cbErr }, 'terminal failure callback failed');
     });
   });

@@ -1,0 +1,921 @@
+{
+  "tables": {
+    "aligned_sheets": {
+      "check_constraints": [
+        "ck_aligned_sheets_transform_type|transform_type IN ('similarity_2d')"
+      ],
+      "columns": {
+        "calibrated_pdf_file_id": "UUID|NULL|FK=project_files.id#SET NULL",
+        "control_points": "JSONB|NULL",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "created_by_user_id": "UUID|NOT NULL|FK=public.users.id#RESTRICT",
+        "deleted_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "document_id": "UUID|NOT NULL|FK=documents.id#CASCADE",
+        "id": "UUID|NOT NULL|PK",
+        "level_id": "UUID|NOT NULL|FK=levels.id#CASCADE",
+        "offset_x": "FLOAT|NULL",
+        "offset_y": "FLOAT|NULL",
+        "page_id": "UUID|NOT NULL|FK=pdf_pages.id#CASCADE",
+        "pdf_document_id": "UUID|NOT NULL|FK=documents.id#CASCADE",
+        "project_id": "UUID|NOT NULL|FK=projects.id#CASCADE",
+        "rotation_rad": "FLOAT|NULL",
+        "scale": "FLOAT|NULL",
+        "transform_type": "VARCHAR(16)|NOT NULL|has_server_default",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_aligned_sheets_document_id": "unique=False|cols=document_id|where=",
+        "ix_aligned_sheets_level_id": "unique=False|cols=level_id|where=",
+        "ix_aligned_sheets_page_id": "unique=False|cols=page_id|where=",
+        "ix_aligned_sheets_project_id": "unique=False|cols=project_id|where=",
+        "uq_aligned_sheets_level_page": "unique=True|cols=level_id,page_id|where=deleted_at IS NULL"
+      },
+      "unique_constraints": []
+    },
+    "audit_log": {
+      "check_constraints": [],
+      "columns": {
+        "action": "VARCHAR(100)|NOT NULL",
+        "after": "JSONB|NULL",
+        "before": "JSONB|NULL",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "id": "UUID|NOT NULL|PK",
+        "impersonator_user_id": "UUID|NULL|FK=public.users.id#SET NULL",
+        "ip_address": "INET|NULL",
+        "project_id": "UUID|NULL",
+        "request_id": "VARCHAR(64)|NULL",
+        "resource_id": "VARCHAR(64)|NULL",
+        "resource_type": "VARCHAR(50)|NOT NULL",
+        "user_agent": "VARCHAR(255)|NULL",
+        "user_id": "UUID|NULL|FK=public.users.id#SET NULL"
+      },
+      "indexes": {
+        "ix_audit_action_time": "unique=False|cols=action,created_at|where=",
+        "ix_audit_impersonator_time": "unique=False|cols=impersonator_user_id,created_at|where=",
+        "ix_audit_project_time": "unique=False|cols=project_id,created_at|where=",
+        "ix_audit_resource": "unique=False|cols=resource_type,resource_id|where=",
+        "ix_audit_user_time": "unique=False|cols=user_id,created_at|where="
+      },
+      "unique_constraints": []
+    },
+    "bcf_comments": {
+      "check_constraints": [],
+      "columns": {
+        "author": "VARCHAR(255)|NOT NULL",
+        "comment_text": "TEXT|NOT NULL",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "created_by_user_id": "UUID|NULL|FK=public.users.id#SET NULL",
+        "date": "TIMESTAMP WITH TIME ZONE|NOT NULL",
+        "guid": "VARCHAR(36)|NOT NULL",
+        "id": "UUID|NOT NULL|PK",
+        "modified_author": "VARCHAR(255)|NULL",
+        "modified_date": "TIMESTAMP WITH TIME ZONE|NULL",
+        "topic_id": "UUID|NOT NULL|FK=bcf_topics.id#CASCADE",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "viewpoint_guid": "VARCHAR(36)|NULL"
+      },
+      "indexes": {
+        "ix_bcf_comments_created_by_user_id": "unique=False|cols=created_by_user_id|where=",
+        "ix_bcf_comments_topic_id": "unique=False|cols=topic_id|where="
+      },
+      "unique_constraints": []
+    },
+    "bcf_topic_labels": {
+      "check_constraints": [],
+      "columns": {
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "id": "UUID|NOT NULL|PK",
+        "name": "VARCHAR(64)|NOT NULL",
+        "position": "INTEGER|NOT NULL",
+        "topic_id": "UUID|NOT NULL|FK=bcf_topics.id#CASCADE",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_bcf_topic_labels_name": "unique=False|cols=name|where=",
+        "ix_bcf_topic_labels_topic": "unique=False|cols=topic_id|where="
+      },
+      "unique_constraints": [
+        "uq_bcf_topic_label|cols=topic_id,name"
+      ]
+    },
+    "bcf_topics": {
+      "check_constraints": [],
+      "columns": {
+        "assigned_to": "VARCHAR(255)|NULL",
+        "bcf_version": "VARCHAR(10)|NOT NULL",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "created_by_user_id": "UUID|NOT NULL|FK=public.users.id#RESTRICT",
+        "creation_author": "VARCHAR(255)|NOT NULL",
+        "creation_date": "TIMESTAMP WITH TIME ZONE|NOT NULL",
+        "deleted_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "description": "TEXT|NULL",
+        "due_date": "DATE|NULL",
+        "guid": "VARCHAR(36)|NOT NULL",
+        "id": "UUID|NOT NULL|PK",
+        "import_source": "VARCHAR(255)|NULL",
+        "is_2d": "BOOLEAN|NOT NULL|has_server_default",
+        "linked_document_id": "UUID|NULL|FK=documents.id#SET NULL",
+        "linked_file_id": "UUID|NULL|FK=project_files.id#SET NULL",
+        "linked_finding_id": "UUID|NULL|FK=findings.id#SET NULL",
+        "modified_author": "VARCHAR(255)|NULL",
+        "modified_date": "TIMESTAMP WITH TIME ZONE|NULL",
+        "priority": "VARCHAR(50)|NULL",
+        "project_id": "UUID|NOT NULL|FK=projects.id#CASCADE",
+        "stage": "VARCHAR(50)|NULL",
+        "title": "VARCHAR(255)|NOT NULL",
+        "topic_status": "VARCHAR(50)|NOT NULL",
+        "topic_type": "VARCHAR(50)|NOT NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_bcf_topics_created_by_user_id": "unique=False|cols=created_by_user_id|where=",
+        "ix_bcf_topics_linked_document_id": "unique=False|cols=linked_document_id|where=",
+        "ix_bcf_topics_linked_file_id": "unique=False|cols=linked_file_id|where=",
+        "ix_bcf_topics_linked_finding_id": "unique=False|cols=linked_finding_id|where=",
+        "ix_bcf_topics_project_id": "unique=False|cols=project_id|where=",
+        "ix_bcf_topics_project_status": "unique=False|cols=project_id,topic_status|where="
+      },
+      "unique_constraints": [
+        "None|cols=guid"
+      ]
+    },
+    "bcf_viewpoints": {
+      "check_constraints": [],
+      "columns": {
+        "camera_dir_x": "FLOAT|NOT NULL",
+        "camera_dir_y": "FLOAT|NOT NULL",
+        "camera_dir_z": "FLOAT|NOT NULL",
+        "camera_type": "VARCHAR(20)|NOT NULL",
+        "camera_up_x": "FLOAT|NOT NULL",
+        "camera_up_y": "FLOAT|NOT NULL",
+        "camera_up_z": "FLOAT|NOT NULL",
+        "camera_vp_x": "FLOAT|NOT NULL",
+        "camera_vp_y": "FLOAT|NOT NULL",
+        "camera_vp_z": "FLOAT|NOT NULL",
+        "clipping_planes": "JSONB|NULL",
+        "components": "JSONB|NULL",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "field_of_height": "FLOAT|NULL",
+        "field_of_view": "FLOAT|NULL",
+        "guid": "VARCHAR(36)|NOT NULL",
+        "id": "UUID|NOT NULL|PK",
+        "index_in_topic": "INTEGER|NOT NULL",
+        "is_2d": "BOOLEAN|NOT NULL",
+        "linked_file_id": "UUID|NULL|FK=project_files.id#SET NULL",
+        "measurements": "JSONB|NULL",
+        "snapshot_storage_key": "VARCHAR(512)|NULL",
+        "topic_id": "UUID|NOT NULL|FK=bcf_topics.id#CASCADE",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "view_state_2d": "JSONB|NULL",
+        "xray": "JSONB|NULL"
+      },
+      "indexes": {
+        "ix_bcf_viewpoints_linked_file_id": "unique=False|cols=linked_file_id|where=",
+        "ix_bcf_viewpoints_topic_id": "unique=False|cols=topic_id|where="
+      },
+      "unique_constraints": []
+    },
+    "borgingsmomenten": {
+      "check_constraints": [],
+      "columns": {
+        "actual_date": "DATE|NULL",
+        "borgingsplan_id": "UUID|NOT NULL|FK=borgingsplans.id#CASCADE",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "id": "UUID|NOT NULL|PK",
+        "name": "VARCHAR(255)|NOT NULL",
+        "notes": "TEXT|NULL",
+        "phase": "borgingsmomentphase|NOT NULL",
+        "planned_date": "DATE|NOT NULL",
+        "project_id": "UUID|NOT NULL|FK=projects.id#CASCADE",
+        "responsible_user_id": "UUID|NULL|FK=public.users.id#SET NULL",
+        "sequence_in_phase": "INTEGER|NOT NULL",
+        "status": "borgingsmomentstatus|NOT NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_borgingsmomenten_plan_id": "unique=False|cols=borgingsplan_id|where=",
+        "ix_borgingsmomenten_plan_phase_seq": "unique=False|cols=borgingsplan_id,phase,sequence_in_phase|where=",
+        "ix_borgingsmomenten_project_id": "unique=False|cols=project_id|where="
+      },
+      "unique_constraints": []
+    },
+    "borgingsplans": {
+      "check_constraints": [],
+      "columns": {
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "created_by_user_id": "UUID|NOT NULL|FK=public.users.id#RESTRICT",
+        "id": "UUID|NOT NULL|PK",
+        "notes": "TEXT|NULL",
+        "project_id": "UUID|NOT NULL|FK=projects.id#CASCADE",
+        "published_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "status": "borgingsplanstatus|NOT NULL",
+        "superseded_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "version_number": "INTEGER|NOT NULL"
+      },
+      "indexes": {
+        "ix_borgingsplans_project_id": "unique=False|cols=project_id|where="
+      },
+      "unique_constraints": [
+        "uq_borgingsplans_project_version|cols=project_id,version_number"
+      ]
+    },
+    "capture_links": {
+      "check_constraints": [],
+      "columns": {
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "created_by_user_id": "UUID|NOT NULL|FK=public.users.id#RESTRICT",
+        "expires_at": "TIMESTAMP WITH TIME ZONE|NOT NULL",
+        "id": "UUID|NOT NULL|PK",
+        "label": "VARCHAR(255)|NULL",
+        "max_uses": "INTEGER|NULL",
+        "project_id": "UUID|NOT NULL|FK=projects.id#CASCADE",
+        "revoked_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "token": "VARCHAR(64)|NOT NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "use_count": "INTEGER|NOT NULL"
+      },
+      "indexes": {
+        "ix_capture_links_project_id": "unique=False|cols=project_id|where="
+      },
+      "unique_constraints": [
+        "None|cols=token"
+      ]
+    },
+    "certificates": {
+      "check_constraints": [
+        "ck_certificates_size_non_negative|size_bytes >= 0"
+      ],
+      "columns": {
+        "certificate_number": "VARCHAR(255)|NULL",
+        "certificate_type": "certificatetype|NOT NULL",
+        "content_sha256": "VARCHAR(64)|NULL",
+        "content_type": "VARCHAR(255)|NOT NULL",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "deleted_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "description": "TEXT|NULL",
+        "id": "UUID|NOT NULL|PK",
+        "issuer": "VARCHAR(255)|NULL",
+        "org_certificate_id": "UUID|NULL|FK=org_certificates.id#SET NULL",
+        "original_filename": "VARCHAR(512)|NOT NULL",
+        "parent_certificate_id": "UUID|NULL|FK=certificates.id#SET NULL",
+        "project_id": "UUID|NOT NULL|FK=projects.id#CASCADE",
+        "rejection_reason": "TEXT|NULL",
+        "size_bytes": "BIGINT|NOT NULL",
+        "status": "certificatestatus|NOT NULL",
+        "storage_key": "VARCHAR(512)|NOT NULL",
+        "subject": "TEXT|NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "uploaded_by_user_id": "UUID|NULL|FK=public.users.id#RESTRICT",
+        "valid_from": "DATE|NULL",
+        "valid_until": "DATE|NULL",
+        "version_number": "INTEGER|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_certificates_active": "unique=False|cols=project_id,created_at|where=deleted_at IS NULL",
+        "ix_certificates_org_certificate_id": "unique=False|cols=org_certificate_id|where=org_certificate_id IS NOT NULL",
+        "ix_certificates_parent": "unique=False|cols=parent_certificate_id|where=parent_certificate_id IS NOT NULL",
+        "ix_certificates_project_id": "unique=False|cols=project_id|where=",
+        "ix_certificates_project_type": "unique=False|cols=project_id,certificate_type|where=",
+        "ix_certificates_uploaded_by": "unique=False|cols=uploaded_by_user_id|where=",
+        "ix_certificates_valid_until": "unique=False|cols=valid_until|where=valid_until IS NOT NULL AND deleted_at IS NULL",
+        "ux_certificates_version_group": "unique=True|cols=coalesce(parent_certificate_id, id), version_number|where="
+      },
+      "unique_constraints": [
+        "None|cols=storage_key"
+      ]
+    },
+    "checklist_item_result_attachments": {
+      "check_constraints": [
+        "ck_checklist_item_result_attachments_kind|kind IN ('photo','reference')"
+      ],
+      "columns": {
+        "attachment_id": "UUID|NOT NULL|FK=project_files.id#CASCADE",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "id": "UUID|NOT NULL|PK",
+        "kind": "VARCHAR(24)|NOT NULL",
+        "position": "INTEGER|NOT NULL",
+        "result_id": "UUID|NOT NULL|FK=checklist_item_results.id#CASCADE",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_cir_attachments_attachment": "unique=False|cols=attachment_id|where=",
+        "ix_cir_attachments_result": "unique=False|cols=result_id|where="
+      },
+      "unique_constraints": [
+        "uq_checklist_item_result_attachment|cols=result_id,attachment_id,kind"
+      ]
+    },
+    "checklist_item_results": {
+      "check_constraints": [],
+      "columns": {
+        "borgingsmoment_id": "UUID|NOT NULL|FK=borgingsmomenten.id#CASCADE",
+        "checklist_item_id": "UUID|NOT NULL|FK=checklist_items.id#CASCADE",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "id": "UUID|NOT NULL|PK",
+        "inspected_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "inspector_user_id": "UUID|NOT NULL|FK=public.users.id#RESTRICT",
+        "note": "TEXT|NULL",
+        "project_id": "UUID|NOT NULL|FK=projects.id#CASCADE",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "verdict": "inspectionverdict|NOT NULL",
+        "voice_note_id": "UUID|NULL"
+      },
+      "indexes": {
+        "ix_checklist_item_results_moment_id": "unique=False|cols=borgingsmoment_id|where=",
+        "ix_checklist_item_results_project_id": "unique=False|cols=project_id|where="
+      },
+      "unique_constraints": [
+        "uq_checklist_item_results_item|cols=checklist_item_id"
+      ]
+    },
+    "checklist_items": {
+      "check_constraints": [],
+      "columns": {
+        "bbl_article_ref": "VARCHAR(50)|NULL",
+        "borgingsmoment_id": "UUID|NOT NULL|FK=borgingsmomenten.id#CASCADE",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "description": "TEXT|NOT NULL",
+        "evidence_type": "evidencetype|NOT NULL",
+        "extra_data": "JSONB|NULL",
+        "id": "UUID|NOT NULL|PK",
+        "item_type": "checklistitemtype|NOT NULL",
+        "linked_element_global_id": "VARCHAR(22)|NULL",
+        "linked_file_id": "UUID|NULL|FK=project_files.id#SET NULL",
+        "pass_fail_criteria": "TEXT|NULL",
+        "project_id": "UUID|NOT NULL|FK=projects.id#CASCADE",
+        "sequence": "INTEGER|NOT NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_checklist_items_element_link": "unique=False|cols=linked_file_id,linked_element_global_id|where=linked_element_global_id IS NOT NULL",
+        "ix_checklist_items_moment_id": "unique=False|cols=borgingsmoment_id|where=",
+        "ix_checklist_items_moment_sequence": "unique=False|cols=borgingsmoment_id,sequence|where=",
+        "ix_checklist_items_project_id": "unique=False|cols=project_id|where="
+      },
+      "unique_constraints": []
+    },
+    "deadline_notification_log": {
+      "check_constraints": [],
+      "columns": {
+        "days_before": "INTEGER|NULL",
+        "deadline_id": "UUID|NOT NULL|FK=deadlines.id#CASCADE",
+        "id": "UUID|NOT NULL|PK",
+        "notification_type": "VARCHAR(20)|NOT NULL",
+        "sent_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_dl_notif_log_deadline_id": "unique=False|cols=deadline_id|where=",
+        "ix_dl_notif_log_sent_at": "unique=False|cols=sent_at|where=",
+        "uq_dl_notif_log_missed": "unique=True|cols=deadline_id|where=notification_type = 'missed'"
+      },
+      "unique_constraints": [
+        "uq_dl_notif_log_reminder_dedup|cols=deadline_id,notification_type,days_before"
+      ]
+    },
+    "deadline_notification_settings": {
+      "check_constraints": [],
+      "columns": {
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "deadline_type": "VARCHAR(50)|NOT NULL",
+        "enabled": "BOOLEAN|NOT NULL",
+        "id": "UUID|NOT NULL|PK",
+        "project_id": "UUID|NULL|FK=projects.id#CASCADE",
+        "recipient_roles": "VARCHAR(20)[]|NOT NULL",
+        "reminder_days": "INTEGER[]|NOT NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_dl_notif_settings_project_id": "unique=False|cols=project_id|where=",
+        "uq_dl_notif_org_default": "unique=True|cols=deadline_type|where=project_id IS NULL"
+      },
+      "unique_constraints": [
+        "uq_dl_notif_settings_project_type|cols=project_id,deadline_type"
+      ]
+    },
+    "deadlines": {
+      "check_constraints": [],
+      "columns": {
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "deadline_type": "VARCHAR(50)|NOT NULL",
+        "due_date": "DATE|NULL",
+        "filed_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "filing_notes": "TEXT|NULL",
+        "id": "UUID|NOT NULL|PK",
+        "met_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "met_by_user_id": "UUID|NULL|FK=public.users.id#SET NULL",
+        "project_id": "UUID|NOT NULL|FK=projects.id#CASCADE",
+        "reference_number": "VARCHAR(100)|NULL",
+        "status": "deadlinestatus|NOT NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_deadlines_due_date": "unique=False|cols=due_date|where=",
+        "ix_deadlines_project_id": "unique=False|cols=project_id|where=",
+        "ix_deadlines_status": "unique=False|cols=status|where="
+      },
+      "unique_constraints": [
+        "uq_deadline_project_type|cols=project_id,deadline_type"
+      ]
+    },
+    "documents": {
+      "check_constraints": [],
+      "columns": {
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "deleted_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "discipline": "documentdiscipline|NOT NULL",
+        "head_file_id": "UUID|NULL|FK=project_files.id#SET NULL",
+        "id": "UUID|NOT NULL|PK",
+        "level_id": "UUID|NULL|FK=levels.id#SET NULL",
+        "name": "VARCHAR(255)|NOT NULL",
+        "primary_file_type": "filetype|NULL",
+        "project_id": "UUID|NOT NULL|FK=projects.id#CASCADE",
+        "status": "documentstatus|NOT NULL|has_server_default",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_documents_level_id": "unique=False|cols=level_id|where=",
+        "ix_documents_project_id": "unique=False|cols=project_id|where=",
+        "ix_documents_status": "unique=False|cols=status|where="
+      },
+      "unique_constraints": [
+        "uq_documents_project_name|cols=project_id,name"
+      ]
+    },
+    "finding_attachments": {
+      "check_constraints": [
+        "ck_finding_attachments_kind|kind IN ('photo','resolution_evidence','reference')"
+      ],
+      "columns": {
+        "attachment_id": "UUID|NOT NULL|FK=project_files.id#CASCADE",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "finding_id": "UUID|NOT NULL|FK=findings.id#CASCADE",
+        "id": "UUID|NOT NULL|PK",
+        "kind": "VARCHAR(24)|NOT NULL",
+        "position": "INTEGER|NOT NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_finding_attachments_attachment": "unique=False|cols=attachment_id|where=",
+        "ix_finding_attachments_finding": "unique=False|cols=finding_id|where="
+      },
+      "unique_constraints": [
+        "uq_finding_attachment|cols=finding_id,attachment_id,kind"
+      ]
+    },
+    "finding_comment_mentions": {
+      "check_constraints": [],
+      "columns": {
+        "comment_id": "UUID|NOT NULL|PK|FK=finding_comments.id#CASCADE",
+        "user_id": "UUID|NOT NULL|PK|FK=public.users.id#CASCADE"
+      },
+      "indexes": {},
+      "unique_constraints": []
+    },
+    "finding_comments": {
+      "check_constraints": [],
+      "columns": {
+        "author": "VARCHAR(255)|NOT NULL",
+        "comment_text": "TEXT|NOT NULL",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "created_by_user_id": "UUID|NULL|FK=public.users.id#SET NULL",
+        "date": "TIMESTAMP WITH TIME ZONE|NOT NULL",
+        "deleted_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "finding_id": "UUID|NOT NULL|FK=findings.id#CASCADE",
+        "id": "UUID|NOT NULL|PK",
+        "modified_author": "VARCHAR(255)|NULL",
+        "modified_date": "TIMESTAMP WITH TIME ZONE|NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_finding_comments_created_by_user_id": "unique=False|cols=created_by_user_id|where=",
+        "ix_finding_comments_finding_id": "unique=False|cols=finding_id|where="
+      },
+      "unique_constraints": []
+    },
+    "findings": {
+      "check_constraints": [
+        "ck_findings_linked_file_type|linked_file_type IS NULL OR linked_file_type IN ('ifc','pdf','dxf','dwg','image')"
+      ],
+      "columns": {
+        "anchor_page": "INTEGER|NULL",
+        "anchor_page_id": "UUID|NULL|FK=pdf_pages.id#SET NULL",
+        "anchor_x": "FLOAT|NULL",
+        "anchor_y": "FLOAT|NULL",
+        "anchor_z": "FLOAT|NULL",
+        "assignee_user_id": "UUID|NULL|FK=public.users.id#RESTRICT",
+        "bbl_article_ref": "VARCHAR(50)|NULL",
+        "borgingsmoment_id": "UUID|NULL|FK=borgingsmomenten.id#SET NULL",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "created_by_user_id": "UUID|NOT NULL|FK=public.users.id#RESTRICT",
+        "custom_values": "JSONB|NULL",
+        "deadline_date": "DATE|NULL",
+        "deleted_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "description": "TEXT|NOT NULL",
+        "id": "UUID|NOT NULL|PK",
+        "idempotency_key": "VARCHAR(200)|NULL",
+        "linked_document_id": "UUID|NULL|FK=documents.id#SET NULL",
+        "linked_element_global_id": "VARCHAR(255)|NULL",
+        "linked_file_id": "UUID|NULL|FK=project_files.id#SET NULL",
+        "linked_file_type": "VARCHAR(16)|NULL",
+        "project_id": "UUID|NOT NULL|FK=projects.id#CASCADE",
+        "resolution_note": "TEXT|NULL",
+        "severity": "findingseverity|NOT NULL",
+        "source_checklist_item_id": "UUID|NULL|FK=checklist_items.id#SET NULL",
+        "status": "findingstatus|NOT NULL",
+        "template_id": "UUID|NULL|FK=org_templates.id#SET NULL",
+        "title": "VARCHAR(255)|NOT NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_findings_linked_element": "unique=False|cols=linked_document_id,linked_element_global_id|where=linked_document_id IS NOT NULL AND linked_element_global_id IS NOT NULL",
+        "ix_findings_project_id": "unique=False|cols=project_id|where=",
+        "ix_findings_project_status": "unique=False|cols=project_id,status|where=",
+        "uq_findings_creator_idempotency_key": "unique=True|cols=created_by_user_id,idempotency_key|where=idempotency_key IS NOT NULL"
+      },
+      "unique_constraints": []
+    },
+    "jobs": {
+      "check_constraints": [],
+      "columns": {
+        "attempt": "INTEGER|NOT NULL|has_server_default",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "created_by_user_id": "UUID|NULL|FK=public.users.id#SET NULL",
+        "error": "TEXT|NULL",
+        "error_kind": "TEXT|NULL",
+        "file_id": "UUID|NULL|FK=project_files.id#SET NULL",
+        "finished_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "id": "UUID|NOT NULL|PK",
+        "job_type": "jobtype|NOT NULL",
+        "payload": "JSONB|NOT NULL|has_server_default",
+        "progress": "INTEGER|NOT NULL|has_server_default",
+        "project_id": "UUID|NULL|FK=projects.id#SET NULL",
+        "result": "JSONB|NULL",
+        "retriable": "BOOLEAN|NOT NULL|has_server_default",
+        "retry_of": "UUID|NULL|FK=jobs.id#SET NULL",
+        "started_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "status": "jobstatus|NOT NULL|has_server_default",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_jobs_created_at": "unique=False|cols=created_at DESC|where=",
+        "ix_jobs_created_by": "unique=False|cols=created_by_user_id|where=",
+        "ix_jobs_file_id": "unique=False|cols=file_id|where=file_id IS NOT NULL",
+        "ix_jobs_job_type": "unique=False|cols=job_type|where=",
+        "ix_jobs_project_created": "unique=False|cols=project_id,created_at DESC|where=project_id IS NOT NULL",
+        "ix_jobs_project_id": "unique=False|cols=project_id|where=project_id IS NOT NULL",
+        "ix_jobs_retry_of": "unique=False|cols=retry_of|where=retry_of IS NOT NULL",
+        "ix_jobs_status": "unique=False|cols=status|where="
+      },
+      "unique_constraints": []
+    },
+    "levels": {
+      "check_constraints": [
+        "ck_levels_source|source IN ('manual', 'ifc')"
+      ],
+      "columns": {
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "deleted_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "elevation_m": "FLOAT|NULL",
+        "id": "UUID|NOT NULL|PK",
+        "name": "VARCHAR(255)|NOT NULL",
+        "ordering": "INTEGER|NULL",
+        "project_id": "UUID|NOT NULL|FK=projects.id#CASCADE",
+        "source": "VARCHAR(16)|NOT NULL|has_server_default",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_levels_project_id": "unique=False|cols=project_id|where=",
+        "uq_levels_project_name": "unique=True|cols=project_id,name|where=deleted_at IS NULL"
+      },
+      "unique_constraints": []
+    },
+    "notification_user_state": {
+      "check_constraints": [],
+      "columns": {
+        "dismissed_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "notification_id": "UUID|NOT NULL|PK|FK=notifications.id#CASCADE",
+        "read_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "user_id": "UUID|NOT NULL|PK|FK=public.users.id#CASCADE"
+      },
+      "indexes": {},
+      "unique_constraints": []
+    },
+    "notifications": {
+      "check_constraints": [],
+      "columns": {
+        "body": "TEXT|NOT NULL",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "event_type": "notificationeventtype|NOT NULL",
+        "file_id": "UUID|NULL|FK=project_files.id#SET NULL",
+        "id": "UUID|NOT NULL|PK",
+        "job_id": "UUID|NULL|FK=jobs.id#SET NULL",
+        "project_id": "UUID|NULL|FK=projects.id#SET NULL",
+        "recipient_user_id": "UUID|NULL|FK=public.users.id#CASCADE",
+        "title": "VARCHAR(255)|NOT NULL"
+      },
+      "indexes": {
+        "ix_notifications_created_at": "unique=False|cols=created_at DESC|where=",
+        "ix_notifications_file_id": "unique=False|cols=file_id|where=",
+        "ix_notifications_job_id": "unique=False|cols=job_id|where=",
+        "ix_notifications_project_id": "unique=False|cols=project_id|where=",
+        "ix_notifications_recipient_user_id": "unique=False|cols=recipient_user_id|where="
+      },
+      "unique_constraints": []
+    },
+    "org_certificate_tags": {
+      "check_constraints": [],
+      "columns": {
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "id": "UUID|NOT NULL|PK",
+        "name": "VARCHAR(64)|NOT NULL",
+        "org_certificate_id": "UUID|NOT NULL|FK=org_certificates.id#CASCADE",
+        "position": "INTEGER|NOT NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_org_certificate_tags_cert": "unique=False|cols=org_certificate_id|where=",
+        "ix_org_certificate_tags_name": "unique=False|cols=name|where="
+      },
+      "unique_constraints": [
+        "uq_org_certificate_tag|cols=org_certificate_id,name"
+      ]
+    },
+    "org_certificates": {
+      "check_constraints": [
+        "ck_org_certificates_size_non_negative|size_bytes >= 0"
+      ],
+      "columns": {
+        "certificate_number": "VARCHAR(255)|NULL",
+        "certificate_type": "certificatetype|NOT NULL",
+        "content_sha256": "VARCHAR(64)|NULL",
+        "content_type": "VARCHAR(255)|NOT NULL",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "deleted_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "description": "TEXT|NULL",
+        "id": "UUID|NOT NULL|PK",
+        "issuer": "VARCHAR(255)|NULL",
+        "original_filename": "VARCHAR(512)|NOT NULL",
+        "product_name": "VARCHAR(255)|NULL",
+        "rejection_reason": "TEXT|NULL",
+        "replaced_by_id": "UUID|NULL|FK=org_certificates.id#SET NULL",
+        "size_bytes": "BIGINT|NOT NULL",
+        "status": "certificatestatus|NOT NULL",
+        "storage_key": "VARCHAR(512)|NOT NULL",
+        "subject": "TEXT|NULL",
+        "supplier_name": "VARCHAR(255)|NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "uploaded_by_user_id": "UUID|NULL|FK=public.users.id#RESTRICT",
+        "valid_from": "DATE|NULL",
+        "valid_until": "DATE|NULL"
+      },
+      "indexes": {
+        "ix_org_certificates_active": "unique=False|cols=created_at|where=deleted_at IS NULL",
+        "ix_org_certificates_type": "unique=False|cols=certificate_type|where=",
+        "ix_org_certificates_uploaded_by": "unique=False|cols=uploaded_by_user_id|where=",
+        "ix_org_certificates_valid_until": "unique=False|cols=valid_until|where=valid_until IS NOT NULL AND deleted_at IS NULL"
+      },
+      "unique_constraints": [
+        "None|cols=storage_key"
+      ]
+    },
+    "org_templates": {
+      "check_constraints": [],
+      "columns": {
+        "config": "JSONB|NOT NULL|has_server_default",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "created_by_user_id": "UUID|NOT NULL|FK=public.users.id#RESTRICT",
+        "deleted_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "description": "TEXT|NULL",
+        "id": "UUID|NOT NULL|PK",
+        "is_default": "BOOLEAN|NOT NULL|has_server_default",
+        "name": "VARCHAR(120)|NOT NULL",
+        "template_type": "VARCHAR(32)|NOT NULL|has_server_default",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_org_templates_active": "unique=False|cols=template_type,created_at|where=deleted_at IS NULL",
+        "uq_org_templates_one_default_per_type": "unique=True|cols=template_type|where=is_default AND deleted_at IS NULL"
+      },
+      "unique_constraints": []
+    },
+    "pdf_pages": {
+      "check_constraints": [],
+      "columns": {
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "deleted_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "id": "UUID|NOT NULL|PK",
+        "page_number": "INTEGER|NOT NULL",
+        "pdf_document_id": "UUID|NOT NULL|FK=documents.id#CASCADE",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_pdf_pages_document_id": "unique=False|cols=pdf_document_id|where=",
+        "uq_pdf_pages_document_page": "unique=True|cols=pdf_document_id,page_number|where=deleted_at IS NULL"
+      },
+      "unique_constraints": []
+    },
+    "project_files": {
+      "check_constraints": [
+        "ck_project_files_attachment_no_document|role <> 'attachment' OR document_id IS NULL",
+        "ck_project_files_model_source_has_document|role <> 'model_source' OR document_id IS NOT NULL",
+        "ck_project_files_size_nonneg|size_bytes >= 0"
+      ],
+      "columns": {
+        "annotation_state": "JSONB|NULL",
+        "attachment_category": "attachmentcategory|NULL",
+        "capture_link_id": "UUID|NULL|FK=capture_links.id#SET NULL",
+        "capture_metadata": "JSONB|NULL",
+        "content_sha256": "VARCHAR(64)|NULL",
+        "content_type": "VARCHAR(255)|NOT NULL",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "deleted_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "description": "TEXT|NULL",
+        "detected_kind": "VARCHAR(32)|NULL",
+        "document_id": "UUID|NULL|FK=documents.id#CASCADE",
+        "dossier_slot": "dossierslot|NULL",
+        "extraction_error": "TEXT|NULL",
+        "extraction_finished_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "extraction_started_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "extraction_status": "extractionstatus|NOT NULL|has_server_default",
+        "extractor_version": "VARCHAR(64)|NULL",
+        "file_type": "filetype|NOT NULL|has_server_default",
+        "floor_plans_storage_key": "VARCHAR(512)|NULL",
+        "fragments_storage_key": "VARCHAR(512)|NULL",
+        "geometry_storage_key": "VARCHAR(512)|NULL",
+        "id": "UUID|NOT NULL|PK",
+        "idempotency_key": "VARCHAR(200)|NULL",
+        "ifc_project_guid": "VARCHAR(22)|NULL",
+        "ifc_schema": "ifcschema|NULL",
+        "metadata_storage_key": "VARCHAR(512)|NULL",
+        "original_filename": "VARCHAR(512)|NOT NULL",
+        "outline_storage_key": "VARCHAR(512)|NULL",
+        "page_count": "INTEGER|NULL",
+        "parent_file_id": "UUID|NULL|FK=project_files.id#SET NULL",
+        "pdf_pages_storage_key": "VARCHAR(512)|NULL",
+        "project_id": "UUID|NOT NULL|FK=projects.id#CASCADE",
+        "properties_storage_key": "VARCHAR(512)|NULL",
+        "rejection_reason": "TEXT|NULL",
+        "role": "projectfilerole|NOT NULL",
+        "server_metadata": "JSONB|NULL",
+        "size_bytes": "BIGINT|NOT NULL",
+        "status": "projectfilestatus|NOT NULL|has_server_default",
+        "storage_key": "VARCHAR(512)|NOT NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "uploaded_by_user_id": "UUID|NULL|FK=public.users.id#RESTRICT",
+        "version_number": "INTEGER|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_project_files_active": "unique=False|cols=project_id,created_at|where=deleted_at IS NULL",
+        "ix_project_files_capture_link_id": "unique=False|cols=capture_link_id|where=",
+        "ix_project_files_document_id": "unique=False|cols=document_id|where=",
+        "ix_project_files_dossier_slot": "unique=False|cols=project_id,dossier_slot|where=dossier_slot IS NOT NULL AND deleted_at IS NULL",
+        "ix_project_files_extraction_status": "unique=False|cols=extraction_status|where=",
+        "ix_project_files_file_type": "unique=False|cols=file_type|where=",
+        "ix_project_files_ifc_project_guid": "unique=False|cols=ifc_project_guid|where=",
+        "ix_project_files_parent": "unique=False|cols=parent_file_id|where=parent_file_id IS NOT NULL",
+        "ix_project_files_project_category": "unique=False|cols=project_id,attachment_category|where=attachment_category IS NOT NULL",
+        "ix_project_files_project_id": "unique=False|cols=project_id|where=",
+        "ix_project_files_status_created_at": "unique=False|cols=status,created_at|where=",
+        "ix_project_files_uploaded_by": "unique=False|cols=uploaded_by_user_id|where=",
+        "uq_project_files_project_content_sha256": "unique=True|cols=project_id,role,content_sha256|where=content_sha256 IS NOT NULL AND status IN ('pending', 'ready') AND deleted_at IS NULL",
+        "uq_project_files_uploader_idempotency_key": "unique=True|cols=uploaded_by_user_id,idempotency_key|where=idempotency_key IS NOT NULL",
+        "ux_project_files_document_version": "unique=True|cols=document_id,version_number|where=role = 'model_source'",
+        "ux_project_files_version_group": "unique=True|cols=coalesce(parent_file_id, id), version_number|where=role = 'attachment'"
+      },
+      "unique_constraints": [
+        "None|cols=storage_key"
+      ]
+    },
+    "project_members": {
+      "check_constraints": [],
+      "columns": {
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "project_id": "UUID|NOT NULL|PK|FK=projects.id#CASCADE",
+        "role": "projectrole|NOT NULL",
+        "user_id": "UUID|NOT NULL|PK|FK=public.users.id#CASCADE"
+      },
+      "indexes": {
+        "ix_project_members_user_id": "unique=False|cols=user_id|where=",
+        "uq_one_owner_per_project": "unique=True|cols=project_id|where=role = 'owner'"
+      },
+      "unique_constraints": []
+    },
+    "projects": {
+      "check_constraints": [],
+      "columns": {
+        "bag_id": "VARCHAR(50)|NULL",
+        "building_type": "buildingtype|NULL",
+        "city": "VARCHAR(255)|NULL",
+        "country": "VARCHAR(2)|NOT NULL|has_server_default",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "delivery_date": "DATE|NULL",
+        "description": "TEXT|NULL",
+        "house_number": "VARCHAR(20)|NULL",
+        "id": "UUID|NOT NULL|PK",
+        "latitude": "FLOAT|NULL",
+        "lifecycle_state": "projectlifecyclestate|NOT NULL|has_server_default",
+        "longitude": "FLOAT|NULL",
+        "municipality": "VARCHAR(255)|NULL",
+        "name": "VARCHAR(255)|NOT NULL",
+        "owner_id": "UUID|NOT NULL|FK=public.users.id#RESTRICT",
+        "permit_number": "VARCHAR(100)|NULL",
+        "phase": "projectphase|NOT NULL|has_server_default",
+        "planned_start_date": "DATE|NULL",
+        "postal_code": "VARCHAR(7)|NULL",
+        "reference_code": "VARCHAR(50)|NULL",
+        "street": "VARCHAR(255)|NULL",
+        "thumbnail_url": "VARCHAR(2048)|NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_projects_lifecycle_active": "unique=False|cols=lifecycle_state|where=lifecycle_state IN ('active', 'archived')",
+        "ix_projects_lifecycle_state": "unique=False|cols=lifecycle_state|where=",
+        "ix_projects_owner_id": "unique=False|cols=owner_id|where=",
+        "ix_projects_planned_start_date": "unique=False|cols=planned_start_date|where=",
+        "uq_projects_name_active": "unique=True|cols=name|where=lifecycle_state != 'removed'",
+        "uq_projects_reference_code": "unique=True|cols=reference_code|where=reference_code IS NOT NULL AND lifecycle_state != 'removed'"
+      },
+      "unique_constraints": []
+    },
+    "reports": {
+      "check_constraints": [],
+      "columns": {
+        "byte_size": "BIGINT|NULL",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "created_by_user_id": "UUID|NULL|FK=public.users.id#SET NULL",
+        "error": "TEXT|NULL",
+        "finished_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "id": "UUID|NOT NULL|PK",
+        "job_id": "UUID|NULL|FK=jobs.id#SET NULL",
+        "locale": "VARCHAR(8)|NOT NULL",
+        "params": "JSONB|NOT NULL|has_server_default",
+        "project_id": "UUID|NOT NULL|FK=projects.id#CASCADE",
+        "report_type": "reporttype|NOT NULL",
+        "sha256": "VARCHAR(64)|NULL",
+        "signature_hash": "VARCHAR(64)|NULL",
+        "signed_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "signed_by_user_id": "UUID|NULL|FK=public.users.id#SET NULL",
+        "source_job_id": "UUID|NULL|FK=jobs.id#SET NULL",
+        "status": "reportstatus|NOT NULL|has_server_default",
+        "storage_key": "TEXT|NULL",
+        "template_id": "UUID|NULL|FK=org_templates.id#SET NULL",
+        "title": "VARCHAR(255)|NOT NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_reports_created_by": "unique=False|cols=created_by_user_id|where=",
+        "ix_reports_job_id": "unique=False|cols=job_id|where=job_id IS NOT NULL",
+        "ix_reports_project_created_at": "unique=False|cols=project_id,created_at DESC|where=",
+        "ix_reports_report_type": "unique=False|cols=report_type|where=",
+        "ix_reports_source_job_id": "unique=False|cols=source_job_id|where=",
+        "ix_reports_status": "unique=False|cols=status|where=",
+        "ix_reports_template_id": "unique=False|cols=template_id|where=template_id IS NOT NULL"
+      },
+      "unique_constraints": []
+    },
+    "risks": {
+      "check_constraints": [],
+      "columns": {
+        "bbl_article_ref": "VARCHAR(50)|NULL",
+        "category": "riskcategory|NOT NULL",
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "description": "TEXT|NOT NULL",
+        "id": "UUID|NOT NULL|PK",
+        "level": "risklevel|NOT NULL",
+        "mitigation": "TEXT|NOT NULL",
+        "project_id": "UUID|NOT NULL|FK=projects.id#CASCADE",
+        "responsible_party": "VARCHAR(255)|NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_risks_project_category_level": "unique=False|cols=project_id,category,level|where=",
+        "ix_risks_project_id": "unique=False|cols=project_id|where="
+      },
+      "unique_constraints": []
+    },
+    "storeys": {
+      "check_constraints": [],
+      "columns": {
+        "created_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default",
+        "deleted_at": "TIMESTAMP WITH TIME ZONE|NULL",
+        "document_id": "UUID|NOT NULL|FK=documents.id#CASCADE",
+        "elevation_m": "FLOAT|NULL",
+        "express_id": "INTEGER|NULL",
+        "id": "UUID|NOT NULL|PK",
+        "ifc_guid": "VARCHAR(22)|NULL",
+        "level_id": "UUID|NULL|FK=levels.id#SET NULL",
+        "name": "VARCHAR(255)|NULL",
+        "ordering": "INTEGER|NULL",
+        "updated_at": "TIMESTAMP WITH TIME ZONE|NOT NULL|has_server_default"
+      },
+      "indexes": {
+        "ix_storeys_document_id": "unique=False|cols=document_id|where=",
+        "ix_storeys_level_id": "unique=False|cols=level_id|where=",
+        "uq_storeys_document_guid": "unique=True|cols=document_id,ifc_guid|where=ifc_guid IS NOT NULL AND deleted_at IS NULL"
+      },
+      "unique_constraints": []
+    }
+  },
+  "tenant_head": "0005_audit_log_append_only"
+}

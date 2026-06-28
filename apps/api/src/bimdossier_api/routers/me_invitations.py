@@ -25,6 +25,7 @@ from bimdossier_api.admin.membership_rules import (
     assert_no_owned_projects,
     invitation_expires_at,
 )
+from bimdossier_api.admin.seats import assert_within_seat_limit
 from bimdossier_api.auth.fastapi_users import current_active_user
 from bimdossier_api.config import get_settings
 from bimdossier_api.db import get_async_session
@@ -132,6 +133,16 @@ async def accept_invitation(
         )
     settings = get_settings()
     assert_invitation_not_expired(member.invited_at, settings.invitation_ttl_days)
+
+    # Seat backstop. The pending invite already reserved (and seat-checked,
+    # under lock) its seat at invite time, so acceptance is normally
+    # seat-neutral. But if the org is somehow already over its paid cap — a
+    # pre-fix invite race, or a cap lowered via a path that bypassed the usage
+    # guard — refuse to convert another reserved seat into a live active member
+    # past the cap. Guests are billed against their home org and bypass the
+    # host cap, mirroring the `if not is_guest` exemption on the invite path.
+    if not member.is_guest:
+        await assert_within_seat_limit(session, org)
 
     now = datetime.now(UTC)
     member.status = OrganizationMemberStatus.active

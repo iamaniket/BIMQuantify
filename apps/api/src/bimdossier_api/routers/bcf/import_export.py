@@ -23,7 +23,7 @@ from bimdossier_api.access import (
 from bimdossier_api.auth.fastapi_users import current_verified_user
 from bimdossier_api.auth.permissions import Action, Resource, require_permission
 from bimdossier_api.bcf.generator import generate_bcf_archive
-from bimdossier_api.bcf.parser import parse_bcf_archive
+from bimdossier_api.bcf.parser import BcfArchiveTooLargeError, parse_bcf_archive
 from bimdossier_api.bcf.types import (
     BcfComponents,
     ClippingPlane,
@@ -34,26 +34,31 @@ from bimdossier_api.bcf.types import (
     ParsedViewpoint,
     Vec3,
 )
+from bimdossier_api.config import get_settings
+from bimdossier_api.content_disposition import safe_content_disposition
 from bimdossier_api.models.bcf_comment import BcfComment
 from bimdossier_api.models.bcf_topic import BcfTopic
 from bimdossier_api.models.bcf_topic_label import BcfTopicLabel
 from bimdossier_api.models.bcf_viewpoint import BcfViewpoint
 from bimdossier_api.models.project_file import ProjectFile, ProjectFileRole
 from bimdossier_api.models.user import User
-from bimdossier_api.schemas.bcf import BcfImportResponse, BcfTopicRead
-from bimdossier_api.storage import get_attachments_bucket, get_storage
-from bimdossier_api.tenancy import get_tenant_session, require_active_organization
-
 from bimdossier_api.routers.bcf._shared import (
     BCF_VERSION,
     _load_topic_or_404,
     _match_file_to_project_file,
     _snapshot_key,
+    _snapshot_prefix,
     _topic_to_read,
     _user_display_name,
     router,
 )
-
+from bimdossier_api.schemas.bcf import BcfImportResponse, BcfTopicRead
+from bimdossier_api.storage import get_attachments_bucket, get_storage
+from bimdossier_api.tenancy import (
+    get_tenant_session,
+    require_active_organization,
+    schema_name_for,
+)
 
 # ---------------------------------------------------------------------------
 # Import / Export  (MUST come before /{topic_id} routes to avoid
@@ -85,9 +90,24 @@ async def import_bcf(
         raise
     require_project_writable(project)
 
-    data = await file.read()
+    # Bound the read so a giant upload can't OOM the single-process API. Reading
+    # one byte past the cap lets us detect over-limit without buffering it all;
+    # the structural zip-bomb guards (entry count / ratio / decompressed size)
+    # live in parse_bcf_archive.
+    max_bytes = get_settings().bcf_import_max_bytes
+    data = await file.read(max_bytes + 1)
+    if len(data) > max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={"code": "BCF_ARCHIVE_TOO_LARGE", "max_bytes": max_bytes},
+        )
     try:
         parsed = parse_bcf_archive(data)
+    except BcfArchiveTooLargeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="BCF_ARCHIVE_TOO_LARGE",
+        ) from exc
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -96,7 +116,7 @@ async def import_bcf(
 
     author = _user_display_name(user)
     now = datetime.now(UTC)
-    org_schema = f"org_{str(active_org_id).replace('-', '')}"
+    org_schema = schema_name_for(active_org_id)
     storage = get_storage()
     warnings_list: list[str] = []
     created_topics: list[BcfTopic] = []
@@ -211,7 +231,7 @@ async def import_bcf(
 
     topics_out = []
     for tp in loaded:
-        topics_out.append(await _topic_to_read(tp, storage))
+        topics_out.append(await _topic_to_read(tp, storage, org_schema))
 
     await audit.record(
         session,
@@ -256,13 +276,16 @@ async def export_bcf(
     )
     topics = list((await session.execute(stmt)).scalars().all())
     storage = get_storage()
+    snapshot_prefix = _snapshot_prefix(schema_name_for(active_org_id))
 
     parsed_topics: list[ParsedTopic] = []
     for topic in topics:
         viewpoints: list[ParsedViewpoint] = []
         for vp in topic.viewpoints:
             snapshot_bytes: bytes | None = None
-            if vp.snapshot_storage_key:
+            # Only fetch keys scoped to this org's prefix — a pre-fix bad row
+            # pointing at another tenant's object must not leak into the export.
+            if vp.snapshot_storage_key and vp.snapshot_storage_key.startswith(snapshot_prefix):
                 try:
                     head = await storage.head_object(vp.snapshot_storage_key, bucket=get_attachments_bucket())
                     size = int(head.get("ContentLength", 0))
@@ -349,7 +372,7 @@ async def export_bcf(
         BytesIO(archive_bytes),
         media_type="application/zip",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Disposition": safe_content_disposition(filename),
             "Content-Length": str(len(archive_bytes)),
         },
     )

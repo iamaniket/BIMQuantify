@@ -41,6 +41,11 @@ const API_PORT = process.env['E2E_API_PORT'] ?? '8010';
 const PROCESSOR_URL = process.env['E2E_PROCESSOR_URL'] ?? 'http://localhost:8088';
 const PROCESSOR_SHARED_SECRET =
   process.env['E2E_PROCESSOR_SHARED_SECRET'] ?? 'dev-shared-secret-change-me';
+// ARBITER_SHARED_SECRET has no code default (fail-closed), so the E2E API process
+// must supply it or Settings construction aborts at boot. Matches the arbiter
+// container's value in docker-compose.yml.
+const ARBITER_SHARED_SECRET =
+  process.env['E2E_ARBITER_SHARED_SECRET'] ?? 'dev-arbiter-secret-change-me';
 const DEADLINE_SWEEP_INTERVAL_MINUTES =
   process.env['E2E_DEADLINE_SWEEP_INTERVAL_MINUTES'] ?? '1';
 
@@ -153,7 +158,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
   console.log(`[E2E Setup] Starting API server on port ${API_PORT}...`);
   const apiProcess = spawn(
     'uv',
-    ['run', 'uvicorn', 'bimdossier_api.main:app', '--port', API_PORT],
+    ['run', 'uvicorn', 'bimdossier_api.main:app', '--port', API_PORT, '--proxy-headers'],
     {
       cwd: API_DIR,
       env: {
@@ -164,6 +169,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
         S3_ENDPOINT_URL: S3_ENDPOINT,
         PROCESSOR_URL,
         PROCESSOR_SHARED_SECRET,
+        ARBITER_SHARED_SECRET,
         DEADLINE_SWEEP_INTERVAL_MINUTES,
       },
       stdio: ['ignore', 'pipe', 'pipe'],

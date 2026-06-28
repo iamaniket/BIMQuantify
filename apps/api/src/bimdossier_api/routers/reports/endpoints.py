@@ -25,8 +25,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
@@ -81,7 +81,11 @@ from bimdossier_api.schemas.report import (
     ReportResponse,
 )
 from bimdossier_api.storage import StorageBackend, get_storage
-from bimdossier_api.tenancy import get_tenant_session, require_active_organization
+from bimdossier_api.tenancy import (
+    get_tenant_session,
+    open_tenant_session,
+    require_active_organization,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +93,13 @@ router = APIRouter(prefix="/projects/{project_id}/reports", tags=["reports"])
 
 
 _COMPLIANCE_JOB_TYPES = (JobType.compliance_check,)
+
+# Upper bound on findings a single dossier/snag-list report may bundle. The
+# resolver loads every matching finding into the worker payload (JSONB) and the
+# worker renders one PDF section per finding — past a few thousand the payload is
+# huge and the document unusable, so fail fast (422) and tell the user to narrow
+# scope rather than building it. Generous: real projects sit well under this.
+_MAX_REPORT_FINDINGS = 5000
 
 
 # ---------------------------------------------------------------------------
@@ -290,6 +301,22 @@ async def _resolve_completion_declaration_source(
     )
 
 
+async def _guard_report_finding_count(
+    session: AsyncSession, *filters: ColumnElement[bool]
+) -> None:
+    """Fail fast (422) when a dossier/snag report would bundle more than
+    ``_MAX_REPORT_FINDINGS`` findings — see the constant for the rationale. The
+    COUNT is cheap; loading + serializing the rows is what we're avoiding."""
+    count = (
+        await session.scalar(select(func.count()).select_from(Finding).where(*filters))
+    ) or 0
+    if count > _MAX_REPORT_FINDINGS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="REPORT_TOO_MANY_FINDINGS",
+        )
+
+
 async def _resolve_dossier_source(
     session: AsyncSession, project: Project, user: User, locale: str, params: dict[str, object]
 ) -> _ReportPlan:
@@ -302,12 +329,12 @@ async def _resolve_dossier_source(
     plan = await _load_active_plan(session, project.id)
     risks = await _load_project_risks(session, project.id)
 
+    finding_filters = (Finding.project_id == project.id, Finding.deleted_at.is_(None))
+    await _guard_report_finding_count(session, *finding_filters)
     findings = list(
         (
             await session.execute(
-                select(Finding)
-                .where(Finding.project_id == project.id, Finding.deleted_at.is_(None))
-                .order_by(Finding.created_at)
+                select(Finding).where(*finding_filters).order_by(Finding.created_at)
             )
         ).scalars().all()
     )
@@ -465,19 +492,24 @@ async def _resolve_snag_list_source(
             "email": recipient_user.email if recipient_user is not None else None,
         }
 
+    finding_filters: list[ColumnElement[bool]] = [
+        Finding.project_id == project.id,
+        Finding.deleted_at.is_(None),
+    ]
+    if assignee_id is not None:
+        finding_filters.append(Finding.assignee_user_id == assignee_id)
+    if status_val is not None:
+        finding_filters.append(Finding.status == status_val)
+    if severity_val is not None:
+        finding_filters.append(Finding.severity == severity_val)
+    await _guard_report_finding_count(session, *finding_filters)
     stmt = (
         select(Finding)
-        .where(Finding.project_id == project.id, Finding.deleted_at.is_(None))
+        .where(*finding_filters)
         # assignee feeds the per-finding payload; not selectin by default.
         .options(selectinload(Finding.assignee))
         .order_by(Finding.created_at)
     )
-    if assignee_id is not None:
-        stmt = stmt.where(Finding.assignee_user_id == assignee_id)
-    if status_val is not None:
-        stmt = stmt.where(Finding.status == status_val)
-    if severity_val is not None:
-        stmt = stmt.where(Finding.severity == severity_val)
     findings = list((await session.execute(stmt)).scalars().all())
 
     # Resolve every image attachment the findings reference (photos + evidence).
@@ -545,112 +577,108 @@ async def create_report(
     project_id: UUID,
     payload: ReportCreateRequest,
     request: Request,
-    session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
 ) -> ReportResponse:
-    project = await load_project_or_404(session, project_id)
-    require_project_writable(project)
-    membership = await require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.report, Action.create)
+    # Three-phase (mirrors the compliance-check pattern in compliance.py): the
+    # creating transaction COMMITS before the processor is dispatched, so (a) no
+    # pooled DB connection is pinned across the dispatch POST — which would
+    # exhaust DB_POOL_SIZE under report bursts — and (b) the worker can't call
+    # back to /internal/jobs/callback against an uncommitted Report/Job row.
+    #   1. validate + persist Report+Job (queued) + notification + audit, commit;
+    #   2. dispatch with NO connection held;
+    #   3. publish the notification, or mark both rows failed in a fresh txn.
+    # `expire_on_commit=False` (db.py) keeps the detached rows' columns readable
+    # after phase 1, so phases 2/3 don't re-fetch them.
+    schema: str = request.state.active_schema
 
-    # Resolve locale: explicit request value wins, otherwise the
-    # jurisdiction's default (NL → 'nl'). Falls back to 'en' if no
-    # jurisdiction is registered for the project's country.
-    jurisdiction = get_jurisdiction(project.country)
-    fallback_locale = jurisdiction.default_locale if jurisdiction else "en"
-    locale = payload.locale or fallback_locale
+    async with open_tenant_session(schema, active_org_id, user.id) as session:
+        project = await load_project_or_404(session, project_id)
+        require_project_writable(project)
+        membership = await require_membership(session, project.id, user.id)
+        require_permission(membership.role, Resource.report, Action.create)
 
-    # Route to the per-type source resolver: it loads its own data and returns
-    # the worker JobType, optional source-Job pointer, title, and type-specific
-    # payload. A known type whose resolver hasn't landed yet → clean 422.
-    resolver = _RESOLVERS.get(payload.report_type)
-    if resolver is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="REPORT_TYPE_NOT_AVAILABLE",
+        # Resolve locale: explicit request value wins, otherwise the
+        # jurisdiction's default (NL → 'nl'). Falls back to 'en' if no
+        # jurisdiction is registered for the project's country.
+        jurisdiction = get_jurisdiction(project.country)
+        fallback_locale = jurisdiction.default_locale if jurisdiction else "en"
+        locale = payload.locale or fallback_locale
+
+        # Route to the per-type source resolver: it loads its own data and
+        # returns the worker JobType, optional source-Job pointer, title, and
+        # type-specific payload. A known type whose resolver hasn't landed yet
+        # → clean 422.
+        resolver = _RESOLVERS.get(payload.report_type)
+        if resolver is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="REPORT_TYPE_NOT_AVAILABLE",
+            )
+        plan = await resolver(session, project, user, locale, payload.params or {})
+
+        # Resolve the org report-template (explicit id → org default → built-in).
+        template = await _resolve_template(session, payload.report_type, payload.template_id)
+
+        generated_at = datetime.now(UTC)
+
+        # Create Report first so we have its ID for the worker's storage key.
+        report = Report(
+            project_id=project.id,
+            report_type=payload.report_type,
+            status=ReportStatus.queued,
+            title=plan.title,
+            locale=locale,
+            params=payload.params or {},
+            source_job_id=plan.source_job_id,
+            template_id=template.id if template is not None else None,
+            created_by_user_id=user.id,
         )
-    plan = await resolver(session, project, user, locale, payload.params or {})
-
-    # Resolve the org report-template (explicit id → org default → built-in).
-    template = await _resolve_template(session, payload.report_type, payload.template_id)
-
-    generated_at = datetime.now(UTC)
-
-    # Create Report first so we have its ID for the worker's storage key.
-    report = Report(
-        project_id=project.id,
-        report_type=payload.report_type,
-        status=ReportStatus.queued,
-        title=plan.title,
-        locale=locale,
-        params=payload.params or {},
-        source_job_id=plan.source_job_id,
-        template_id=template.id if template is not None else None,
-        created_by_user_id=user.id,
-    )
-    session.add(report)
-    await session.flush()
-
-    # Compose the worker payload. Stateless: everything the worker needs to
-    # render lives here. Binary blobs (dossier photos / certificate PDFs) are
-    # passed as storage keys in `payload_extra` and fetched from MinIO by the
-    # worker — never round-tripped through the API.
-    storage_key = f"reports/{active_org_id}/{project.id}/{report.id}.pdf"
-    worker_payload: dict[str, object] = {
-        "report_id": str(report.id),
-        "storage_key": storage_key,
-        "project": _project_payload(project),
-        "generated_at": generated_at.isoformat(),
-        "locale": locale,
-        "jurisdiction": project.country,
-        **plan.payload_extra,
-    }
-    if template is not None:
-        worker_payload["template"] = _template_payload(template)
-
-    try:
-        await check_job_concurrency(session, settings)
-    except JobConcurrencyError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="TOO_MANY_ACTIVE_JOBS",
-        ) from exc
-
-    job = Job(
-        project_id=project.id,
-        job_type=plan.job_type,
-        status=JobStatus.pending,
-        payload=worker_payload,
-        created_by_user_id=user.id,
-    )
-    session.add(job)
-    await session.flush()
-
-    report.job_id = job.id
-
-    # Dispatch — keep within the tenant transaction so partial state never
-    # ships. On failure mark both rows failed; the transaction commits cleanly.
-    try:
-        await dispatch_job(job, settings, active_org_id)
-    except DispatchJobError as exc:
-        msg = f"DISPATCH_FAILED: {exc}"[:500]
-        report.status = ReportStatus.failed
-        report.error = msg
-        report.finished_at = datetime.now(UTC)
-        job.status = JobStatus.failed
-        job.error = msg
-        job.finished_at = report.finished_at
-        logger.warning("Report dispatch failed for report %s: %s", report.id, exc)
+        session.add(report)
         await session.flush()
-    else:
-        # Successful dispatch — emit a job_started notification so the portal
-        # can update the new card immediately. Done outside the explicit
-        # tenant transaction wouldn't be safe (RLS GUC drops on commit), so
-        # we create the notification row in this same txn and publish it
-        # after `get_tenant_session` commits.
+
+        # Compose the worker payload. Stateless: everything the worker needs to
+        # render lives here. Binary blobs (dossier photos / certificate PDFs)
+        # are passed as storage keys in `payload_extra` and fetched from MinIO
+        # by the worker — never round-tripped through the API.
+        storage_key = f"reports/{active_org_id}/{project.id}/{report.id}.pdf"
+        worker_payload: dict[str, object] = {
+            "report_id": str(report.id),
+            "storage_key": storage_key,
+            "project": _project_payload(project),
+            "generated_at": generated_at.isoformat(),
+            "locale": locale,
+            "jurisdiction": project.country,
+            **plan.payload_extra,
+        }
+        if template is not None:
+            worker_payload["template"] = _template_payload(template)
+
+        try:
+            await check_job_concurrency(session, settings)
+        except JobConcurrencyError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="TOO_MANY_ACTIVE_JOBS",
+            ) from exc
+
+        job = Job(
+            project_id=project.id,
+            job_type=plan.job_type,
+            status=JobStatus.pending,
+            payload=worker_payload,
+            created_by_user_id=user.id,
+        )
+        session.add(job)
+        await session.flush()
+
+        report.job_id = job.id
+
+        # job_started notification so the portal updates the new card
+        # immediately — created in this txn (committed with the report) and
+        # published to Redis after the commit (phase 3b).
         notification = await upsert_job_notification(
             session,
             event_type=NotificationEventType.job_started,
@@ -660,37 +688,54 @@ async def create_report(
             file_id=None,
             job_id=job.id,
         )
-        # Defer publish until after the request's transaction commits.
-        # `get_tenant_session` runs `async with session.begin()` itself, so we
-        # cannot commit here. Instead, schedule the publish via a small hack:
-        # publish synchronously after the response is returned. The test stubs
-        # don't depend on Redis being live; the production path will see the
-        # notification in DB regardless of whether the publish lands.
-        try:
-            await publish_notification(notification, organization_id=active_org_id)
-        except Exception:
-            logger.warning(
-                "Failed to publish job_started notification for report %s",
-                report.id,
-                exc_info=True,
-            )
 
-    await audit.record(
-        session,
-        action="report.created",
-        resource_type="report",
-        resource_id=report.id,
-        after={
-            "report_type": report.report_type.value,
-            "locale": report.locale,
-            "title": report.title,
-        },
-        actor_user_id=user.id,
-        project_id=project.id,
-        request=request,
-    )
+        await audit.record(
+            session,
+            action="report.created",
+            resource_type="report",
+            resource_id=report.id,
+            after={
+                "report_type": report.report_type.value,
+                "locale": report.locale,
+                "title": report.title,
+            },
+            actor_user_id=user.id,
+            project_id=project.id,
+            request=request,
+        )
+        report_id = report.id
 
-    await session.refresh(report)
+    # --- Phase 2: dispatch with NO DB connection held.
+    try:
+        await dispatch_job(job, settings, active_org_id)
+    except DispatchJobError as exc:
+        # --- Phase 3a: mark both rows failed in a fresh short transaction.
+        msg = f"DISPATCH_FAILED: {exc}"[:500]
+        logger.warning("Report dispatch failed for report %s: %s", report_id, exc)
+        async with open_tenant_session(schema, active_org_id, user.id) as session:
+            failed_report = await session.get(Report, report_id)
+            failed_job = await session.get(Job, job.id)
+            finished = datetime.now(UTC)
+            if failed_report is not None:
+                failed_report.status = ReportStatus.failed
+                failed_report.error = msg
+                failed_report.finished_at = finished
+            if failed_job is not None:
+                failed_job.status = JobStatus.failed
+                failed_job.error = msg
+                failed_job.finished_at = finished
+        return await _to_response(failed_report if failed_report is not None else report, storage)
+
+    # --- Phase 3b: dispatch ok — publish the job_started notification.
+    try:
+        await publish_notification(notification, organization_id=active_org_id)
+    except Exception:
+        logger.warning(
+            "Failed to publish job_started notification for report %s",
+            report_id,
+            exc_info=True,
+        )
+
     return await _to_response(report, storage)
 
 
@@ -758,7 +803,6 @@ async def sign_report(
     project_id: UUID,
     report_id: UUID,
     request: Request,
-    session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
@@ -767,11 +811,156 @@ async def sign_report(
     """Sign a ready verklaring (#32). Inspector-only (sole holder of
     Action.sign on completion_declaration). Locks the report (signed_at set),
     embeds an audit-id hash, and re-renders the stamped PDF over the same key.
-    Idempotency-guarded: a second sign returns 409."""
+    Idempotency-guarded: a second sign returns 409.
+
+    Three-phase like ``create_report``: the lock + re-queue commits before the
+    re-render is dispatched, so no connection is pinned across the dispatch POST
+    and the worker can't call back against an uncommitted row.
+    """
+    schema: str = request.state.active_schema
+
+    async with open_tenant_session(schema, active_org_id, user.id) as session:
+        project = await load_project_or_404(session, project_id)
+        require_project_writable(project)
+        membership = await require_membership(session, project.id, user.id)
+        require_permission(membership.role, Resource.completion_declaration, Action.sign)
+
+        report = (
+            await session.execute(
+                select(Report).where(
+                    Report.id == report_id,
+                    Report.project_id == project.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if report is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="REPORT_NOT_FOUND"
+            )
+        if report.report_type is not ReportType.completion_declaration:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="NOT_A_DECLARATION"
+            )
+        if report.signed_at is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="REPORT_ALREADY_SIGNED"
+            )
+        if report.status is not ReportStatus.ready or report.storage_key is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="REPORT_NOT_READY"
+            )
+
+        signed_at = datetime.now(UTC)
+        # Audit-id hash binding the artifact (its sha256) to the signer + moment.
+        digest_src = f"{report.id}|{report.sha256 or ''}|{user.id}|{signed_at.isoformat()}"
+        signature_hash = hashlib.sha256(digest_src.encode("utf-8")).hexdigest()
+
+        report.signed_at = signed_at
+        report.signed_by_user_id = user.id
+        report.signature_hash = signature_hash
+        # Re-render the locked, stamped PDF over the same storage key.
+        report.status = ReportStatus.queued
+        report.error = None
+        report.finished_at = None
+
+        worker_payload: dict[str, object] = {
+            "report_id": str(report.id),
+            "storage_key": report.storage_key,
+            "project": _project_payload(project),
+            "generated_at": datetime.now(UTC).isoformat(),
+            "locale": report.locale,
+            "jurisdiction": project.country,
+            "declaration": _declaration_payload(
+                user,
+                signed=True,
+                signed_at=signed_at.isoformat(),
+                signature_hash=signature_hash,
+            ),
+        }
+
+        try:
+            await check_job_concurrency(session, settings)
+        except JobConcurrencyError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="TOO_MANY_ACTIVE_JOBS",
+            ) from exc
+
+        job = Job(
+            project_id=project.id,
+            job_type=JobType.completion_declaration_report,
+            status=JobStatus.pending,
+            payload=worker_payload,
+            created_by_user_id=user.id,
+        )
+        session.add(job)
+        await session.flush()
+        report.job_id = job.id
+
+        await audit.record(
+            session,
+            action="report.signed",
+            resource_type="report",
+            resource_id=report.id,
+            after={
+                "signature_hash": signature_hash,
+                "signed_by_user_id": str(user.id),
+                "signed_at": signed_at.isoformat(),
+            },
+            actor_user_id=user.id,
+            project_id=project.id,
+            request=request,
+        )
+
+    # --- Phase 2: dispatch the re-render with NO DB connection held.
+    try:
+        await dispatch_job(job, settings, active_org_id)
+    except DispatchJobError as exc:
+        # --- Phase 3: mark both rows failed in a fresh short transaction.
+        msg = f"DISPATCH_FAILED: {exc}"[:500]
+        logger.warning("Signed re-render dispatch failed for report %s: %s", report_id, exc)
+        async with open_tenant_session(schema, active_org_id, user.id) as session:
+            failed_report = await session.get(Report, report_id)
+            failed_job = await session.get(Job, job.id)
+            finished = datetime.now(UTC)
+            if failed_report is not None:
+                failed_report.status = ReportStatus.failed
+                failed_report.error = msg
+                failed_report.finished_at = finished
+            if failed_job is not None:
+                failed_job.status = JobStatus.failed
+                failed_job.error = msg
+                failed_job.finished_at = finished
+        return await _to_response(failed_report if failed_report is not None else report, storage)
+
+    return await _to_response(report, storage)
+
+
+@router.delete("/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_report(
+    project_id: UUID,
+    report_id: UUID,
+    request: Request,
+    session: AsyncSession = Depends(get_tenant_session),
+    user: User = Depends(current_verified_user),
+    active_org_id: UUID = Depends(require_active_organization),
+    storage: StorageBackend = Depends(get_storage),
+) -> Response:
+    """Delete a report row and its S3 PDF artifact (L11).
+
+    Reports had no delete path, so every generated PDF lingered in object storage
+    until the org was purged. Only **terminal** reports (ready / failed) are
+    deletable — a queued/running report is still being produced. A **signed**
+    report is a locked legal artifact and can never be deleted.
+
+    The S3 object is removed best-effort *after* the row delete: a storage hiccup
+    is logged, not fatal, so a delete never gets stuck on it, and the orphan (if
+    any) is reaped at org purge.
+    """
     project = await load_project_or_404(session, project_id)
     require_project_writable(project)
     membership = await require_membership(session, project.id, user.id)
-    require_permission(membership.role, Resource.completion_declaration, Action.sign)
+    require_permission(membership.role, Resource.report, Action.delete)
 
     report = (
         await session.execute(
@@ -785,93 +974,45 @@ async def sign_report(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="REPORT_NOT_FOUND"
         )
-    if report.report_type is not ReportType.completion_declaration:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="NOT_A_DECLARATION"
-        )
     if report.signed_at is not None:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="REPORT_ALREADY_SIGNED"
+            status_code=status.HTTP_409_CONFLICT, detail="REPORT_SIGNED_LOCKED"
         )
-    if report.status is not ReportStatus.ready or report.storage_key is None:
+    if report.status not in (ReportStatus.ready, ReportStatus.failed):
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="REPORT_NOT_READY"
+            status_code=status.HTTP_409_CONFLICT, detail="REPORT_NOT_DELETABLE"
         )
 
-    signed_at = datetime.now(UTC)
-    # Audit-id hash binding the artifact (its sha256) to the signer + moment.
-    digest_src = f"{report.id}|{report.sha256 or ''}|{user.id}|{signed_at.isoformat()}"
-    signature_hash = hashlib.sha256(digest_src.encode("utf-8")).hexdigest()
-
-    report.signed_at = signed_at
-    report.signed_by_user_id = user.id
-    report.signature_hash = signature_hash
-    # Re-render the locked, stamped PDF over the same storage key.
-    report.status = ReportStatus.queued
-    report.error = None
-    report.finished_at = None
-
-    worker_payload: dict[str, object] = {
-        "report_id": str(report.id),
-        "storage_key": report.storage_key,
-        "project": _project_payload(project),
-        "generated_at": datetime.now(UTC).isoformat(),
-        "locale": report.locale,
-        "jurisdiction": project.country,
-        "declaration": _declaration_payload(
-            user,
-            signed=True,
-            signed_at=signed_at.isoformat(),
-            signature_hash=signature_hash,
-        ),
+    storage_key = report.storage_key
+    before = {
+        "report_type": report.report_type.value,
+        "status": report.status.value,
+        "storage_key": storage_key,
     }
 
-    try:
-        await check_job_concurrency(session, settings)
-    except JobConcurrencyError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="TOO_MANY_ACTIVE_JOBS",
-        ) from exc
-
-    job = Job(
-        project_id=project.id,
-        job_type=JobType.completion_declaration_report,
-        status=JobStatus.pending,
-        payload=worker_payload,
-        created_by_user_id=user.id,
-    )
-    session.add(job)
+    await session.delete(report)
     await session.flush()
-    report.job_id = job.id
-
-    try:
-        await dispatch_job(job, settings, active_org_id)
-    except DispatchJobError as exc:
-        msg = f"DISPATCH_FAILED: {exc}"[:500]
-        report.status = ReportStatus.failed
-        report.error = msg
-        report.finished_at = datetime.now(UTC)
-        job.status = JobStatus.failed
-        job.error = msg
-        job.finished_at = report.finished_at
-        logger.warning("Signed re-render dispatch failed for report %s: %s", report.id, exc)
-        await session.flush()
 
     await audit.record(
         session,
-        action="report.signed",
+        action="report.deleted",
         resource_type="report",
-        resource_id=report.id,
-        after={
-            "signature_hash": signature_hash,
-            "signed_by_user_id": str(user.id),
-            "signed_at": signed_at.isoformat(),
-        },
+        resource_id=report_id,
+        before=before,
         actor_user_id=user.id,
         project_id=project.id,
         request=request,
     )
 
-    await session.refresh(report)
-    return await _to_response(report, storage)
+    if storage_key is not None:
+        try:
+            await storage.delete_object(storage_key)
+        except Exception:
+            logger.warning(
+                "report.deleted: failed to delete S3 object %s for report %s",
+                storage_key,
+                report_id,
+                exc_info=True,
+            )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

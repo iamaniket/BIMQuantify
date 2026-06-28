@@ -46,8 +46,31 @@ uv run mypy src
 
 ## Migrations
 
+Two Alembic chains: a **master** chain (the shared `public` schema — `users`,
+`organizations`, …) and a **tenant** chain (replicated into every `org_<hex>`
+schema).
+
 ```bash
 uv run alembic revision --autogenerate -m "message"
 uv run alembic upgrade head
 uv run alembic downgrade -1
 ```
+
+### Release gate — master upgrade → `migrate_all` (do not skip)
+
+A deploy that ships a **tenant** migration MUST run the fan-out, or pre-existing
+orgs are left missing the new column/table/enum and 500 on the new code path
+(only newly-provisioned orgs get the change in-process):
+
+```bash
+# 1. master / public chain
+uv run alembic -c alembic.master.ini upgrade head
+# 2. fan the tenant chain out across every active org schema
+uv run python -m bimdossier_api.scripts.migrate_all
+# verify — exits non-zero if any schema is behind the tenant head
+uv run python -m bimdossier_api.scripts.migrate_all --check
+```
+
+The API logs a loud `TENANT SCHEMAS BEHIND` warning at startup
+(`check_tenant_schema_drift`) if any active org schema is behind the tenant
+head — a backstop, not a substitute for step 2.

@@ -30,6 +30,12 @@ interface FloorPlanLinkOptions {
    */
   sheetTransform?: SheetTransform | null;
   /**
+   * Mirror the live 3D camera onto the plan as a "you are here" marker — Split
+   * only. Off in pure 2D, where there's no visible 3D view to anchor it to, so
+   * the marker would be noise floating over the drawing.
+   */
+  linkCamera: boolean;
+  /**
    * Switch the active plan level (generated-plan mode). When a 3D selection lands
    * on a different storey, the plan auto-follows it. Optional — omit to keep the
    * plan on its current level.
@@ -55,7 +61,7 @@ type CameraPose = { position: { x: number; y: number; z: number }; target: { x: 
  *     (`minimap.isolateItems`), reusing the metadata-derived membership.
  */
 export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
-  const { fpHandle, viewerHandle, viewerReady, levels, activeLevel, isolate, metadata, planAxisX, planAxisY, setActiveLevel } = opts;
+  const { fpHandle, viewerHandle, viewerReady, levels, activeLevel, isolate, metadata, planAxisX, planAxisY, linkCamera, setActiveLevel } = opts;
   const sheetTransform = opts.sheetTransform ?? null;
 
   const storeyMembership = useMemo(() => buildStoreyMembership(metadata), [metadata]);
@@ -213,9 +219,14 @@ export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
 
   // "You are here": mirror the 3D camera pose onto the plan. The minimap plugin
   // emits plan-projected poses on every camera move; we also seed once on mount
-  // (the camera may be still when entering Split/2D).
+  // (the camera may be still when entering Split). Split only — in pure 2D there
+  // is no visible 3D view, so the marker is just noise; clear it and don't track.
   useEffect(() => {
     if (!fpHandle || !viewerHandle || !viewerReady) return undefined;
+    if (!linkCamera) {
+      fpHandle.setCameraPose(null);
+      return undefined;
+    }
     // Seed the marker from the current camera pose. Calibration may not be ready
     // when the pane first mounts (it's async), so this also runs on
     // `minimap:calibrated`. Once calibrated, the static camera won't emit
@@ -240,7 +251,7 @@ export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
     const offCal = viewerHandle.events.on('minimap:calibrated', () => { void seed(); });
     void seed();
     return () => { cancelled = true; offPose(); offCal(); };
-  }, [fpHandle, viewerHandle, viewerReady]);
+  }, [fpHandle, viewerHandle, viewerReady, linkCamera]);
 
   // level→storey isolation. Restore the full model on unmount / mode exit.
   useEffect(() => {

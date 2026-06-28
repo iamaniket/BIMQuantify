@@ -9,6 +9,7 @@ export const NotificationEventTypeEnum = z.enum([
   'deadline_missed',
   'finding_created',
   'finding_resolved',
+  'finding_mentioned',
   'invitation_sent',
   'invitation_accepted',
 ]);
@@ -36,6 +37,9 @@ export const NotificationListResponseSchema = z.object({
   unread_count: z.number(),
   limit: z.number(),
   offset: z.number(),
+  // Opaque keyset cursor for "load more" (pass back as ?cursor=). Null/absent
+  // when there are no more rows. Optional so existing offset callers are unaffected.
+  next_cursor: z.union([z.string(), z.null()]).optional(),
 });
 
 export type NotificationListResponse = z.infer<typeof NotificationListResponseSchema>;

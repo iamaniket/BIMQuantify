@@ -1,3 +1,9 @@
+> **⚠️ PARTIALLY SUPERSEDED (2026-06-28).** Several criticals below are now FIXED in code
+> (secret defaults, CORS wildcard, seat-limit race, capture-link race). The current consolidated
+> pre-launch audit is **[`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION_READINESS.md)** — read it
+> first; it carries forward the still-open items here with current line numbers and completes the
+> Processor review this doc left pending.
+
 # BIMQuantify — Architecture / Bug / Race-Condition Audit
 
 _Read-only audit. No code was modified. Findings are ranked by severity and tagged by
@@ -18,10 +24,13 @@ interrupted by a session limit and is being completed separately (see _Processor
    values instead of failing closed. — _CRITICAL_
 3. **[Portal] Cross-tab tenant desync**: switching org in one tab leaves other tabs
    operating on the *old* tenant's JWT → silent wrong-tenant reads/writes. — _CRITICAL_
+   — ✅ **RESOLVED** (see §4).
 4. **[API] Public capture-link `use_count` race** lets a `max_uses=1` link be consumed
    many times (unauthenticated endpoint). — _HIGH_
 5. **[DevOps] Rate-limit bypass** via client-supplied `X-Forwarded-For`, plus no rate
-   limit on invite / report-generation / file-initiate. — _HIGH_
+   limit on invite / report-generation / file-initiate. — _HIGH_ — _RESOLVED (XFF identifier
+   + per-user/per-IP limiters now cover invite/resend, all presign-initiate endpoints, and
+   the public capture upload; see #6/#7)._
 6. **[DevOps] Tenant-schema migration drift** has no startup guardrail — a deploy that
    forgets to migrate existing org schemas 500s every existing tenant. — _HIGH_
 
@@ -30,6 +39,17 @@ interrupted by a session limit and is being completed separately (see _Processor
 ## CRITICAL
 
 ### 1. [API] Seat-limit TOCTOU — concurrent invites exceed the paid cap
+
+> **✅ RESOLVED (commit `df621d31`, 2026-06-26).** `assert_seat_available`
+> (`admin/seats.py:41-70`) now takes `select(Organization.id).with_for_update()`
+> before counting, holding the row lock until the surrounding transaction
+> commits — serializing count-then-insert per org. Both seat-consuming call
+> sites are covered: `invite_member` (`routers/organization_members.py:281`) and
+> `update_member_guest` (`:551`). Regression test:
+> `tests/test_admin_seats.py::test_concurrent_invites_cannot_exceed_seat_cap`
+> races two invites and asserts exactly one 201 + one 409, with the final count
+> equal to the cap. Original (pre-fix) finding text retained below for history.
+
 `apps/api/src/bimdossier_api/admin/seats.py:41-54` (`assert_seat_available`), called from
 `apps/api/src/bimdossier_api/routers/organization_members.py:198` (`invite_member`) and
 `:458` (`update_member_guest`).
@@ -67,6 +87,29 @@ credentials instead of erroring. Same fall-through-to-prod class as #2.
 **Fix:** make both required (no default).
 
 ### 4. [Portal] Cross-tab token desync → wrong-tenant data hazard
+
+> **✅ RESOLVED (commit `df621d31`, 2026-06-26).** `AuthProvider.tsx:157-182`
+> now registers a `window.addEventListener('storage', …)` listener scoped to the
+> `bimdossier.tokens` key (`e.key === null` also covers `localStorage.clear()`).
+> On a cross-tab change it re-reads the stored pair, no-ops if the `access_token`
+> is unchanged (prevents same-value echo loops), then updates `tokensRef.current`
+> + `setTokensState` **directly** (not via `setTokens`, which would write back and
+> re-emit) and calls `queryClient.invalidateQueries()` so no previous-org data
+> lingers. The effect watching `tokens` re-fetches `/auth/me`; on logout
+> (`next === null`) the route guards redirect to `/login`. Regression test:
+> `AuthProvider.crosstab.test.tsx` (adopt-new-token-on-switch + asserts cache
+> invalidation, clear-on-logout, ignore-unrelated-keys — 3/3 green). Confirmed in
+> `docs/PRODUCTION_READINESS.md` §9 ("cross-tab token desync listener added").
+> The cited line numbers below are from the pre-fix revision; original text
+> retained for history.
+>
+> **Adjacent items:** _#11_ — the last wrong-tenant window (a refetch reusing the
+> *old* org's token; this fix closed the auth-system staleness, #11 was the
+> data-layer seam) — is now **✅ RESOLVED** (see §11; the data hooks read the live
+> token). _M-fe2_ (PRODUCTION_READINESS.md §Frontend) remains open — stale
+> `me`/role renders briefly until `/auth/me` refetches (UI-only; backend still
+> authorizes off the JWT).
+
 `apps/portal/src/providers/AuthProvider.tsx:64-75, 84-89, 138-150`.
 
 Tokens persist to `localStorage` but nothing listens for the `storage` event (zero matches
@@ -98,15 +141,32 @@ must hold under concurrency.
 `UPDATE capture_links SET use_count = use_count + 1 WHERE id = :id AND (max_uses IS NULL OR
 use_count < max_uses)` and treat zero-rows-affected as exhausted.
 
-### 6. [DevOps] Rate limiting trusts client-supplied `X-Forwarded-For`
-`FastAPILimiter.init(redis)` (`apps/api/src/bimdossier_api/main.py:79`) is called with no
-custom `identifier`, so the library default keys the rate limit on the first
-`X-Forwarded-For` value verbatim. No `--forwarded-allow-ips` / `--proxy-headers` is set on
-uvicorn anywhere. Any client can send a random `X-Forwarded-For` per request to get a fresh
-bucket, defeating the login / forgot-password / refresh brute-force limits.
+### 6. [DevOps] Rate limiting trusts client-supplied `X-Forwarded-For` — RESOLVED
+~~`FastAPILimiter.init(redis)` is called with no custom `identifier`, so the library
+default keys the rate limit on the first `X-Forwarded-For` value verbatim. No
+`--forwarded-allow-ips` / `--proxy-headers` is set on uvicorn anywhere. Any client can send
+a random `X-Forwarded-For` per request to get a fresh bucket, defeating the login /
+forgot-password / refresh brute-force limits.~~
 
-**Fix:** supply a custom identifier that only trusts XFF from known proxy IPs, and run
-uvicorn with `--forwarded-allow-ips`.
+**App layer (already landed before this pass):** `FastAPILimiter.init` is wired with a
+custom identifier — `main.py` passes `default_rate_limit_identifier`, and
+`auth/ratelimit.py::_client_ip` honors `X-Forwarded-For` only from peers in
+`TRUSTED_PROXY_IPS`, taking the right-most hop. (The original `main.py:79 "no custom
+identifier"` reference was stale.) Covered by `tests/test_rate_limit.py:98-137`.
+
+**Deployment layer (this pass):** uvicorn's proxy-header trust is now explicit, documented,
+and guarded so prod can only be set up safely:
+- `FORWARDED_ALLOW_IPS` is a first-class config field; `validate_production_config` refuses
+  to boot outside dev when it (or `TRUSTED_PROXY_IPS`) is `*` — the setting that would make
+  uvicorn trust XFF from any peer. Guard cases in `tests/test_production_config_guard.py`.
+- `--proxy-headers` is explicit on the launch commands we control (`apps/api/package.json`,
+  E2E `global-setup.ts`); `log_secret_sources` reports the effective `FORWARDED_ALLOW_IPS`.
+- `.env.example` + `CLAUDE.md` document the two-layer model (uvicorn `FORWARDED_ALLOW_IPS`
+  owns resolution in prod — set the proxy IP/CIDR, never `*` — with `TRUSTED_PROXY_IPS` as
+  the in-process fallback) and the canonical production run command.
+
+**Out of scope (separate gap):** no API Dockerfile / production run artifact exists in-repo
+(`PRODUCTION_READINESS.md` M-sec4) — the documented command above is the interim contract.
 
 ### 7. [DevOps] Rate-limit coverage gaps on expensive / abusable endpoints
 Only login, forgot-password, refresh, and access-requests carry a `RateLimiter`. Missing:
@@ -121,6 +181,20 @@ Note: the CLAUDE.md claim that "the register limiter now guards the admin invite
 (`auth/routes.py:36-39`) is no longer wired to any route.
 
 **Fix:** add limiters to invite, report-create, and file-initiate.
+
+> **RESOLVED.** `create_report` (`REPORT_GEN_LIMITER`), the project-files `initiate`
+> (`UPLOAD_INITIATE_LIMITER`), and the compliance check (`COMPLIANCE_CHECK_LIMITER`) were
+> already covered before this pass. This pass adds the remaining coverage:
+> - `invite_member` + `resend_invite` → shared per-user `INVITE_LIMITER` (30/hr,
+>   `RATE_LIMIT_INVITE_PER_HOUR`) — closes the mail-bomb / enumeration vector.
+> - The four other presigned-PUT minting endpoints (attachments, certificates,
+>   org-certificates, org-template-assets) now reuse `UPLOAD_INITIATE_LIMITER` (one shared
+>   100/hr per-user presign budget).
+> - The **public** capture-link `initiate` → per-IP `CAPTURE_INITIATE_LIMITER` (120/hr,
+>   `RATE_LIMIT_CAPTURE_INITIATE_PER_HOUR`).
+> - The orphaned `REGISTER_RATE_LIMITER` and its `RATE_LIMIT_REGISTER_PER_HOUR` knob were
+>   removed; the stale CLAUDE.md line was corrected. New 429-enforcement tests in
+>   `tests/test_rate_limit.py`. (429s bypass the i18n envelope, so no error-catalog change.)
 
 ### 8. [DevOps] Tenant-schema migration drift has no guardrail
 Existing org schemas are upgraded only by manually running
@@ -155,6 +229,22 @@ to the assignee despite the "toegewezen" (assigned) wording.
 strings, and decide whether delivery should be assignee-scoped.
 
 ### 11. [Portal] `useAuthQuery` / `useAuthMutation` capture a stale access token
+
+> **✅ RESOLVED (2026-06-28).** Both hooks now read the LIVE token via
+> `tokenManager.getAccessToken(accessToken)` inside the `queryFn`/`mutationFn`
+> instead of using the render-time `accessToken` capture. `getAccessToken`
+> returns the registered getter's current value (`AuthProvider`'s
+> `tokensRef.current`), so an invalidate-driven refetch right after a cross-tab
+> org switch (#4) — or a `mutateAsync` loop after a refresh — fires with the new
+> tenant's token, not the previous one. The render-time token is used only as a
+> pre-registration fallback (once registered, a `null` result is authoritative
+> "logged out" and the fallback is ignored, so a logout never resurrects a stale
+> token) and still drives the query `enabled` gate. Regression test:
+> `useAuthQuery.test.tsx` (refetch-after-switch uses the live token,
+> mutation-after-change uses the live token, `getAccessToken`
+> fallback/live/logged-out semantics — 3/3 green). This closes the last
+> wrong-tenant window that #4 left open. Original (pre-fix) text retained below.
+
 `apps/portal/src/lib/query/useAuthQuery.ts:37-58, 73-94`.
 
 The hook captures `accessToken` from `useAuth()` at render time rather than reading the live
@@ -207,12 +297,48 @@ sets/restores `search_path`). **Fix:** drop the unused tenant-session dependency
 the deliberate two-session design.
 
 ### 16. [API] Invite acceptance doesn't re-check seats
+
+> **✅ RESOLVED (2026-06-28).** Both halves addressed.
+> **Accept backstop:** `accept_invitation` (`routers/me_invitations.py`) now calls the new
+> `assert_within_seat_limit` (`admin/seats.py`) — gated by `if not member.is_guest`, mirroring
+> the invite path's guest exemption. Acceptance is **seat-neutral** (pending and active both
+> count in `count_consumed_seats`), so the helper uses a strict `>` (`consumed > limit`), NOT
+> `assert_seat_available`'s `>=`: a normally full org (consumed == limit) still accepts, and
+> only a genuinely over-provisioned org is rejected with `SEAT_LIMIT_EXCEEDED`. No row lock —
+> accept can't itself push the count over, and the downgrade guard already holds the invariant.
+> **Downgrade reconciliation (confirmed):** the PATCH path (`admin_organizations.py`) computes
+> `used = count_consumed_seats(...)` (which counts pending) and rejects `seat_limit < used` with
+> `SEAT_LIMIT_BELOW_USAGE`, so the cap can't be lowered below active + pending — pending invites
+> are reconciled, no separate fix needed. **Tests:** `test_invitations.py` (accept at full
+> capacity succeeds; over-provisioned accept 409s + stays pending; guest bypasses regular-seat
+> overage) and `test_admin_seats.py` (`assert_within_seat_limit` unit cases; pending counts in
+> the downgrade guard). Original finding text retained below.
+>
+> _Note: the login bootstrap auto-accept (`auth/routes.py::_flip_pending_memberships`) also flips
+> pending→active but is deliberately NOT gated — blocking it would lock a brand-new user out of
+> login entirely (zero active orgs), and that seat was reserved + seat-checked at invite time and
+> can't be validly over-provisioned (the downgrade guard counts it). The explicit-accept endpoint
+> is the right place for a user-facing 409._
+
 `apps/api/src/bimdossier_api/routers/me_invitations.py:112-162`. By design pending invites
 count toward seats, but if `seat_limit` is lowered (downgrade) acceptance has no backstop —
 and combined with #1 the count itself can be wrong. **Fix:** re-check seats on accept;
 confirm the downgrade path reconciles existing pending invites.
 
 ### 17. [API] Compliance check holds the tenant transaction open across a 30s external call
+
+> **✅ RESOLVED (commit `df621d31`, 2026-06-26).** `check_compliance`
+> (`routers/compliance.py`) now runs as three short transactions via
+> `open_tenant_session` (`tenancy.py:162`): (1) validate + persist the `running`
+> Job, then commit and release the pooled connection; (2) call the Arbiter with
+> **no** connection held; (3) persist the result/failure + audit in a fresh short
+> transaction. The ~30s Arbiter latency no longer pins a `DB_POOL_SIZE`
+> connection, so a slow Arbiter can't cascade into pool exhaustion. Regression
+> test: `tests/test_compliance_check.py::test_check_releases_db_connection_across_arbiter_call`
+> reads the `running` Job from a separate session *during* the stubbed Arbiter
+> call — visible under READ COMMITTED only if phase 1 already committed. Original
+> (pre-fix) finding text retained below for history.
+
 `apps/api/src/bimdossier_api/routers/compliance.py:137-162`. The DB transaction (pooled
 connection + `SET LOCAL ROLE`/`search_path`) is held for the full Arbiter MCP call
 (`arbiter_timeout_seconds=30`). Under concurrency this pins connections (`DB_POOL_SIZE=20`)

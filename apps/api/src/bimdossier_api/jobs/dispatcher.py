@@ -22,9 +22,10 @@ from uuid import UUID
 
 import httpx
 from fastapi import Depends, Header, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bimdossier_api.background.locks import lock_id_for
 from bimdossier_api.config import Settings, get_settings
 from bimdossier_api.models.job import Job, JobStatus
 
@@ -71,6 +72,9 @@ async def _http_dispatch(job: Job, settings: Settings, organization_id: UUID) ->
         "job_type": job.job_type.value,
         "organization_id": str(organization_id),
         "payload": dict(job.payload or {}),
+        # Tell the worker which API instance to call back to (L13) rather than
+        # relying on its single baked API_BASE_URL.
+        "callback_url": settings.api_base_url.rstrip("/"),
     }
     headers = {"Authorization": f"Bearer {settings.processor_shared_secret}"}
     timeout = httpx.Timeout(settings.processor_dispatch_timeout_seconds)
@@ -252,6 +256,24 @@ _ACTIVE_STATUSES = [JobStatus.pending, JobStatus.started, JobStatus.running]
 
 
 async def check_job_concurrency(session: AsyncSession, settings: Settings) -> None:
+    # Serialize the count-then-insert per org (M-con2): without a lock two
+    # requests both read `active == limit-1`, both pass this check, and both
+    # INSERT their Job — overshooting the cap. A transaction-scoped advisory
+    # lock keyed on the active org makes the check-and-insert atomic per tenant.
+    # It auto-releases at commit/rollback, so it honors the "endpoints using a
+    # tenant session MUST NOT call session.commit()" rule — the wrapping
+    # `session.begin()` owns the transaction and the lock dies with it. The org
+    # id comes from the tenant GUC the session already carries
+    # (`app.current_org_id`); if it's unset (a non-tenant caller) we skip the
+    # lock rather than serialize every org onto one global key.
+    org_key = await session.scalar(
+        text("SELECT current_setting('app.current_org_id', true)")
+    )
+    if org_key:
+        await session.execute(
+            text("SELECT pg_advisory_xact_lock(:k)"),
+            {"k": lock_id_for(f"job_concurrency:{org_key}")},
+        )
     active = (
         await session.scalar(
             select(func.count())

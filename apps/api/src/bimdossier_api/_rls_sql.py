@@ -165,6 +165,47 @@ def grant_schema_to_app_role(schema: str) -> list[str]:
         f'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {APP_ROLE};',
         f'ALTER DEFAULT PRIVILEGES IN SCHEMA "{schema}" '
         f'GRANT USAGE, SELECT ON SEQUENCES TO {APP_ROLE};',
+        # audit_log is append-only — strip the UPDATE/DELETE the blanket grant
+        # above just handed out, and install the deny trigger. MUST come after
+        # the `GRANT ... ON ALL TABLES` or the grant re-adds the privileges.
+        *audit_log_append_only_statements(schema),
+    ]
+
+
+def audit_log_append_only_statements(schema: str) -> list[str]:
+    """SQL that makes ``<schema>.audit_log`` append-only (H8).
+
+    Two layers, neither of which any app code needs (nothing ever UPDATEs or
+    DELETEs audit rows — the only removals are superuser ``TRUNCATE`` in the
+    seed reset / test teardown and ``DROP SCHEMA CASCADE`` at org purge):
+
+      1. ``REVOKE UPDATE, DELETE, TRUNCATE ... FROM bim_app`` — the role that
+         serves *all* request traffic can no longer mutate the forensic trail.
+         (TRUNCATE was never granted to bim_app; revoking it documents intent
+         and is defense-in-depth.)
+      2. A ``BEFORE UPDATE OR DELETE`` row trigger that raises — a
+         role-independent backstop so even a compromised superuser can't make
+         a surgical edit. Deliberately NOT a ``BEFORE TRUNCATE`` trigger: that
+         would fire for the superuser and break the seed reset and the test
+         teardown, both of which legitimately TRUNCATE audit_log.
+
+    The trigger function is created *inside the tenant schema* (not a shared
+    ``public`` one) so ``DROP SCHEMA ... CASCADE`` at org purge removes it.
+
+    Each element is a standalone statement — callers run them one per
+    round-trip (asyncpg rejects multi-command strings). Idempotent
+    (``CREATE OR REPLACE`` + ``DROP TRIGGER IF EXISTS`` + re-runnable
+    ``REVOKE``) so the migrate_all fan-out and manual re-runs are safe.
+    """
+    return [
+        f'REVOKE UPDATE, DELETE, TRUNCATE ON "{schema}".audit_log FROM {APP_ROLE};',
+        f'CREATE OR REPLACE FUNCTION "{schema}".audit_log_deny_write() RETURNS trigger '
+        "LANGUAGE plpgsql AS $$ BEGIN "
+        "RAISE EXCEPTION 'audit_log is append-only; % is not permitted', TG_OP "
+        "USING ERRCODE = 'insufficient_privilege'; END; $$;",
+        f'DROP TRIGGER IF EXISTS audit_log_append_only ON "{schema}".audit_log;',
+        f'CREATE TRIGGER audit_log_append_only BEFORE UPDATE OR DELETE ON "{schema}".audit_log '
+        f'FOR EACH ROW EXECUTE FUNCTION "{schema}".audit_log_deny_write();',
     ]
 
 

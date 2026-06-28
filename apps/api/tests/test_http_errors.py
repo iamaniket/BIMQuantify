@@ -5,13 +5,16 @@ real routers do, so it needs no DB or fixtures.
 
 from __future__ import annotations
 
+import json
+
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from bimdossier_api.i18n.http_errors import (
+    generic_exception_handler,
     http_exception_handler,
     validation_exception_handler,
 )
@@ -21,6 +24,7 @@ def _make_client() -> TestClient:
     app = FastAPI()
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    app.add_exception_handler(Exception, generic_exception_handler)
 
     @app.get("/string-code")
     async def _string_code() -> None:
@@ -47,6 +51,17 @@ def _make_client() -> TestClient:
     @app.post("/validate")
     async def _validate(body: Body) -> None:
         return None
+
+    class SecretBody(BaseModel):
+        password: str = Field(min_length=8)
+
+    @app.post("/validate-secret")
+    async def _validate_secret(body: SecretBody) -> None:
+        return None
+
+    @app.get("/boom")
+    async def _boom() -> None:
+        raise RuntimeError("super-secret-internal-trace")
 
     return TestClient(app, raise_server_exceptions=False)
 
@@ -98,12 +113,18 @@ def test_missing_header_uses_platform_default_nl() -> None:
 
 def test_region_subtag_and_quality_weights() -> None:
     # nl-NL resolves to nl; weighted list picks the highest supported tag.
-    assert client.get(
-        "/string-code", headers={"Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8"}
-    ).json()["message"] == "Dat project kon niet worden gevonden."
-    assert client.get(
-        "/string-code", headers={"Accept-Language": "fr-FR,en;q=0.7,nl;q=0.6"}
-    ).json()["message"] == "That project could not be found."
+    assert (
+        client.get("/string-code", headers={"Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8"}).json()[
+            "message"
+        ]
+        == "Dat project kon niet worden gevonden."
+    )
+    assert (
+        client.get("/string-code", headers={"Accept-Language": "fr-FR,en;q=0.7,nl;q=0.6"}).json()[
+            "message"
+        ]
+        == "That project could not be found."
+    )
 
 
 def test_validation_error_localized() -> None:
@@ -114,6 +135,31 @@ def test_validation_error_localized() -> None:
     assert nl.json()["message"] != en.json()["message"]
     # Per-field detail list preserved for clients that map field errors.
     assert isinstance(en.json()["detail"], list)
+
+
+def test_validation_error_redacts_submitted_input() -> None:
+    # A body whose `password` fails validation must not echo the value back —
+    # the per-field list survives for client field-mapping, but the `input`
+    # echo (the only place the secret leaks) is gone.
+    r = client.post("/validate-secret", json={"password": "sh0rt"})
+    assert r.status_code == 422
+    body = r.json()
+    assert body["code"] == "VALIDATION_ERROR"
+    assert isinstance(body["detail"], list) and body["detail"]
+    assert all("input" not in item for item in body["detail"])
+    assert "sh0rt" not in json.dumps(body)
+
+
+def test_generic_exception_handler_returns_localized_500() -> None:
+    en = client.get("/boom", headers={"Accept-Language": "en"})
+    nl = client.get("/boom", headers={"Accept-Language": "nl"})
+    assert en.status_code == 500 and nl.status_code == 500
+    # Same localized envelope as every other error; never the bare Starlette text.
+    assert en.json()["code"] == nl.json()["code"] == "INTERNAL_ERROR"
+    assert en.json()["message"] == "Something went wrong on our end. Please try again later."
+    assert nl.json()["message"] == "Er is aan onze kant iets misgegaan. Probeer het later opnieuw."
+    # The internal exception text never reaches the client.
+    assert "super-secret-internal-trace" not in json.dumps(en.json())
 
 
 def test_attach_notice_sets_localized_success_headers() -> None:

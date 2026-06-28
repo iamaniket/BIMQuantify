@@ -26,6 +26,7 @@ async def create_notification(
     project_id: UUID | None = None,
     file_id: UUID | None = None,
     job_id: UUID | None = None,
+    recipient_user_id: UUID | None = None,
 ) -> Notification:
     """Insert a notification row in the active tenant schema.
 
@@ -33,6 +34,11 @@ async def create_notification(
     schema (either by `get_tenant_session` or by the internal callback
     handler). The notification lives in `org_<hex>.notifications` — there
     is no `organization_id` column because the schema name IS the org.
+
+    `recipient_user_id` is the per-recipient target. Leave it ``None`` (the
+    default) for org-wide notifications — every member sees the row. Set it to
+    target a single member (used by @mention pings); the notifications router
+    filters every read so a targeted row never leaks to other members.
     """
     notification = Notification(
         event_type=event_type,
@@ -41,6 +47,7 @@ async def create_notification(
         project_id=project_id,
         file_id=file_id,
         job_id=job_id,
+        recipient_user_id=recipient_user_id,
     )
     session.add(notification)
     await session.flush()
@@ -110,17 +117,31 @@ async def publish_notification(
     carries it as a column — the caller knows which tenant context they
     were in when they created the row.
     """
+    # Read created_at off __dict__, not the attribute: it's a server_default that
+    # is NOT populated by a plain flush, and on an async session touching an
+    # unloaded attribute triggers a lazy refresh → MissingGreenlet. Inline
+    # publishers (finding / comment publish right after create_notification with no
+    # refresh) would otherwise crash here; callers that refreshed first still get
+    # the real value, and WS consumers refetch over HTTP so null is harmless.
+    created_at = notification.__dict__.get("created_at")
     payload = json.dumps(
         {
             "id": str(notification.id),
             "organization_id": str(organization_id),
+            # Per-recipient routing key (L9): the ConnectionManager delivers a
+            # targeted notification only to this user's sockets. None = org-wide.
+            "recipient_user_id": (
+                str(notification.recipient_user_id)
+                if notification.recipient_user_id
+                else None
+            ),
             "project_id": str(notification.project_id) if notification.project_id else None,
             "file_id": str(notification.file_id) if notification.file_id else None,
             "job_id": str(notification.job_id) if notification.job_id else None,
             "event_type": notification.event_type.value,
             "title": notification.title,
             "body": notification.body,
-            "created_at": notification.created_at.isoformat() if notification.created_at else None,
+            "created_at": created_at.isoformat() if created_at else None,
         }
     )
     channel = f"{CHANNEL_PREFIX}{organization_id}"
@@ -138,6 +159,7 @@ async def emit_notification_for_org(
     title: str,
     body: str,
     project_id: UUID | None = None,
+    recipient_user_id: UUID | None = None,
 ) -> None:
     """Create and publish a notification from a non-tenant context.
 
@@ -146,6 +168,10 @@ async def emit_notification_for_org(
     a short-lived transaction with ``SET LOCAL search_path`` anchored to the
     target schema — the same pattern ``jobs_internal._emit_notification``
     uses for extraction callbacks.
+
+    ``recipient_user_id`` targets a single member (``None`` = org-wide, the
+    original behaviour). Used to alert org admins / super-admins specifically on
+    security events without surfacing the row to every member.
 
     Best-effort: a failure here is logged but never masks the calling
     endpoint's response.
@@ -167,6 +193,7 @@ async def emit_notification_for_org(
                     title=title,
                     body=body,
                     project_id=project_id,
+                    recipient_user_id=recipient_user_id,
                 )
         # Publish AFTER commit so the row is visible to readers.
         await publish_notification(notification, organization_id=organization_id)

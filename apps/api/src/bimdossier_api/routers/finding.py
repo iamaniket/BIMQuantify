@@ -13,9 +13,11 @@ from `draft` to `open` by setting a deadline and an assignee.
 
 import csv
 import io
+from collections.abc import AsyncIterator
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +35,7 @@ from bimdossier_api.attachment_links import replace_attachment_links
 from bimdossier_api.auth.fastapi_users import current_verified_user
 from bimdossier_api.auth.permissions import Action, Resource, require_permission
 from bimdossier_api.finding_custom_values import build_custom_values
-from bimdossier_api.i18n import resolve_org_locale, t
+from bimdossier_api.i18n import resolve_org_locale, resolve_user_locale, t
 from bimdossier_api.idempotency import idempotency_key_header, is_idempotency_conflict
 from bimdossier_api.models.audit_log import AuditLog
 from bimdossier_api.models.finding import Finding, FindingSeverity, FindingStatus
@@ -43,7 +45,10 @@ from bimdossier_api.models.org_template import OrgTemplate
 from bimdossier_api.models.project_file import FileType, ProjectFile, ProjectFileRole
 from bimdossier_api.models.project_member import ProjectRole
 from bimdossier_api.models.user import User
-from bimdossier_api.notifications.service import create_notification
+from bimdossier_api.notifications.service import (
+    create_notification,
+    publish_notification,
+)
 from bimdossier_api.pdf_pages import find_or_create_pdf_page
 from bimdossier_api.schemas.finding import (
     FindingCreate,
@@ -52,7 +57,11 @@ from bimdossier_api.schemas.finding import (
     FindingRead,
     FindingUpdate,
 )
-from bimdossier_api.tenancy import get_tenant_session, require_active_organization
+from bimdossier_api.tenancy import (
+    get_tenant_session,
+    open_tenant_session,
+    require_active_organization,
+)
 
 router = APIRouter(prefix="/projects/{project_id}/findings", tags=["findings"])
 
@@ -377,6 +386,10 @@ _FINDINGS_CSV_COLUMNS: tuple[str, ...] = (
     "resolution_note",
 )
 
+# Rows pulled (and eager-loads run) per server-side-cursor batch while streaming
+# the CSV — bounds peak memory regardless of how many findings the project has.
+_CSV_STREAM_BATCH = 500
+
 
 def _display_name(u: User | None) -> str:
     """Display name (full_name, else email) for an eager-loaded User, or blank."""
@@ -421,6 +434,7 @@ def _finding_csv_row(f: Finding) -> dict[str, str]:
 @router.get("/export.csv", response_class=Response)
 async def export_findings_csv(
     project_id: UUID,
+    request: Request,
     status_filter: FindingStatus | None = None,
     severity: FindingSeverity | None = None,
     assignee_user_id: UUID | None = None,
@@ -438,31 +452,79 @@ async def export_findings_csv(
     project = await load_project_or_404(session, project_id)
     await require_project_read_access(session, project.id, user, active_org_id)
 
-    stmt = (
-        select(Finding)
-        .where(Finding.project_id == project.id, Finding.deleted_at.is_(None))
-        # assignee + created_by are not selectin by default — eager-load them so
-        # the display-name columns don't trigger an async lazy-load.
+    base = select(Finding).where(Finding.project_id == project.id, Finding.deleted_at.is_(None))
+    if status_filter is not None:
+        base = base.where(Finding.status == status_filter)
+    if severity is not None:
+        base = base.where(Finding.severity == severity)
+    if assignee_user_id is not None:
+        base = base.where(Finding.assignee_user_id == assignee_user_id)
+
+    # Bulk PII/data export — leave a forensic trail (count + filters + actor +
+    # IP). Read endpoints don't normally audit, but a full-project CSV dump is
+    # an exfiltration surface, so this one row is the only record it happened.
+    # Count via SQL (not len(rows)) so the audit row commits with this request's
+    # tenant session and we never have to buffer the result set to size it.
+    # Tenant session → lands in the active org's schema and commits with the
+    # wrapping `session.begin()`; only metadata is stored, never the rows.
+    total = (await session.scalar(select(func.count()).select_from(base.subquery()))) or 0
+    await audit.record(
+        session,
+        action="finding.exported",
+        resource_type="finding",
+        actor_user_id=user.id,
+        project_id=project.id,
+        request=request,
+        after={
+            "count": total,
+            "filters": {
+                "status": status_filter.value if status_filter is not None else None,
+                "severity": severity.value if severity is not None else None,
+                "assignee_user_id": (
+                    str(assignee_user_id) if assignee_user_id is not None else None
+                ),
+            },
+        },
+    )
+
+    # The CSV is streamed: a StreamingResponse body is produced AFTER the
+    # request-scoped `session` (and its transaction) has closed, so the generator
+    # must NOT borrow it — it opens its own short tenant session (same pattern as
+    # the compliance check). `yield_per` drives a server-side cursor so only
+    # `_CSV_STREAM_BATCH` rows (plus their eager-loaded assignee/creator) sit in
+    # memory at once, no matter how many findings the project has.
+    schema: str = request.state.active_schema
+    stream_stmt = (
+        base
+        # assignee + created_by aren't selectin by default — eager-load them so
+        # the display-name columns don't trigger an async lazy-load mid-stream.
         .options(selectinload(Finding.assignee), selectinload(Finding.created_by))
         .order_by(Finding.created_at.desc())
+        .execution_options(yield_per=_CSV_STREAM_BATCH)
     )
-    if status_filter is not None:
-        stmt = stmt.where(Finding.status == status_filter)
-    if severity is not None:
-        stmt = stmt.where(Finding.severity == severity)
-    if assignee_user_id is not None:
-        stmt = stmt.where(Finding.assignee_user_id == assignee_user_id)
-    findings = (await session.execute(stmt)).scalars().all()
 
-    buf = io.StringIO()
-    writer = csv.DictWriter(buf, fieldnames=list(_FINDINGS_CSV_COLUMNS), extrasaction="ignore")
-    writer.writeheader()
-    for finding in findings:
-        writer.writerow(_finding_csv_row(finding))
+    def _csv_line(row: dict[str, str]) -> bytes:
+        line = io.StringIO()
+        writer = csv.DictWriter(
+            line, fieldnames=list(_FINDINGS_CSV_COLUMNS), extrasaction="ignore"
+        )
+        writer.writerow(row)
+        return line.getvalue().encode("utf-8")
+
+    async def _iter_csv() -> AsyncIterator[bytes]:
+        header = io.StringIO()
+        csv.DictWriter(
+            header, fieldnames=list(_FINDINGS_CSV_COLUMNS), extrasaction="ignore"
+        ).writeheader()
+        yield header.getvalue().encode("utf-8")
+        async with open_tenant_session(schema, active_org_id, user.id) as stream_session:
+            result = await stream_session.stream(stream_stmt)
+            async for finding in result.scalars():
+                yield _csv_line(_finding_csv_row(finding))
 
     filename = f"findings-{project_id}.csv"
-    return Response(
-        content=buf.getvalue(),
+    return StreamingResponse(
+        _iter_csv(),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
@@ -725,23 +787,42 @@ async def update_finding(
             detail="ATTACHMENT_NOT_FOUND",
         ) from exc
 
-    if promoted or resolving:
-        # Finding notifications are project-scoped fan-outs (everyone in
-        # the org sees the row). Pick the locale from the project's
-        # jurisdiction default — there is no single recipient to key off.
-        locale = resolve_org_locale(project.country)
-        key = "notifications.finding_assigned" if promoted else "notifications.finding_resolved"
-        await create_notification(
+    if promoted:
+        # Assignment notification → the assignee alone (recipient_user_id), not an
+        # org-wide fan-out: the "assigned" wording only makes sense for the one
+        # person it was assigned to. With a single recipient we can key the locale
+        # off their own preference (resolve_user_locale) rather than the project
+        # default, so an English assignee on an NL project gets an English push.
+        # assignee_user_id is guaranteed non-None here (the promotion gate above
+        # rejects open-without-assignee); the fallback is purely defensive.
+        assignee = await session.get(User, finding.assignee_user_id)
+        locale = resolve_user_locale(assignee) if assignee else resolve_org_locale(project.country)
+        notification = await create_notification(
             session,
-            event_type=(
-                NotificationEventType.finding_created
-                if promoted
-                else NotificationEventType.finding_resolved
-            ),
-            title=t(f"{key}.title", locale),
-            body=t(f"{key}.body", locale, title=finding.title),
+            event_type=NotificationEventType.finding_created,
+            title=t("notifications.finding_assigned.title", locale),
+            body=t("notifications.finding_assigned.body", locale, title=finding.title),
+            project_id=project.id,
+            recipient_user_id=finding.assignee_user_id,
+        )
+        # Publish on write (M-en1) so the assignee's live notification stream gets
+        # the ping immediately, not only on a later refetch. The row carries a
+        # recipient_user_id, so the manager routes it to that user's sockets only.
+        # publish_notification is best-effort (it swallows Redis errors internally).
+        await publish_notification(notification, organization_id=active_org_id)
+    elif resolving:
+        # Resolution is relevant to the whole team (esp. the verifier) → org-wide
+        # fan-out, localized to the project jurisdiction (no single recipient).
+        locale = resolve_org_locale(project.country)
+        notification = await create_notification(
+            session,
+            event_type=NotificationEventType.finding_resolved,
+            title=t("notifications.finding_resolved.title", locale),
+            body=t("notifications.finding_resolved.body", locale, title=finding.title),
             project_id=project.id,
         )
+        # Publish on write (M-en1) — org-wide fan-out to every connected member.
+        await publish_notification(notification, organization_id=active_org_id)
 
     if resolving:
         audit_action = "finding.resolved"

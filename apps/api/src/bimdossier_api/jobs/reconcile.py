@@ -86,13 +86,26 @@ async def _sweep_org(schema: str, stuck_timeout_minutes: int) -> int:
         await session.execute(text(f'SET LOCAL search_path = "{schema}", public'))
 
         # --- Jobs ---
+        # `FOR UPDATE SKIP LOCKED` (M-con1): the worker's terminal callback
+        # locks the file then the job (`jobs_internal.py`) and re-checks terminal
+        # state before writing. The sweep walks job→file (the *opposite* lock
+        # order), so a plain `FOR UPDATE` could deadlock against a live callback.
+        # SKIP LOCKED instead skips any row a callback is currently holding —
+        # that job is being actively finished, so the sweep must not reap it —
+        # and, because the row is locked at SELECT time under READ COMMITTED, a
+        # job a callback already flipped to a terminal state no longer matches the
+        # non-terminal `WHERE` and is excluded. Net: the sweep can no longer
+        # clobber a just-completed extraction; a contended row is simply left for
+        # the next cycle (still stuck → caught then; finished → already terminal).
         stuck_jobs = list(
             (
                 await session.execute(
-                    select(Job).where(
+                    select(Job)
+                    .where(
                         Job.status.in_(_STUCK_JOB_STATES),
                         Job.created_at < cutoff,
                     )
+                    .with_for_update(skip_locked=True)
                 )
             )
             .scalars()
@@ -113,10 +126,15 @@ async def _sweep_org(schema: str, stuck_timeout_minutes: int) -> int:
             stuck_files = (
                 (
                     await session.execute(
-                        select(ProjectFile).where(
+                        select(ProjectFile)
+                        .where(
                             ProjectFile.id.in_(file_ids),
                             ProjectFile.extraction_status.in_(_STUCK_EXTRACTION_STATES),
                         )
+                        # Same SKIP LOCKED rationale as the job select above — a
+                        # file a live callback holds is being finished by it, so
+                        # skip rather than block (which would deadlock) or clobber.
+                        .with_for_update(skip_locked=True)
                     )
                 )
                 .scalars()
@@ -131,10 +149,14 @@ async def _sweep_org(schema: str, stuck_timeout_minutes: int) -> int:
         stuck_reports = list(
             (
                 await session.execute(
-                    select(Report).where(
+                    select(Report)
+                    .where(
                         Report.status.in_(_STUCK_REPORT_STATES),
                         Report.created_at < cutoff,
                     )
+                    # SKIP LOCKED for the same reason as the job select (M-con1):
+                    # don't clobber a report a live `reports/callback` is finishing.
+                    .with_for_update(skip_locked=True)
                 )
             )
             .scalars()

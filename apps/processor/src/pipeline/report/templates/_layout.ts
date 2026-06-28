@@ -13,6 +13,21 @@ import { escapeHtml } from './_helpers.js';
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
+// The logo is resolved from MinIO and base64-embedded by `embedTemplateLogo`
+// before render — it is always an inline `data:image/<type>;base64,<data>` URL,
+// never a remote URL. Restricting it to that shape closes a Puppeteer SSRF /
+// `networkidle0` fetch surface (an `http(s)`/`file:` src would be fetched at
+// render time) and the strict charset means the value can't break out of the
+// `src="..."` attribute. Anything else resolves to no logo.
+const DATA_IMAGE_URL = /^data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+$/i;
+
+function brandLogoTag(logoDataUrl: string | null | undefined): string {
+  if (!logoDataUrl || !DATA_IMAGE_URL.test(logoDataUrl)) return '';
+  // escapeHtml is a no-op on a valid base64 data URL (none of & < > " ' occur in
+  // it) but keeps the attribute injection-proof as defence in depth.
+  return `<img class="brand-logo" src="${escapeHtml(logoDataUrl)}" alt="" />`;
+}
+
 let cachedCss: string | null = null;
 
 function loadStyles(): string {
@@ -57,9 +72,7 @@ export function layout({ title, generatedAt, body, locale, branding }: LayoutInp
   }
   const accentStyle = vars.length > 0 ? `<style>:root{${vars.join('')}}</style>` : '';
 
-  const logo = branding?.logoDataUrl
-    ? `<img class="brand-logo" src="${branding.logoDataUrl}" alt="" />`
-    : '';
+  const logo = brandLogoTag(branding?.logoDataUrl);
   const headerText = branding?.headerText
     ? `<div class="brand-header">${escapeHtml(branding.headerText)}</div>`
     : '';

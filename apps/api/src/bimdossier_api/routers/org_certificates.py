@@ -21,6 +21,7 @@ from sqlalchemy.orm import selectinload
 from bimdossier_api import audit
 from bimdossier_api.access import is_org_admin
 from bimdossier_api.auth.fastapi_users import current_verified_user
+from bimdossier_api.auth.ratelimit import UPLOAD_INITIATE_LIMITER
 from bimdossier_api.config import Settings, get_settings
 from bimdossier_api.models.certificate import CertificateStatus, CertificateType
 from bimdossier_api.models.org_certificate import (
@@ -151,6 +152,7 @@ async def get_org_certificate_stats(
     "/initiate",
     response_model=OrgCertificateInitiateResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(UPLOAD_INITIATE_LIMITER)],
 )
 async def initiate_org_certificate_upload(
     payload: OrgCertificateInitiateRequest,

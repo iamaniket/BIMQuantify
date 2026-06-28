@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimdossier_api import audit
 from bimdossier_api.access import is_org_admin
 from bimdossier_api.auth.fastapi_users import current_verified_user
+from bimdossier_api.auth.ratelimit import UPLOAD_INITIATE_LIMITER
 from bimdossier_api.config import Settings, get_settings
 from bimdossier_api.i18n.request import attach_notice
 from bimdossier_api.models.org_template import OrgTemplate
@@ -57,6 +58,7 @@ from bimdossier_api.schemas.org_template import (
 )
 from bimdossier_api.storage import StorageBackend, get_attachments_bucket, get_storage
 from bimdossier_api.storage.minio import ObjectNotFoundError
+from bimdossier_api.storage.scoping import assert_key_scoped
 from bimdossier_api.tenancy import get_tenant_session, require_active_organization
 
 logger = logging.getLogger(__name__)
@@ -200,6 +202,7 @@ async def get_org_template_schema(
     "/assets/initiate",
     response_model=TemplateAssetInitiateResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(UPLOAD_INITIATE_LIMITER)],
 )
 async def initiate_template_asset_upload(
     payload: TemplateAssetInitiateRequest,
@@ -247,8 +250,11 @@ async def complete_template_asset_upload(
     await _require_org_admin(session, user, active_org_id)
 
     # Confine completion to this org's asset namespace (no cross-org probing).
-    if not payload.storage_key.startswith(f"report-templates/{active_org_id}/"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="INVALID_ASSET_KEY")
+    assert_key_scoped(
+        payload.storage_key,
+        f"report-templates/{active_org_id}/",
+        detail="INVALID_ASSET_KEY",
+    )
 
     bucket = get_attachments_bucket()
     try:

@@ -27,17 +27,48 @@ async function main(): Promise<void> {
   await server.listen({ host: '0.0.0.0', port: cfg.PORT });
   logger.info({ port: cfg.PORT }, 'processor service listening');
 
+  let shuttingDown = false;
   const shutdown = async (signal: string): Promise<void> => {
+    // A second signal (or SIGINT after SIGTERM) must not restart the teardown.
+    if (shuttingDown) return;
+    shuttingDown = true;
     logger.info({ signal }, 'shutting down');
-    try {
+
+    let exitCode = 0;
+    // Graceful drain: stop accepting new HTTP work first, then let the workers
+    // finish their in-flight jobs — worker.close() waits for the active job to
+    // complete — before tearing down the queue, browser, and mail transport.
+    const drain = (async (): Promise<void> => {
       await server.close();
       await actionWorker.close();
       await worker.close();
       await closeQueue();
       await closeBrowser();
       closeEmailTransport();
+    })();
+
+    // ...but never hang past the budget. Without an upper bound a wedged job
+    // would block teardown until the orchestrator's grace period elapses and it
+    // SIGKILLs us mid-write — the very outcome the drain is meant to avoid. On
+    // timeout, force a non-zero exit so the abandoned-job case is observable.
+    const timeout = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        logger.error(
+          { timeoutMs: cfg.JOB_SHUTDOWN_TIMEOUT_MS },
+          'graceful shutdown timed out; forcing exit',
+        );
+        exitCode = 1;
+        resolve();
+      }, cfg.JOB_SHUTDOWN_TIMEOUT_MS).unref();
+    });
+
+    try {
+      await Promise.race([drain, timeout]);
+    } catch (err) {
+      logger.error({ err }, 'error during shutdown');
+      exitCode = 1;
     } finally {
-      process.exit(0);
+      process.exit(exitCode);
     }
   };
 

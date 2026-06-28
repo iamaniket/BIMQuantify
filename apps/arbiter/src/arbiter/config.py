@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     s3_secret_access_key: str = Field(alias="S3_SECRET_ACCESS_KEY")
     s3_bucket_ifc: str = Field(default="ifc-files", alias="S3_BUCKET_IFC")
 
+    # Shared bearer between the API and this MCP server. No dev default (same
+    # fail-closed rationale as the S3 creds): a missing value fails at
+    # construction so an unauthenticated MCP transport can never ship by
+    # accident. Must match the API's ARBITER_SHARED_SECRET. See auth.py.
+    shared_secret: str = Field(alias="ARBITER_SHARED_SECRET")
+
     host: str = Field(default="0.0.0.0", alias="ARBITER_HOST")
     port: int = Field(default=8090, alias="ARBITER_PORT")
     rules_dir: str = Field(default="rules", alias="ARBITER_RULES_DIR")
@@ -49,10 +55,12 @@ def get_settings() -> Settings:
 # (e.g. a prod .env copied from .env.example without changing the credentials).
 DEV_S3_ACCESS_KEY_ID = "bimdossier"
 DEV_S3_SECRET_ACCESS_KEY = "bimdossier-secret"
+DEV_ARBITER_SHARED_SECRET = "dev-arbiter-secret-change-me"
 
 _DEV_VALUED_SECRETS: tuple[tuple[str, str, str], ...] = (
     ("s3_access_key_id", "S3_ACCESS_KEY_ID", DEV_S3_ACCESS_KEY_ID),
     ("s3_secret_access_key", "S3_SECRET_ACCESS_KEY", DEV_S3_SECRET_ACCESS_KEY),
+    ("shared_secret", "ARBITER_SHARED_SECRET", DEV_ARBITER_SHARED_SECRET),
 )
 
 

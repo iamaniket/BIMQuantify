@@ -74,6 +74,9 @@ _READ_WRITE_DELETE: frozenset[Action] = frozenset(
 )
 _READ_UPDATE: frozenset[Action] = frozenset({Action.read, Action.update})
 _READ_CREATE: frozenset[Action] = frozenset({Action.read, Action.create})
+_READ_CREATE_DELETE: frozenset[Action] = frozenset(
+    {Action.read, Action.create, Action.delete}
+)
 _NONE: frozenset[Action] = frozenset()
 
 
@@ -108,7 +111,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.completion_declaration: _READ,
                 Resource.audit_log: _READ,
                 Resource.compliance: _READ_CREATE,
-                Resource.report: _READ_CREATE,
+                Resource.report: _READ_CREATE_DELETE,
                 Resource.bcf_topic: _READ_WRITE_DELETE,
             }
         ),
@@ -130,7 +133,7 @@ _MATRIX: Mapping[ProjectRole, Mapping[Resource, frozenset[Action]]] = MappingPro
                 Resource.completion_declaration: _READ,
                 Resource.audit_log: _NONE,
                 Resource.compliance: _READ_CREATE,
-                Resource.report: _READ_CREATE,
+                Resource.report: _READ_CREATE_DELETE,
                 Resource.bcf_topic: _READ_WRITE_DELETE,
             }
         ),

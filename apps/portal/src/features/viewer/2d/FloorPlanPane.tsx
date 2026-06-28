@@ -245,6 +245,8 @@ export function FloorPlanPane({
     planAxisX,
     planAxisY,
     sheetTransform: sheetTransformForLink,
+    // The "you are here" camera marker only makes sense alongside the 3D pane.
+    linkCamera: viewMode === 'split',
     setActiveLevel,
   });
 
@@ -320,8 +322,13 @@ export function FloorPlanPane({
   // You-are-here: mirror the 3D camera pose onto the aligned PDF. The minimap
   // emits poses already projected through the sheet transform (PDF page coords);
   // seed once on calibrate since a static camera won't emit `minimap:pose`.
+  // Split only — pure 2D has no visible 3D view, so clear the marker and don't track.
   useEffect(() => {
     if (!docHandle || !handle || !pdfMode || !viewerReady) return undefined;
+    if (viewMode !== 'split') {
+      void docHandle.commands.execute('document.setCameraPose', null).catch(() => undefined);
+      return undefined;
+    }
     const push = (here: { x: number; y: number }, look: { x: number; y: number }): void => {
       void docHandle.commands
         .execute('document.setCameraPose', {
@@ -361,7 +368,7 @@ export function FloorPlanPane({
       offPose();
       offCal();
     };
-  }, [docHandle, handle, pdfMode, viewerReady]);
+  }, [docHandle, handle, pdfMode, viewerReady, viewMode]);
 
   // Right-click "Add finding" on the generated plan: convert the click to a 3D
   // world anchor at the active storey's floor elevation, then stash it so the

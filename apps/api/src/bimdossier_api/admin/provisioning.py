@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimdossier_api import audit
 from bimdossier_api._rls_sql import drop_tenant_schema, grant_schema_to_app_role
 from bimdossier_api.admin.storage import wipe_org_storage
+from bimdossier_api.background.locks import advisory_lock
 from bimdossier_api.config import get_settings
 from bimdossier_api.db import get_admin_engine, get_session_maker
 from bimdossier_api.models.organization import Organization, OrganizationStatus
@@ -349,6 +350,9 @@ PURGE_DRY_RUN = "dry_run"
 PURGE_SKIPPED_NOT_DELETED = "skipped_not_deleted"
 PURGE_SKIPPED_NOT_DUE = "skipped_not_due"
 PURGE_SKIPPED_ALREADY_PURGED = "skipped_already_purged"
+# Another purge of the same org is already running (the per-org advisory lock
+# below was held) — the caller bailed rather than double-wipe. (M-con5)
+PURGE_SKIPPED_IN_PROGRESS = "skipped_in_progress"
 
 
 @dataclass
@@ -383,6 +387,42 @@ async def purge_organization(
     org. Unless `now=True`, refuses an org still inside `retention_days` (defaults
     to `settings.org_retention_days`). `dry_run=True` reports the storage targets
     and changes nothing.
+
+    Single-flight per org (M-con5): a transaction-scoped advisory lock serializes
+    concurrent purges of the SAME org — the portal endpoint and the CLI both call
+    here, and two overlapping purges would each pass the "not yet purged" guard,
+    double-wipe storage, and write duplicate audit rows. The loser returns
+    `PURGE_SKIPPED_IN_PROGRESS`. The lock auto-releases when this block exits
+    (even on a crash — it dies with the holding connection), so there is no TTL.
+    """
+    async with advisory_lock(f"org_purge:{organization_id}") as held:
+        if not held:
+            return PurgeResult(organization_id, PURGE_SKIPPED_IN_PROGRESS)
+        return await _purge_organization_locked(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            now=now,
+            dry_run=dry_run,
+            retention_days=retention_days,
+            storage=storage,
+            request=request,
+        )
+
+
+async def _purge_organization_locked(
+    *,
+    organization_id: UUID,
+    actor_user_id: UUID | None,
+    now: bool,
+    dry_run: bool,
+    retention_days: int | None,
+    storage: StorageBackend | None,
+    request: Request | None,
+) -> PurgeResult:
+    """The actual teardown, run while holding the per-org purge lock (M-con5).
+
+    Split out of `purge_organization` so the lock acquisition stays a thin,
+    readable wrapper; all guards + ordering invariants live here unchanged.
     """
     settings = get_settings()
     session_maker = get_session_maker()

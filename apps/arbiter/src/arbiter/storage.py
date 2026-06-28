@@ -1,12 +1,45 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+import re
+from typing import TYPE_CHECKING, Any
 
 import aioboto3
 from botocore.config import Config as BotoConfig
 
-from arbiter.config import Settings
+if TYPE_CHECKING:
+    from arbiter.config import Settings
+
+# Extraction artifact keys are code-generated and deterministic: the API mints
+# the source key as ``projects/{uuid}/{kind}/{uuid4}.ifc`` (upload_service.py) and
+# the processor derives ``<source>.metadata.json`` / ``<source>.properties.json``
+# (apps/processor/src/storage/s3.ts). So a legitimate key only ever uses this
+# conservative charset — no spaces, no user filename, no traversal.
+_ARTIFACT_KEY_RE = re.compile(r"^[A-Za-z0-9._/-]+$")
+
+
+def validate_artifact_key(key: str, *, suffix: str) -> str:
+    """Validate a caller-supplied S3 artifact key before any read.
+
+    The Arbiter reads from one flat, multi-tenant IFC bucket, so a hostile or
+    malformed key (path traversal, an absolute path, or a different object type)
+    would cross tenants or read the wrong artifact. We reject anything that does
+    not look like a deterministic extraction artifact — cheaply, without coupling
+    to the exact bucket prefix. ``suffix`` pins the object type per parameter
+    (``.metadata.json`` vs ``.properties.json``). Raises ``ValueError`` so the
+    MCP tool surfaces a tool-error rather than reading the object.
+    """
+    if not key:
+        raise ValueError("artifact key must be a non-empty string")
+    if ".." in key or "\\" in key:
+        raise ValueError("artifact key must not contain '..' or backslashes")
+    if key.startswith("/") or "://" in key:
+        raise ValueError("artifact key must be a relative bucket key, not an absolute path or URL")
+    if not _ARTIFACT_KEY_RE.match(key):
+        raise ValueError("artifact key contains disallowed characters")
+    if not key.endswith(suffix):
+        raise ValueError(f"artifact key must end with '{suffix}'")
+    return key
 
 
 class ArtifactReader:

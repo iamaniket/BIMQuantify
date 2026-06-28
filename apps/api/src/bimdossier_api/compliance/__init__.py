@@ -8,17 +8,48 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
+from pydantic import ValidationError
 
-from bimdossier_api.config import Settings
+from bimdossier_api.schemas.compliance import ArbiterComplianceResult
+
+if TYPE_CHECKING:
+    from bimdossier_api.config import Settings
 
 logger = logging.getLogger(__name__)
 
 
 class ComplianceCheckError(Exception):
     pass
+
+
+def _validate_arbiter_result(parsed: Any) -> dict[str, Any]:
+    """Gate a parsed Arbiter payload against the expected compliance shape.
+
+    The caller persists this as a SUCCEEDED job result and reads it with
+    ``result.get(key, <empty default>)``; a payload missing the structural keys
+    would otherwise be stored as a clean 0-rule report — a silent false-pass.
+    We require those keys (``checked_at``/``total_rules``/``rules_summary``/…) and
+    raise ``ComplianceCheckError`` on any mismatch so the caller records a FAILED
+    job and returns 503. The original dict is returned unchanged, so Arbiter
+    extras (``file_id``, ``details[].reasoning``, …) are preserved.
+    """
+    if not isinstance(parsed, dict):
+        raise ComplianceCheckError(
+            f"Arbiter returned a non-object compliance result ({type(parsed).__name__})"
+        )
+    try:
+        ArbiterComplianceResult.model_validate(parsed)
+    except ValidationError as exc:
+        errors = exc.errors()
+        summary = f"{errors[0]['loc']}: {errors[0]['msg']}" if errors else "no detail"
+        raise ComplianceCheckError(
+            f"Arbiter returned a malformed compliance result: "
+            f"{len(errors)} validation error(s); {summary}"
+        ) from exc
+    return parsed
 
 
 def _parse_mcp_response(response: httpx.Response) -> dict[str, Any]:
@@ -76,6 +107,7 @@ async def run_compliance_check(
                 headers={
                     "Content-Type": "application/json",
                     "Accept": "application/json, text/event-stream",
+                    "Authorization": f"Bearer {settings.arbiter_shared_secret}",
                 },
             )
             response.raise_for_status()
@@ -110,9 +142,10 @@ async def run_compliance_check(
         if content is None:
             raise ComplianceCheckError("Arbiter result item had no text content")
         try:
-            return json.loads(content)  # type: ignore[no-any-return]
+            parsed = json.loads(content)
         except json.JSONDecodeError as exc:
             raise ComplianceCheckError(f"Arbiter returned non-JSON content: {exc}") from exc
+        return _validate_arbiter_result(parsed)
 
     if isinstance(result, dict) and "content" in result:
         content_items = result.get("content", [])
@@ -121,10 +154,11 @@ async def run_compliance_check(
             if text is None:
                 raise ComplianceCheckError("Arbiter content item had no text")
             try:
-                return json.loads(text)  # type: ignore[no-any-return]
+                parsed = json.loads(text)
             except json.JSONDecodeError as exc:
                 raise ComplianceCheckError(f"Arbiter returned non-JSON content: {exc}") from exc
+            return _validate_arbiter_result(parsed)
         if isinstance(result.get("structuredContent"), dict):
-            return result["structuredContent"]  # type: ignore[no-any-return]
+            return _validate_arbiter_result(result["structuredContent"])
 
-    return result  # type: ignore[no-any-return]
+    return _validate_arbiter_result(result)

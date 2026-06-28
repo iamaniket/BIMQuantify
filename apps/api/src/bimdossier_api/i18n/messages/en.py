@@ -82,6 +82,10 @@ en_messages: Catalog = {
         "{due_date} and has not been met.\n\nPlease take action as soon as possible.\n\n"
         "View the project: {project_url}\n"
     ),
+    # Email greeting — used by reminder_engine.py for the deadline reminder /
+    # missed emails. Localized to the project's jurisdiction rather than
+    # hardcoded English (L10).
+    "deadlines.email.greeting": "Hi {name},",
     # In-app notifications (single-locale: project's jurisdiction default).
     "deadlines.reminder_notification.title": "Deadline reminder: {deadline_label}",
     "deadlines.reminder_notification.body": (
@@ -99,12 +103,29 @@ en_messages: Catalog = {
     "notifications.finding_assigned.body": "{title}",
     "notifications.finding_resolved.title": "Finding resolved",
     "notifications.finding_resolved.body": "{title}",
+    "notifications.finding_mentioned.title": "You were mentioned on a finding",
+    "notifications.finding_mentioned.body": "{title}",
     "notifications.org_member_invited.title": "Team invitation sent",
     "notifications.org_member_invited.body": "{invitee_email} has been invited to {org_name}",
     "notifications.project_member_invited.title": "Project invitation sent",
     "notifications.project_member_invited.body": "{invitee_email} has been invited to {project_name}",
     "notifications.invitation_accepted.title": "Invitation accepted",
     "notifications.invitation_accepted.body": "{display_name} accepted the invitation to {org_name}",
+
+    # ---------- security: account lockout (H6) ----------
+    # Targeted at org admins + super-admins. No secrets — only the affected
+    # email and the failed-attempt count are interpolated.
+    "notifications.account_locked.title": "Account temporarily locked",
+    "notifications.account_locked.body": "The account {email} was locked after {attempts} failed sign-in attempts.",
+    "notifications.account_locked_email.subject": "Security alert: an account was locked",
+    "notifications.account_locked_email.body": (
+        "Hi {admin_name},\n\n"
+        "The account {email} was temporarily locked after {attempts} failed "
+        "sign-in attempts. No action is needed if the account holder simply "
+        "mistyped their password. If you did not expect this, review the "
+        "account's recent activity and consider resetting its password.\n\n"
+        "BimDossier"
+    ),
 
     # ---------- report-pipeline notifications ----------
     # Absorbed from routers/reports.py::_REPORT_TITLE_TEMPLATES and
@@ -161,6 +182,7 @@ en_messages: Catalog = {
     "errors.INTERNAL_ERROR": "Something went wrong on our end. Please try again later.",
     "errors.VALIDATION_ERROR": "Some of the submitted data is invalid. Please check your input and try again.",
     "errors.INVALID_SORT_KEY": "That column can't be sorted.",
+    "errors.INVALID_CURSOR": "That pagination cursor isn't valid.",
     "errors.IDEMPOTENCY_KEY_INVALID": "The Idempotency-Key header is malformed.",
     "errors.IDEMPOTENCY_KEY_CONFLICT": "This request is already being processed. Please try again in a moment.",
 
@@ -168,12 +190,15 @@ en_messages: Catalog = {
     "errors.UNAUTHORIZED": "You need to sign in to continue.",
     "errors.LOGIN_BAD_CREDENTIALS": "Invalid email or password.",
     "errors.LOGIN_USER_NOT_VERIFIED": "Please verify your email address before signing in.",
+    "errors.LOGIN_ACCOUNT_LOCKED": "Too many failed attempts. This account is temporarily locked. Try again later.",
     "errors.ACTIVATION_BAD_TOKEN": "This activation link is invalid or has expired.",
     "errors.ACTIVATION_INVALID_PASSWORD": "That password doesn't meet the requirements.",
     "errors.ACTIVATION_USER_INACTIVE": "This account is not active. Please contact an administrator.",
     "errors.REFRESH_TOKEN_REVOKED": "Your session has expired. Please sign in again.",
+    "errors.REFRESH_TOKEN_REUSED": "Your session was ended for security reasons. Please sign in again.",
     "errors.USER_NO_LONGER_ACTIVE": "This account is no longer active.",
     "errors.LOGOUT_REVOCATION_UNAVAILABLE": "We couldn't complete sign-out. Please try again.",
+    "errors.SWITCH_REVOCATION_UNAVAILABLE": "We couldn't complete the workspace switch. Please try again.",
     "errors.IMPERSONATION_REFRESH_FORBIDDEN": "Impersonation sessions can't be refreshed.",
 
     # --- authorization / roles ---
@@ -238,6 +263,7 @@ en_messages: Catalog = {
     "errors.ORG_STATUS_NOT_TRANSITIONABLE": "This workspace's status can't be changed that way.",
     "errors.ORG_NOT_DELETED": "This workspace hasn't been deleted, so it can't be permanently removed.",
     "errors.ORG_PURGE_NOT_DUE": "This workspace is still within its retention period and can't be permanently removed yet.",
+    "errors.ORG_PURGE_IN_PROGRESS": "This workspace is already being permanently removed. Please wait for that to finish.",
     "errors.NO_ACTIVE_ORGANIZATION": "Select a workspace before continuing.",
     "errors.SEAT_LIMIT_EXCEEDED": "Seat limit reached. Raise the limit or remove a member before inviting.",
     "errors.SEAT_LIMIT_BELOW_USAGE": "The new seat limit is below the number of seats currently in use.",
@@ -285,6 +311,8 @@ en_messages: Catalog = {
     "errors.MISSING_STORAGE_KEY": "This item has no stored file.",
     "errors.SIZE_MISMATCH": "The uploaded file size doesn't match what was expected.",
     "errors.INVALID_ASSET_KEY": "That asset reference is invalid.",
+    "errors.REQUEST_BODY_TOO_LARGE": "The request body is too large.",
+    "errors.FILE_VERSION_HAS_DESCENDANTS": "This version still has newer versions. Delete those first.",
 
     # --- extraction / viewer ---
     "errors.EXTRACTION_NOT_COMPLETE": "Document extraction hasn't finished yet.",
@@ -308,6 +336,8 @@ en_messages: Catalog = {
     "errors.FINDING_PROMOTE_REQUIRES_DEADLINE_ASSIGNEE": "Set a deadline and an assignee before promoting this finding.",
     "errors.FINDING_TEMPLATE_NOT_FOUND": "That finding template no longer exists.",
     "errors.FINDING_TEMPLATE_REQUIRED_FIELD": "Please fill in all required fields.",
+    "errors.FINDING_COMMENT_NOT_FOUND": "That comment could not be found.",
+    "errors.FINDING_COMMENT_NOT_AUTHOR": "You can only edit your own comments.",
 
     # --- custom finding fields ---
     "errors.CUSTOM_FIELD_REQUIRED": "Please fill in all required fields.",
@@ -378,7 +408,13 @@ en_messages: Catalog = {
     "errors.REPORT_NOT_FOUND": "That report could not be found.",
     "errors.REPORT_NOT_READY": "This report isn't ready yet.",
     "errors.REPORT_ALREADY_SIGNED": "This report has already been signed.",
+    "errors.REPORT_NOT_DELETABLE": "This report can't be deleted while it's still being generated.",
+    "errors.REPORT_SIGNED_LOCKED": "A signed report is locked and can't be deleted.",
     "errors.REPORT_TYPE_NOT_AVAILABLE": "That report type isn't available for this project.",
+    "errors.REPORT_TOO_MANY_FINDINGS": (
+        "This project has too many findings to fit in one report. Narrow the scope "
+        "(by assignee, status, or severity) and try again."
+    ),
     "errors.NOT_A_DECLARATION": "This report isn't a declaration.",
 
     # --- jobs ---
@@ -409,6 +445,7 @@ en_messages: Catalog = {
     "errors.BCF_COMMENT_NOT_FOUND": "That BCF comment could not be found.",
     "errors.BCF_VIEWPOINT_NOT_FOUND": "That BCF viewpoint could not be found.",
     "errors.INVALID_BCF_ARCHIVE": "That BCF file is invalid or corrupted.",
+    "errors.BCF_ARCHIVE_TOO_LARGE": "This BCF archive is too large.",
 
     # --- capture links ---
     "errors.CAPTURE_LINK_NOT_FOUND": "That capture link could not be found.",

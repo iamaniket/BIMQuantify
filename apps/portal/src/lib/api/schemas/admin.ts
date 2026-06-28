@@ -73,6 +73,8 @@ export const AdminUserReadSchema = z.object({
   is_verified: z.boolean(),
   is_superuser: z.boolean(),
   active_organization_id: z.union([z.string(), z.null()]).optional(),
+  // H6: the account is currently login-locked (computed server-side from Redis).
+  locked: z.boolean(),
 });
 
 export type AdminUserRead = z.infer<typeof AdminUserReadSchema>;
@@ -101,6 +103,8 @@ export const MemberReadSchema = z.object({
   can_remove: z.boolean(),
   can_demote: z.boolean(),
   can_suspend: z.boolean(),
+  // H6: the account is currently login-locked (computed server-side from Redis).
+  locked: z.boolean(),
 });
 
 export type MemberRead = z.infer<typeof MemberReadSchema>;

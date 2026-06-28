@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import {
   useForm,
   type Path,
@@ -109,13 +109,13 @@ export type FindingDetailFormApi = {
   members: ProjectMemberList;
   membersLoading: boolean;
   photoIds: string[];
-  setPhotoIds: (ids: string[]) => void;
+  setPhotoIds: Dispatch<SetStateAction<string[]>>;
   referenceAttachmentIds: string[];
   setReferenceAttachmentIds: (ids: string[]) => void;
   resolutionNote: string;
   setResolutionNote: (note: string) => void;
   resolutionEvidenceIds: string[];
-  setResolutionEvidenceIds: (ids: string[]) => void;
+  setResolutionEvidenceIds: Dispatch<SetStateAction<string[]>>;
   confirmDelete: boolean;
   setConfirmDelete: (value: boolean) => void;
   isPending: boolean;

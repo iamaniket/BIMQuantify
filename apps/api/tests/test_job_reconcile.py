@@ -242,6 +242,48 @@ async def test_stuck_report_force_failed(
     assert finished_at is not None
 
 
+async def test_sweep_skips_row_locked_by_inflight_callback(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """M-con1: a stuck job a worker callback currently holds (FOR UPDATE) is
+    SKIPPED by the sweep — never clobbered — so a just-completing extraction
+    can't be force-failed out from under its callback. Once the callback's
+    transaction releases the lock, the next sweep reaps it normally.
+    """
+    from bimdossier_api.jobs.reconcile import sweep_all_orgs
+
+    schema = _org_schema(org_user)
+    job_id = await _insert_job(
+        session_maker, schema, status=JobStatus.running, minutes_ago=120
+    )
+
+    # Hold a row lock on the stuck job, simulating an in-flight terminal callback.
+    async with session_maker() as holder:
+        await holder.execute(text(f'SET LOCAL search_path = "{schema}", public'))
+        locked = (
+            await holder.execute(
+                select(Job).where(Job.id == job_id).with_for_update()
+            )
+        ).scalar_one()
+        assert locked.status == JobStatus.running
+
+        # Sweep runs while the row is locked → SKIP LOCKED leaves it untouched.
+        await sweep_all_orgs(stuck_timeout_minutes=60)
+        status_during, _e, finished_during = await _job_state(session_maker, schema, job_id)
+        assert status_during == JobStatus.running  # not reaped
+        assert finished_during is None
+        # `holder` rolls back on block exit, releasing the lock.
+
+    # Lock released — the next sweep reaps the still-stuck job.
+    await sweep_all_orgs(stuck_timeout_minutes=60)
+    status_after, _e2, finished_after = await _job_state(session_maker, schema, job_id)
+    assert status_after == JobStatus.failed
+    assert finished_after is not None
+
+
 async def test_reconcile_is_idempotent(
     org_user: dict[str, str],
     email_transport: object,

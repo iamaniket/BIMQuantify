@@ -50,3 +50,15 @@ class User(SQLAlchemyBaseUserTableUUID, MasterBase):
         DateTime(timezone=True),
         nullable=True,
     )
+
+    # Set when the account is anonymized in place of a hard delete (M-db1).
+    # ~12 tenant tables FK `public.users` with ON DELETE RESTRICT (finding,
+    # project, certificate, …), so a real DELETE would 500 and destroy the
+    # audit trail. `UserManager.delete` instead scrubs PII, disables auth, and
+    # stamps this column — the row survives so every RESTRICT FK stays valid
+    # and authorship/audit history is preserved (GDPR erasure = anonymize).
+    # NULL means a live account.
+    anonymized_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )

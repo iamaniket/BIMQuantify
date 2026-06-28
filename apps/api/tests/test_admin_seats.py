@@ -172,6 +172,48 @@ async def test_assert_seat_available_raises_when_full(
     assert exc_info.value.detail == "SEAT_LIMIT_EXCEEDED"
 
 
+async def test_assert_within_seat_limit_passes_at_exactly_full(
+    session: AsyncSession,
+) -> None:
+    """Seat-neutral backstop: a full org (consumed == limit) is WITHIN the cap,
+    so accepting an already-counted pending invite must not raise. Strict `>`,
+    not `>=` — the latter would 409 every legitimate accept at a full org."""
+    from bimdossier_api.admin.seats import assert_within_seat_limit
+
+    org = await _make_org(session, name="ExactlyFull", seat_limit=2)
+    await _add_member(session, org=org, email="a@exact.example")
+    await _add_member(session, org=org, email="b@exact.example")
+    await assert_within_seat_limit(session, org)  # consumed 2 == limit → no raise
+
+
+async def test_assert_within_seat_limit_raises_when_over(
+    session: AsyncSession,
+) -> None:
+    from fastapi import HTTPException
+
+    from bimdossier_api.admin.seats import assert_within_seat_limit
+
+    org = await _make_org(session, name="OverFull", seat_limit=1)
+    await _add_member(session, org=org, email="a@over.example")
+    await _add_member(session, org=org, email="b@over.example")  # consumed 2 > 1
+
+    with pytest.raises(HTTPException) as exc_info:
+        await assert_within_seat_limit(session, org)
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail == "SEAT_LIMIT_EXCEEDED"
+
+
+async def test_assert_within_seat_limit_noop_when_unlimited(
+    session: AsyncSession,
+) -> None:
+    from bimdossier_api.admin.seats import assert_within_seat_limit
+
+    org = await _make_org(session, name="WithinUnlimited", seat_limit=None)
+    for i in range(5):
+        await _add_member(session, org=org, email=f"u{i}@withinunl.example")
+    await assert_within_seat_limit(session, org)  # NULL cap → no raise
+
+
 # ---------------------------------------------------------------------------
 # GET endpoints — seat_count_used in responses
 # ---------------------------------------------------------------------------
@@ -255,6 +297,42 @@ async def test_patch_seat_limit_below_usage_rejected(
     )
     assert patch.status_code == 409
     assert patch.json()["detail"] == "SEAT_LIMIT_BELOW_USAGE"
+
+
+async def test_patch_seat_limit_counts_pending_invites(
+    client: AsyncClient, session: AsyncSession, superadmin: dict[str, str]
+) -> None:
+    """The downgrade guard reconciles pending invites (audit finding #16): a
+    pending invite counts toward consumed seats, so the cap can't be lowered
+    below active + pending. A pending invite is not a free seat the admin can
+    shrink under — that is what lets the accept path stay a seat-neutral flip.
+    """
+    org = await _make_org(session, name="PendingShrinkCo", seat_limit=5)
+    await _add_member(session, org=org, email="active@pshrink.example")  # 1 active
+    await _add_member(
+        session,
+        org=org,
+        email="pending@pshrink.example",
+        status=OrganizationMemberStatus.pending,
+    )  # 1 pending → consumed 2
+
+    # Lowering to 1 would strand the pending invite — rejected.
+    patch = await client.patch(
+        f"/admin/organizations/{org.id}",
+        json={"seat_limit": 1},
+        headers=_auth(superadmin["token"]),
+    )
+    assert patch.status_code == 409, patch.text
+    assert patch.json()["detail"] == "SEAT_LIMIT_BELOW_USAGE"
+
+    # Lowering to exactly the consumed count (2, incl. the pending seat) is OK.
+    ok = await client.patch(
+        f"/admin/organizations/{org.id}",
+        json={"seat_limit": 2},
+        headers=_auth(superadmin["token"]),
+    )
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["seat_limit"] == 2
 
 
 async def test_patch_seat_limit_to_null_clears_cap(

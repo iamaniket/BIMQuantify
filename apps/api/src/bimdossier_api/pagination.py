@@ -14,11 +14,15 @@ stays deterministic.
 
 from __future__ import annotations
 
+import base64
+import binascii
 from dataclasses import dataclass
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 from fastapi import HTTPException, Query, Response, status
-from sqlalchemy import Select, func, select
+from sqlalchemy import ColumnElement, Select, func, literal, select, tuple_
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -93,3 +97,50 @@ def apply_sort(
     if tiebreaker is not None and tiebreaker is not column:
         columns.append(tiebreaker.asc())
     return stmt.order_by(None).order_by(*columns)
+
+
+# ---------------------------------------------------------------------------
+# Keyset (cursor) pagination — for append-only, reverse-chronological feeds
+# ---------------------------------------------------------------------------
+#
+# Offset paging re-scans and discards ``offset`` rows on every page, so deep
+# pages of a large table get progressively slower. Keyset paging instead carries
+# an opaque cursor (the last row's ``(created_at, id)``) and asks for "rows
+# strictly before it", which an index on ``(created_at, id)`` answers in constant
+# time regardless of depth. The trade-off — no jump-to-page and no total count —
+# is why this is reserved for "load more" feeds, NOT the sortable/counted
+# DataTables (those keep OFFSET; they're bounded in practice and need that UX).
+
+
+def encode_cursor(created_at: datetime, row_id: UUID) -> str:
+    """Opaque, URL-safe cursor for a ``(created_at, id)`` keyset position."""
+    raw = f"{created_at.isoformat()}|{row_id}"
+    return base64.urlsafe_b64encode(raw.encode("utf-8")).decode("ascii")
+
+
+def decode_cursor(cursor: str) -> tuple[datetime, UUID]:
+    """Reverse :func:`encode_cursor`. A malformed cursor is a clean 422
+    (``INVALID_CURSOR``) rather than a 500 — clients shouldn't be able to wedge
+    the endpoint with a hand-edited token."""
+    try:
+        raw = base64.urlsafe_b64decode(cursor.encode("ascii")).decode("utf-8")
+        ts_str, id_str = raw.split("|", 1)
+        return datetime.fromisoformat(ts_str), UUID(id_str)
+    except (ValueError, binascii.Error, UnicodeDecodeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="INVALID_CURSOR",
+        ) from exc
+
+
+def keyset_after(
+    ts_col: InstrumentedAttribute[Any],
+    id_col: InstrumentedAttribute[Any],
+    cursor: str,
+) -> ColumnElement[bool]:
+    """WHERE clause selecting rows strictly *after* ``cursor`` in descending
+    ``(ts_col, id_col)`` order — pair it with ``ORDER BY ts_col DESC, id_col
+    DESC``. The row-value comparison ``(ts, id) < (cur_ts, cur_id)`` is a single
+    index range scan, so page N costs the same as page 1."""
+    created_at, row_id = decode_cursor(cursor)
+    return tuple_(ts_col, id_col) < tuple_(literal(created_at), literal(row_id))

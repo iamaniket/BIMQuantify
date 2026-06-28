@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from redis.asyncio import Redis
-from sqlalchemy import ColumnElement, case, exists, func, select
+from sqlalchemy import ColumnElement, and_, case, exists, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +14,7 @@ from bimdossier_api.models.notification import (
     NotificationUserState,
 )
 from bimdossier_api.models.user import User
+from bimdossier_api.pagination import encode_cursor, keyset_after
 from bimdossier_api.schemas.notification import (
     NotificationListResponse,
     NotificationOut,
@@ -67,41 +68,78 @@ def _dismissed_expr(user_id: UUID) -> ColumnElement[bool]:
     )
 
 
+# Per-recipient targeting: a row is visible to this user when it is org-wide
+# (`recipient_user_id IS NULL`, the original behaviour for every existing row)
+# or addressed to them. ANDed into every read so a targeted @mention ping never
+# surfaces in another member's feed or counts.
+def _recipient_visible_expr(user_id: UUID) -> ColumnElement[bool]:
+    return (Notification.recipient_user_id.is_(None)) | (
+        Notification.recipient_user_id == user_id
+    )
+
+
 @router.get("", response_model=NotificationListResponse)
 async def list_notifications(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    cursor: str | None = Query(
+        default=None,
+        description="Keyset cursor from a prior response's next_cursor. When set, "
+        "pages by (created_at, id) and ignores offset — for 'load more' feeds.",
+    ),
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
 ) -> NotificationListResponse:
-    is_read_expr = _is_read_expr(user.id)
-    # Dismissed rows are hidden from this user's feed and counts (per-user,
-    # like read state) — never hard-deleted from the org-shared table.
-    dismissed_expr = _dismissed_expr(user.id)
+    visible_expr = _recipient_visible_expr(user.id)
 
-    count_stmt = select(func.count()).select_from(Notification).where(~dismissed_expr)
-    total = (await session.scalar(count_stmt)) or 0
-
-    unread_stmt = (
-        select(func.count())
-        .select_from(Notification)
-        .where(~is_read_expr, ~dismissed_expr)
+    # The per-user state row (read/dismiss) is LEFT-JOINed once — the composite
+    # PK (notification_id, user_id) means at most one match, so no fan-out —
+    # instead of three correlated EXISTS sweeps. Dismissed rows are hidden from
+    # this user's feed and counts (per-user, like read state), never hard-deleted
+    # from the org-shared table; with the outer join, `dismissed_at IS NULL`
+    # covers both "no state row" and "not dismissed".
+    state = NotificationUserState
+    join_cond = and_(
+        state.notification_id == Notification.id,
+        state.user_id == user.id,
     )
-    unread_count = (await session.scalar(unread_stmt)) or 0
+    base_filters = (state.dismissed_at.is_(None), visible_expr)
 
-    stmt = (
-        select(
-            Notification,
-            case((is_read_expr, True), else_=False).label("is_read"),
+    # Counts over the FULL filtered set in one aggregate query (not per-page) —
+    # so they stay exact whether the page is fetched by offset or keyset cursor.
+    counts_row = (
+        await session.execute(
+            select(
+                func.count().label("total"),
+                func.sum(case((state.read_at.is_(None), 1), else_=0)).label("unread"),
+            )
+            .select_from(Notification)
+            .outerjoin(state, join_cond)
+            .where(*base_filters)
         )
-        .where(~dismissed_expr)
-        .order_by(Notification.created_at.desc())
-        .limit(limit)
-        .offset(offset)
-    )
+    ).one()
+    total = int(counts_row.total or 0)
+    unread_count = int(counts_row.unread or 0)
 
-    rows = (await session.execute(stmt)).all()
+    # Page query. Keyset (cursor) skips the OFFSET scan so deep "load more" pages
+    # cost the same as the first; offset stays the default for compatibility.
+    is_read_col = case((state.read_at.is_not(None), True), else_=False).label("is_read")
+    page_stmt = (
+        select(Notification, is_read_col)
+        .outerjoin(state, join_cond)
+        .where(*base_filters)
+        .order_by(Notification.created_at.desc(), Notification.id.desc())
+        .limit(limit)
+    )
+    if cursor is not None:
+        page_stmt = page_stmt.where(
+            keyset_after(Notification.created_at, Notification.id, cursor)
+        )
+    else:
+        page_stmt = page_stmt.offset(offset)
+
+    rows = (await session.execute(page_stmt)).all()
     items = [
         NotificationOut(
             id=row.Notification.id,
@@ -117,6 +155,11 @@ async def list_notifications(
         )
         for row in rows
     ]
+    # A full page implies there may be more — hand back a cursor at the last row.
+    next_cursor: str | None = None
+    if len(rows) == limit and rows:
+        last = rows[-1].Notification
+        next_cursor = encode_cursor(last.created_at, last.id)
 
     return NotificationListResponse(
         items=items,
@@ -124,6 +167,7 @@ async def list_notifications(
         unread_count=unread_count,
         limit=limit,
         offset=offset,
+        next_cursor=next_cursor,
     )
 
 
@@ -145,7 +189,11 @@ async def unread_count(
     stmt = (
         select(func.count())
         .select_from(Notification)
-        .where(~_is_read_expr(user.id), ~_dismissed_expr(user.id))
+        .where(
+            ~_is_read_expr(user.id),
+            ~_dismissed_expr(user.id),
+            _recipient_visible_expr(user.id),
+        )
     )
     count = (await session.scalar(stmt)) or 0
 
@@ -166,7 +214,12 @@ async def mark_read(
     redis: Redis = Depends(get_redis_dep),
 ) -> None:
     notif = (
-        await session.execute(select(Notification).where(Notification.id == notification_id))
+        await session.execute(
+            select(Notification).where(
+                Notification.id == notification_id,
+                _recipient_visible_expr(user.id),
+            )
+        )
     ).scalar_one_or_none()
     if notif is None:
         raise HTTPException(
@@ -205,7 +258,12 @@ async def dismiss(
     notification row is untouched — teammates still see it.
     """
     notif = (
-        await session.execute(select(Notification).where(Notification.id == notification_id))
+        await session.execute(
+            select(Notification).where(
+                Notification.id == notification_id,
+                _recipient_visible_expr(user.id),
+            )
+        )
     ).scalar_one_or_none()
     if notif is None:
         raise HTTPException(
@@ -235,7 +293,9 @@ async def mark_all_read(
     redis: Redis = Depends(get_redis_dep),
 ) -> None:
     unread_stmt = select(Notification.id).where(
-        ~_is_read_expr(user.id), ~_dismissed_expr(user.id)
+        ~_is_read_expr(user.id),
+        ~_dismissed_expr(user.id),
+        _recipient_visible_expr(user.id),
     )
     unread_ids = list((await session.execute(unread_stmt)).scalars().all())
     if unread_ids:
@@ -272,7 +332,14 @@ async def clear(
     affecting teammates.
     """
     visible_ids = list(
-        (await session.execute(select(Notification.id).where(~_dismissed_expr(user.id))))
+        (
+            await session.execute(
+                select(Notification.id).where(
+                    ~_dismissed_expr(user.id),
+                    _recipient_visible_expr(user.id),
+                )
+            )
+        )
         .scalars()
         .all()
     )

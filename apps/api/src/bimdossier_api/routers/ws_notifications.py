@@ -1,4 +1,7 @@
+import asyncio
+import contextlib
 import logging
+from collections.abc import Awaitable, Callable
 from uuid import UUID
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
@@ -13,6 +16,7 @@ from bimdossier_api.auth.tokens import (
 )
 from bimdossier_api.cache import get_redis
 from bimdossier_api.cache.blocklist import is_revoked
+from bimdossier_api.config import get_settings
 from bimdossier_api.db import get_session_maker
 from bimdossier_api.models.organization_member import (
     OrganizationMember,
@@ -82,24 +86,173 @@ async def authenticate_ws_token(
     return user, org_id
 
 
+# Application close codes. 4001 (RFC 6455 private range) = the connection is no
+# longer authorized — the client should NOT silently retry with the same token.
+# 1000 (normal) = a benign lifetime-cap recycle; the client reconnects, picking up
+# a refreshed access token if one was rotated meanwhile.
+WS_CLOSE_AUTH_FAILED = 4001
+WS_CLOSE_SESSION_REFRESH = 1000
+# 4029 (private range) = this (org, user) is already at the per-user connection
+# cap (M-en3). The client should back off, not hammer-reconnect — the cap won't
+# clear until one of its existing sockets closes.
+WS_CLOSE_TOO_MANY = 4029
+
+
+class _OneShotCloser:
+    """Funnel every socket close through a single close frame.
+
+    Starlette raises ``RuntimeError`` if a WebSocket is closed twice, and both the
+    revalidation loop (auth rejection / lifetime cap) and ``manager.stop()`` (app
+    shutdown) can race to close the same socket. The first call wins; later calls
+    are no-ops, and a close against an already-disconnected peer is suppressed.
+    """
+
+    def __init__(self, ws: WebSocket) -> None:
+        self._ws = ws
+        self._closed = False
+
+    async def __call__(self, code: int, reason: str) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        with contextlib.suppress(RuntimeError, WebSocketDisconnect, OSError):
+            await self._ws.close(code=code, reason=reason)
+
+
+async def _revalidation_loop(
+    token: str,
+    *,
+    close: Callable[[int, str], Awaitable[None]],
+    interval_seconds: float,
+    max_lifetime_seconds: float,
+) -> None:
+    """Re-run the handshake auth gates on an already-open socket, on an interval.
+
+    The handshake authenticates only once; without this loop a socket keeps
+    streaming the org feed after a logout-everywhere / password change / account
+    deactivation / org-deprovision until the access token's natural expiry (H5).
+    Each cycle opens a SHORT-LIVED session (never held across the sleep — that
+    would pin a pool connection) and reuses ``authenticate_ws_token``, so the gate
+    set stays identical to the handshake and the HTTP path. A hard lifetime cap
+    closes the socket with a benign ``session_refresh`` so the client reconnects
+    with a fresh token before the current one can expire mid-stream.
+    """
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + max_lifetime_seconds  # monotonic; immune to clock jumps
+    while True:
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            await close(WS_CLOSE_SESSION_REFRESH, "session_refresh")
+            return
+        await asyncio.sleep(min(interval_seconds, remaining))
+        if loop.time() >= deadline:
+            await close(WS_CLOSE_SESSION_REFRESH, "session_refresh")
+            return
+        try:
+            async with get_session_maker()() as session:
+                result = await authenticate_ws_token(token, get_redis(), session)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            # Transient DB/Redis blip: fail open for this one cycle (the hard
+            # lifetime cap still bounds the worst case). Mirrors the sweepers and
+            # the pub/sub listener.
+            logger.exception("ws revalidation cycle failed; retrying next interval")
+            continue
+        if isinstance(result, str):
+            await close(WS_CLOSE_AUTH_FAILED, result)
+            return
+
+
+def _resolve_ws_token(
+    subprotocols: list[str], query_token: str | None
+) -> tuple[str | None, str | None]:
+    """Resolve the access token and the subprotocol to echo on accept.
+
+    Prefer the ``Sec-WebSocket-Protocol: bearer, <token>`` handshake — the
+    browser's only way to attach a credential WITHOUT putting it in the URL
+    (M-ws) — over the legacy ``?token=`` query param, which proxies, the uvicorn
+    access log, and browser history record in the clear. Returns
+    ``(token, accept_subprotocol)``; ``accept_subprotocol`` is ``"bearer"`` only
+    when the token arrived that way, so the server echoes ``bearer`` and never
+    reflects the token itself back in the response header.
+    """
+    if len(subprotocols) >= 2 and subprotocols[0] == "bearer":
+        return subprotocols[1], "bearer"
+    if query_token:
+        logger.warning(
+            "ws/notifications authenticated via the deprecated ?token= query param "
+            "(logged by proxies); migrate the client to the 'bearer' "
+            "Sec-WebSocket-Protocol handshake"
+        )
+        return query_token, None
+    return None, None
+
+
 @router.websocket("/ws/notifications")
-async def ws_notifications(ws: WebSocket, token: str = Query(...)) -> None:
+async def ws_notifications(ws: WebSocket, token: str | None = Query(default=None)) -> None:
+    auth_token, accept_subprotocol = _resolve_ws_token(ws.scope.get("subprotocols", []), token)
+    if auth_token is None:
+        # No credential on either channel — reject the handshake.
+        await ws.close(code=WS_CLOSE_AUTH_FAILED, reason="missing_token")
+        return
+
     redis = get_redis()
     async with get_session_maker()() as session:
-        result = await authenticate_ws_token(token, redis, session)
+        result = await authenticate_ws_token(auth_token, redis, session)
 
     if isinstance(result, str):
-        await ws.close(code=4001, reason=result)
+        await ws.close(code=WS_CLOSE_AUTH_FAILED, reason=result)
         return
-    _user, org_id = result
+    user, org_id = result
 
+    settings = get_settings()
     manager = get_manager()
-    await manager.connect(ws, org_id)
+    # Pass the authenticated user id so the manager can scope targeted
+    # notifications to this user's sockets only (L9) and enforce the per-(org,user)
+    # connection cap (M-en3). A False return = over the cap → refuse the handshake
+    # without accepting, so an in-org actor can't open unbounded sockets. The
+    # negotiated subprotocol (echoed only for the bearer handshake) is set on
+    # accept so the browser's WebSocket resolves rather than failing (M-ws).
+    accepted = await manager.connect(
+        ws,
+        org_id,
+        user.id,
+        max_per_user=settings.ws_max_connections_per_user,
+        subprotocol=accept_subprotocol,
+    )
+    if not accepted:
+        await ws.close(code=WS_CLOSE_TOO_MANY, reason="too_many_connections")
+        return
 
+    safe_close = _OneShotCloser(ws)
+
+    async def _drain() -> None:
+        # The only reliable disconnect detector for an idle org: a pub/sub push
+        # only notices a dead socket when there is a message to send.
+        try:
+            while True:
+                await ws.receive_text()
+        except WebSocketDisconnect:
+            return
+
+    drain_task = asyncio.create_task(_drain(), name="ws-notif-drain")
+    revalidate_task = asyncio.create_task(
+        _revalidation_loop(
+            auth_token,
+            close=safe_close,
+            interval_seconds=settings.ws_revalidate_interval_seconds,
+            max_lifetime_seconds=settings.ws_max_lifetime_seconds,
+        ),
+        name="ws-notif-revalidate",
+    )
     try:
-        while True:
-            await ws.receive_text()
-    except WebSocketDisconnect:
-        pass
+        await asyncio.wait({drain_task, revalidate_task}, return_when=asyncio.FIRST_COMPLETED)
     finally:
+        # Whichever finished first, tear down the other. Cancelling an
+        # already-done task is a no-op; gather(return_exceptions) retrieves every
+        # result/exception so none is left "never retrieved".
+        drain_task.cancel()
+        revalidate_task.cancel()
+        await asyncio.gather(drain_task, revalidate_task, return_exceptions=True)
         manager.disconnect(ws, org_id)

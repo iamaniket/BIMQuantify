@@ -65,6 +65,12 @@ OVERVIEW_PREVIEW_LIMIT = 8
 # Mirrors the portal's `EXPIRY_WARNING_DAYS` (features/certificates/expiry.ts).
 _CERT_EXPIRY_WARNING_DAYS = 30
 
+# The overview's weekly activity sparkline only renders a fixed recent window, so
+# bound the aggregate to it rather than GROUP BY-ing the project's entire
+# audit_log history (which grows unbounded with every action). Backed by
+# `ix_audit_project_time` on (project_id, created_at).
+_ACTIVITY_TIMELINE_DAYS = 90
+
 _AMS = ZoneInfo("Europe/Amsterdam")
 
 
@@ -273,8 +279,13 @@ async def get_project_overview(
         for m, u in member_rows
     ]
 
-    # --- Activity-over-time (weekly buckets) --------------------------------
-    activity_timeline = await compute_activity_timeline(session, project.id, bucket="week")
+    # --- Activity-over-time (weekly buckets, recent window only) -------------
+    activity_timeline = await compute_activity_timeline(
+        session,
+        project.id,
+        bucket="week",
+        since=datetime.now(UTC) - timedelta(days=_ACTIVITY_TIMELINE_DAYS),
+    )
 
     # --- Header stats -------------------------------------------------------
     delivery_days: int | None = None

@@ -62,7 +62,11 @@ export function useNotificationSocket(accessToken: string | null): void {
       }
       const httpUrl = env.NEXT_PUBLIC_API_URL;
       const wsUrl = httpUrl.replace(/^http/, 'ws');
-      const ws = new WebSocket(`${wsUrl}/ws/notifications?token=${token}`);
+      // Pass the access token via the Sec-WebSocket-Protocol handshake
+      // (['bearer', <token>]), NOT the URL query string — a token in the URL is
+      // logged by proxies, the uvicorn access log, and browser history (M-ws).
+      // The server reads the token off the subprotocol and echoes 'bearer'.
+      const ws = new WebSocket(`${wsUrl}/ws/notifications`, ['bearer', token]);
       wsRef.current = ws;
 
       ws.addEventListener('open', () => {

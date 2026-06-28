@@ -619,6 +619,11 @@ export function cameraFlyPlugin(
         title: 'Fly slower',
         defaultShortcut: '-',
       });
+      // Synchronous read of the live move speed, so a freshly-opened speed
+      // readout can seed itself (the `fly:speed` event only fires on change).
+      ctx.commands.register('cameraFly.getSpeed', () => moveFraction, {
+        title: 'Get current fly speed',
+      });
 
       // One command per direction, bound to a default key. The keyboard-shortcuts
       // plugin dispatches these on keydown (= press); release happens on keyup

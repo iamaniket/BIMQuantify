@@ -6,7 +6,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
 from fastapi_limiter import FastAPILimiter
 from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -21,15 +20,29 @@ from bimdossier_api.config import (
     log_secret_sources,
     validate_production_config,
 )
+from bimdossier_api.data_lifecycle import (
+    CaptureLinkExpirySweeper,
+    PendingUploadSweeper,
+)
 from bimdossier_api.db import get_engine
 from bimdossier_api.deadlines.reminder_engine import DeadlineReminderSweeper
 from bimdossier_api.i18n.http_errors import (
+    generic_exception_handler,
     http_exception_handler,
     validation_exception_handler,
 )
 from bimdossier_api.jobs.dispatcher import close_http_client
 from bimdossier_api.jobs.reconcile import JobReconcileSweeper
-from bimdossier_api.migrations_check import check_pending_migrations
+from bimdossier_api.logging_config import configure_logging
+from bimdossier_api.middleware import (
+    RequestBodySizeLimitMiddleware,
+    RequestIdMiddleware,
+    SelectiveGZipMiddleware,
+)
+from bimdossier_api.migrations_check import (
+    check_pending_migrations,
+    check_tenant_schema_drift,
+)
 from bimdossier_api.notifications.manager import get_manager
 from bimdossier_api.observability import init_sentry
 from bimdossier_api.routers.access_requests import router as access_requests_router
@@ -67,6 +80,7 @@ from bimdossier_api.routers.deadlines import router as deadlines_router
 from bimdossier_api.routers.documents import router as documents_router
 from bimdossier_api.routers.element_inspections import router as element_inspections_router
 from bimdossier_api.routers.finding import router as finding_router
+from bimdossier_api.routers.finding_comment import router as finding_comment_router
 from bimdossier_api.routers.health import router as health_router
 from bimdossier_api.routers.inspection import router as inspection_router
 from bimdossier_api.routers.jobs import router as jobs_router
@@ -102,6 +116,13 @@ from bimdossier_api.routers.reports import router as reports_router
 from bimdossier_api.routers.risks import router as risks_router
 from bimdossier_api.routers.storeys import router as storeys_router
 from bimdossier_api.routers.ws_notifications import router as ws_notifications_router
+from bimdossier_api.security_headers import (
+    API_CSP,
+    DOCS_CSP,
+    DOCS_PATH_PREFIXES,
+    STATIC_SECURITY_HEADERS,
+    hsts_value,
+)
 from bimdossier_api.storage import get_attachments_bucket, get_storage
 
 logger = logging.getLogger(__name__)
@@ -176,16 +197,26 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     except Exception as exc:
         _startup_fatal("database migration check failed", [str(exc)])
 
+    # --- Tenant-schema drift probe (WARN-only, never blocks boot) ---
+    # The master check above covers only the public chain. This surfaces the
+    # separate per-tenant chain so a deploy that ran `alembic upgrade head` but
+    # forgot `migrate_all` is loud in the logs instead of 500ing existing orgs.
+    try:
+        await check_tenant_schema_drift(engine)
+    except Exception:
+        logger.warning("Could not verify tenant-schema migration state", exc_info=True)
+
     # --- S3/MinIO storage ---
+    # Buckets are a hard dependency — uploads, viewer artifacts, reports, and BCF
+    # snapshots all live in object storage. Fail the boot if they're unreachable
+    # (same posture as Redis/DB/migrations) rather than booting "healthy" and
+    # 500ing on the first request that touches storage.
     try:
         storage = get_storage()
         await storage.ensure_bucket()
         await storage.ensure_bucket(bucket=get_attachments_bucket())
-    except Exception:
-        logger.warning(
-            "MinIO/S3 ensure_bucket failed; uploads will fail until storage is reachable",
-            exc_info=True,
-        )
+    except Exception as exc:
+        _startup_fatal("object storage (S3/MinIO) is unreachable", [str(exc)])
 
     # --- Background sweepers ---
     invitation_sweeper = InvitationExpirySweeper(settings.invitation_sweep_interval_minutes)
@@ -197,6 +228,17 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         settings.job_stuck_timeout_minutes,
     )
     job_reconcile_sweeper.start()
+    # Data-lifecycle reapers (L11): abandoned pending uploads + expired/revoked
+    # unused capture links.
+    pending_upload_sweeper = PendingUploadSweeper(
+        settings.pending_upload_sweep_interval_minutes,
+        settings.pending_upload_timeout_minutes,
+    )
+    pending_upload_sweeper.start()
+    capture_link_sweeper = CaptureLinkExpirySweeper(
+        settings.capture_link_sweep_interval_minutes,
+    )
+    capture_link_sweeper.start()
     logger.info("Startup complete — all services connected")
     try:
         yield
@@ -205,6 +247,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         if hasattr(_storage, "close"):
             await _storage.close()
         await close_http_client()
+        await capture_link_sweeper.stop()
+        await pending_upload_sweeper.stop()
         await job_reconcile_sweeper.stop()
         await deadline_sweeper.stop()
         await invitation_sweeper.stop()
@@ -237,14 +281,63 @@ async def _impersonator_middleware(
     return await call_next(request)
 
 
+async def _security_headers_middleware(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    """Attach security-response headers to every response (finding B5).
+
+    Registered LAST in ``create_app`` so it runs OUTERMOST: it sees the final
+    response after GZip compression, CORS, and the localized exception handlers,
+    so the headers land on error responses (4xx/5xx) too. HSTS is gated on the
+    request scheme being https (set from ``X-Forwarded-Proto`` via uvicorn
+    ``--proxy-headers``) so local http dev and the ASGITransport test client
+    (base_url ``http://test``) never receive it.
+    """
+    response = await call_next(request)
+
+    # CSP: strict for the JSON API, relaxed for the interactive docs so the
+    # Swagger-UI / ReDoc CDN bundles keep rendering.
+    if request.url.path.startswith(DOCS_PATH_PREFIXES):
+        response.headers["Content-Security-Policy"] = DOCS_CSP
+    else:
+        response.headers["Content-Security-Policy"] = API_CSP
+
+    for name, value in STATIC_SECURITY_HEADERS.items():
+        response.headers[name] = value
+
+    # Only emit HSTS over https — never instruct an http dev client to force TLS.
+    if request.url.scheme == "https":
+        settings = get_settings()  # lru_cache'd; cheap
+        response.headers["Strict-Transport-Security"] = hsts_value(settings.hsts_max_age_seconds)
+
+    return response
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
+    # Structured logging first so startup log lines (and everything after) use
+    # the configured format instead of uvicorn's inherited plaintext (M-obs1).
+    configure_logging(settings)
     init_sentry()
     app = FastAPI(title="BimDossier API", version="0.0.1", lifespan=lifespan)
 
     app.middleware("http")(_impersonator_middleware)
 
-    app.add_middleware(GZipMiddleware, minimum_size=500, compresslevel=5)
+    # GZip everything EXCEPT auth responses — those return tokens and reflect
+    # caller input in their error envelopes, so compressing them is a BREACH
+    # oracle (L7). SelectiveGZipMiddleware takes the same slot/kwargs as the bare
+    # GZipMiddleware, so the middleware ordering below is unchanged.
+    app.add_middleware(SelectiveGZipMiddleware, minimum_size=500, compresslevel=5)
+
+    # Reject oversized request bodies before any downstream layer buffers them
+    # (B3 DoS backstop). Registered after GZip / before CORS so the resulting
+    # outer→inner order is CORS → body-limit → GZip → impersonator → app: CORS
+    # stays outermost (the 413 still gets its Access-Control headers so browsers
+    # can read it), while body-limit runs before the first body-aware layer.
+    app.add_middleware(
+        RequestBodySizeLimitMiddleware,
+        max_bytes=settings.request_body_max_bytes,
+    )
 
     # CORS is restricted to the configured allowlist (CORS_ORIGINS, optional
     # CORS_ORIGIN_REGEX). A wildcard here together with allow_credentials=True
@@ -262,8 +355,21 @@ def create_app() -> FastAPI:
             "X-Total-Count",
             "X-Message-Code",
             "X-Message",
+            "X-Request-Id",
         ],
     )
+
+    # Registered LAST so it runs OUTERMOST: security headers are stamped on the
+    # final response after GZip/CORS and after the exception handlers render, so
+    # they appear on every response (including 4xx/5xx and CORS preflight).
+    app.middleware("http")(_security_headers_middleware)
+
+    # Request-id correlation runs OUTERMOST of all (registered last): it binds
+    # the request-scoped id for the logging filter / audit row / Sentry tag
+    # before any inner layer runs, and stamps the X-Request-Id response header on
+    # every response — including CORS preflight, the body-limit 413, and error
+    # envelopes (M-obs1). The id is exposed cross-origin via CORS expose_headers.
+    app.add_middleware(RequestIdMiddleware)
 
     # Localize error responses: turn HTTPException codes (and 422 validation
     # errors) into a { code, message<localized>, detail } envelope. Registered
@@ -271,6 +377,11 @@ def create_app() -> FastAPI:
     # unmatched-route 404s) flow through. `detail` is preserved unchanged.
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    # Catch-all: any non-HTTPException error becomes the same localized envelope
+    # (a 500 with code INTERNAL_ERROR) instead of Starlette's bare text response.
+    # Starlette routes the base-Exception handler to ServerErrorMiddleware, which
+    # re-raises after responding, so Sentry/server logging still capture it.
+    app.add_exception_handler(Exception, generic_exception_handler)
 
     app.include_router(health_router)
     app.include_router(public_router)
@@ -306,6 +417,7 @@ def create_app() -> FastAPI:
     app.include_router(risks_router)
     app.include_router(bcf_router)
     app.include_router(finding_router)
+    app.include_router(finding_comment_router)
     app.include_router(org_templates_router)
     app.include_router(borgingsplan_plan_router)
     app.include_router(borgingsplan_moment_router)

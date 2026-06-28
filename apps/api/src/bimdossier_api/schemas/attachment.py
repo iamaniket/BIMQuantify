@@ -12,6 +12,10 @@ from bimdossier_api.models.project_file import (
     ProjectFileRole,
     ProjectFileStatus,
 )
+from bimdossier_api.schemas._limits import (
+    BoundedAnnotationState,
+    BoundedDeviceMetadata,
+)
 
 _HEX_SHA256 = r"^[a-f0-9]{64}$"
 
@@ -26,9 +30,9 @@ class GeolocationData(BaseModel):
 
 
 class ExifData(BaseModel):
-    make: str | None = None
-    model: str | None = None
-    date_time_original: str | None = None
+    make: str | None = Field(default=None, max_length=255)
+    model: str | None = Field(default=None, max_length=255)
+    date_time_original: str | None = Field(default=None, max_length=64)
     gps_latitude: float | None = None
     gps_longitude: float | None = None
     orientation: int | None = None
@@ -37,15 +41,16 @@ class ExifData(BaseModel):
     focal_length: float | None = None
     f_number: float | None = None
     iso: int | None = None
-    exposure_time: str | None = None
+    exposure_time: str | None = Field(default=None, max_length=64)
     flash: bool | None = None
-    software: str | None = None
+    software: str | None = Field(default=None, max_length=255)
 
 
 class CaptureMetadataInput(BaseModel):
-    captured_at: str | None = None
+    captured_at: str | None = Field(default=None, max_length=64)
     capture_method: str | None = Field(default=None, pattern=r"^(camera|file_picker|drag_drop)$")
-    device: dict[str, Any] | None = None
+    # Unauthenticated capture surface — bound the free-form client fingerprint.
+    device: BoundedDeviceMetadata | None = None
     geolocation: GeolocationData | None = None
     exif: ExifData | None = None
 
@@ -103,7 +108,7 @@ class AttachmentUpdateRequest(BaseModel):
     dossier_slot: DossierSlot | None = None
     # Vector annotation document (Annotation2D[] + schema/source-version). Stored
     # verbatim; `exclude_unset` in the router means omitting it leaves it untouched.
-    annotation_state: dict[str, Any] | None = None
+    annotation_state: BoundedAnnotationState | None = None
 
 
 class AttachmentCallbackRequest(BaseModel):

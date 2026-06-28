@@ -1,5 +1,6 @@
 import { getConfig } from '../config.js';
 import { logger } from '../log.js';
+import { callbackBaseUrl } from './callbackContext.js';
 
 export type AttachmentCallbackStatus = 'running' | 'succeeded' | 'failed';
 
@@ -21,7 +22,7 @@ export type AttachmentCallbackPayload = {
 
 export async function postAttachmentCallback(payload: AttachmentCallbackPayload): Promise<void> {
   const cfg = getConfig();
-  const url = `${cfg.API_BASE_URL.replace(/\/$/, '')}/internal/jobs/attachments/callback`;
+  const url = `${callbackBaseUrl()}/internal/jobs/attachments/callback`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {

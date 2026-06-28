@@ -177,6 +177,54 @@ async def test_retry_dispatch_failure_marks_new_job_failed(
     assert body["retry_of"] == failed["id"]
 
 
+async def test_concurrent_retry_creates_single_job(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    job_dispatch_calls: list[dict[str, object]],
+) -> None:
+    """M-con3: two retries of the same failed job race. The source job row is
+    locked and marked non-retriable by the winner, so exactly one creates a new
+    job (200) and the other is rejected (409 JOB_NOT_RETRIABLE) — never a
+    duplicate extraction job.
+    """
+    import asyncio
+
+    async def _boom(*_args: object, **_kwargs: object) -> None:
+        raise DispatchJobError("connection refused")
+
+    set_job_dispatcher(_boom)
+    client, fake = fake_storage_client
+    project_id, _document_id, _file_id = await _ready_file(client, fake, org_user, name="rc.ifc")
+    failed = await _latest_job(client, org_user["access_token"], project_id)
+    assert failed["status"] == "failed"
+    assert failed["retriable"] is True
+
+    # Recording dispatcher so the winning retry dispatches cleanly (lands pending).
+    job_dispatch_calls.clear()
+
+    async def _record(job, _settings: object, organization_id: object) -> None:
+        job_dispatch_calls.append({"job_id": str(job.id)})
+
+    set_job_dispatcher(_record)
+
+    async def _retry() -> object:
+        return await client.post(
+            f"/jobs/{failed['id']}/retry",
+            headers=_auth(org_user["access_token"]),
+        )
+
+    r1, r2 = await asyncio.gather(_retry(), _retry())
+
+    statuses = sorted([r1.status_code, r2.status_code])
+    assert statuses == [200, 409], (r1.text, r2.text)
+    loser = r1 if r1.status_code == 409 else r2
+    assert loser.json()["detail"] == "JOB_NOT_RETRIABLE"
+
+    # Exactly one new job was dispatched — the duplicate was prevented.
+    assert len(job_dispatch_calls) == 1
+
+
 async def test_retry_job_rejected_when_project_archived(
     org_user: dict[str, str],
     email_transport: object,

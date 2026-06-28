@@ -1,5 +1,6 @@
 import { getConfig } from '../config.js';
 import { logger } from '../log.js';
+import { callbackBaseUrl } from './callbackContext.js';
 
 export type PagesCallbackStatus = 'running' | 'succeeded' | 'failed';
 
@@ -29,7 +30,7 @@ export type PagesCallbackPayload = {
 
 export async function postPagesCallback(payload: PagesCallbackPayload): Promise<void> {
   const cfg = getConfig();
-  const url = `${cfg.API_BASE_URL.replace(/\/$/, '')}/internal/jobs/pages/callback`;
+  const url = `${callbackBaseUrl()}/internal/jobs/pages/callback`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {

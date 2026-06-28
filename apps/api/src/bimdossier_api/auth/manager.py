@@ -1,3 +1,4 @@
+import secrets
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from typing import Any
@@ -8,11 +9,15 @@ from fastapi_users import BaseUserManager, UUIDIDMixin
 from fastapi_users import exceptions as fau_exceptions
 from fastapi_users import schemas as fau_schemas
 from fastapi_users.db import SQLAlchemyUserDatabase
+from sqlalchemy import delete as sql_delete
 from sqlalchemy import select
 
+from bimdossier_api import audit
+from bimdossier_api.auth import lockout
+from bimdossier_api.cache import get_redis
 from bimdossier_api.config import get_settings
 from bimdossier_api.db import get_user_db
-from bimdossier_api.email.transport import get_email_transport
+from bimdossier_api.email.transport import send_email_best_effort
 from bimdossier_api.i18n import (
     PLATFORM_DEFAULT_LOCALE,
     resolve_user_locale,
@@ -105,15 +110,16 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
             token=token,
         )
         subject = t("auth.activate_email.subject", PLATFORM_DEFAULT_LOCALE)
-        await get_email_transport().send(
+        # Best-effort: the user row is already committed by the time we get here
+        # (fastapi-users commits before on_after_register). A dead SMTP server must
+        # not 500 the invite — the admin can resend. See send_email_best_effort.
+        await send_email_best_effort(
             to=user.email,
             subject=subject,
             body=body,
         )
 
-    async def on_after_verify(
-        self, user: User, request: Request | None = None
-    ) -> None:
+    async def on_after_verify(self, user: User, request: Request | None = None) -> None:
         """Bootstrap auto-accept.
 
         A freshly-activated user with no active memberships and exactly
@@ -167,10 +173,23 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
             token=token,
         )
         subject = t("auth.reset_password_email.subject", locale)
-        await get_email_transport().send(
+        # Best-effort — see send_email_best_effort. forgot-password always returns
+        # 202 regardless of delivery (and regardless of whether the account exists),
+        # so a transport failure must be logged, not raised.
+        await send_email_best_effort(
             to=user.email,
             subject=subject,
             body=body,
+        )
+        # Forensic trail (H9): a reset link was requested for this account.
+        # Org-less event → platform schema, same as auth.login.* . Best-effort.
+        await audit.record_event_independent(
+            None,
+            action="auth.password.forgot",
+            resource_type="user",
+            resource_id=user.id,
+            actor_user_id=user.id,
+            request=request,
         )
 
     async def on_after_update(
@@ -187,16 +206,122 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
         # tokens exist before first login.
         if "password" in update_dict:
             await self._bump_token_epoch(user)
+            # Forensic trail (H9): credential rotated via an authenticated edit
+            # (/users/me) or an admin update. The hook only sees the subject
+            # user, not the actor, so an admin-initiated change is attributed to
+            # the subject; impersonation is still captured via
+            # request.state.impersonator_user_id. Best-effort, platform schema.
+            await audit.record_event_independent(
+                None,
+                action="auth.password.changed",
+                resource_type="user",
+                resource_id=user.id,
+                actor_user_id=user.id,
+                request=request,
+            )
 
     async def on_after_reset_password(self, user: User, request: Request | None = None) -> None:
         # Forgot-password → reset rotates the credential; kill existing sessions.
         await self._bump_token_epoch(user)
+        # H6: a completed reset clears any active account lockout so a locked-out
+        # legitimate user has a self-service recovery path (reset → sign in
+        # immediately) without waiting out the lock or pinging a super-admin.
+        # Best-effort — clear_failures swallows RedisError.
+        await lockout.clear_failures(get_redis(), user.email)
+        # Forensic trail (H9): credential rotated via the forgot→reset flow.
+        # Org-less event → platform schema. Best-effort (the reset already
+        # committed; a failed audit write must not 500 the reset).
+        await audit.record_event_independent(
+            None,
+            action="auth.password.reset",
+            resource_type="user",
+            resource_id=user.id,
+            actor_user_id=user.id,
+            request=request,
+        )
 
     async def _bump_token_epoch(self, user: User) -> None:
         """Stamp `tokens_valid_after = now()` so every previously-issued
         access/refresh token is rejected on next use (see
         `auth.tokens.token_predates_epoch`)."""
         await self.user_db.update(user, {"tokens_valid_after": datetime.now(UTC)})
+
+    async def delete(self, user: User, request: Request | None = None) -> None:
+        """Anonymize in place instead of hard-deleting (M-db1).
+
+        ~12 tenant tables FK `public.users` with ON DELETE RESTRICT (finding,
+        project, certificate, capture_link, …), so the fastapi-users default —
+        a real `DELETE FROM users` — raises a ForeignKeyViolation → unhandled
+        500 for any user who ever authored a row, and the audit/authorship
+        trail would be lost even if it succeeded. Instead we scrub PII, disable
+        authentication, drop org memberships, and stamp `anonymized_at`. The row
+        survives so every RESTRICT FK stays valid; GDPR erasure is satisfied by
+        anonymization. The superuser `DELETE /users/{id}` route is unchanged —
+        it now returns 204 with the account anonymized rather than 500.
+        """
+        # Lazy import (mirrors on_after_verify) to avoid an auth↔admin import cycle.
+        from bimdossier_api.admin.membership_rules import (
+            ProposedUserChange,
+            assert_last_superuser_invariant,
+        )
+
+        session = self.user_db.session
+
+        # Never brick the platform by anonymizing its last active super-admin.
+        # Only relevant when the target IS a superuser; for everyone else the
+        # superuser count is unchanged, so skip the lock entirely. The canonical
+        # invariant locks the surviving-superuser rows (so two concurrent deletes
+        # can't both believe another admin remains) and raises 409
+        # LAST_SUPERUSER_REQUIRED. `deleted=True` — the account is going away.
+        if user.is_superuser:
+            await assert_last_superuser_invariant(
+                session,
+                user.id,
+                ProposedUserChange(
+                    is_superuser=user.is_superuser,
+                    is_active=user.is_active,
+                    deleted=True,
+                ),
+            )
+
+        # Revoke workspace access. `organization_members` lives in `public`, so
+        # this is a single statement (the model is schema-qualified). Per-org
+        # `project_members` rows are left as-is — they're in tenant schemas
+        # (cross-schema fan-out) and harmless once the account can't authenticate.
+        await session.execute(
+            sql_delete(OrganizationMember).where(OrganizationMember.user_id == user.id)
+        )
+
+        now = datetime.now(UTC)
+        # `update` persists + commits via the user_db session, which also commits
+        # the membership delete above (same transaction).
+        await self.user_db.update(
+            user,
+            {
+                "email": f"deleted+{user.id}@users.invalid",
+                "full_name": None,
+                "avatar_url": None,
+                "locale": None,
+                "is_active": False,
+                "is_verified": False,
+                "is_superuser": False,
+                "active_organization_id": None,
+                "hashed_password": self.password_helper.hash(secrets.token_urlsafe(32)),
+                "tokens_valid_after": now,
+                "anonymized_at": now,
+            },
+        )
+
+        # Forensic trail: the account was anonymized. Org-less event → platform
+        # schema. Best-effort, same pattern as the password-rotation events.
+        await audit.record_event_independent(
+            None,
+            action="user.anonymized",
+            resource_type="user",
+            resource_id=user.id,
+            actor_user_id=user.id,
+            request=request,
+        )
 
 
 async def get_user_manager(

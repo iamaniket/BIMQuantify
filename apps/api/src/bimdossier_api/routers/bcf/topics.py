@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
@@ -24,6 +25,21 @@ from bimdossier_api.models.bcf_topic import BcfTopic
 from bimdossier_api.models.bcf_topic_label import BcfTopicLabel
 from bimdossier_api.models.bcf_viewpoint import BcfViewpoint
 from bimdossier_api.models.user import User
+from bimdossier_api.routers.bcf._shared import (
+    BCF_VERSION,
+    _build_viewpoint,
+    _load_document_or_404,
+    _load_finding_or_404,
+    _load_project_file_or_404,
+    _load_topic_or_404,
+    _resolve_snapshot_url,
+    _snapshot_prefix,
+    _sync_labels,
+    _topic_snapshot,
+    _topic_to_read,
+    _user_display_name,
+    router,
+)
 from bimdossier_api.schemas.bcf import (
     BcfMarkup2DItem,
     BcfTopicCreate,
@@ -31,21 +47,14 @@ from bimdossier_api.schemas.bcf import (
     BcfTopicSummary,
     BcfTopicUpdate,
 )
-from bimdossier_api.storage import get_storage
-from bimdossier_api.tenancy import get_tenant_session, require_active_organization
-
-from bimdossier_api.routers.bcf._shared import (
-    BCF_VERSION,
-    _build_viewpoint,
-    _load_project_file_or_404,
-    _load_topic_or_404,
-    _resolve_snapshot_url,
-    _sync_labels,
-    _topic_snapshot,
-    _topic_to_read,
-    _user_display_name,
-    router,
+from bimdossier_api.storage import StorageBackend, get_attachments_bucket, get_storage
+from bimdossier_api.tenancy import (
+    get_tenant_session,
+    require_active_organization,
+    schema_name_for,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -98,6 +107,14 @@ async def create_topic(
         if linked_document_id is None and linked_file.document_id is not None:
             linked_document_id = linked_file.document_id
 
+    # Validate the cross-resource anchors belong to THIS project (L8) — the file
+    # link is already checked above; do the same for the document + finding so a
+    # caller can't link a topic to another project's resource.
+    if linked_document_id is not None:
+        await _load_document_or_404(session, project.id, linked_document_id)
+    if payload.linked_finding_id is not None:
+        await _load_finding_or_404(session, project.id, payload.linked_finding_id)
+
     topic = BcfTopic(
         project_id=project.id,
         guid=str(uuid4()),
@@ -146,7 +163,7 @@ async def create_topic(
     )
 
     storage = get_storage()
-    return await _topic_to_read(loaded, storage)
+    return await _topic_to_read(loaded, storage, schema_name_for(active_org_id))
 
 
 @router.get("", response_model=list[BcfTopicSummary])
@@ -203,11 +220,14 @@ async def list_topics(
     topics = list((await session.execute(stmt)).scalars().all())
 
     storage = get_storage()
+    expected_prefix = _snapshot_prefix(schema_name_for(active_org_id))
     result = []
     for topic in topics:
         snapshot_url = None
         if topic.viewpoints:
-            snapshot_url = await _resolve_snapshot_url(topic.viewpoints[0], storage)
+            snapshot_url = await _resolve_snapshot_url(
+                topic.viewpoints[0], storage, expected_prefix
+            )
         result.append(
             BcfTopicSummary(
                 id=topic.id,
@@ -287,12 +307,12 @@ async def get_topic(
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
+    storage: StorageBackend = Depends(get_storage),
 ) -> Any:
     project = await load_project_or_404(session, project_id)
     await require_project_read_access(session, project.id, user, active_org_id)
     topic = await _load_topic_or_404(session, project.id, topic_id, eager=True)
-    storage = get_storage()
-    return await _topic_to_read(topic, storage)
+    return await _topic_to_read(topic, storage, schema_name_for(active_org_id))
 
 
 @router.patch("/{topic_id}", response_model=BcfTopicRead)
@@ -327,6 +347,15 @@ async def update_topic(
     updates = payload.model_dump(exclude_unset=True)
     labels = updates.pop("labels", None)
 
+    # Validate any cross-resource anchor being (re)assigned belongs to this
+    # project before blindly setattr-ing it (L8). A `null` clears the link.
+    if updates.get("linked_document_id") is not None:
+        await _load_document_or_404(session, project.id, updates["linked_document_id"])
+    if updates.get("linked_finding_id") is not None:
+        await _load_finding_or_404(session, project.id, updates["linked_finding_id"])
+    if updates.get("linked_file_id") is not None:
+        await _load_project_file_or_404(session, project.id, updates["linked_file_id"])
+
     for field, value in updates.items():
         setattr(topic, field, value)
 
@@ -355,7 +384,7 @@ async def update_topic(
     )
 
     storage = get_storage()
-    return await _topic_to_read(topic, storage)
+    return await _topic_to_read(topic, storage, schema_name_for(active_org_id))
 
 
 @router.delete("/{topic_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -383,8 +412,14 @@ async def delete_topic(
         raise
     require_project_writable(project)
 
-    topic = await _load_topic_or_404(session, project.id, topic_id)
+    topic = await _load_topic_or_404(session, project.id, topic_id, eager=True)
     before = _topic_snapshot(topic)
+    # Capture the viewpoint snapshot keys before the soft-delete so we can reap
+    # the S3 objects too (L11) — otherwise every deleted topic's snapshot PNGs
+    # lingered in object storage until the org was purged.
+    snapshot_keys = [
+        vp.snapshot_storage_key for vp in topic.viewpoints if vp.snapshot_storage_key
+    ]
     topic.soft_delete()
     await session.flush()
     await audit.record(
@@ -397,4 +432,21 @@ async def delete_topic(
         project_id=project.id,
         request=request,
     )
+
+    # Best-effort snapshot cleanup — a storage hiccup must not fail the delete
+    # (the row is already soft-deleted; any orphan is reaped at org purge).
+    if snapshot_keys:
+        storage = get_storage()
+        bucket = get_attachments_bucket()
+        for key in snapshot_keys:
+            try:
+                await storage.delete_object(key, bucket=bucket)
+            except Exception:
+                logger.warning(
+                    "bcf_topic.deleted: failed to delete snapshot %s for topic %s",
+                    key,
+                    topic_id,
+                    exc_info=True,
+                )
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -81,6 +81,7 @@ const ACTION_I18N_KEY: Record<string, string> = {
   'certificate.updated': 'certificateUpdated',
   'certificate.deleted': 'certificateDeleted',
   'finding.created': 'findingCreated',
+  'finding.exported': 'findingExported',
   'finding.updated': 'findingUpdated',
   'finding.promoted': 'findingPromoted',
   'finding.resolved': 'findingResolved',
@@ -135,7 +136,8 @@ function descriptionParams(entry: ProjectActivityEntry): Record<string, string> 
     filename: String(snap['original_filename'] ?? ''),
     framework: String(snap['framework'] ?? ''),
     title: String(snap['title'] ?? ''),
-    count: String(snap['imported_count'] ?? ''),
+    // `imported_count` (BCF import) and `count` (CSV export) both feed {count}.
+    count: String(snap['imported_count'] ?? snap['count'] ?? ''),
   };
 }
 

@@ -30,6 +30,26 @@ const Schema = z.object({
     .string()
     .default('2')
     .transform((v) => Number.parseInt(v, 10)),
+  // How many times a job may be reclaimed as "stalled" before BullMQ gives up and
+  // moves it to failed. BullMQ marks a job stalled when its lock is not renewed
+  // within `lockDuration` — which, for a large still-running IFC/report job, can
+  // happen on a single event-loop stall or Redis blip even though the job is
+  // alive. The default of 1 fails such a job after one lock-loss; raise it so a
+  // long job survives a transient stall and is retried rather than killed. Each
+  // reclaim still re-runs the job from the start, so this trades a little
+  // duplicate work for not abandoning a nearly-finished large job.
+  JOB_MAX_STALLED_COUNT: z
+    .string()
+    .default('3')
+    .transform((v) => Number.parseInt(v, 10)),
+  // Hard ceiling on graceful shutdown. On SIGTERM/SIGINT the process stops
+  // accepting work and waits for in-flight jobs to drain (worker.close()); if
+  // that drain exceeds this budget the process force-exits so it can never hang
+  // past the orchestrator's own grace period (which would SIGKILL mid-write).
+  JOB_SHUTDOWN_TIMEOUT_MS: z
+    .string()
+    .default('25000')
+    .transform((v) => Number.parseInt(v, 10)),
   JOB_MAX_FILE_BYTES: z
     .string()
     .default(String(2 * 1024 * 1024 * 1024))

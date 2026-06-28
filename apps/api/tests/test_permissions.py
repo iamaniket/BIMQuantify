@@ -199,7 +199,7 @@ def test_matrix_snapshot() -> None:
     expected: dict[str, dict[str, set[str]]] = {
         "owner": {
             "project": {"read", "update", "delete", "archive"},
-            "model": {"read", "create", "update", "delete"},
+            "document": {"read", "create", "update", "delete"},
             "project_file": {"read", "create", "update", "delete"},
             "member": {"read", "create", "update", "delete"},
             "invitation": {"read", "create", "delete", "invite"},
@@ -214,12 +214,12 @@ def test_matrix_snapshot() -> None:
             "certificate": {"read", "create", "update", "delete"},
             "capture_link": {"read", "create", "update", "delete"},
             "compliance": {"read", "create"},
-            "report": {"read", "create"},
+            "report": {"read", "create", "delete"},
             "bcf_topic": {"read", "create", "update", "delete"},
         },
         "editor": {
             "project": {"read", "update"},
-            "model": {"read", "create", "update"},
+            "document": {"read", "create", "update"},
             "project_file": {"read", "create", "update", "delete"},
             "member": {"read"},
             "invitation": {"read"},
@@ -234,12 +234,12 @@ def test_matrix_snapshot() -> None:
             "certificate": {"read", "create", "update", "delete"},
             "capture_link": {"read", "create", "update"},
             "compliance": {"read", "create"},
-            "report": {"read", "create"},
+            "report": {"read", "create", "delete"},
             "bcf_topic": {"read", "create", "update", "delete"},
         },
         "viewer": {
             "project": {"read"},
-            "model": {"read"},
+            "document": {"read"},
             "project_file": {"read"},
             "member": {"read"},
             "invitation": set(),
@@ -259,7 +259,7 @@ def test_matrix_snapshot() -> None:
         },
         "inspector": {
             "project": {"read"},
-            "model": {"read"},
+            "document": {"read"},
             "project_file": {"read"},
             "member": {"read"},
             "invitation": set(),
@@ -279,7 +279,7 @@ def test_matrix_snapshot() -> None:
         },
         "contractor": {
             "project": {"read"},
-            "model": {"read"},
+            "document": {"read"},
             "project_file": {"read", "create", "update"},
             "member": {"read"},
             "invitation": set(),
@@ -299,7 +299,7 @@ def test_matrix_snapshot() -> None:
         },
         "client": {
             "project": {"read"},
-            "model": {"read"},
+            "document": {"read"},
             "project_file": {"read"},
             "member": {"read"},
             "invitation": set(),

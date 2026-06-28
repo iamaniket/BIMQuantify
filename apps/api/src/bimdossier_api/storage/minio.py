@@ -13,6 +13,8 @@ import aioboto3
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
+from bimdossier_api.content_disposition import safe_content_disposition
+
 if TYPE_CHECKING:
     from bimdossier_api.config import Settings
 
@@ -169,7 +171,9 @@ class S3Storage:
             Params={
                 "Bucket": self._resolve_bucket(bucket),
                 "Key": key,
-                "ResponseContentDisposition": f'{disposition}; filename="{filename}"',
+                "ResponseContentDisposition": safe_content_disposition(
+                    filename, disposition=disposition
+                ),
             },
             ExpiresIn=self._ttl,
         )

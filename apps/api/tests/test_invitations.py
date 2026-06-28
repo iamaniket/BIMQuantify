@@ -114,12 +114,14 @@ async def _add_member(
     user: User,
     org: Organization,
     is_org_admin: bool = False,
+    is_guest: bool = False,
     status: OrganizationMemberStatus = OrganizationMemberStatus.active,
 ) -> OrganizationMember:
     member = OrganizationMember(
         user_id=user.id,
         organization_id=org.id,
         is_org_admin=is_org_admin,
+        is_guest=is_guest,
         status=status,
         accepted_at=(
             datetime.now(timezone.utc)
@@ -161,6 +163,7 @@ def stub_provisioning(monkeypatch: pytest.MonkeyPatch) -> None:
         admin_email: str,
         admin_full_name: str | None,
         seat_limit: int | None = None,
+        active_storage_limit_gb: int | None = None,
         requester: User,
         request: Any = None,
     ) -> prov_module.ProvisionResult:
@@ -178,6 +181,7 @@ def stub_provisioning(monkeypatch: pytest.MonkeyPatch) -> None:
                     status=OrganizationStatus.active,
                     provisioned_at=datetime.now(timezone.utc),
                     seat_limit=seat_limit,
+                    active_storage_limit_gb=active_storage_limit_gb,
                 )
                 s.add(org)
 
@@ -411,6 +415,112 @@ async def test_accept_invitation_flips_to_active(
     await session.refresh(m)
     assert m.status == OrganizationMemberStatus.active
     assert m.accepted_at is not None
+
+
+# ---------------------------------------------------------------------------
+# /me/invitations accept — seat backstop (audit finding #16)
+# ---------------------------------------------------------------------------
+
+
+async def test_accept_invitation_succeeds_at_full_capacity(
+    client: AsyncClient,
+    session: AsyncSession,
+) -> None:
+    """Accept is seat-neutral: the pending invite already reserved its seat,
+    so accepting at an org that is exactly full (consumed == seat_limit) must
+    still succeed. Regression guard against a naive `>=` seat check that would
+    409 every legitimate acceptance at a full org."""
+    org = await _make_org(session, "FullAcceptCo", seat_limit=2)
+    admin = await _make_user(session, "full-admin@example.com")
+    await _add_member(session, user=admin, org=org, is_org_admin=True)  # seat 1
+
+    invitee = await _make_user(session, "full-invitee@example.com")
+    # Active home org so login won't bootstrap-accept the pending invite.
+    home = await _make_org(session, "FAHomeCo")
+    await _add_member(session, user=invitee, org=home)
+    await _add_member(
+        session, user=invitee, org=org, status=OrganizationMemberStatus.pending
+    )  # seat 2 → org now exactly full (consumed 2 == limit 2)
+
+    tokens = await _login(client, invitee.email)
+    resp = await client.post(
+        f"/me/invitations/{org.id}/accept",
+        headers=_auth(tokens["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "active"
+
+
+async def test_accept_invitation_blocked_when_over_seat_limit(
+    client: AsyncClient,
+    session: AsyncSession,
+) -> None:
+    """Defense in depth: if the org is already OVER its paid cap (consumed >
+    seat_limit) — e.g. a pre-fix invite race, or a cap lowered through a path
+    that bypassed the usage guard — accepting must not convert another reserved
+    seat into a live active member. The invite stays pending; the admin has to
+    reconcile (raise the cap or have an invite declined)."""
+    org = await _make_org(session, "OverCapCo", seat_limit=1)
+    admin = await _make_user(session, "over-admin@example.com")
+    await _add_member(session, user=admin, org=org, is_org_admin=True)  # consumed 1 == limit
+
+    invitee = await _make_user(session, "over-invitee@example.com")
+    home = await _make_org(session, "OCHomeCo")
+    await _add_member(session, user=invitee, org=home)
+    await _add_member(
+        session, user=invitee, org=org, status=OrganizationMemberStatus.pending
+    )  # consumed 2 > limit 1 — over-provisioned
+
+    tokens = await _login(client, invitee.email)
+    resp = await client.post(
+        f"/me/invitations/{org.id}/accept",
+        headers=_auth(tokens["access_token"]),
+    )
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["detail"] == "SEAT_LIMIT_EXCEEDED"
+
+    # The invite is untouched — still pending, not silently activated.
+    m = (
+        await session.execute(
+            select(OrganizationMember).where(
+                OrganizationMember.user_id == invitee.id,
+                OrganizationMember.organization_id == org.id,
+            )
+        )
+    ).scalar_one()
+    await session.refresh(m)
+    assert m.status == OrganizationMemberStatus.pending
+
+
+async def test_accept_invitation_guest_bypasses_regular_seat_overage(
+    client: AsyncClient,
+    session: AsyncSession,
+) -> None:
+    """Guests don't consume a host seat (billed against their home org), so a
+    guest accept must NOT be blocked just because the org's regular members are
+    over cap — mirroring the invite path's `if not is_guest` seat exemption."""
+    org = await _make_org(session, "GuestHostCo", seat_limit=1)
+    admin = await _make_user(session, "gh-admin@example.com")
+    await _add_member(session, user=admin, org=org, is_org_admin=True)  # regular consumed 1 == limit
+
+    guest = await _make_user(session, "gh-guest@example.com")
+    home = await _make_org(session, "GHHomeCo")
+    await _add_member(session, user=guest, org=home)
+    await _add_member(
+        session,
+        user=guest,
+        org=org,
+        is_guest=True,
+        status=OrganizationMemberStatus.pending,
+    )
+
+    tokens = await _login(client, guest.email)
+    resp = await client.post(
+        f"/me/invitations/{org.id}/accept",
+        headers=_auth(tokens["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "active"
 
 
 async def test_decline_invitation_marks_removed(

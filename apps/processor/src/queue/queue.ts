@@ -12,6 +12,10 @@ export type WorkerJob = {
   job_type: 'ifc_extraction' | 'pdf_extraction' | 'pdf_pages_rasterization' | 'dxf_extraction' | 'image_metadata_extraction' | 'compliance_report' | 'assurance_plan_report' | 'completion_declaration_report' | 'dossier_report' | 'snag_list_report' | 'send_email';
   organization_id: string;
   payload: Record<string, unknown>;
+  // Per-job callback base URL the API stamped on dispatch (L13). Absent on jobs
+  // from a pre-fix API — the callback helpers then fall back to the baked
+  // API_BASE_URL. See api/callbackContext.ts.
+  callback_url?: string;
 };
 
 /**

@@ -32,6 +32,9 @@ const JobBody = z.object({
   // so the API can resolve which `org_<hex>` schema to write to.
   organization_id: z.string().uuid(),
   payload: z.record(z.unknown()),
+  // Where the worker should POST its callbacks (L13). Optional for backwards
+  // compatibility with a pre-fix API; absent → the baked API_BASE_URL is used.
+  callback_url: z.string().url().optional(),
 });
 
 export function registerRoutes(app: FastifyInstance): void {

@@ -28,9 +28,18 @@ class NotificationEventType(StrEnum):
     finding_created = "finding_created"
     finding_resolved = "finding_resolved"
 
+    # Finding discussion: a comment @mentioned this user. Unlike the org-wide
+    # events above, mention notifications are *targeted* — emitted with
+    # `recipient_user_id` set so only the mentioned member sees them.
+    finding_mentioned = "finding_mentioned"
+
     # Project-scoped invitations (backlog #8 / #11).
     invitation_sent = "invitation_sent"
     invitation_accepted = "invitation_accepted"
+
+    # Security (H6): a user's account crossed the failed-login lockout threshold.
+    # Targeted (recipient_user_id set) at the org's active admins + super-admins.
+    account_locked = "account_locked"
 
 
 class Notification(TenantBase):
@@ -52,6 +61,16 @@ class Notification(TenantBase):
         ForeignKey("jobs.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Per-recipient targeting. NULL = org-wide (every member sees the row, the
+    # original behaviour). Set = visible only to that one user — used by
+    # @mention notifications so a comment ping reaches just the mentioned member.
+    # The notifications router ANDs `recipient_user_id IS NULL OR = :me` into
+    # every read so a targeted row never leaks to other members.
+    recipient_user_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("public.users.id", ondelete="CASCADE"),
+        nullable=True,
+    )
     event_type: Mapped[NotificationEventType] = mapped_column(
         SAEnum(
             NotificationEventType,
@@ -71,6 +90,7 @@ class Notification(TenantBase):
         Index("ix_notifications_project_id", "project_id"),
         Index("ix_notifications_file_id", "file_id"),
         Index("ix_notifications_job_id", "job_id"),
+        Index("ix_notifications_recipient_user_id", "recipient_user_id"),
     )
 
 

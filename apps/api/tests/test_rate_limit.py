@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -6,7 +7,12 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from starlette.requests import Request
 
-from bimdossier_api.auth.ratelimit import UPLOAD_INITIATE_LIMITER, make_identifier
+from bimdossier_api.auth.ratelimit import (
+    CAPTURE_INITIATE_LIMITER,
+    INVITE_LIMITER,
+    UPLOAD_INITIATE_LIMITER,
+    make_identifier,
+)
 from bimdossier_api.config import get_settings
 from tests.conftest import (
     FakeStorage,
@@ -30,6 +36,37 @@ async def test_login_rate_limit_returns_429(rate_limited_client: AsyncClient) ->
         last_status = response.status_code
 
     assert last_status == 429
+
+
+async def test_login_fails_open_when_redis_unavailable(
+    rate_limited_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A Redis outage during a rate-limit check must NOT 500 the auth surface.
+
+    The limiter is a throttle, not an auth gate: `ResilientRateLimiter` swallows
+    the `RedisError` and lets the request through, so a bad-cred login still gets
+    its normal 400 — not a 500, and not a spurious 429. Without the fail-open
+    override this raised an uncaught error and FastAPI returned 500 (finding B7).
+    """
+    from fastapi_limiter import FastAPILimiter
+    from redis.exceptions import ConnectionError as RedisConnectionError
+
+    async def _boom(*args: object, **kwargs: object) -> object:
+        raise RedisConnectionError("redis is down")
+
+    # Break the underlying Lua `evalsha` so the real `_check` except-clause runs
+    # end-to-end, rather than stubbing the override under test. Only the limiter
+    # uses evalsha, so login itself is otherwise unaffected.
+    monkeypatch.setattr(FastAPILimiter.redis, "evalsha", _boom)
+
+    response = await rate_limited_client.post(
+        "/auth/jwt/login",
+        data={"username": "missing@example.com", "password": "whatever"},
+    )
+
+    assert response.status_code == 400, response.text  # LOGIN_BAD_CREDENTIALS
+    assert response.status_code not in (429, 500)
 
 
 # ---------------------------------------------------------------------------
@@ -197,6 +234,205 @@ async def test_initiate_enforces_per_user_rate_limit(
 
     first = await client.post(url, json=_payload(), headers=_auth(token))
     second = await client.post(url, json=_payload(), headers=_auth(token))
+
+    assert first.status_code == 201, first.text
+    assert second.status_code == 429
+
+
+# ---------------------------------------------------------------------------
+# Mail-bomb / enumeration vectors: invite + resend both share INVITE_LIMITER.
+# ---------------------------------------------------------------------------
+
+
+async def test_invite_member_enforces_rate_limit(
+    org_user: dict[str, str],
+    rate_limited_client: AsyncClient,
+    # In-memory transport so the first invite email is captured, not SMTP'd.
+    email_transport: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(INVITE_LIMITER, "times", 1)
+    client = rate_limited_client
+    token = org_user["access_token"]
+    url = f"/organizations/{org_user['organization_id']}/members"
+
+    first = await client.post(
+        url, json={"email": "rl-invite-1@example.com"}, headers=_auth(token)
+    )
+    second = await client.post(
+        url, json={"email": "rl-invite-2@example.com"}, headers=_auth(token)
+    )
+
+    assert first.status_code == 201, first.text
+    assert second.status_code == 429
+
+
+async def test_resend_invite_enforces_rate_limit(
+    org_user: dict[str, str],
+    rate_limited_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Shares the "org_invite" budget. Target a non-existent member so the handler
+    # 404s — the limiter still counts the call (it runs before the handler), so the
+    # second request trips 429 and proves the decorator is wired onto resend.
+    monkeypatch.setattr(INVITE_LIMITER, "times", 1)
+    client = rate_limited_client
+    token = org_user["access_token"]
+    url = f"/organizations/{org_user['organization_id']}/members/{uuid4()}/resend-invite"
+
+    first = await client.post(url, headers=_auth(token))
+    second = await client.post(url, headers=_auth(token))
+
+    assert first.status_code != 429, first.text
+    assert second.status_code == 429
+
+
+# ---------------------------------------------------------------------------
+# Presigned-PUT minting siblings — all share the one UPLOAD_INITIATE_LIMITER
+# budget (label "upload_initiate"). One representative test per newly-wired route.
+# ---------------------------------------------------------------------------
+
+
+async def test_attachment_initiate_enforces_rate_limit(
+    org_user: dict[str, str],
+    limited_fake_storage_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(UPLOAD_INITIATE_LIMITER, "times", 1)
+    client = limited_fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    url = f"/projects/{project['id']}/attachments/initiate"
+
+    def _payload() -> dict[str, object]:
+        return {
+            "filename": "photo.jpg",
+            "size_bytes": 2048,
+            "content_type": "image/jpeg",
+            "content_sha256": _new_hash(),
+        }
+
+    first = await client.post(url, json=_payload(), headers=_auth(token))
+    second = await client.post(url, json=_payload(), headers=_auth(token))
+
+    assert first.status_code == 201, first.text
+    assert second.status_code == 429
+
+
+async def test_certificate_initiate_enforces_rate_limit(
+    org_user: dict[str, str],
+    limited_fake_storage_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(UPLOAD_INITIATE_LIMITER, "times", 1)
+    client = limited_fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    url = f"/projects/{project['id']}/certificates/initiate"
+
+    def _payload() -> dict[str, object]:
+        return {
+            "filename": "ce-cert.pdf",
+            "size_bytes": 4096,
+            "content_type": "application/pdf",
+            "content_sha256": _new_hash(),
+            "certificate_type": "product",
+        }
+
+    first = await client.post(url, json=_payload(), headers=_auth(token))
+    second = await client.post(url, json=_payload(), headers=_auth(token))
+
+    assert first.status_code == 201, first.text
+    assert second.status_code == 429
+
+
+async def test_org_certificate_initiate_enforces_rate_limit(
+    org_user: dict[str, str],
+    limited_fake_storage_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(UPLOAD_INITIATE_LIMITER, "times", 1)
+    client = limited_fake_storage_client
+    token = org_user["access_token"]
+    url = "/org-certificates/initiate"
+
+    def _payload() -> dict[str, object]:
+        return {
+            "filename": "org-cert.pdf",
+            "size_bytes": 4096,
+            "content_type": "application/pdf",
+            "content_sha256": _new_hash(),
+            "certificate_type": "product",
+        }
+
+    first = await client.post(url, json=_payload(), headers=_auth(token))
+    second = await client.post(url, json=_payload(), headers=_auth(token))
+
+    assert first.status_code == 201, first.text
+    assert second.status_code == 429
+
+
+async def test_template_asset_initiate_enforces_rate_limit(
+    org_user: dict[str, str],
+    limited_fake_storage_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(UPLOAD_INITIATE_LIMITER, "times", 1)
+    client = limited_fake_storage_client
+    token = org_user["access_token"]
+    url = "/org-templates/assets/initiate"
+
+    def _payload() -> dict[str, object]:
+        return {
+            "asset_kind": "logo",
+            "filename": "brand.png",
+            "content_type": "image/png",
+            "size_bytes": 4096,
+        }
+
+    first = await client.post(url, json=_payload(), headers=_auth(token))
+    second = await client.post(url, json=_payload(), headers=_auth(token))
+
+    assert first.status_code == 201, first.text
+    assert second.status_code == 429
+
+
+# ---------------------------------------------------------------------------
+# Public, unauthenticated capture-link upload-initiate — its own per-IP budget.
+# ---------------------------------------------------------------------------
+
+
+async def test_capture_initiate_enforces_rate_limit(
+    org_user: dict[str, str],
+    limited_fake_storage_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(CAPTURE_INITIATE_LIMITER, "times", 1)
+    client = limited_fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+
+    link_resp = await client.post(
+        f"/projects/{project['id']}/capture-links",
+        json={"label": "RL link", "ttl_hours": 24},
+        headers=_auth(token),
+    )
+    assert link_resp.status_code == 201, link_resp.text
+    capture_token = link_resp.json()["token"]
+    org_id = org_user["organization_id"]
+    url = f"/public/capture/{org_id}/{capture_token}/initiate"
+
+    def _payload() -> dict[str, object]:
+        return {
+            "filename": "site-photo.jpg",
+            "size_bytes": 4096,
+            "content_type": "image/jpeg",
+            "content_sha256": _new_hash(),
+        }
+
+    # Unauthenticated (no auth header) — keys per-IP via the _who fallback.
+    first = await client.post(url, json=_payload())
+    second = await client.post(url, json=_payload())
 
     assert first.status_code == 201, first.text
     assert second.status_code == 429

@@ -12,6 +12,7 @@ import type { AdminUserRead } from '@/lib/api/schemas';
 
 import { useToggleActivateUser } from './useActivateUser';
 import { useTogglePromoteUser } from './usePromoteUser';
+import { useUnlockUser } from './useUnlockUser';
 
 type Props = {
   table: TablePagination<AdminUserRead>;
@@ -23,7 +24,8 @@ export function UsersTable({ table, currentUserId }: Props): JSX.Element {
   const tUsers = useTranslations('admin.users');
   const mutation = useTogglePromoteUser();
   const activeMutation = useToggleActivateUser();
-  const pending = mutation.isPending || activeMutation.isPending;
+  const unlockMutation = useUnlockUser();
+  const pending = mutation.isPending || activeMutation.isPending || unlockMutation.isPending;
 
   const columns: Column<AdminUserRead>[] = [
     {
@@ -41,9 +43,12 @@ export function UsersTable({ table, currentUserId }: Props): JSX.Element {
     {
       header: t('access'),
       cell: (u) => (
-        <Badge variant={u.is_active ? 'success' : 'error'}>
-          {u.is_active ? t('accessActive') : t('accessDisabled')}
-        </Badge>
+        <div className="flex items-center gap-1.5">
+          <Badge variant={u.is_active ? 'success' : 'error'}>
+            {u.is_active ? t('accessActive') : t('accessDisabled')}
+          </Badge>
+          {u.locked && <Badge variant="warning">{t('lockedBadge')}</Badge>}
+        </div>
       ),
     },
     {
@@ -71,6 +76,18 @@ export function UsersTable({ table, currentUserId }: Props): JSX.Element {
         const isSelf = u.id === currentUserId;
         return (
           <div className="flex justify-end gap-2">
+            {u.locked && (
+              <Button
+                variant="border"
+                size="md"
+                disabled={pending}
+                onClick={() => {
+                  unlockMutation.mutate({ userId: u.id });
+                }}
+              >
+                {t('unlock')}
+              </Button>
+            )}
             {!isSelf && (
               <Button
                 variant={u.is_active ? 'border' : 'primary'}

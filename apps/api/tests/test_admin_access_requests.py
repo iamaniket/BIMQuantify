@@ -19,10 +19,11 @@ from bimdossier_api.models.organization_member import (
 )
 from bimdossier_api.models.user import User
 from bimdossier_api.tenancy import schema_name_for
+from tests.conftest import _audit_rows
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
-    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
     from bimdossier_api.email.transport import InMemoryEmailTransport
 
@@ -230,6 +231,39 @@ async def test_export_csv(
     assert len(lines) == 2  # header + 1 data row
     assert "work_email" in lines[0]
     assert "lieke@heijmans.nl" in lines[1]
+
+
+@pytest.mark.asyncio
+async def test_export_csv_writes_audit_row(
+    client: AsyncClient,
+    session: AsyncSession,
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """The leads CSV dump is a mass-PII exfiltration surface, so it must leave a
+    forensic trail. One ``access_request.exported`` row lands in the PLATFORM
+    schema (leads belong to no customer org) carrying count + filters + actor —
+    never the PII rows themselves."""
+    admin = await _make_superuser(session, "admin@test.nl")
+    await _seed_access_request(session, work_email="a@x.nl")
+    await _seed_access_request(session, work_email="b@x.nl")
+    token = await _login(client, "admin@test.nl")
+
+    response = await client.get(
+        "/admin/access-requests/export?q=a@x", headers=_auth(token)
+    )
+    assert response.status_code == 200
+
+    rows = await _audit_rows(session_maker, "access_request.exported")
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.resource_type == "access_request"
+    assert row.user_id == admin.id
+    assert row.project_id is None  # platform-scoped, no project context
+    assert row.after is not None
+    # The q=a@x filter matched exactly one of the two seeded leads.
+    assert row.after["count"] == 1
+    assert row.after["filters"]["q"] == "a@x"
+    assert row.after["filters"]["status"] is None
 
 
 # ---------------------------------------------------------------------------

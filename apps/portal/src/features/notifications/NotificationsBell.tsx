@@ -1,7 +1,7 @@
 'use client';
 
 import { IconButton } from '@bimdossier/ui';
-import { AlertTriangle, Bell, Check, CheckCircle2, Clock, Loader2, Mail, RefreshCw, Search, Trash2, UserPlus, X, XCircle } from '@bimdossier/ui/icons';
+import { AlertTriangle, Bell, Check, CheckCircle2, Clock, Loader2, Mail, MessageSquare, RefreshCw, Search, Trash2, UserPlus, X, XCircle } from '@bimdossier/ui/icons';
 import {
   useEffect, useRef, useState, type JSX,
 } from 'react';
@@ -41,6 +41,7 @@ const ICON_BY_TYPE: Record<NotificationEventTypeValue, JSX.Element> = {
   deadline_missed: <AlertTriangle className="h-3 w-3" aria-hidden />,
   finding_created: <Search className="h-3 w-3" aria-hidden />,
   finding_resolved: <CheckCircle2 className="h-3 w-3" aria-hidden />,
+  finding_mentioned: <MessageSquare className="h-3 w-3" aria-hidden />,
   invitation_sent: <Mail className="h-3 w-3" aria-hidden />,
   invitation_accepted: <UserPlus className="h-3 w-3" aria-hidden />,
 };
@@ -54,6 +55,7 @@ const TONE_BY_TYPE: Record<NotificationEventTypeValue, string> = {
   deadline_missed: 'bg-error-lighter text-error',
   finding_created: 'bg-warning-lighter text-warning',
   finding_resolved: 'bg-success-lighter text-success',
+  finding_mentioned: 'bg-info-lighter text-info-hover',
   invitation_sent: 'bg-info-lighter text-info-hover',
   invitation_accepted: 'bg-success-lighter text-success',
 };

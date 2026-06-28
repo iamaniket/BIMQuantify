@@ -17,16 +17,52 @@ action.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from fastapi_limiter.depends import RateLimiter
+from redis.exceptions import NoScriptError, RedisError
 
 from bimdossier_api.config import get_settings
+from bimdossier_api.logging_utils import warn_throttled
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
     from fastapi import Request
+
+logger = logging.getLogger(__name__)
+
+
+class ResilientRateLimiter(RateLimiter):
+    """Rate limiter that FAILS OPEN when Redis is unreachable.
+
+    A rate limiter is a throttle, not an auth gate: if Redis is down we must not
+    turn login / refresh / upload into 500s. We allow the request (logging a
+    throttled warning) so a Redis blip degrades throttling instead of taking out
+    the whole authenticated surface. The JWT blocklist stays fail-CLOSED
+    (`cache/blocklist.py`) — that is the security boundary.
+
+    Only ``_check()`` is overridden: ``RateLimiter.__call__`` wraps it in its own
+    ``try/except NoScriptError`` to reload the Lua script, so we re-raise that and
+    fail open on every other ``RedisError``. A ``pexpire`` of 0 means "not
+    limited", so returning 0 lets the request through.
+    """
+
+    async def _check(self, key: str) -> int:
+        try:
+            return await super()._check(key)
+        except NoScriptError:
+            # Let RateLimiter.__call__ reload the Lua script and retry. This MUST
+            # be caught before RedisError — NoScriptError is a subclass of it.
+            raise
+        except RedisError:
+            warn_throttled(
+                logger,
+                "ratelimit_redis_unavailable",
+                "Redis unavailable for rate-limit check — failing open (request allowed)",
+            )
+            return 0
 
 
 def _client_ip(request: Request) -> str:
@@ -84,18 +120,32 @@ def make_identifier(label: str) -> Callable[[Request], Awaitable[str]]:
 
 _settings = get_settings()
 
-COMPLIANCE_CHECK_LIMITER = RateLimiter(
+COMPLIANCE_CHECK_LIMITER = ResilientRateLimiter(
     times=_settings.rate_limit_compliance_per_hour,
     seconds=3600,
     identifier=make_identifier("compliance_check"),
 )
-REPORT_GEN_LIMITER = RateLimiter(
+REPORT_GEN_LIMITER = ResilientRateLimiter(
     times=_settings.rate_limit_report_per_hour,
     seconds=3600,
     identifier=make_identifier("report_create"),
 )
-UPLOAD_INITIATE_LIMITER = RateLimiter(
+UPLOAD_INITIATE_LIMITER = ResilientRateLimiter(
     times=_settings.rate_limit_upload_initiate_per_hour,
     seconds=3600,
     identifier=make_identifier("upload_initiate"),
+)
+# Shared by invite_member + resend_invite: one per-user budget on invite-email
+# fan-out (mail-bomb / account-enumeration defense).
+INVITE_LIMITER = ResilientRateLimiter(
+    times=_settings.rate_limit_invite_per_hour,
+    seconds=3600,
+    identifier=make_identifier("org_invite"),
+)
+# Public, unauthenticated capture-link upload-initiate: `_who` finds no decoded
+# token and falls back to the (trusted-proxy-aware) client IP, so this keys per-IP.
+CAPTURE_INITIATE_LIMITER = ResilientRateLimiter(
+    times=_settings.rate_limit_capture_initiate_per_hour,
+    seconds=3600,
+    identifier=make_identifier("capture_initiate"),
 )

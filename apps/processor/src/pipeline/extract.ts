@@ -21,6 +21,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { postCallback } from '../api/callback.js';
+import { getConfig } from '../config.js';
 import { logger } from '../log.js';
 import {
   downloadObjectWithHash,
@@ -32,7 +33,7 @@ import {
   uploadObject,
 } from '../storage/s3.js';
 import type { ProgressReporter, WorkerJob } from '../queue/queue.js';
-import { classifyError } from './errors.js';
+import { classifyError, PermanentError } from './errors.js';
 import { UnsupportedSchemaError } from './ifc.js';
 import type { StoreyInfo } from './metadata.js';
 import { time } from './timing.js';
@@ -138,10 +139,22 @@ export async function runExtraction(
     logStage('download', download.ms);
     await reportProgress(10);
 
+    // Backstop the upload-time size check (mirrors dxf.ts): for a direct .ifc
+    // the stored object IS the model, so cap it here. For an ifcZIP this is the
+    // small zip; the inner-entry cap lives in extractIfcFromZip below. Permanent
+    // — re-running an over-limit file never helps.
+    const maxBytes = getConfig().JOB_MAX_FILE_BYTES;
+    if (!payload.compressed && bytes.length > maxBytes) {
+      throw new PermanentError(
+        `IFC_TOO_LARGE: ${bytes.length} bytes exceeds the ${maxBytes}-byte limit`,
+        'validation',
+      );
+    }
+
     // For an ifcZIP the stored object is the zip; unwrap to the inner IFC
     // before parsing. `sha256` stays the hash of the stored (compressed) bytes
     // — that's what the client uploaded and what dedup keys on.
-    let ifcBytes = payload.compressed ? await extractIfcFromZip(bytes) : bytes;
+    let ifcBytes = payload.compressed ? await extractIfcFromZip(bytes, maxBytes) : bytes;
     // The workers take the buffer via transfer; a view (byteOffset / shorter
     // length than its buffer) can't transfer cleanly, so normalise first. The
     // direct-.ifc path is already normalised (downloadObjectWithHash returns a

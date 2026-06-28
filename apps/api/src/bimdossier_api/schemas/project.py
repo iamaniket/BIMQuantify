@@ -15,7 +15,7 @@ class ProjectBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     name: str = Field(min_length=1, max_length=255)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=4000)
     thumbnail_url: str | None = Field(default=None, max_length=2048)
 
     reference_code: str | None = Field(default=None, max_length=50)
@@ -51,7 +51,7 @@ class ProjectUpdate(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     name: str | None = Field(default=None, min_length=1, max_length=255)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=4000)
     thumbnail_url: str | None = Field(default=None, max_length=2048)
 
     reference_code: str | None = Field(default=None, max_length=50)

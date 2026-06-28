@@ -36,10 +36,17 @@ class TokenManager {
       throw new Error('No tokens available for refresh');
     }
     try {
-      const newAccessToken = await refreshAccessToken(tokens.refresh_token);
-      const updated: TokenPair = { ...tokens, access_token: newAccessToken };
+      const { accessToken, refreshToken } = await refreshAccessToken(tokens.refresh_token);
+      const updated: TokenPair = {
+        ...tokens,
+        access_token: accessToken,
+        // Refresh-token rotation: adopt the server's new refresh token. The
+        // presented one is now retired — reusing it would trip reuse detection
+        // and sign the user out everywhere. Fall back only if none was returned.
+        refresh_token: refreshToken ?? tokens.refresh_token,
+      };
       this.setTokens?.(updated);
-      return newAccessToken;
+      return accessToken;
     } catch {
       this.setTokens?.(null);
       throw new Error('Session expired');

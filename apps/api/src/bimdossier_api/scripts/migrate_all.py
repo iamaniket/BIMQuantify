@@ -32,15 +32,22 @@ from typing import TYPE_CHECKING
 
 from alembic import command
 from alembic.config import Config
-from alembic.script import ScriptDirectory
-from sqlalchemy import select, text
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 from bimdossier_api.config import get_settings
-from bimdossier_api.db import get_engine, get_session_maker
-from bimdossier_api.models.organization import Organization
+from bimdossier_api.db import get_engine
+
+# Read-only drift helpers live in migrations_check (the boot-path module) so the
+# startup probe and this batch CLI share one source of truth. Re-exported here so
+# `from bimdossier_api.scripts.migrate_all import classify` keeps working.
+from bimdossier_api.migrations_check import (
+    classify,
+    list_active_schemas,
+    read_schema_revisions,
+    tenant_heads,
+)
 
 API_DIR = pathlib.Path(__file__).resolve().parents[3]
 MASTER_INI = str(API_DIR / "alembic.master.ini")
@@ -74,68 +81,21 @@ def run_tenant(schema: str) -> None:
         os.environ.pop("BIMDOSSIER_TENANT_SCHEMA", None)
 
 
-def tenant_heads() -> set[str]:
-    """Head revision(s) of the tenant chain (linear chain → one element)."""
-    return set(ScriptDirectory.from_config(Config(TENANT_INI)).get_heads())
-
-
-async def _list_active_schemas() -> list[str]:
-    async with get_session_maker()() as session:
-        stmt = (
-            select(Organization.schema_name)
-            .where(Organization.deleted_at.is_(None))
-            .order_by(Organization.created_at)
-        )
-        result = await session.execute(stmt)
-        return [row[0] for row in result.all()]
-
-
-async def _read_schema_revisions(schemas: list[str]) -> dict[str, str | None]:
-    """Current `alembic_version` per schema. None when the schema has no
-    `alembic_version` table yet (never migrated)."""
-    revs: dict[str, str | None] = {}
-    engine = get_engine()
-    async with engine.connect() as conn:
-        for schema in schemas:
-            exists = await conn.scalar(
-                text(
-                    "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
-                    "WHERE table_schema = :s AND table_name = 'alembic_version')"
-                ),
-                {"s": schema},
-            )
-            if not exists:
-                revs[schema] = None
-                continue
-            revs[schema] = await conn.scalar(
-                text(f'SELECT version_num FROM "{schema}".alembic_version')
-            )
-    return revs
-
-
 async def _gather_state() -> tuple[list[str], dict[str, str | None]]:
     """List active schemas and read their revisions in a SINGLE event loop.
 
     Both touch the global async engine; doing them in one `asyncio.run` keeps
     the engine bound to one loop (reusing it across loops raises "attached to a
     different loop"). The lock helpers use their own throwaway clients instead.
+    This disposes the engine afterwards — a script-only concern; the startup
+    probe reuses these helpers WITHOUT disposing.
     """
     try:
-        schemas = await _list_active_schemas()
-        revs = await _read_schema_revisions(schemas)
+        schemas = await list_active_schemas()
+        revs = await read_schema_revisions(schemas)
         return schemas, revs
     finally:
         await get_engine().dispose()
-
-
-def classify(
-    schemas: list[str], revs: dict[str, str | None], heads: set[str]
-) -> tuple[list[str], list[str]]:
-    """Split schemas into (at_head, behind) by comparing each schema's current
-    revision against the tenant head(s). Order is preserved."""
-    at_head = [s for s in schemas if revs.get(s) in heads]
-    behind = [s for s in schemas if revs.get(s) not in heads]
-    return at_head, behind
 
 
 def _upgrade_schema_worker(schema: str) -> SchemaResult:

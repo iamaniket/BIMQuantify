@@ -17,6 +17,7 @@ this reproduces; `compute_project_completeness` returns exactly the numbers it
 renders so the dashboard no longer re-derives them client-side.
 """
 
+from collections.abc import Sequence
 from datetime import datetime
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -25,7 +26,11 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bimdossier_api.jurisdictions import get_dossier_requirements, pick_label
+from bimdossier_api.jurisdictions import (
+    DossierRequirementTemplate,
+    get_dossier_requirements,
+    pick_label,
+)
 from bimdossier_api.models.certificate import Certificate, CertificateStatus
 from bimdossier_api.models.deadline import Deadline, DeadlineStatus
 from bimdossier_api.models.document import Document
@@ -118,6 +123,20 @@ class CompletenessBlock(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+def _requirement_fulfilled(source_kind: str, source_value: str, count: int) -> bool:
+    """Whether a dossier requirement counts as met, given its match count.
+
+    Single source of truth for the met/missing rule shared by
+    :func:`_check_fulfillment` (the per-deadline path) and :func:`_dossier_counts`
+    (the batched whole-checklist path): the two ``derived`` health checks are met
+    when their *problem* count is zero (no open findings / no overdue deadlines);
+    every other requirement is met once at least one matching item exists.
+    """
+    if source_kind == "derived" and source_value in ("findings", "deadlines"):
+        return count == 0
+    return count > 0
+
+
 async def _count_ready_attachments_in_slot(
     session: AsyncSession,
     project_id: UUID,
@@ -185,6 +204,61 @@ async def _count_viewable_models(session: AsyncSession, project_id: UUID) -> int
     ) or 0
 
 
+async def _count_ready_certificates_of_type(
+    session: AsyncSession, project_id: UUID, cert_type: str
+) -> int:
+    """Count ready, non-deleted certificates of a given type."""
+    return (
+        await session.scalar(
+            select(func.count()).select_from(
+                select(Certificate.id)
+                .where(
+                    Certificate.project_id == project_id,
+                    Certificate.certificate_type == cert_type,
+                    Certificate.status == CertificateStatus.ready,
+                    Certificate.deleted_at.is_(None),
+                )
+                .subquery()
+            )
+        )
+    ) or 0
+
+
+async def _count_open_findings(session: AsyncSession, project_id: UUID) -> int:
+    """Count open/in-progress, non-deleted findings (the dossier *problem* count)."""
+    return (
+        await session.scalar(
+            select(func.count()).select_from(
+                select(Finding.id)
+                .where(
+                    Finding.project_id == project_id,
+                    Finding.status.in_([FindingStatus.open, FindingStatus.in_progress]),
+                    Finding.deleted_at.is_(None),
+                )
+                .subquery()
+            )
+        )
+    ) or 0
+
+
+async def _count_overdue_deadlines(session: AsyncSession, project_id: UUID) -> int:
+    """Count pending deadlines past their due date (the dossier *problem* count)."""
+    today = datetime.now(_AMS).date()
+    return (
+        await session.scalar(
+            select(func.count()).select_from(
+                select(Deadline.id)
+                .where(
+                    Deadline.project_id == project_id,
+                    Deadline.status == DeadlineStatus.pending,
+                    Deadline.due_date < today,
+                )
+                .subquery()
+            )
+        )
+    ) or 0
+
+
 async def _check_fulfillment(
     session: AsyncSession,
     project_id: UUID,
@@ -193,74 +267,97 @@ async def _check_fulfillment(
 ) -> tuple[bool, int]:
     """Check whether a single dossier requirement is fulfilled.
 
-    Returns (fulfilled, count) where count is the number of matching items.
+    Returns (fulfilled, count) where count is the number of matching items (for
+    the ``derived`` health checks, the *problem* count — open findings / overdue
+    deadlines). The met/missing rule is shared with the batched whole-checklist
+    path (:func:`_dossier_counts`) via :func:`_requirement_fulfilled`.
     """
     if source_kind == "attachment_slot":
         count = await _count_ready_attachments_in_slot(session, project_id, source_value)
-        return count > 0, count
-
-    if source_kind == "certificate_type":
-        count = (
-            await session.scalar(
-                select(func.count()).select_from(
-                    select(Certificate.id)
-                    .where(
-                        Certificate.project_id == project_id,
-                        Certificate.certificate_type == source_value,
-                        Certificate.status == CertificateStatus.ready,
-                        Certificate.deleted_at.is_(None),
-                    )
-                    .subquery()
-                )
-            )
-        ) or 0
-        return count > 0, count
-
-    if source_kind == "derived":
-        if source_value == "findings":
-            open_count = (
-                await session.scalar(
-                    select(func.count()).select_from(
-                        select(Finding.id)
-                        .where(
-                            Finding.project_id == project_id,
-                            Finding.status.in_([FindingStatus.open, FindingStatus.in_progress]),
-                            Finding.deleted_at.is_(None),
-                        )
-                        .subquery()
-                    )
-                )
-            ) or 0
-            return open_count == 0, open_count
-
-        if source_value == "deadlines":
-            today = datetime.now(_AMS).date()
-            overdue_count = (
-                await session.scalar(
-                    select(func.count()).select_from(
-                        select(Deadline.id)
-                        .where(
-                            Deadline.project_id == project_id,
-                            Deadline.status == DeadlineStatus.pending,
-                            Deadline.due_date < today,
-                        )
-                        .subquery()
-                    )
-                )
-            ) or 0
-            return overdue_count == 0, overdue_count
-
-        if source_value == "documents":
-            count = await _count_models(session, project_id)
-            return count > 0, count
-
-    if source_kind == "document" and source_value == "documents":
+    elif source_kind == "certificate_type":
+        count = await _count_ready_certificates_of_type(session, project_id, source_value)
+    elif source_kind == "derived" and source_value == "findings":
+        count = await _count_open_findings(session, project_id)
+    elif source_kind == "derived" and source_value == "deadlines":
+        count = await _count_overdue_deadlines(session, project_id)
+    elif source_kind == "derived" and source_value == "documents":
+        count = await _count_models(session, project_id)
+    elif source_kind == "document" and source_value == "documents":
         # Drawings: a viewable/processed model (ready+extracted IFC or ready
         # PDF). Documents still processing — or without a file — don't count.
         count = await _count_viewable_models(session, project_id)
-        return count > 0, count
+    else:
+        return False, 0
 
-    return False, 0
+    return _requirement_fulfilled(source_kind, source_value, count), count
+
+
+async def _dossier_counts(
+    session: AsyncSession,
+    project_id: UUID,
+    reqs: Sequence[DossierRequirementTemplate],
+) -> dict[tuple[str, str], int]:
+    """Match-count for every requirement in ``reqs`` (keyed by source kind+value).
+
+    The whole dossier checklist is evaluated on every dashboard load, so instead
+    of one COUNT per requirement (the per-deadline path's ``_check_fulfillment``
+    loop) the attachment-slot requirements collapse into a single
+    ``GROUP BY dossier_slot`` and the certificate-type requirements into a single
+    ``GROUP BY certificate_type``. WHERE clauses mirror the single-count helpers
+    exactly so the two paths can never disagree. Counts run sequentially (a shared
+    ``AsyncSession`` cannot multiplex concurrent statements), but this is ~5
+    round-trips for an 11-item checklist rather than 11.
+    """
+    slots = {r.source_value for r in reqs if r.source_kind == "attachment_slot"}
+    cert_types = {r.source_value for r in reqs if r.source_kind == "certificate_type"}
+    derived = {r.source_value for r in reqs if r.source_kind == "derived"}
+    need_viewable = any(
+        r.source_kind == "document" and r.source_value == "documents" for r in reqs
+    )
+
+    counts: dict[tuple[str, str], int] = {}
+
+    if slots:
+        rows = await session.execute(
+            select(ProjectFile.dossier_slot, func.count())
+            .where(
+                ProjectFile.project_id == project_id,
+                ProjectFile.role == ProjectFileRole.attachment,
+                ProjectFile.dossier_slot.in_(slots),
+                ProjectFile.status == ProjectFileStatus.ready,
+                ProjectFile.deleted_at.is_(None),
+            )
+            .group_by(ProjectFile.dossier_slot)
+        )
+        by_slot = {slot: int(n) for slot, n in rows.all()}
+        for slot in slots:
+            counts[("attachment_slot", slot)] = by_slot.get(slot, 0)
+
+    if cert_types:
+        rows = await session.execute(
+            select(Certificate.certificate_type, func.count())
+            .where(
+                Certificate.project_id == project_id,
+                Certificate.certificate_type.in_(cert_types),
+                Certificate.status == CertificateStatus.ready,
+                Certificate.deleted_at.is_(None),
+            )
+            .group_by(Certificate.certificate_type)
+        )
+        by_type = {ct: int(n) for ct, n in rows.all()}
+        for ct in cert_types:
+            counts[("certificate_type", ct)] = by_type.get(ct, 0)
+
+    if "findings" in derived:
+        counts[("derived", "findings")] = await _count_open_findings(session, project_id)
+    if "deadlines" in derived:
+        counts[("derived", "deadlines")] = await _count_overdue_deadlines(session, project_id)
+    if "documents" in derived:
+        counts[("derived", "documents")] = await _count_models(session, project_id)
+    if need_viewable:
+        counts[("document", "documents")] = await _count_viewable_models(session, project_id)
+
+    return counts
 
 
 # ---------------------------------------------------------------------------
@@ -272,18 +369,18 @@ async def _dossier_block(session: AsyncSession, project: Project) -> DossierBloc
     bt = project.building_type.value if project.building_type else None
     reqs = get_dossier_requirements(project.country, bt)
 
+    counts = await _dossier_counts(session, project.id, reqs)
+
     items: list[ReadinessItem] = []
     for req in reqs:
-        fulfilled, count = await _check_fulfillment(
-            session, project.id, req.source_kind, req.source_value
-        )
+        count = counts.get((req.source_kind, req.source_value), 0)
         items.append(
             ReadinessItem(
                 code=req.code,
                 label=pick_label(req.label, "en", "nl"),
                 category=req.category,
                 required=req.required,
-                fulfilled=fulfilled,
+                fulfilled=_requirement_fulfilled(req.source_kind, req.source_value, count),
                 count=count,
             )
         )

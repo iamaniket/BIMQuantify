@@ -28,6 +28,7 @@ import { ReassignOwnerDialog } from './ReassignOwnerDialog';
 import { useLeaveOrganization } from './useLeaveOrganization';
 import { useRemoveMember } from './useRemoveMember';
 import { useResendInvite } from './useResendInvite';
+import { useUnlockMember } from './useUnlockMember';
 import { useUpdateMember } from './useUpdateMember';
 
 type Props = {
@@ -60,6 +61,7 @@ export function MembersTable({ organizationId, table, allMembers, loadError }: P
   const removeMutation = useRemoveMember();
   const resendMutation = useResendInvite();
   const leaveMutation = useLeaveOrganization();
+  const unlockMutation = useUnlockMember();
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reassignFor, setReassignFor] = useState<{
@@ -196,19 +198,22 @@ export function MembersTable({ organizationId, table, allMembers, loadError }: P
       header: t('status'),
       sortKey: 'status',
       cell: (m) => (
-        <Badge
-          variant={
-            m.status === 'active'
-              ? 'success'
-              : m.status === 'pending'
-                ? 'info'
-                : m.status === 'suspended'
-                  ? 'warning'
-                  : 'default'
-          }
-        >
-          {t(`statuses.${m.status}` as 'statuses.active')}
-        </Badge>
+        <div className="flex items-center gap-1.5">
+          <Badge
+            variant={
+              m.status === 'active'
+                ? 'success'
+                : m.status === 'pending'
+                  ? 'info'
+                  : m.status === 'suspended'
+                    ? 'warning'
+                    : 'default'
+            }
+          >
+            {t(`statuses.${m.status}` as 'statuses.active')}
+          </Badge>
+          {m.locked && <Badge variant="warning">{t('lockedBadge')}</Badge>}
+        </div>
       ),
     },
     {
@@ -338,6 +343,20 @@ export function MembersTable({ organizationId, table, allMembers, loadError }: P
                   }}
                 >
                   {t('reactivate')}
+                </DropdownMenuItem>
+              )}
+              {m.locked && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setErrorMessage(null);
+                    setBusyUserId(m.user_id);
+                    unlockMutation.mutate(
+                      { organizationId, userId: m.user_id },
+                      { onError: handleError, onSettled: settleBusy },
+                    );
+                  }}
+                >
+                  {t('unlock')}
                 </DropdownMenuItem>
               )}
               {isSelf ? (

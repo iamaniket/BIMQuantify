@@ -8,6 +8,7 @@ SENTRY_DSN unset.
 from __future__ import annotations
 
 import os
+from typing import TYPE_CHECKING
 
 import sentry_sdk
 from sentry_sdk.integrations.asyncio import AsyncioIntegration
@@ -15,6 +16,26 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
 
 from bimdossier_api.config import get_settings
+from bimdossier_api.logging_utils import get_request_id
+
+if TYPE_CHECKING:
+    from sentry_sdk.types import Event, Hint
+
+
+def _tag_request_id(event: Event, _hint: Hint) -> Event:
+    """Sentry ``before_send``: tag each event with the current request id.
+
+    Reads the same request-scoped context var that stamps the logs and the
+    audit row, so an error in Sentry can be cross-referenced to both by its
+    `request_id` tag. Reading at send time (rather than binding a scope in the
+    middleware) keeps this independent of where the Sentry ASGI integration
+    sits in the middleware stack. No-op outside a request (id is None).
+    """
+    request_id = get_request_id()
+    if request_id:
+        tags = event.setdefault("tags", {})
+        tags.setdefault("request_id", request_id)
+    return event
 
 
 def resolve_release(explicit: str | None = None) -> str | None:
@@ -52,6 +73,7 @@ def init_sentry() -> bool:
             FastApiIntegration(),
             AsyncioIntegration(),
         ],
+        before_send=_tag_request_id,
         send_default_pii=False,
     )
     return True

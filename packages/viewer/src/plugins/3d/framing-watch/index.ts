@@ -59,10 +59,22 @@ export function framingWatchPlugin(): Plugin {
   const sphere = new THREE.Sphere();
   const disposers: Array<() => void> = [];
 
-  const compute = (ctx: ViewerContext): FramingState => {
-    computeSceneSphere(ctx, sphere);
-    ctx.camera.updateMatrixWorld(true);
-    return classifyFraming(ctx.camera, sphere);
+  const compute = (ctx: ViewerContext): FramingState | null => {
+    // The camera / world / fragments can be torn down between a frame being
+    // scheduled and its rAF callback firing (HMR, route change, React
+    // strict-mode remount). Reading `ctx.camera` then throws "No camera
+    // initialized!" (and a disposed FragmentsModels can throw from
+    // `ctx.models()`). A passive watcher must fail safe — skip the frame rather
+    // than let the throw escape into the rAF handler, where it surfaces as an
+    // uncaught error in the dev overlay.
+    try {
+      const camera = ctx.camera;
+      computeSceneSphere(ctx, sphere);
+      camera.updateMatrixWorld(true);
+      return classifyFraming(camera, sphere);
+    } catch {
+      return null;
+    }
   };
 
   const evaluate = (): void => {
@@ -70,6 +82,9 @@ export function framingWatchPlugin(): Plugin {
     const ctx = ctxRef;
     if (!ctx) return;
     const state = compute(ctx);
+    // Camera/world not ready (mid-teardown) — skip without emitting a misleading
+    // transition; uninstall will cancel any further frames.
+    if (!state) return;
     // Emit only on a {inView, reason} transition — `coverage` drifts every frame
     // and would otherwise spam the bus during any camera motion.
     if (last && last.inView === state.inView && last.reason === state.reason) {

@@ -14,7 +14,7 @@ Distinct from the activation email (in `auth/manager.py`):
 from __future__ import annotations
 
 from bimdossier_api.config import get_settings
-from bimdossier_api.email.transport import get_email_transport
+from bimdossier_api.email.transport import send_email_best_effort
 from bimdossier_api.i18n import resolve_user_locale, t
 from bimdossier_api.models.organization import Organization
 from bimdossier_api.models.user import User
@@ -39,7 +39,7 @@ async def send_invite_notification(
         org_name=organization.name,
         url=settings.frontend_invitations_url,
     )
-    await get_email_transport().send(
+    await send_email_best_effort(
         to=invitee.email,
         subject=subject,
         body=body,
@@ -72,7 +72,7 @@ async def send_project_invite_notification(
         org_name=organization.name,
         url=settings.frontend_invitations_url,
     )
-    await get_email_transport().send(
+    await send_email_best_effort(
         to=invitee.email,
         subject=subject,
         body=body,
@@ -97,7 +97,7 @@ async def send_project_added_notification(
         inviter_label=inviter_label,
         project_name=project_name,
     )
-    await get_email_transport().send(
+    await send_email_best_effort(
         to=member.email,
         subject=subject,
         body=body,

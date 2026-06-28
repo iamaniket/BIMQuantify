@@ -6,6 +6,8 @@ provides the tenant context, and the token authenticates the request.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
@@ -15,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api import audit
+from bimdossier_api.auth.ratelimit import CAPTURE_INITIATE_LIMITER
 from bimdossier_api.config import Settings, get_settings
 from bimdossier_api.db import get_session_maker
 from bimdossier_api.models.capture_link import CaptureLink
@@ -38,28 +41,49 @@ from bimdossier_api.tenancy import schema_name_for
 router = APIRouter(prefix="/public/capture", tags=["capture-public"])
 
 
-async def _open_tenant_session(org_id: UUID) -> AsyncSession:
+@asynccontextmanager
+async def _open_tenant_session(org_id: UUID) -> AsyncIterator[AsyncSession]:
     """Open a session scoped to the org's schema WITHOUT JWT auth.
 
-    Uses the deploy user (not bim_app) because there's no user context for
-    RLS GUCs. The capture link token itself is the authorization gate.
+    Defence in depth: like ``get_tenant_session`` this drops to the
+    non-superuser ``bim_app`` role and pins ``search_path`` +
+    ``app.current_org_id`` for the transaction, so the surviving master-table
+    RLS policies enforce even though there is no user context (the capture-link
+    token is the authorization gate). There is no ``app.current_user_id`` — an
+    unauthenticated capture upload carries no user identity.
+
+    Same hard rule as the tenant dependency: do NOT call ``session.commit()``
+    inside the ``async with`` block — the wrapping ``session.begin()`` commits on
+    clean exit and rolls back on exception. An explicit commit would drop the
+    role + search_path + GUC and break isolation for subsequent queries. A
+    handler that must persist a write *and then* return an error (the
+    SIZE_MISMATCH rejection in ``complete_capture_upload``) sets a flag inside
+    the block and raises only after the block has committed.
     """
     sm = get_session_maker()
-    session = sm()
-    await session.begin()
+    async with sm() as session, session.begin():
+        # Resolve + gate the org before dropping privileges. Runs under the
+        # deploy role; bim_app also has SELECT on the master organizations table
+        # so the order is not load-bearing — doing it first keeps the existence
+        # check independent of the tenant isolation set up below.
+        org = (
+            await session.execute(
+                select(Organization).where(Organization.id == org_id)
+            )
+        ).scalar_one_or_none()
+        if org is None or org.status != OrganizationStatus.active or org.deleted_at is not None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="INVALID_CAPTURE_LINK"
+            )
 
-    org = (
+        schema = schema_name_for(org_id)
+        await session.execute(text("SET LOCAL ROLE bim_app"))
+        await session.execute(text(f'SET LOCAL search_path = "{schema}", public'))
         await session.execute(
-            select(Organization).where(Organization.id == org_id)
+            text("SELECT set_config('app.current_org_id', :org, true)"),
+            {"org": str(org_id)},
         )
-    ).scalar_one_or_none()
-    if org is None or org.status != OrganizationStatus.active or org.deleted_at is not None:
-        await session.close()
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="INVALID_CAPTURE_LINK")
-
-    schema = schema_name_for(org_id)
-    await session.execute(text(f'SET LOCAL search_path = "{schema}", public'))
-    return session
+        yield session
 
 
 async def _load_and_validate_link(
@@ -97,8 +121,7 @@ async def validate_capture_token(
     org_id: UUID,
     token: str,
 ) -> CaptureTokenValidation:
-    session = await _open_tenant_session(org_id)
-    try:
+    async with _open_tenant_session(org_id) as session:
         link = await _load_and_validate_link(session, token)
         project = (
             await session.execute(
@@ -119,11 +142,14 @@ async def validate_capture_token(
             expires_at=link.expires_at,
             remaining_uses=remaining,
         )
-    finally:
-        await session.close()
 
 
-@router.post("/{org_id}/{token}/initiate", response_model=CaptureUploadResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{org_id}/{token}/initiate",
+    response_model=CaptureUploadResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(CAPTURE_INITIATE_LIMITER)],
+)
 async def initiate_capture_upload(
     org_id: UUID,
     token: str,
@@ -132,8 +158,7 @@ async def initiate_capture_upload(
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
 ) -> CaptureUploadResponse:
-    session = await _open_tenant_session(org_id)
-    try:
+    async with _open_tenant_session(org_id) as session:
         # FOR UPDATE: serialize concurrent uploads so the use_count cap holds.
         link = await _load_and_validate_link(session, token, for_update=True)
 
@@ -233,19 +258,13 @@ async def initiate_capture_upload(
             request=request,
         )
 
-        await session.commit()
-
+        # No explicit commit — the _open_tenant_session block commits on exit.
         return CaptureUploadResponse(
             attachment_id=att.id,
             upload_url=upload_url,
             storage_key=storage_key,
             expires_in=storage.presign_ttl,
         )
-    except Exception:
-        await session.rollback()
-        raise
-    finally:
-        await session.close()
 
 
 @router.post("/{org_id}/{token}/complete/{attachment_id}", response_model=None, status_code=status.HTTP_200_OK)
@@ -256,8 +275,12 @@ async def complete_capture_upload(
     request: Request,
     storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, str]:
-    session = await _open_tenant_session(org_id)
-    try:
+    # A SIZE_MISMATCH must PERSIST the `rejected` write and THEN return 422.
+    # Inside the _open_tenant_session block a raise rolls the write back, so we
+    # record the rejection, let the block commit on clean exit, and raise after.
+    size_mismatch = False
+    att_id: UUID
+    async with _open_tenant_session(org_id) as session:
         link = await _load_and_validate_link(session, token)
 
         # FOR UPDATE: two concurrent completes must not both read `pending` and
@@ -281,6 +304,7 @@ async def complete_capture_upload(
         if att.status != ProjectFileStatus.pending:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="ATTACHMENT_NOT_PENDING")
 
+        att_id = att.id
         bucket = get_attachments_bucket()
         try:
             head = await storage.head_object(att.storage_key, bucket=bucket)
@@ -304,30 +328,25 @@ async def complete_capture_upload(
                 actor_user_id=None,
                 request=request,
             )
-            await session.commit()
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="SIZE_MISMATCH",
+            size_mismatch = True
+        else:
+            att.status = ProjectFileStatus.ready
+            await session.flush()
+            await audit.record(
+                session,
+                action="attachment.completed",
+                resource_type="project_files",
+                resource_id=att.id,
+                before={"status": "pending"},
+                after={"status": "ready"},
+                actor_user_id=None,
+                request=request,
             )
 
-        att.status = ProjectFileStatus.ready
-        await session.flush()
-
-        await audit.record(
-            session,
-            action="attachment.completed",
-            resource_type="project_files",
-            resource_id=att.id,
-            before={"status": "pending"},
-            after={"status": "ready"},
-            actor_user_id=None,
-            request=request,
+    # Block committed: the rejection (or the ready flip) is now durable.
+    if size_mismatch:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="SIZE_MISMATCH",
         )
-
-        await session.commit()
-        return {"status": "ok", "attachment_id": str(att.id)}
-    except Exception:
-        await session.rollback()
-        raise
-    finally:
-        await session.close()
+    return {"status": "ok", "attachment_id": str(att_id)}

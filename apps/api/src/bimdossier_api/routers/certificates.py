@@ -29,6 +29,7 @@ from bimdossier_api.access import (
 )
 from bimdossier_api.auth.fastapi_users import current_verified_user
 from bimdossier_api.auth.permissions import Action, Resource, require_permission
+from bimdossier_api.auth.ratelimit import UPLOAD_INITIATE_LIMITER
 from bimdossier_api.config import Settings, get_settings
 from bimdossier_api.models.certificate import (
     CERTIFICATE_ALLOWED_EXTENSIONS,
@@ -124,6 +125,7 @@ async def _load_certificate_or_404(
     "/initiate",
     response_model=CertificateInitiateResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(UPLOAD_INITIATE_LIMITER)],
 )
 async def initiate_certificate_upload(
     project_id: UUID,
@@ -498,6 +500,23 @@ async def delete_certificate(
         raise
 
     cert = await _load_certificate_or_404(session, project.id, certificate_id)
+    # Refuse to delete a version that still has newer versions chained to it
+    # (M-db3) — same version-group guard as attachments. The certificate version
+    # group is `coalesce(parent_certificate_id, id)`; deleting a lineage root
+    # while children exist would orphan the version display. Delete newest-first.
+    has_newer_versions = await session.scalar(
+        select(Certificate.id)
+        .where(
+            Certificate.parent_certificate_id == cert.id,
+            Certificate.deleted_at.is_(None),
+        )
+        .limit(1)
+    )
+    if has_newer_versions is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="FILE_VERSION_HAS_DESCENDANTS",
+        )
     before = _certificate_snapshot(cert)
     storage_key = cert.storage_key
     cert.soft_delete()

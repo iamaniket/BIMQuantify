@@ -34,6 +34,11 @@ export function useReports(
     queryFn: (accessToken) => listReports(accessToken, projectId, reportType),
     enabled: projectId.length > 0,
     refetchInterval: (query) => {
+      // Stop polling once a poll errors (e.g. 401 + failed refresh). The query
+      // settles to `error` but `state.data` keeps the last non-terminal snapshot,
+      // so without this guard — and with the global `retry: false` — we'd fire
+      // one doomed request per tick forever (#12).
+      if (query.state.status === 'error') return false;
       const data = query.state.data;
       if (data === undefined) return false;
       const active = data.items.some(
@@ -61,6 +66,11 @@ export function useReport(
     },
     enabled: projectId.length > 0 && reportId !== null,
     refetchInterval: (query) => {
+      // Error guard MUST come before the `undefined → 2000` line below: a poll
+      // that errors before any data loads (404 / persistent 401) keeps
+      // `data === undefined`, so without this it would poll every 2s forever
+      // under the global `retry: false` (#12).
+      if (query.state.status === 'error') return false;
       const data = query.state.data;
       if (data === undefined) return 2000;
       if (data.status === 'queued' || data.status === 'running') return 2000;

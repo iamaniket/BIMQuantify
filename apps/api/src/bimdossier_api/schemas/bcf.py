@@ -1,10 +1,33 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+
+# ---------------------------------------------------------------------------
+# Input-size caps (M-input). The global body limit (100 MB) is too coarse to
+# bound these; an unbounded `selection`/`labels` list is a JSONB-bloat (and, for
+# labels, a per-row-INSERT) amplification vector. Caps are generous for
+# legitimate BCF use — large "isolate" viewpoints, polyline measures — but keep
+# any single field well under the body cap.
+# ---------------------------------------------------------------------------
+
+_MAX_ELEMENT_IDS = 50_000  # GlobalId lists: selection / visibility / xray items
+_MAX_MEASUREMENT_POINTS = 10_000
+_MAX_MEASUREMENTS = 1_000
+_MAX_CLIPPING_PLANES = 100
+_MAX_2D_ANNOTATIONS = 5_000
+_MAX_VISIBLE_LAYERS = 5_000
+_MAX_LABELS = 50
+_MAX_FINDING_IDS = 500
+
+# IFC GlobalId is 22 chars; allow margin. `_LABEL_MAX_LEN` mirrors the
+# BcfTopicLabel.name String(64) column (the routers already do `name[:64]`).
+ElementId = Annotated[str, StringConstraints(max_length=64)]
+LabelStr = Annotated[str, StringConstraints(max_length=64)]
+LayerName = Annotated[str, StringConstraints(max_length=256)]
 
 # ---------------------------------------------------------------------------
 # Viewpoint
@@ -19,8 +42,10 @@ class Vec3Schema(BaseModel):
 
 class BcfComponentsSchema(BaseModel):
     default_visibility: bool = True
-    visibility_exceptions: list[str] = Field(default_factory=list)
-    selection: list[str] = Field(default_factory=list)
+    visibility_exceptions: list[ElementId] = Field(
+        default_factory=list, max_length=_MAX_ELEMENT_IDS
+    )
+    selection: list[ElementId] = Field(default_factory=list, max_length=_MAX_ELEMENT_IDS)
 
 
 class ClippingPlaneSchema(BaseModel):
@@ -29,18 +54,20 @@ class ClippingPlaneSchema(BaseModel):
 
 
 class XrayOpacityOverrideSchema(BaseModel):
-    global_id: str
+    global_id: ElementId
     opacity: float
 
 
 class XrayStateSchema(BaseModel):
-    items: list[str] = Field(default_factory=list)
-    opacity_overrides: list[XrayOpacityOverrideSchema] = Field(default_factory=list)
+    items: list[ElementId] = Field(default_factory=list, max_length=_MAX_ELEMENT_IDS)
+    opacity_overrides: list[XrayOpacityOverrideSchema] = Field(
+        default_factory=list, max_length=_MAX_ELEMENT_IDS
+    )
 
 
 class BcfMeasurementSchema(BaseModel):
-    type: str
-    points: list[Vec3Schema] = Field(default_factory=list)
+    type: str = Field(max_length=30)
+    points: list[Vec3Schema] = Field(default_factory=list, max_length=_MAX_MEASUREMENT_POINTS)
     height: float | None = None
 
 
@@ -48,13 +75,13 @@ class ViewState2DSchema(BaseModel):
     center_x: float = 0.0
     center_y: float = 0.0
     zoom: float = 1.0
-    visible_layers: list[str] = Field(default_factory=list)
-    file_type: str = "dxf"
+    visible_layers: list[LayerName] = Field(default_factory=list, max_length=_MAX_VISIBLE_LAYERS)
+    file_type: str = Field(default="dxf", max_length=20)
     # PDF markup extension. `page` is the 1-based page; `annotations` holds the
     # markup shapes (kept as free dicts — they are app-private and ignored by the
     # standard .bcf export). See the viewer's `Annotation2D` type.
     page: int | None = None
-    annotations: list[dict[str, Any]] = Field(default_factory=list)
+    annotations: list[dict[str, Any]] = Field(default_factory=list, max_length=_MAX_2D_ANNOTATIONS)
 
 
 class BcfViewpointCreate(BaseModel):
@@ -67,9 +94,13 @@ class BcfViewpointCreate(BaseModel):
     field_of_view: float | None = None
     field_of_height: float | None = None
     components: BcfComponentsSchema | None = None
-    clipping_planes: list[ClippingPlaneSchema] = Field(default_factory=list)
+    clipping_planes: list[ClippingPlaneSchema] = Field(
+        default_factory=list, max_length=_MAX_CLIPPING_PLANES
+    )
     xray: XrayStateSchema | None = None
-    measurements: list[BcfMeasurementSchema] = Field(default_factory=list)
+    measurements: list[BcfMeasurementSchema] = Field(
+        default_factory=list, max_length=_MAX_MEASUREMENTS
+    )
     is_2d: bool = False
     view_state_2d: ViewState2DSchema | None = None
     linked_file_id: UUID | None = None
@@ -136,7 +167,7 @@ class BcfTopicCreate(BaseModel):
     priority: str | None = Field(default=None, max_length=50)
     stage: str | None = Field(default=None, max_length=50)
     assigned_to: str | None = Field(default=None, max_length=255)
-    labels: list[str] = Field(default_factory=list)
+    labels: list[LabelStr] = Field(default_factory=list, max_length=_MAX_LABELS)
     due_date: date | None = None
     linked_finding_id: UUID | None = None
     linked_document_id: UUID | None = None
@@ -156,7 +187,7 @@ class BcfTopicUpdate(BaseModel):
     priority: str | None = Field(default=None, max_length=50)
     stage: str | None = Field(default=None, max_length=50)
     assigned_to: str | None = Field(default=None, max_length=255)
-    labels: list[str] | None = None
+    labels: list[LabelStr] | None = Field(default=None, max_length=_MAX_LABELS)
     due_date: date | None = None
     linked_finding_id: UUID | None = None
     linked_document_id: UUID | None = None
@@ -262,4 +293,4 @@ class BcfLinkFindingRequest(BaseModel):
 
 
 class BcfFromFindingsRequest(BaseModel):
-    finding_ids: list[UUID] = Field(min_length=1)
+    finding_ids: list[UUID] = Field(min_length=1, max_length=_MAX_FINDING_IDS)

@@ -52,6 +52,7 @@ export function effectsPlugin(
   let ctxRef: ViewerContext | null = null;
 
   let composer: EffectComposer | null = null;
+  let renderPass: RenderPass | null = null;
   let fxaaPass: CustomFXAAPass | null = null;
   let composerTarget: THREE.WebGLRenderTarget | null = null;
 
@@ -81,6 +82,11 @@ export function effectsPlugin(
     if (!composer || !ctxRef) return;
     const { camera, renderer, scene } = ctxRef;
     const savedMask = camera.layers.mask;
+
+    // OrthoPerspectiveCamera swaps the THREE camera instance on a
+    // perspective↔ortho switch; keep the RenderPass pointed at the live one so
+    // the idle composite doesn't repaint the scene with the stale camera.
+    if (renderPass) renderPass.camera = camera;
 
     camera.layers.set(LAYER_DEFAULT);
     setShadowLinearBlend(1.0);
@@ -160,7 +166,8 @@ export function effectsPlugin(
       composer.setSize(size.x, size.y);
       composer.setPixelRatio(dpr);
 
-      composer.addPass(new RenderPass(scene, camera));
+      renderPass = new RenderPass(scene, camera);
+      composer.addPass(renderPass);
 
       fxaaPass = new CustomFXAAPass();
       fxaaPass.setSize(w, h);
@@ -217,6 +224,7 @@ export function effectsPlugin(
 
         composer?.dispose();
         composer = null;
+        renderPass = null;
         fxaaPass?.dispose?.();
         fxaaPass = null;
         composerTarget?.dispose();

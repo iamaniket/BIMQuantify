@@ -13,6 +13,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from redis.asyncio import Redis
 from sqlalchemy import func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +23,7 @@ from bimdossier_api.admin.membership_rules import (
     assert_last_superuser_invariant,
 )
 from bimdossier_api.admin.provisioning import (
+    PURGE_SKIPPED_IN_PROGRESS,
     PURGE_SKIPPED_NOT_DELETED,
     PURGE_SKIPPED_NOT_DUE,
     ProvisioningError,
@@ -36,8 +38,10 @@ from bimdossier_api.admin.storage import (
     compute_active_storage_gb,
     compute_storage_gb_bulk,
 )
+from bimdossier_api.auth import lockout
 from bimdossier_api.auth.dependencies import require_superuser
 from bimdossier_api.auth.manager import UserManager, get_user_manager
+from bimdossier_api.cache import get_redis_dep
 from bimdossier_api.db import get_async_session, get_session_maker
 from bimdossier_api.email.invites import send_invite_notification
 from bimdossier_api.models.access_request import AccessRequest, AccessRequestStatus
@@ -465,6 +469,11 @@ async def purge_org(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="ORG_PURGE_NOT_DUE"
         )
+    if result.status == PURGE_SKIPPED_IN_PROGRESS:
+        # A concurrent purge of this org holds the run-lock (M-con5).
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="ORG_PURGE_IN_PROGRESS"
+        )
 
     # purged (or already-purged, idempotent) → return the current tombstone state.
     # The schema is gone, so active-storage reads 0 (compute_active_storage_gb is
@@ -487,6 +496,7 @@ async def list_users(
     response: Response,
     requester: User = Depends(require_superuser),
     session: AsyncSession = Depends(get_async_session),
+    redis: Redis = Depends(get_redis_dep),
     q: str | None = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -514,7 +524,16 @@ async def list_users(
         tiebreaker=User.id,
     ).limit(limit).offset(offset)
     result = await session.execute(stmt)
-    return [AdminUserRead.model_validate(u, from_attributes=True) for u in result.scalars()]
+    users = list(result.scalars())
+    # H6: batched lock-status lookup for the page so the portal can show a
+    # "Locked" badge + the Unlock action. Fails open (all False) on Redis error.
+    locked = await lockout.locked_map(redis, [u.email for u in users])
+    return [
+        AdminUserRead.model_validate(u, from_attributes=True).model_copy(
+            update={"locked": locked.get(u.email, False)}
+        )
+        for u in users
+    ]
 
 
 async def _toggle_superuser(
@@ -648,6 +667,38 @@ async def deactivate_user(
     return AdminUserRead.model_validate(user, from_attributes=True)
 
 
+@router.post("/users/{user_id}/unlock", response_model=AdminUserRead)
+async def unlock_user(
+    user_id: UUID,
+    request: Request,
+    requester: User = Depends(require_superuser),
+    session: AsyncSession = Depends(get_async_session),
+    redis: Redis = Depends(get_redis_dep),
+) -> AdminUserRead:
+    """Clear an account's failed-login lockout (H6). Super-admin only.
+
+    Idempotent — clearing an account that isn't locked is a harmless no-op. The
+    returned row has `locked=False` (we just cleared it).
+    """
+    user = await session.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="USER_NOT_FOUND")
+    await lockout.clear_failures(redis, user.email)
+    # Platform-level action (no subject org) → platform schema.
+    await audit.record_for_org(
+        session,
+        None,
+        action="user.unlocked",
+        resource_type="user",
+        resource_id=user.id,
+        after={"email": user.email},
+        actor_user_id=requester.id,
+        request=request,
+    )
+    await session.commit()
+    return AdminUserRead.model_validate(user, from_attributes=True)
+
+
 # ---------------------------------------------------------------------------
 # Access requests — lead review + approve/reject
 # ---------------------------------------------------------------------------
@@ -655,6 +706,7 @@ async def deactivate_user(
 
 @router.get("/access-requests/export")
 async def export_access_requests(
+    request: Request,
     requester: User = Depends(require_superuser),
     session: AsyncSession = Depends(get_async_session),
     status_filter: str | None = Query(default=None, alias="status"),
@@ -694,6 +746,26 @@ async def export_access_requests(
             r.status.value, r.created_at.isoformat(),
             r.updated_at.isoformat(),
         ])
+
+    # This dumps every lead's name/email/company/notes in one request — a mass
+    # PII exfiltration surface that must not be silent. Record a forensic row
+    # (count + filters + actor + IP); only metadata, never the PII itself. The
+    # leads table is platform-scoped, so the audit row goes to the platform
+    # schema via record_for_org(session, None, ...). On a master session the
+    # wrapping txn isn't auto-committed, so commit explicitly.
+    await audit.record_for_org(
+        session,
+        None,
+        action="access_request.exported",
+        resource_type="access_request",
+        actor_user_id=requester.id,
+        request=request,
+        after={
+            "count": len(rows),
+            "filters": {"status": status_filter, "q": q},
+        },
+    )
+    await session.commit()
 
     return StreamingResponse(
         iter([buf.getvalue()]),

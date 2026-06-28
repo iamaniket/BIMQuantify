@@ -1,5 +1,6 @@
 import { getConfig } from '../config.js';
 import { logger } from '../log.js';
+import { callbackBaseUrl } from './callbackContext.js';
 
 export type CallbackStatus = 'running' | 'succeeded' | 'failed';
 
@@ -50,7 +51,7 @@ export type CallbackPayload = {
 
 export async function postCallback(payload: CallbackPayload): Promise<void> {
   const cfg = getConfig();
-  const url = `${cfg.API_BASE_URL.replace(/\/$/, '')}/internal/jobs/callback`;
+  const url = `${callbackBaseUrl()}/internal/jobs/callback`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {

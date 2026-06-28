@@ -1,9 +1,14 @@
 import { apiClient, type PaginatedResponse } from './client';
 import {
+  FindingCommentListSchema,
+  FindingCommentSchema,
   FindingHistoryListSchema,
   FindingListSchema,
   FindingSchema,
   type Finding,
+  type FindingComment,
+  type FindingCommentCreateInput,
+  type FindingCommentList,
   type FindingCreateInput,
   type FindingHistoryList,
   type FindingList,
@@ -98,6 +103,65 @@ export async function deleteFinding(
   findingId: string,
 ): Promise<void> {
   return apiClient.delete(`/projects/${projectId}/findings/${findingId}`, accessToken);
+}
+
+// --- Discussion comments ---
+
+function commentsPath(projectId: string, findingId: string): string {
+  return `/projects/${projectId}/findings/${findingId}/comments`;
+}
+
+export async function listFindingComments(
+  accessToken: string,
+  projectId: string,
+  findingId: string,
+): Promise<FindingCommentList> {
+  return apiClient.get<FindingCommentList>(
+    commentsPath(projectId, findingId),
+    FindingCommentListSchema,
+    accessToken,
+  );
+}
+
+export async function createFindingComment(
+  accessToken: string,
+  projectId: string,
+  findingId: string,
+  input: FindingCommentCreateInput,
+): Promise<FindingComment> {
+  return apiClient.post<FindingComment>(
+    commentsPath(projectId, findingId),
+    input,
+    FindingCommentSchema,
+    accessToken,
+  );
+}
+
+export async function updateFindingComment(
+  accessToken: string,
+  projectId: string,
+  findingId: string,
+  commentId: string,
+  input: FindingCommentCreateInput,
+): Promise<FindingComment> {
+  return apiClient.patch<FindingComment>(
+    `${commentsPath(projectId, findingId)}/${commentId}`,
+    input,
+    FindingCommentSchema,
+    accessToken,
+  );
+}
+
+export async function deleteFindingComment(
+  accessToken: string,
+  projectId: string,
+  findingId: string,
+  commentId: string,
+): Promise<void> {
+  return apiClient.delete(
+    `${commentsPath(projectId, findingId)}/${commentId}`,
+    accessToken,
+  );
 }
 
 /** Download the project's findings (bevindingen) as CSV, honouring the same

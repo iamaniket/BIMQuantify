@@ -61,6 +61,17 @@ async def test_create_project_rejects_overlong_name(
     assert response.status_code == 422
 
 
+async def test_create_project_rejects_overlong_description(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    response = await client.post(
+        "/projects",
+        json={"name": "Desc", "description": "a" * 4001},
+        headers=_auth(org_user["access_token"]),
+    )
+    assert response.status_code == 422
+
+
 async def test_create_project_duplicate_name_in_same_org_returns_409(
     client: AsyncClient, org_user: dict[str, str]
 ) -> None:

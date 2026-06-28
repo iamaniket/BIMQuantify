@@ -27,6 +27,10 @@ class NotificationListResponse(BaseModel):
     unread_count: int
     limit: int
     offset: int
+    # Opaque keyset cursor for "load more": pass it back as ?cursor= to fetch the
+    # next page without an OFFSET scan. None when there are no more rows. Offset
+    # paging still works (omit cursor) — this is additive.
+    next_cursor: str | None = None
 
 
 class UnreadCountResponse(BaseModel):

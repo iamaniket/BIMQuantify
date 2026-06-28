@@ -7,13 +7,20 @@ job-dispatcher stub from conftest. No real worker / S3 / Redis required.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import json
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import text
 
-from tests.conftest import FakeStorage, _auth, _create_project
+from tests.conftest import (
+    FakeStorage,
+    _auth,
+    _create_document,
+    _create_pdf_file_row,
+    _create_project,
+)
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
@@ -1471,3 +1478,127 @@ async def test_list_reports_allowed_when_project_archived(
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# GET /projects/{p}/compliance/reports — latest-per-(file, framework) list (S1)
+# ---------------------------------------------------------------------------
+
+
+async def _seed_compliance_job_for_file(
+    session_maker: async_sessionmaker[AsyncSession],
+    organization_id: UUID,
+    project_id: UUID,
+    file_id: str,
+    *,
+    framework: str,
+    finished_at: datetime,
+    result: dict,
+) -> UUID:
+    """Seed a succeeded compliance Job tied to a specific project_file, with an
+    explicit finished_at — so the list endpoint's "latest per (file, framework)"
+    dedup can be exercised. Raw SQL bypasses RLS (superuser session)."""
+    job_id = uuid4()
+    schema = f"org_{str(organization_id).replace('-', '')}"
+    async with session_maker() as session, session.begin():
+        await session.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+        await session.execute(
+            text(
+                "INSERT INTO jobs (id, project_id, file_id, job_type, status, "
+                "payload, result, finished_at) VALUES (:id, :p, :f, "
+                "'compliance_check', 'succeeded', CAST(:pl AS jsonb), "
+                "CAST(:r AS jsonb), :fin)"
+            ),
+            {
+                "id": str(job_id),
+                "p": str(project_id),
+                "f": file_id,
+                "pl": json.dumps({"framework": framework}),
+                "r": json.dumps(result),
+                "fin": finished_at,
+            },
+        )
+    return job_id
+
+
+def _compliance_result(*, passed: int, warned: int, failed: int, checked_at: str) -> dict:
+    return {
+        "checked_at": checked_at,
+        "total_rules": passed + warned + failed,
+        "total_elements_checked": 10,
+        "category_summary": [
+            {"category": "fire_safety", "passed": passed, "warned": warned, "failed": failed}
+        ],
+        "details": [{"junk": "x" * 50}],  # stand-in for the large per-element array
+    }
+
+
+async def test_compliance_reports_list_dedups_latest_per_file_framework(
+    org_user: dict[str, str],
+    email_transport: object,
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """GET /compliance/reports returns the LATEST succeeded job per (file,
+    framework): older runs are deduped away (S1 DISTINCT ON) and the summary
+    counts come from the newest job. Two frameworks on one file → two rows."""
+    client, _ = fake_storage_client
+    token = org_user["access_token"]
+    org_id = UUID(org_user["organization_id"])
+    project = await _create_project(client, token, name="P-compl-list")
+    pid = UUID(project["id"])
+
+    doc = await _create_document(client, token, project["id"], name="Doc-A")
+    file_a = await _create_pdf_file_row(project["id"], doc["id"], uploaded_by=org_user["id"])
+
+    base = datetime(2026, 5, 1, 12, 0, tzinfo=UTC)
+    # Older bbl run for file A (should be deduped away).
+    await _seed_compliance_job_for_file(
+        session_maker, org_id, pid, file_a, framework="bbl", finished_at=base,
+        result=_compliance_result(passed=1, warned=0, failed=0, checked_at="2026-05-01T12:00:00Z"),
+    )
+    # Newer bbl run for file A (the one that should surface).
+    latest_bbl = await _seed_compliance_job_for_file(
+        session_maker, org_id, pid, file_a, framework="bbl",
+        finished_at=base + timedelta(hours=1),
+        result=_compliance_result(passed=2, warned=0, failed=2, checked_at="2026-05-01T13:00:00Z"),
+    )
+    # A wkb run for the same file → distinct (file, framework) row.
+    await _seed_compliance_job_for_file(
+        session_maker, org_id, pid, file_a, framework="wkb", finished_at=base,
+        result=_compliance_result(passed=3, warned=1, failed=0, checked_at="2026-05-01T12:00:00Z"),
+    )
+
+    resp = await client.get(
+        f"/projects/{project['id']}/compliance/reports", headers=_auth(token)
+    )
+    assert resp.status_code == 200, resp.text
+    items = resp.json()["items"]
+
+    # One row per (file, framework): (A,bbl) + (A,wkb) — the older bbl run is gone.
+    assert len(items) == 2
+    by_fw = {it["framework"]: it for it in items}
+    assert set(by_fw) == {"bbl", "wkb"}
+
+    bbl = by_fw["bbl"]
+    assert bbl["job_id"] == str(latest_bbl)  # latest, not the older run
+    assert bbl["pass_count"] == 2
+    assert bbl["fail_count"] == 2
+    assert bbl["overall_score"] == 50  # 2 pass / 4 total
+    assert bbl["file_id"] == file_a
+    assert bbl["document_name"] == "Doc-A"
+
+    wkb = by_fw["wkb"]
+    assert wkb["pass_count"] == 3
+    assert wkb["warn_count"] == 1
+
+    # framework filter narrows to just bbl.
+    resp_bbl = await client.get(
+        f"/projects/{project['id']}/compliance/reports?framework=bbl",
+        headers=_auth(token),
+    )
+    assert resp_bbl.status_code == 200, resp_bbl.text
+    bbl_items = resp_bbl.json()["items"]
+    assert len(bbl_items) == 1
+    assert bbl_items[0]["framework"] == "bbl"
+    assert bbl_items[0]["job_id"] == str(latest_bbl)

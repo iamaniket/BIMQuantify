@@ -4,25 +4,29 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi_limiter.depends import RateLimiter
 from fastapi_users import exceptions as fau_exceptions
 from fastapi_users.jwt import decode_jwt
 from pydantic import BaseModel, EmailStr
+from redis.asyncio import Redis
+from redis.exceptions import RedisError
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api import audit
+from bimdossier_api.admin.storage import compute_storage_gb_bulk
+from bimdossier_api.auth import lockout
 from bimdossier_api.auth.dependencies import get_active_organization_id
 from bimdossier_api.auth.fastapi_users import current_active_user, fastapi_users
+from bimdossier_api.auth.lockout_alert import maybe_alert_on_lockout
 from bimdossier_api.auth.logout import router as logout_router
 from bimdossier_api.auth.manager import UserManager, get_user_manager
+from bimdossier_api.auth.ratelimit import ResilientRateLimiter
 from bimdossier_api.auth.refresh import TokenPair
 from bimdossier_api.auth.refresh import router as refresh_router
-from bimdossier_api.auth.tokens import create_token, decode_token_full
+from bimdossier_api.auth.tokens import TokenError, create_token, decode_token_full
 from bimdossier_api.cache import get_redis_dep
 from bimdossier_api.cache.blocklist import revoke_jti
 from bimdossier_api.config import get_settings
-from bimdossier_api.admin.storage import compute_storage_gb_bulk
 from bimdossier_api.db import get_async_session, get_session_maker
 from bimdossier_api.models.organization import Organization, OrganizationStatus
 from bimdossier_api.models.organization_member import (
@@ -33,12 +37,15 @@ from bimdossier_api.models.user import User
 from bimdossier_api.schemas.user import UserRead, UserUpdate
 from bimdossier_api.storage import get_attachments_bucket, get_storage
 
-LOGIN_RATE_LIMITER = RateLimiter(times=get_settings().rate_limit_login_per_min, seconds=60)
-FORGOT_RATE_LIMITER = RateLimiter(times=get_settings().rate_limit_forgot_per_hour, seconds=3600)
-# Kept for back-compat with conftest fixtures that disable rate limiters wholesale
-# even though the public /auth/register route is gone — admin invite still wants
-# a knob if we ever expose it.
-REGISTER_RATE_LIMITER = RateLimiter(times=get_settings().rate_limit_register_per_hour, seconds=3600)
+LOGIN_RATE_LIMITER = ResilientRateLimiter(times=get_settings().rate_limit_login_per_min, seconds=60)
+FORGOT_RATE_LIMITER = ResilientRateLimiter(
+    times=get_settings().rate_limit_forgot_per_hour, seconds=3600
+)
+# Per-IP/hour throttle on the resend-activation endpoint. Each call emails an
+# activation link, so an unthrottled endpoint is an email-bomb vector.
+VERIFY_REQUEST_RATE_LIMITER = ResilientRateLimiter(
+    times=get_settings().rate_limit_verify_request_per_hour, seconds=3600
+)
 
 
 # ---------------------------------------------------------------------------
@@ -81,6 +88,10 @@ class ActivateRequest(BaseModel):
 
 
 class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class RequestVerifyTokenRequest(BaseModel):
     email: EmailStr
 
 
@@ -242,9 +253,31 @@ def build_auth_router() -> APIRouter:
         credentials: OAuth2PasswordRequestForm = Depends(),
         user_manager: UserManager = Depends(get_user_manager),
         session: AsyncSession = Depends(get_async_session),
+        redis: Redis = Depends(get_redis_dep),
     ) -> TokenPair:
+        settings = get_settings()
+        username = lockout.normalize_username(credentials.username)
+
+        # Per-account lockout gate (H6) — keyed on the account, independent of
+        # source IP, so it survives IP rotation (distributed credential stuffing
+        # the per-IP LOGIN_RATE_LIMITER can't see). Checked BEFORE authenticate so
+        # a locked attacker can't confirm a guessed password and we skip the hash.
+        locked, retry_after = await lockout.is_locked(redis, username)
+        if locked:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="LOGIN_ACCOUNT_LOCKED",
+                headers={"Retry-After": str(retry_after)},
+            )
+
         user = await user_manager.authenticate(credentials)
         if user is None or not user.is_active:
+            # Count this failure against the account (Redis; outside the DB
+            # transaction). Runs for unknown emails too — the lock behaves
+            # identically whether or not the address is a real user, so it can't
+            # be used to enumerate accounts.
+            result = await lockout.register_failure(redis, username, settings)
+
             # `user_manager.authenticate` has already issued queries on this
             # session, so SQLAlchemy auto-began a transaction. We append the
             # audit row and commit; the explicit `async with session.begin()`
@@ -258,15 +291,35 @@ def build_auth_router() -> APIRouter:
                 request=request,
             )
             await session.commit()
+
+            # On the exact failure that crossed the threshold, alert org admins +
+            # super-admins (best-effort; never breaks the login response).
+            if result.just_locked:
+                await maybe_alert_on_lockout(
+                    session, request, username, result.fail_count
+                )
+
+            if result.locked:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="LOGIN_ACCOUNT_LOCKED",
+                    headers={"Retry-After": str(result.retry_after)},
+                )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="LOGIN_BAD_CREDENTIALS",
             )
         if not user.is_verified:
+            # A correct password for a real account is not a failed credential
+            # attempt — clear the counter so the verify gate can't accrue a lock.
+            await lockout.clear_failures(redis, username)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="LOGIN_USER_NOT_VERIFIED",
             )
+
+        # Successful credential check → reset the account's failure/backoff state.
+        await lockout.clear_failures(redis, username)
 
         # Same session, same auto-begun transaction → flip pending memberships,
         # backfill active org, emit audit, commit once at the end.
@@ -437,12 +490,22 @@ def build_auth_router() -> APIRouter:
             current_access = auth_header.split(" ", 1)[1].strip()
             try:
                 decoded = decode_token_full(current_access, "access")
-                if decoded.jti is not None and decoded.exp is not None:
-                    ttl = max(decoded.exp - int(datetime.now(UTC).timestamp()), 1)
-                    await revoke_jti(redis, decoded.jti, ttl)
-            except Exception:
+            except TokenError:
                 # Bad/expired token — nothing to revoke.
-                pass
+                decoded = None
+            if decoded is not None and decoded.jti is not None and decoded.exp is not None:
+                ttl = max(decoded.exp - int(datetime.now(UTC).timestamp()), 1)
+                try:
+                    await revoke_jti(redis, decoded.jti, ttl)
+                except RedisError as exc:
+                    # Fail CLOSED (mirrors logout): a switch that can't persist the
+                    # old-org token's revocation must not report success — the old
+                    # access token would keep acting in the previous org. We raise
+                    # before the DB write below, so the switch is not persisted.
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="SWITCH_REVOCATION_UNAVAILABLE",
+                    ) from exc
 
         # Hard switch: also revoke the old refresh token when the client sends
         # it, so a replayed pre-switch refresh can't mint a fresh access scoped
@@ -451,12 +514,23 @@ def build_auth_router() -> APIRouter:
         if payload.refresh_token:
             try:
                 old_refresh = decode_token_full(payload.refresh_token, "refresh")
-                if old_refresh.user_id == user.id and old_refresh.jti is not None:
-                    ttl = max(old_refresh.exp - int(datetime.now(UTC).timestamp()), 1)
-                    await revoke_jti(redis, old_refresh.jti, ttl)
-            except Exception:
+            except TokenError:
                 # Bad/expired refresh token — nothing to revoke.
-                pass
+                old_refresh = None
+            if (
+                old_refresh is not None
+                and old_refresh.user_id == user.id
+                and old_refresh.jti is not None
+            ):
+                ttl = max(old_refresh.exp - int(datetime.now(UTC).timestamp()), 1)
+                try:
+                    await revoke_jti(redis, old_refresh.jti, ttl)
+                except RedisError as exc:
+                    # Fail CLOSED — same rationale as the access-token revoke above.
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="SWITCH_REVOCATION_UNAVAILABLE",
+                    ) from exc
 
         # Persist the choice on the user row so subsequent logins land
         # on the same org. `require_active_org_membership` already issued
@@ -575,6 +649,21 @@ def build_auth_router() -> APIRouter:
                     },
                 ) from e
 
+            # Forensic trail (H9): account activated (verified + initial password
+            # set). Inside the `not user.is_verified` branch so an idempotent
+            # replay (which short-circuits above without re-setting the password)
+            # does not double-record. Org-less event → platform schema.
+            # Best-effort, in the route (not on_after_verify, which also fires on
+            # the legacy plain-verify path and lacks the request).
+            await audit.record_event_independent(
+                None,
+                action="auth.activate",
+                resource_type="user",
+                resource_id=user.id,
+                actor_user_id=user.id,
+                request=request,
+            )
+
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     router.include_router(activate_router)
@@ -608,10 +697,48 @@ def build_auth_router() -> APIRouter:
 
     router.include_router(forgot_router)
 
+    # --- request-verify-token shadow with rate limiting -------------------
+    # FastAPI Users' get_verify_router() bundles /auth/request-verify-token AND
+    # a bare /auth/verify. We deliberately do NOT mount that bundle:
+    #   * /auth/verify is dropped entirely. Activation goes through /auth/activate
+    #     (which sets the password atomically with the is_verified flip). A bare
+    #     verify route is an onboarding-griefing vector: anyone who observes an
+    #     invite token could POST it to /auth/verify to flip is_verified WITHOUT
+    #     setting a password, after which the legit invitee's /auth/activate
+    #     short-circuits to a no-op and they can never set their password.
+    #   * /auth/request-verify-token is re-implemented here WITH a per-IP limiter
+    #     (it emails an activation link, so an unthrottled route is an email-bomb
+    #     vector). Behaviour is unchanged: always 202, never reveals whether the
+    #     address exists (account-enumeration-safe).
+    verify_request_router = APIRouter(prefix="/auth", tags=["auth"])
+
+    @verify_request_router.post(
+        "/request-verify-token",
+        status_code=status.HTTP_202_ACCEPTED,
+        dependencies=[Depends(VERIFY_REQUEST_RATE_LIMITER)],
+    )
+    async def request_verify_token(
+        request: Request,
+        payload: RequestVerifyTokenRequest,
+        user_manager: UserManager = Depends(get_user_manager),
+    ) -> None:
+        try:
+            user = await user_manager.get_by_email(payload.email)
+            await user_manager.request_verify(user, request)
+        except (
+            fau_exceptions.UserNotExists,
+            fau_exceptions.UserInactive,
+            fau_exceptions.UserAlreadyVerified,
+        ):
+            # Swallow all three so the response is identical regardless of
+            # account state — no enumeration signal.
+            pass
+
+    router.include_router(verify_request_router)
+
     # --- FastAPI Users built-in routers -----------------------------------
     # NOTE: /auth/register is intentionally NOT included. All user creation
     # goes through admin invite endpoints.
-    router.include_router(fastapi_users.get_verify_router(UserRead), prefix="/auth", tags=["auth"])
     router.include_router(
         fastapi_users.get_reset_password_router(),
         prefix="/auth",

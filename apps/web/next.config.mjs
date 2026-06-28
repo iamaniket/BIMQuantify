@@ -8,11 +8,59 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 // once the move is final to pass link equity.
 const PORTAL_URL = (process.env.NEXT_PUBLIC_PORTAL_URL ?? 'http://localhost:3001').replace(/\/+$/, '');
 
+// --- Security-response headers (finding B5) -------------------------------
+// The marketing site has no viewer/WASM/worker/storage — a much smaller CSP
+// than the portal. Only Next itself + PostHog analytics. Relaxed (script-src
+// 'unsafe-inline', no nonce) to preserve static rendering.
+const stripSlash = (u) => (u ?? '').replace(/\/+$/, '');
+const POSTHOG_HOST = stripSlash(
+  process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://eu.i.posthog.com',
+);
+const isProd = process.env.NODE_ENV === 'production';
+
+// Next dev (HMR/React Refresh) compiles via eval; prod does not.
+const scriptSrc = ["'self'", "'unsafe-inline'", ...(isProd ? [] : ["'unsafe-eval'"])].join(' ');
+
+const csp = [
+  "default-src 'self'",
+  `script-src ${scriptSrc}`,
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
+  "img-src 'self' data: blob:",
+  `connect-src 'self' ${POSTHOG_HOST}`,
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
+const securityHeaders = [
+  { key: 'Content-Security-Policy', value: csp },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  {
+    key: 'Permissions-Policy',
+    value:
+      'accelerometer=(), autoplay=(), camera=(), display-capture=(), '
+      + 'encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), '
+      + 'magnetometer=(), microphone=(), midi=(), payment=(), '
+      + 'picture-in-picture=(), usb=()',
+  },
+  // HSTS only when we KNOW the deploy is https (prod). `next dev` over http
+  // must stay clean, so gate on isProd.
+  ...(isProd
+    ? [{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' }]
+    : []),
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   typescript: {
     ignoreBuildErrors: false,
+  },
+  async headers() {
+    return [{ source: '/:path*', headers: securityHeaders }];
   },
   async redirects() {
     return [

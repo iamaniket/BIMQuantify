@@ -153,3 +153,44 @@ export type FindingHistoryEntry = z.infer<typeof FindingHistoryEntrySchema>;
 export const FindingHistoryListSchema = z.array(FindingHistoryEntrySchema);
 
 export type FindingHistoryList = z.infer<typeof FindingHistoryListSchema>;
+
+// --- Discussion comments ---
+
+// A project member referenced by an @mention in a comment body.
+export const MentionedUserSchema = z.object({
+  user_id: z.string().uuid(),
+  name: z.union([z.string(), z.null()]),
+});
+
+export type MentionedUser = z.infer<typeof MentionedUserSchema>;
+
+export const FindingCommentSchema = z.object({
+  id: z.string().uuid(),
+  finding_id: z.string().uuid(),
+  // Stores `@[Name](uuid)` mention tokens inline; the portal renders chips.
+  comment_text: z.string(),
+  author: z.string(),
+  date: z.string(),
+  modified_author: z.union([z.string(), z.null()]),
+  modified_date: z.union([z.string(), z.null()]),
+  created_by_user_id: z.union([z.string().uuid(), z.null()]),
+  actor_name: z.union([z.string(), z.null()]),
+  actor_email: z.union([z.string(), z.null()]),
+  // The API always sends this key (default [] server-side), so no `.default()`
+  // — input and output stay identical (apiClient round-trip rule).
+  mentions: z.array(MentionedUserSchema),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export type FindingComment = z.infer<typeof FindingCommentSchema>;
+
+export const FindingCommentListSchema = z.array(FindingCommentSchema);
+
+export type FindingCommentList = z.infer<typeof FindingCommentListSchema>;
+
+export const FindingCommentCreateSchema = z.object({
+  text: z.string().trim().min(1).max(4000),
+});
+
+export type FindingCommentCreateInput = z.infer<typeof FindingCommentCreateSchema>;

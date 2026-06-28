@@ -21,6 +21,8 @@ from bimdossier_api.models.bcf_comment import BcfComment
 from bimdossier_api.models.bcf_topic import BcfTopic
 from bimdossier_api.models.bcf_topic_label import BcfTopicLabel
 from bimdossier_api.models.bcf_viewpoint import BcfViewpoint
+from bimdossier_api.models.document import Document
+from bimdossier_api.models.finding import Finding
 from bimdossier_api.models.project_file import ProjectFile
 from bimdossier_api.models.user import User
 from bimdossier_api.schemas.bcf import BcfViewpointCreate
@@ -94,6 +96,58 @@ async def _load_project_file_or_404(
     return pf
 
 
+async def _load_document_or_404(
+    session: AsyncSession,
+    project_id: UUID,
+    document_id: UUID,
+) -> Document:
+    """Load a Document that belongs to the project (for topic links).
+
+    Mirrors ``_load_project_file_or_404`` so a topic can only ever link a
+    document from its OWN project — without this a caller could anchor a topic
+    to another project's document id (L8).
+    """
+    doc = (
+        await session.execute(
+            select(Document).where(
+                Document.id == document_id,
+                Document.project_id == project_id,
+                Document.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if doc is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="DOCUMENT_NOT_FOUND"
+        )
+    return doc
+
+
+async def _load_finding_or_404(
+    session: AsyncSession,
+    project_id: UUID,
+    finding_id: UUID,
+) -> Finding:
+    """Load a Finding that belongs to the project (for topic links).
+
+    Same cross-project guard as ``_load_document_or_404`` (L8).
+    """
+    finding = (
+        await session.execute(
+            select(Finding).where(
+                Finding.id == finding_id,
+                Finding.project_id == project_id,
+                Finding.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if finding is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="FINDING_NOT_FOUND"
+        )
+    return finding
+
+
 async def _load_comment_or_404(
     session: AsyncSession,
     topic_id: UUID,
@@ -142,14 +196,24 @@ def _snapshot_key(org_schema: str, topic_guid: str, vp_guid: str) -> str:
     return f"{SNAPSHOT_PREFIX}/{org_schema}/{topic_guid}/{vp_guid}.png"
 
 
+def _snapshot_prefix(org_schema: str) -> str:
+    """The active org's snapshot namespace — the only prefix a presign may target."""
+    return f"{SNAPSHOT_PREFIX}/{org_schema}/"
+
+
 async def _resolve_snapshot_url(
-    viewpoint: BcfViewpoint, storage: StorageBackend
+    viewpoint: BcfViewpoint, storage: StorageBackend, expected_prefix: str
 ) -> str | None:
-    if not viewpoint.snapshot_storage_key:
+    """Presign the viewpoint's snapshot, but only if its key is scoped to this
+    org's prefix. A key outside ``expected_prefix`` (e.g. a pre-fix bad row that
+    points at another tenant's object in the shared bucket) resolves to ``None``
+    rather than handing back a cross-tenant presigned URL."""
+    key = viewpoint.snapshot_storage_key
+    if not key or not key.startswith(expected_prefix):
         return None
     try:
         return await storage.presigned_get_url(
-            viewpoint.snapshot_storage_key,
+            key,
             f"{viewpoint.guid}.png",
             disposition="inline",
             bucket=get_attachments_bucket(),
@@ -169,9 +233,10 @@ def _topic_snapshot(topic: BcfTopic) -> dict[str, Any]:
 
 
 async def _topic_to_read(
-    topic: BcfTopic, storage: StorageBackend
+    topic: BcfTopic, storage: StorageBackend, org_schema: str
 ) -> dict[str, Any]:
     """Convert a topic to a dict suitable for BcfTopicRead response."""
+    expected_prefix = _snapshot_prefix(org_schema)
     data = {
         "id": topic.id,
         "project_id": topic.project_id,
@@ -207,7 +272,7 @@ async def _topic_to_read(
     }
 
     for vp in topic.viewpoints:
-        snapshot_url = await _resolve_snapshot_url(vp, storage)
+        snapshot_url = await _resolve_snapshot_url(vp, storage, expected_prefix)
         vp_data = {
             "id": vp.id,
             "guid": vp.guid,

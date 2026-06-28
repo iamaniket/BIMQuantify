@@ -132,11 +132,20 @@ services:
       DEPLOY_REGION: dev
       ARBITER_HOST: "0.0.0.0"
       ARBITER_PORT: "8090"
+      # Shared bearer between the API and this MCP server. Must match the API's
+      # ARBITER_SHARED_SECRET (the host-run API reads it from apps/api/.env).
+      # The guard refuses to boot on this dev value outside DEPLOY_REGION=dev.
+      ARBITER_SHARED_SECRET: ${ARBITER_SHARED_SECRET:-dev-arbiter-secret-change-me}
     depends_on:
       minio:
         condition: service_healthy
     ports:
-      - "8090:8090"
+      # Bound to loopback only: the host-run API reaches it via 127.0.0.1:8090,
+      # but it is NOT exposed to the LAN. Production must NOT publish this port at
+      # all — keep the Arbiter on the internal docker network (it reads the shared
+      # IFC bucket and rewrites rule packs; bearer auth is the backstop, not the
+      # boundary).
+      - "127.0.0.1:8090:8090"
 
 volumes:
   pgdata:

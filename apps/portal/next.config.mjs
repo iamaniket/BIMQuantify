@@ -3,9 +3,94 @@ import { withSentryConfig } from '@sentry/nextjs';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
+// --- Security-response headers (finding B5) -------------------------------
+// CSP origins are derived from env so the dynamic hosts (API, WebSocket,
+// presigned storage, analytics) are configurable per environment. The CSP is
+// deliberately "relaxed" — script-src allows 'unsafe-inline' (no nonce, so
+// static rendering is preserved) — and leans on a tight connect-src to constrain
+// token exfiltration. A stricter nonce-based policy is a tracked follow-up.
+const stripSlash = (u) => (u ?? '').replace(/\/+$/, '');
+
+const API_URL = stripSlash(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000');
+// WS origin mirrors useNotificationSocket.ts (httpUrl.replace(/^http/, 'ws')):
+// http→ws, https→wss. Keep the two transforms in lockstep.
+const WS_URL = API_URL.replace(/^http/, 'ws');
+// Presigned-storage origin (model bytes, PDF/image previews). Differs from the
+// API host and is dynamic per object; CSP needs only the origin. Defaults to dev
+// MinIO; MUST be set in prod or the viewer + PDF previews are CSP-blocked.
+const STORAGE_URL = stripSlash(process.env.NEXT_PUBLIC_STORAGE_URL ?? 'http://localhost:9000');
+const POSTHOG_HOST = stripSlash(
+  process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://eu.i.posthog.com',
+);
+// PDOK (NL aerial WMS + address search) — static external origins.
+const PDOK = 'https://api.pdok.nl https://service.pdok.nl';
+
+const isProd = process.env.NODE_ENV === 'production';
+
+// Next dev (Turbopack/webpack HMR + React Refresh) compiles via eval; prod does
+// not. WASM compilation ALWAYS needs 'wasm-unsafe-eval' (web-ifc) in BOTH dev
+// and prod — without it Chrome refuses to compile and the viewer dies. Do NOT
+// add a nonce here: a nonce makes browsers IGNORE 'unsafe-inline', breaking
+// Next's inline hydration/bootstrap scripts.
+const scriptSrc = [
+  "'self'",
+  "'unsafe-inline'",
+  "'wasm-unsafe-eval'",
+  ...(isProd ? [] : ["'unsafe-eval'"]),
+].join(' ');
+
+const csp = [
+  "default-src 'self'",
+  `script-src ${scriptSrc}`,
+  // styled-jsx + Tailwind + the viewer's dynamic inline style={} need inline.
+  "style-src 'self' 'unsafe-inline'",
+  // Fragments worker (/fragments/worker.mjs) + bundled pdf.js worker
+  // (/_next/static/.../*.worker.js) are same-origin; ThatOpen sometimes
+  // blob-wraps the worker, hence blob:.
+  "worker-src 'self' blob:",
+  // System fonts only — no external CDN.
+  "font-src 'self'",
+  // Presigned storage JPEGs, PDOK WMS tiles, plus data:/blob: for canvas/preview.
+  `img-src 'self' data: blob: ${STORAGE_URL} https://service.pdok.nl`,
+  // XHR/fetch/WebSocket targets: API (REST), API WS (notifications), storage
+  // (model-byte fetch), PostHog ingest, PDOK. Sentry is tunneled same-origin via
+  // /monitoring, so NO Sentry ingest origin is needed here.
+  `connect-src 'self' ${API_URL} ${WS_URL} ${STORAGE_URL} ${POSTHOG_HOST} ${PDOK}`,
+  // PDF iframes (Attachment/Certificate/Report viewer dialogs) point at presigned
+  // storage URLs; blob: covers any blob-wrapped preview.
+  `frame-src 'self' ${STORAGE_URL} blob:`,
+  // No one may frame the portal; <base> can't be hijacked; forms post to self.
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
+const securityHeaders = [
+  { key: 'Content-Security-Policy', value: csp },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  {
+    key: 'Permissions-Policy',
+    value:
+      'accelerometer=(), autoplay=(), camera=(), display-capture=(), '
+      + 'encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), '
+      + 'magnetometer=(), microphone=(), midi=(), payment=(), '
+      + 'picture-in-picture=(), usb=()',
+  },
+  // HSTS only when we KNOW the deploy is https (prod, behind TLS). `next dev`
+  // over http must stay clean, so gate on isProd.
+  ...(isProd
+    ? [{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' }]
+    : []),
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  async headers() {
+    return [{ source: '/:path*', headers: securityHeaders }];
+  },
   async rewrites() {
     return [
       {

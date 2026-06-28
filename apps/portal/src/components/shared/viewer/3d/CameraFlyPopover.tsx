@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import type { ViewerHandle } from '@bimdossier/viewer';
 
 import { ToolbarGroup, ToolButton } from '@/components/shared/viewer/shared/_toolbarPrimitives';
+import { DEFAULT_CAMERA_FLY } from '@/lib/viewerSettings';
 
 type FlyDirection =
   | 'forward'
@@ -38,6 +39,16 @@ type Props = {
 type FlyControl = { dir: FlyDirection; icon: AppIcon; labelKey: string };
 
 /**
+ * Render the live move speed as a multiplier relative to the factory default
+ * (so the default speed reads `1.0×`, and the ± steps land on `1.3×`, `1.6×`, …).
+ * Compact to ≤4 chars: one decimal under 10×, integer at/above.
+ */
+function formatSpeed(moveFraction: number): string {
+  const m = moveFraction / DEFAULT_CAMERA_FLY.moveFraction;
+  return `${m >= 9.95 ? Math.round(m) : m.toFixed(1)}×`;
+}
+
+/**
  * Fly-navigation flyout — styled as an extension of the toolbar (two stacked
  * toolbar pills) whose two rows mirror the physical keyboard:
  *   row 1 → Q W E R  (turn-left, forward, turn-right, up)
@@ -55,6 +66,9 @@ export function CameraFlyPopover({ handle, onClose }: Props): JSX.Element {
   const pressed = useRef<Set<FlyDirection>>(new Set());
   /** Mirror of `pressed` for rendering the held button as active. */
   const [held, setHeld] = useState<ReadonlySet<FlyDirection>>(new Set());
+  /** Live move speed (fraction of scene diagonal/sec); seeded to the default so
+   *  the readout shows `1.0×` immediately, then corrected from the plugin. */
+  const [moveFraction, setMoveFraction] = useState<number>(DEFAULT_CAMERA_FLY.moveFraction);
 
   const release = useCallback(
     (dir: FlyDirection): void => {
@@ -88,6 +102,23 @@ export function CameraFlyPopover({ handle, onClose }: Props): JSX.Element {
       document.removeEventListener('keydown', onEsc);
     };
   }, [onClose]);
+
+  // Track the live move speed: seed from the plugin on open (the `fly:speed`
+  // event only fires on change), then follow every change — buttons, the = / -
+  // keys, and the Settings slider all funnel through it.
+  useEffect(() => {
+    if (!handle) return;
+    let alive = true;
+    handle.commands
+      .execute<number>('cameraFly.getSpeed')
+      .then((v) => { if (alive && typeof v === 'number') setMoveFraction(v); })
+      .catch(() => undefined);
+    const off = handle.events.on('fly:speed', ({ moveFraction: m }) => { setMoveFraction(m); });
+    return () => {
+      alive = false;
+      off();
+    };
+  }, [handle]);
 
   // Release any held direction if the popover unmounts mid-press.
   const pressedRef = pressed;
@@ -155,17 +186,11 @@ export function CameraFlyPopover({ handle, onClose }: Props): JSX.Element {
       <ToolbarGroup>{ROW_TOP.map(renderButton)}</ToolbarGroup>
       <ToolbarGroup>{ROW_BOTTOM.map(renderButton)}</ToolbarGroup>
       {/* Move-speed adjust. The wheel already dollies forward/back in fly mode, so
-          speed lives here (and on the = / - keys), not on the wheel. */}
-      <ToolbarGroup>
-        <ToolButton
-          aria-label={t('slower')}
-          title={t('slower')}
-          disabled={!handle}
-          data-testid="viewer-fly-slower"
-          onClick={() => { handle?.commands.execute('cameraFly.speedDown').catch(() => undefined); }}
-        >
-          <Minus className="h-[22px] w-[22px]" weight="bold" />
-        </ToolButton>
+          speed lives here (and on the = / - keys), not on the wheel. Pinned to the
+          right edge of the directional block and stretched to its full height so +
+          aligns to the top row and − to the bottom; the live multiplier sits between
+          them. Absolute so it adds no width to the centered directional block. */}
+      <ToolbarGroup className="absolute inset-y-0 left-full ml-1.5 flex-col justify-between">
         <ToolButton
           aria-label={t('faster')}
           title={t('faster')}
@@ -174,6 +199,23 @@ export function CameraFlyPopover({ handle, onClose }: Props): JSX.Element {
           onClick={() => { handle?.commands.execute('cameraFly.speedUp').catch(() => undefined); }}
         >
           <Plus className="h-[22px] w-[22px]" weight="bold" />
+        </ToolButton>
+        <span
+          aria-label={t('speed')}
+          title={t('speed')}
+          data-testid="viewer-fly-speed"
+          className="w-10 select-none text-center font-sans text-caption leading-none tabular-nums text-foreground-secondary"
+        >
+          {formatSpeed(moveFraction)}
+        </span>
+        <ToolButton
+          aria-label={t('slower')}
+          title={t('slower')}
+          disabled={!handle}
+          data-testid="viewer-fly-slower"
+          onClick={() => { handle?.commands.execute('cameraFly.speedDown').catch(() => undefined); }}
+        >
+          <Minus className="h-[22px] w-[22px]" weight="bold" />
         </ToolButton>
       </ToolbarGroup>
     </div>

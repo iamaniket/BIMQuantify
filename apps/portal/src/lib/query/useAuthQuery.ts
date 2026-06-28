@@ -42,9 +42,13 @@ export function useAuthQuery<
   return useQuery<TData, Error, TSelect, TKey>({
     ...rest,
     queryFn: async () => {
-      if (accessToken === null) throw new Error('Not authenticated');
+      // Read the LIVE token, not the render-time capture: an invalidate-driven
+      // refetch right after a cross-tab org switch (#4) reuses this closure, and
+      // the stale token would fetch the previous tenant's schema (#11).
+      const token = tokenManager.getAccessToken(accessToken);
+      if (token === null) throw new Error('Not authenticated');
       try {
-        return await queryFn(accessToken);
+        return await queryFn(token);
       } catch (error) {
         if (is401(error)) {
           const newToken = await tokenManager.refresh();
@@ -81,9 +85,13 @@ export function useAuthMutation<TData, TVariables>(
   return useMutation<TData, Error, TVariables>({
     ...rest,
     mutationFn: async (variables) => {
-      if (accessToken === null) throw new Error('Not authenticated');
+      // Read the LIVE token, not the render-time capture: a `mutateAsync` loop or
+      // a mutation fired after a token change (cross-tab switch / refresh) would
+      // otherwise use the stale token and write to the previous tenant (#11).
+      const token = tokenManager.getAccessToken(accessToken);
+      if (token === null) throw new Error('Not authenticated');
       try {
-        return await mutationFn(accessToken, variables);
+        return await mutationFn(token, variables);
       } catch (error) {
         if (is401(error)) {
           const newToken = await tokenManager.refresh();

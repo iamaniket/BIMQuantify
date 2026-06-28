@@ -14,14 +14,20 @@ from bimdossier_api.auth.fastapi_users import current_verified_user
 from bimdossier_api.auth.permissions import Action, Resource, require_permission
 from bimdossier_api.models.user import User
 from bimdossier_api.schemas.bcf import BcfViewpointCreate, BcfViewpointRead
-from bimdossier_api.storage import get_attachments_bucket, get_storage
-from bimdossier_api.tenancy import get_tenant_session, require_active_organization
+from bimdossier_api.storage import StorageBackend, get_attachments_bucket, get_storage
+from bimdossier_api.storage.minio import ObjectNotFoundError
+from bimdossier_api.tenancy import (
+    get_tenant_session,
+    require_active_organization,
+    schema_name_for,
+)
 
 from bimdossier_api.routers.bcf._shared import (
     _build_viewpoint,
     _load_topic_or_404,
     _resolve_snapshot_url,
     _snapshot_key,
+    _snapshot_prefix,
     router,
 )
 
@@ -66,7 +72,9 @@ async def add_viewpoint(
     await session.refresh(vp)
 
     storage = get_storage()
-    snapshot_url = await _resolve_snapshot_url(vp, storage)
+    snapshot_url = await _resolve_snapshot_url(
+        vp, storage, _snapshot_prefix(schema_name_for(active_org_id))
+    )
 
     return BcfViewpointRead(
         id=vp.id,
@@ -107,7 +115,11 @@ class SnapshotInitiateResponse(_BaseModel):
 
 
 class SnapshotCompleteRequest(_BaseModel):
-    storage_key: str
+    # Accepted for backward compatibility but IGNORED: the server recomputes the
+    # canonical key from the org schema + topic/viewpoint GUIDs rather than trust
+    # a client-supplied key (which could point at another tenant's object in the
+    # shared attachments bucket). See complete_snapshot_upload.
+    storage_key: str | None = None
 
 
 @router.post("/{topic_id}/viewpoints/{viewpoint_id}/snapshot-upload", response_model=SnapshotInitiateResponse)
@@ -119,6 +131,7 @@ async def initiate_snapshot_upload(
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
+    storage: StorageBackend = Depends(get_storage),
 ) -> Any:
     project = await load_project_or_404(session, project_id)
     membership = await require_membership(session, project.id, user.id)
@@ -129,10 +142,8 @@ async def initiate_snapshot_upload(
     if vp is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="BCF_VIEWPOINT_NOT_FOUND")
 
-    org_schema = f"org_{str(active_org_id).replace('-', '')}"
-    key = _snapshot_key(org_schema, topic.guid, vp.guid)
+    key = _snapshot_key(schema_name_for(active_org_id), topic.guid, vp.guid)
 
-    storage = get_storage()
     upload_url = await storage.presigned_put_url(
         key,
         payload.content_type,
@@ -151,6 +162,7 @@ async def complete_snapshot_upload(
     session: AsyncSession = Depends(get_tenant_session),
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
+    storage: StorageBackend = Depends(get_storage),
 ) -> dict[str, str]:
     project = await load_project_or_404(session, project_id)
     membership = await require_membership(session, project.id, user.id)
@@ -161,6 +173,20 @@ async def complete_snapshot_upload(
     if vp is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="BCF_VIEWPOINT_NOT_FOUND")
 
-    vp.snapshot_storage_key = payload.storage_key
+    # Recompute the canonical key server-side — never trust payload.storage_key.
+    # This is the exact key `initiate_snapshot_upload` presigned, so the client's
+    # upload lands here; a client value pointing elsewhere is simply ignored.
+    key = _snapshot_key(schema_name_for(active_org_id), topic.guid, vp.guid)
+
+    # HEAD-verify the object exists before binding the row to it.
+    try:
+        await storage.head_object(key, bucket=get_attachments_bucket())
+    except ObjectNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="OBJECT_NOT_UPLOADED",
+        ) from exc
+
+    vp.snapshot_storage_key = key
     await session.flush()
     return {"status": "ok"}

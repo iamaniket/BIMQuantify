@@ -9,12 +9,13 @@ from __future__ import annotations
 import csv
 import io
 from typing import TYPE_CHECKING
-from uuid import uuid4
+from uuid import UUID, uuid4
 
-from tests.conftest import _auth, _create_project
+from tests.conftest import _audit_rows, _auth, _create_project
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 EXPECTED_HEADERS = [
     "id",
@@ -178,3 +179,37 @@ async def test_export_csv_non_member_returns_404(
         headers=_auth(other_org_user["access_token"]),
     )
     assert resp.status_code == 404
+
+
+async def test_export_csv_writes_audit_row(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """A full-project findings dump is an exfiltration surface, so it leaves a
+    forensic trail: one ``finding.exported`` row in the org schema carrying
+    count + filters + actor + IP (project_id makes it show in the activity
+    feed), never the finding rows themselves."""
+    token = org_user["access_token"]
+    project = await _create_project(client, token, name="export-audit")
+    await _create_finding(client, token, project["id"], title="Hi", severity="high")
+    await _create_finding(client, token, project["id"], title="Lo", severity="low")
+
+    resp = await client.get(
+        f"/projects/{project['id']}/findings/export.csv?severity=high",
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+
+    rows = await _audit_rows(session_maker, "finding.exported")
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.resource_type == "finding"
+    assert str(row.project_id) == project["id"]
+    assert row.user_id == UUID(org_user["id"])
+    assert row.after is not None
+    # The severity=high filter narrowed the dump to one of the two findings.
+    assert row.after["count"] == 1
+    assert row.after["filters"]["severity"] == "high"
+    assert row.after["filters"]["status"] is None
+    assert row.after["filters"]["assignee_user_id"] is None

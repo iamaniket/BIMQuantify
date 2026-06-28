@@ -45,6 +45,7 @@ from bimdossier_api.models.finding_attachment import (
     FINDING_ATTACHMENT_KINDS,
     FindingAttachment,
 )
+from bimdossier_api.models.finding_comment import FindingComment, FindingCommentMention
 from bimdossier_api.models.job import _JOB_TERMINAL, Job, JobStatus, JobType
 from bimdossier_api.models.levels import Level, LevelSource
 from bimdossier_api.models.notification import (
@@ -129,6 +130,8 @@ __all__ = [
     "FileType",
     "Finding",
     "FindingAttachment",
+    "FindingComment",
+    "FindingCommentMention",
     "FindingSeverity",
     "FindingStatus",
     "IfcSchema",

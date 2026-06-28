@@ -63,6 +63,10 @@ nl_messages: Catalog = {
         "{due_date} verlopen en is niet afgehandeld.\n\nOnderneem zo snel mogelijk actie.\n\n"
         "Bekijk het project: {project_url}\n"
     ),
+    # E-mailaanhef — gebruikt door reminder_engine.py voor de deadline-herinnerings-
+    # en gemiste-deadline-e-mails. Gelokaliseerd naar de jurisdictie van het
+    # project i.p.v. hardcoded Engels (L10).
+    "deadlines.email.greeting": "Hoi {name},",
     "deadlines.reminder_notification.title": "Deadline-herinnering: {deadline_label}",
     "deadlines.reminder_notification.body": (
         'De deadline "{deadline_label}" voor project "{project_name}" '
@@ -79,12 +83,28 @@ nl_messages: Catalog = {
     "notifications.finding_assigned.body": "{title}",
     "notifications.finding_resolved.title": "Bevinding opgelost",
     "notifications.finding_resolved.body": "{title}",
+    "notifications.finding_mentioned.title": "Je bent genoemd bij een bevinding",
+    "notifications.finding_mentioned.body": "{title}",
     "notifications.org_member_invited.title": "Teamuitnodiging verzonden",
     "notifications.org_member_invited.body": "{invitee_email} is uitgenodigd voor {org_name}",
     "notifications.project_member_invited.title": "Projectuitnodiging verzonden",
     "notifications.project_member_invited.body": "{invitee_email} is uitgenodigd voor {project_name}",
     "notifications.invitation_accepted.title": "Uitnodiging geaccepteerd",
     "notifications.invitation_accepted.body": "{display_name} heeft de uitnodiging voor {org_name} geaccepteerd",
+
+    # ---------- beveiliging: accountvergrendeling (H6) ----------
+    "notifications.account_locked.title": "Account tijdelijk vergrendeld",
+    "notifications.account_locked.body": "Het account {email} is vergrendeld na {attempts} mislukte aanmeldpogingen.",
+    "notifications.account_locked_email.subject": "Beveiligingsmelding: een account is vergrendeld",
+    "notifications.account_locked_email.body": (
+        "Hallo {admin_name},\n\n"
+        "Het account {email} is tijdelijk vergrendeld na {attempts} mislukte "
+        "aanmeldpogingen. Er is geen actie nodig als de accounthouder zijn "
+        "wachtwoord verkeerd heeft ingevoerd. Als u dit niet verwachtte, "
+        "controleer dan de recente activiteit van het account en overweeg het "
+        "wachtwoord opnieuw in te stellen.\n\n"
+        "BimDossier"
+    ),
 
     # ---------- report-pipeline notifications ----------
     "notifications.report.compliance_report.title": "Nalevingsrapport — {name}",
@@ -129,6 +149,7 @@ nl_messages: Catalog = {
     "errors.INTERNAL_ERROR": "Er is aan onze kant iets misgegaan. Probeer het later opnieuw.",
     "errors.VALIDATION_ERROR": "Een deel van de ingevoerde gegevens is ongeldig. Controleer uw invoer en probeer het opnieuw.",
     "errors.INVALID_SORT_KEY": "Op die kolom kan niet worden gesorteerd.",
+    "errors.INVALID_CURSOR": "Die pagineringscursor is ongeldig.",
     "errors.IDEMPOTENCY_KEY_INVALID": "De Idempotency-Key-header is ongeldig.",
     "errors.IDEMPOTENCY_KEY_CONFLICT": "Dit verzoek wordt al verwerkt. Probeer het zo opnieuw.",
 
@@ -136,12 +157,15 @@ nl_messages: Catalog = {
     "errors.UNAUTHORIZED": "U moet inloggen om door te gaan.",
     "errors.LOGIN_BAD_CREDENTIALS": "Ongeldig e-mailadres of wachtwoord.",
     "errors.LOGIN_USER_NOT_VERIFIED": "Bevestig eerst uw e-mailadres voordat u inlogt.",
+    "errors.LOGIN_ACCOUNT_LOCKED": "Te veel mislukte pogingen. Dit account is tijdelijk vergrendeld. Probeer het later opnieuw.",
     "errors.ACTIVATION_BAD_TOKEN": "Deze activatielink is ongeldig of verlopen.",
     "errors.ACTIVATION_INVALID_PASSWORD": "Dat wachtwoord voldoet niet aan de eisen.",
     "errors.ACTIVATION_USER_INACTIVE": "Dit account is niet actief. Neem contact op met een beheerder.",
     "errors.REFRESH_TOKEN_REVOKED": "Uw sessie is verlopen. Log opnieuw in.",
+    "errors.REFRESH_TOKEN_REUSED": "Uw sessie is om veiligheidsredenen beëindigd. Log opnieuw in.",
     "errors.USER_NO_LONGER_ACTIVE": "Dit account is niet langer actief.",
     "errors.LOGOUT_REVOCATION_UNAVAILABLE": "We konden het uitloggen niet voltooien. Probeer het opnieuw.",
+    "errors.SWITCH_REVOCATION_UNAVAILABLE": "We konden de wisseling van werkruimte niet voltooien. Probeer het opnieuw.",
     "errors.IMPERSONATION_REFRESH_FORBIDDEN": "Impersonatiesessies kunnen niet worden vernieuwd.",
 
     # --- autorisatie / rollen ---
@@ -206,6 +230,7 @@ nl_messages: Catalog = {
     "errors.ORG_STATUS_NOT_TRANSITIONABLE": "De status van deze organisatie kan niet op die manier worden gewijzigd.",
     "errors.ORG_NOT_DELETED": "Deze organisatie is niet verwijderd en kan daarom niet definitief worden verwijderd.",
     "errors.ORG_PURGE_NOT_DUE": "Deze organisatie zit nog in de bewaarperiode en kan nog niet definitief worden verwijderd.",
+    "errors.ORG_PURGE_IN_PROGRESS": "Deze organisatie wordt al definitief verwijderd. Wacht tot dat klaar is.",
     "errors.NO_ACTIVE_ORGANIZATION": "Selecteer een organisatie voordat u doorgaat.",
     "errors.SEAT_LIMIT_EXCEEDED": "Maximumaantal gebruikers bereikt. Verhoog de limiet of verwijder een lid voordat u iemand uitnodigt.",
     "errors.SEAT_LIMIT_BELOW_USAGE": "De nieuwe gebruikerslimiet ligt onder het huidige gebruik.",
@@ -253,6 +278,8 @@ nl_messages: Catalog = {
     "errors.MISSING_STORAGE_KEY": "Dit item heeft geen opgeslagen bestand.",
     "errors.SIZE_MISMATCH": "De geüploade bestandsgrootte komt niet overeen met wat werd verwacht.",
     "errors.INVALID_ASSET_KEY": "Die assetverwijzing is ongeldig.",
+    "errors.REQUEST_BODY_TOO_LARGE": "De aanvraag is te groot.",
+    "errors.FILE_VERSION_HAS_DESCENDANTS": "Deze versie heeft nog nieuwere versies. Verwijder die eerst.",
 
     # --- extractie / viewer ---
     "errors.EXTRACTION_NOT_COMPLETE": "Het extraheren van het document is nog niet voltooid.",
@@ -276,6 +303,8 @@ nl_messages: Catalog = {
     "errors.FINDING_PROMOTE_REQUIRES_DEADLINE_ASSIGNEE": "Stel een deadline en een toegewezen persoon in voordat u deze bevinding promoveert.",
     "errors.FINDING_TEMPLATE_NOT_FOUND": "Dat bevindingssjabloon bestaat niet meer.",
     "errors.FINDING_TEMPLATE_REQUIRED_FIELD": "Vul alle verplichte velden in.",
+    "errors.FINDING_COMMENT_NOT_FOUND": "Die reactie kon niet worden gevonden.",
+    "errors.FINDING_COMMENT_NOT_AUTHOR": "Je kunt alleen je eigen reacties bewerken.",
 
     # --- aangepaste velden bij bevindingen ---
     "errors.CUSTOM_FIELD_REQUIRED": "Vul alle verplichte velden in.",
@@ -346,7 +375,13 @@ nl_messages: Catalog = {
     "errors.REPORT_NOT_FOUND": "Dat rapport kon niet worden gevonden.",
     "errors.REPORT_NOT_READY": "Dit rapport is nog niet gereed.",
     "errors.REPORT_ALREADY_SIGNED": "Dit rapport is al ondertekend.",
+    "errors.REPORT_NOT_DELETABLE": "Dit rapport kan niet worden verwijderd terwijl het nog wordt gegenereerd.",
+    "errors.REPORT_SIGNED_LOCKED": "Een ondertekend rapport is vergrendeld en kan niet worden verwijderd.",
     "errors.REPORT_TYPE_NOT_AVAILABLE": "Dat rapporttype is niet beschikbaar voor dit project.",
+    "errors.REPORT_TOO_MANY_FINDINGS": (
+        "Dit project heeft te veel bevindingen voor één rapport. Beperk de selectie "
+        "(op toegewezen persoon, status of urgentie) en probeer het opnieuw."
+    ),
     "errors.NOT_A_DECLARATION": "Dit rapport is geen verklaring.",
 
     # --- taken ---
@@ -377,6 +412,7 @@ nl_messages: Catalog = {
     "errors.BCF_COMMENT_NOT_FOUND": "Die BCF-opmerking kon niet worden gevonden.",
     "errors.BCF_VIEWPOINT_NOT_FOUND": "Dat BCF-gezichtspunt kon niet worden gevonden.",
     "errors.INVALID_BCF_ARCHIVE": "Dat BCF-bestand is ongeldig of beschadigd.",
+    "errors.BCF_ARCHIVE_TOO_LARGE": "Dit BCF-archief is te groot.",
 
     # --- capture-links ---
     "errors.CAPTURE_LINK_NOT_FOUND": "Die capture-link kon niet worden gevonden.",

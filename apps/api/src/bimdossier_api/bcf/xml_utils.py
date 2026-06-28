@@ -9,6 +9,11 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
 
+# Hardened parser for untrusted BCF XML (billion-laughs / XXE defense). Only the
+# *parse* path is swapped — element construction + `ET.tostring` (serialize
+# below) operate on data we built, so they stay on stdlib ElementTree.
+from defusedxml.ElementTree import fromstring as _safe_fromstring
+
 from bimdossier_api.bcf.types import (
     BcfComponents,
     ClippingPlane,
@@ -58,6 +63,7 @@ def _float(el: ET.Element | None, default: float = 0.0) -> float:
 # Parse
 # ---------------------------------------------------------------------------
 
+
 def _parse_vec3(el: ET.Element | None) -> Vec3:
     if el is None:
         return Vec3()
@@ -70,7 +76,7 @@ def _parse_vec3(el: ET.Element | None) -> Vec3:
 
 def parse_viewpoint_xml(data: bytes) -> ParsedViewpoint:
     """Parse a BCF 2.1 viewpoint (.bcfv) XML file."""
-    root = ET.fromstring(data)
+    root = _safe_fromstring(data)
     guid = root.get("Guid", "")
 
     persp = root.find("PerspectiveCamera")
@@ -138,7 +144,7 @@ def parse_viewpoint_xml(data: bytes) -> ParsedViewpoint:
 
 def parse_markup_xml(data: bytes) -> ParsedTopic:
     """Parse a BCF 2.1 markup.bcf XML file."""
-    root = ET.fromstring(data)
+    root = _safe_fromstring(data)
 
     topic_el = root.find("Topic")
     if topic_el is None:
@@ -228,6 +234,7 @@ def parse_markup_xml(data: bytes) -> ParsedTopic:
 # ---------------------------------------------------------------------------
 # Serialize
 # ---------------------------------------------------------------------------
+
 
 def _dt_str(dt: datetime | None) -> str:
     if dt is None:

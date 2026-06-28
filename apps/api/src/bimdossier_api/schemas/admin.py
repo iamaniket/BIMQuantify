@@ -92,6 +92,9 @@ class AdminUserRead(BaseModel):
     is_verified: bool
     is_superuser: bool
     active_organization_id: UUID | None
+    # H6: account is currently login-locked (computed from Redis at list time,
+    # not a DB column). Defaults False so single-object reads need not set it.
+    locked: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -235,6 +238,8 @@ class MemberRead(BaseModel):
     can_remove: bool = True
     can_demote: bool = True
     can_suspend: bool = True
+    # H6: account is currently login-locked (computed from Redis at list time).
+    locked: bool = False
 
 
 class SelectableMemberRead(BaseModel):

@@ -7,6 +7,7 @@ returns the result in GB.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
 from uuid import UUID
@@ -72,10 +73,21 @@ async def compute_storage_gb_bulk(
     session_maker: async_sessionmaker[AsyncSession],
     orgs: list[Organization],
 ) -> dict[UUID, float]:
-    """Bulk storage lookup. Returns {org_id: used_gb}."""
+    """Bulk storage lookup. Returns {org_id: used_gb}.
+
+    Each org's schema is independent, so the per-schema UNION-SUM queries run
+    concurrently rather than one-round-trip-per-org in sequence (the admin org
+    list pages up to 200 orgs at once). ``compute_active_storage_gb`` already
+    swallows its own errors and returns 0.0; ``return_exceptions`` is a belt-and-
+    suspenders guard so one unexpected failure can't sink the whole page.
+    """
+    results = await asyncio.gather(
+        *(compute_active_storage_gb(session_maker, org.schema_name) for org in orgs),
+        return_exceptions=True,
+    )
     out: dict[UUID, float] = {}
-    for org in orgs:
-        out[org.id] = await compute_active_storage_gb(session_maker, org.schema_name)
+    for org, res in zip(orgs, results, strict=False):
+        out[org.id] = res if isinstance(res, float) else 0.0
     return out
 
 

@@ -16,9 +16,63 @@ import io
 import xml.etree.ElementTree as ET
 import zipfile
 
+from defusedxml.ElementTree import fromstring as _safe_fromstring
+
 from bimdossier_api.bcf.json_utils import parse_topic_json, parse_viewpoint_json
 from bimdossier_api.bcf.types import ParsedBcf, ParsedViewpoint
 from bimdossier_api.bcf.xml_utils import parse_markup_xml, parse_viewpoint_xml
+
+# Structural caps that bound a malicious BCF zip *before any entry is
+# decompressed*. Every check reads the central-directory metadata (``ZipInfo``),
+# so a bomb is refused without ``zf.read()`` ever inflating it. The raw upload
+# byte cap is enforced at the endpoint (``settings.bcf_import_max_bytes``); these
+# are security invariants, not per-deploy tunables.
+BCF_MAX_ENTRIES = 10_000
+BCF_MAX_ENTRY_BYTES = 50 * 1024 * 1024  # 50 MiB uncompressed, any single entry
+BCF_MAX_TOTAL_UNCOMPRESSED_BYTES = 250 * 1024 * 1024  # 250 MiB across all entries
+BCF_MAX_COMPRESSION_RATIO = 100  # total uncompressed / total compressed
+
+
+class BcfArchiveError(Exception):
+    """The uploaded BCF archive is structurally unacceptable."""
+
+
+class BcfArchiveTooLargeError(BcfArchiveError):
+    """The BCF archive trips a size / entry-count / compression-ratio cap."""
+
+
+def _validate_archive_safety(zf: zipfile.ZipFile) -> None:
+    """Reject zip-bomb-shaped archives using central-directory metadata only.
+
+    No entry is decompressed here — every check reads ``ZipInfo`` fields, so a
+    bomb (huge declared size, absurd ratio, entry-count flood) is refused before
+    ``zf.read()`` ever inflates it.
+    """
+    infos = zf.infolist()
+    if len(infos) > BCF_MAX_ENTRIES:
+        raise BcfArchiveTooLargeError(
+            f"BCF archive has {len(infos)} entries (limit {BCF_MAX_ENTRIES})"
+        )
+    total_uncompressed = 0
+    total_compressed = 0
+    for info in infos:
+        if info.file_size > BCF_MAX_ENTRY_BYTES:
+            raise BcfArchiveTooLargeError(
+                f"BCF entry {info.filename!r} is {info.file_size} bytes "
+                f"(limit {BCF_MAX_ENTRY_BYTES})"
+            )
+        total_uncompressed += info.file_size
+        total_compressed += info.compress_size
+    if total_uncompressed > BCF_MAX_TOTAL_UNCOMPRESSED_BYTES:
+        raise BcfArchiveTooLargeError(
+            f"BCF archive decompresses to {total_uncompressed} bytes "
+            f"(limit {BCF_MAX_TOTAL_UNCOMPRESSED_BYTES})"
+        )
+    if total_compressed > 0 and total_uncompressed / total_compressed > BCF_MAX_COMPRESSION_RATIO:
+        ratio = total_uncompressed / total_compressed
+        raise BcfArchiveTooLargeError(
+            f"BCF archive compression ratio {ratio:.0f}:1 exceeds {BCF_MAX_COMPRESSION_RATIO}:1"
+        )
 
 
 def _detect_version(zf: zipfile.ZipFile) -> str:
@@ -39,7 +93,7 @@ def _detect_version(zf: zipfile.ZipFile) -> str:
 
     # BCF 2.1 uses XML
     try:
-        root = ET.fromstring(text)
+        root = _safe_fromstring(text)
         vid = root.get("VersionId", "")
         if vid:
             return vid
@@ -65,6 +119,7 @@ def _topic_folders(zf: zipfile.ZipFile) -> dict[str, list[str]]:
 def parse_bcf_archive(data: bytes) -> ParsedBcf:
     """Parse a BCF ZIP archive (2.1 or 3.0) into structured data."""
     with zipfile.ZipFile(io.BytesIO(data)) as zf:
+        _validate_archive_safety(zf)
         version = _detect_version(zf)
         folders = _topic_folders(zf)
 

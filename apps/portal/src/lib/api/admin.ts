@@ -235,6 +235,19 @@ export async function deactivateUser(
   );
 }
 
+export async function unlockUser(
+  accessToken: string,
+  userId: string,
+): Promise<AdminUserRead> {
+  // H6: clear an account's failed-login lockout. Super-admin only.
+  return apiClient.post<AdminUserRead>(
+    `/admin/users/${userId}/unlock`,
+    undefined,
+    AdminUserReadSchema,
+    accessToken,
+  );
+}
+
 // ----------------------------------------------------------------------------
 // Access requests
 // ----------------------------------------------------------------------------

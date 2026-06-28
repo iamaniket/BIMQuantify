@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from redis.asyncio import Redis
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,9 +29,12 @@ from bimdossier_api.admin.membership_rules import (
     invitation_expires_at,
 )
 from bimdossier_api.admin.seats import assert_seat_available
+from bimdossier_api.auth import lockout
 from bimdossier_api.auth.dependencies import require_org_admin
 from bimdossier_api.auth.fastapi_users import current_verified_user
 from bimdossier_api.auth.manager import UserManager, get_user_manager
+from bimdossier_api.auth.ratelimit import INVITE_LIMITER
+from bimdossier_api.cache import get_redis_dep
 from bimdossier_api.config import get_settings
 from bimdossier_api.db import get_async_session
 from bimdossier_api.email.invites import send_invite_notification
@@ -65,10 +69,12 @@ def _build_member_read(
     member: OrganizationMember,
     user: User,
     caps: MemberCapabilities | None = None,
+    locked: bool = False,
 ) -> MemberRead:
     """Single place that constructs `MemberRead`. `caps` is None for the
     invite/PATCH responses where the per-member capability flags aren't
-    re-computed (the portal refetches the list anyway).
+    re-computed (the portal refetches the list anyway). `locked` (H6) is only
+    set by the list endpoint; single-row responses leave it False.
     """
     settings = get_settings()
     expires_at = None
@@ -85,6 +91,7 @@ def _build_member_read(
             invited_at=member.invited_at,
             accepted_at=member.accepted_at,
             expires_at=expires_at,
+            locked=locked,
         )
     return MemberRead(
         user_id=user.id,
@@ -100,6 +107,7 @@ def _build_member_read(
         can_remove=caps.can_remove,
         can_demote=caps.can_demote,
         can_suspend=caps.can_suspend,
+        locked=locked,
     )
 
 router = APIRouter(prefix="/organizations", tags=["organization-members"])
@@ -118,6 +126,7 @@ async def list_members(
     response: Response,
     requester: User = Depends(require_org_admin),
     session: AsyncSession = Depends(get_async_session),
+    redis: Redis = Depends(get_redis_dep),
     status_filter: str | None = Query(default=None, alias="status"),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
@@ -149,7 +158,14 @@ async def list_members(
     result = await session.execute(stmt)
     rows = result.all()
     caps_by_user = await compute_member_capabilities(session, organization_id, rows)
-    return [_build_member_read(m, u, caps_by_user.get(u.id)) for m, u in rows]
+    # H6: batched lock-status lookup so the portal can show a "Locked" badge.
+    locked_by_email = await lockout.locked_map(redis, [u.email for _m, u in rows])
+    return [
+        _build_member_read(
+            m, u, caps_by_user.get(u.id), locked_by_email.get(u.email, False)
+        )
+        for m, u in rows
+    ]
 
 
 @router.get(
@@ -216,6 +232,7 @@ async def list_selectable_members(
     "/{organization_id}/members",
     response_model=MemberRead,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(INVITE_LIMITER)],
 )
 async def invite_member(
     organization_id: UUID,
@@ -649,6 +666,7 @@ async def remove_member(
 @router.post(
     "/{organization_id}/members/{user_id}/resend-invite",
     status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(INVITE_LIMITER)],
 )
 async def resend_invite(
     organization_id: UUID,

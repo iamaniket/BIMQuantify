@@ -14,8 +14,13 @@ export async function login(username: string, password: string): Promise<TokenPa
 }
 
 /** POST /auth/jwt/refresh — sends the refresh token in the body, no auth header
- * (mirrors the portal: the expired access token must NOT be attached). */
-export async function refreshAccessToken(refreshToken: string): Promise<string> {
+ * (mirrors the portal: the expired access token must NOT be attached). Returns
+ * the new access token AND the rotated refresh token (the server retires the
+ * presented one each call); `refreshToken` is null only if a non-rotating server
+ * omits it. */
+export async function refreshAccessToken(
+  refreshToken: string,
+): Promise<{ accessToken: string; refreshToken: string | null }> {
   const response = await fetch(`${env.EXPO_PUBLIC_API_URL}/auth/jwt/refresh`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -29,7 +34,10 @@ export async function refreshAccessToken(refreshToken: string): Promise<string> 
   if (!parsed.success) {
     throw new ApiError(500, 'Invalid refresh response');
   }
-  return parsed.data.access_token;
+  return {
+    accessToken: parsed.data.access_token,
+    refreshToken: parsed.data.refresh_token ?? null,
+  };
 }
 
 /** GET /auth/me — current user + memberships + active org. */

@@ -27,6 +27,7 @@ from bimdossier_api.auth.permissions import Action, Resource, require_permission
 from bimdossier_api.auth.ratelimit import COMPLIANCE_CHECK_LIMITER
 from bimdossier_api.compliance import ComplianceCheckError, run_compliance_check
 from bimdossier_api.config import Settings, get_settings
+from bimdossier_api.content_disposition import safe_content_disposition
 from bimdossier_api.jurisdictions import is_supported_framework
 from bimdossier_api.models.document import Document
 from bimdossier_api.models.job import Job, JobStatus, JobType
@@ -360,7 +361,7 @@ async def export_compliance_csv(
     return Response(
         content=buf.getvalue(),
         media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": safe_content_disposition(filename)},
     )
 
 
@@ -416,7 +417,7 @@ async def export_compliance_rules_csv(
     return Response(
         content=buf.getvalue(),
         media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": safe_content_disposition(filename)},
     )
 
 
@@ -437,42 +438,52 @@ async def list_project_reports(
     project = await load_project_or_404(session, project_id)
     await require_project_read_access(session, project.id, user, active_org_id)
 
+    # DISTINCT ON keeps only the latest succeeded job per (file_id, framework) at
+    # the SQL layer — O(files x frameworks) rows instead of O(all-history), which
+    # the old Python `seen`-set dedup had to fetch in full. We also project only
+    # the result sub-keys the summary needs rather than the whole `result` JSONB,
+    # so the (potentially MB-sized) per-element `details` array is never shipped.
+    framework_expr = Job.payload["framework"].astext
+
     stmt = (
-        select(Job, ProjectFile, Document)
+        select(
+            Job.id.label("job_id"),
+            Job.finished_at.label("finished_at"),
+            framework_expr.label("framework"),
+            Job.result["category_summary"].label("category_summary"),
+            Job.result["checked_at"].astext.label("checked_at"),
+            Job.result["total_rules"].astext.label("total_rules"),
+            Job.result["total_elements_checked"].astext.label("total_elements_checked"),
+            ProjectFile.id.label("file_id"),
+            ProjectFile.original_filename.label("file_name"),
+            ProjectFile.version_number.label("file_version"),
+            Document.id.label("document_id"),
+            Document.name.label("document_name"),
+            Document.discipline.label("discipline"),
+        )
         .join(ProjectFile, ProjectFile.id == Job.file_id)
         .join(Document, Document.id == ProjectFile.document_id)
         .where(
             Job.project_id == project.id,
             Job.job_type == JobType.compliance_check,
             Job.status == JobStatus.succeeded,
+            framework_expr.isnot(None),
         )
     )
     if framework is not None:
-        stmt = stmt.where(Job.payload["framework"].astext == framework)
+        stmt = stmt.where(framework_expr == framework)
 
-    stmt = stmt.order_by(
+    stmt = stmt.distinct(Job.file_id, framework_expr).order_by(
         Job.file_id,
-        Job.payload["framework"].astext,
+        framework_expr,
         Job.finished_at.desc(),
     )
 
     rows = (await session.execute(stmt)).all()
 
-    # Keep latest job per (file_id, framework). Rows are sorted by finished_at desc,
-    # so the first occurrence of each (file_id, framework) pair is the latest.
-    seen: set[tuple[UUID, str]] = set()
     items: list[ProjectComplianceReportItem] = []
-    for job, pf, mdl in rows:
-        job_framework = str((job.payload or {}).get("framework") or "")
-        if not job_framework:
-            continue
-        key = (pf.id, job_framework)
-        if key in seen:
-            continue
-        seen.add(key)
-
-        result = job.result or {}
-        category_summary = result.get("category_summary", []) or []
+    for row in rows:
+        category_summary = row.category_summary or []
         pass_count = sum(int(c.get("passed", 0)) for c in category_summary)
         warn_count = sum(int(c.get("warned", 0)) for c in category_summary)
         fail_count = sum(int(c.get("failed", 0)) for c in category_summary)
@@ -481,21 +492,21 @@ async def list_project_reports(
 
         items.append(
             ProjectComplianceReportItem(
-                job_id=job.id,
-                file_id=pf.id,
-                document_id=mdl.id,
-                document_name=mdl.name,
-                document_discipline=mdl.discipline.value,
-                file_name=pf.original_filename,
-                file_version=pf.version_number,
-                framework=job_framework,
-                checked_at=result.get("checked_at", ""),
-                finished_at=job.finished_at,
+                job_id=row.job_id,
+                file_id=row.file_id,
+                document_id=row.document_id,
+                document_name=row.document_name,
+                document_discipline=row.discipline.value,
+                file_name=row.file_name,
+                file_version=row.file_version,
+                framework=row.framework,
+                checked_at=row.checked_at or "",
+                finished_at=row.finished_at,
                 pass_count=pass_count,
                 warn_count=warn_count,
                 fail_count=fail_count,
-                total_rules=int(result.get("total_rules", 0)),
-                total_elements_checked=int(result.get("total_elements_checked", 0)),
+                total_rules=int(row.total_rules or 0),
+                total_elements_checked=int(row.total_elements_checked or 0),
                 overall_score=score,
             )
         )

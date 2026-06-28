@@ -45,6 +45,10 @@ os.environ["REDIS_URL"] = _TEST_REDIS_URL
 # else causes all internal callback tests to 401. Env vars win over `.env` in
 # pydantic-settings, so this is enough to make the suite reproducible.
 os.environ["PROCESSOR_SHARED_SECRET"] = "dev-shared-secret-change-me"
+# Same fail-closed rationale: arbiter_shared_secret has no code default, so the
+# test process must supply it. The compliance client test asserts this value is
+# sent as the Bearer header to the Arbiter.
+os.environ["ARBITER_SHARED_SECRET"] = "dev-arbiter-secret-change-me"
 
 
 @pytest.fixture(scope="session")
@@ -76,6 +80,7 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
     from sqlalchemy.pool import NullPool
 
     from bimdossier_api._rls_sql import (
+        audit_log_append_only_statements,
         create_app_role_statements,
         disable_rls_statements,
         enable_rls_statements,
@@ -182,6 +187,11 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         await conn.exec_driver_sql(
             "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO bim_app"
         )
+        # Tests keep `audit_log` in `public`; mirror the production append-only
+        # enforcement (REVOKE UPDATE/DELETE/TRUNCATE from bim_app + deny trigger)
+        # here so H8 is actually exercised. Must follow the grants above.
+        for stmt in audit_log_append_only_statements("public"):
+            await conn.exec_driver_sql(stmt)
         for stmt in enable_rls_statements():
             await conn.exec_driver_sql(stmt)
 
@@ -636,7 +646,9 @@ async def fake_storage_client(
     Returns the (client, fake_storage) tuple so tests can assert on storage calls."""
     from bimdossier_api import db as db_module
     from bimdossier_api.auth.ratelimit import (
+        CAPTURE_INITIATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
+        INVITE_LIMITER,
         REPORT_GEN_LIMITER,
         UPLOAD_INITIATE_LIMITER,
     )
@@ -644,7 +656,7 @@ async def fake_storage_client(
     from bimdossier_api.auth.routes import (
         FORGOT_RATE_LIMITER,
         LOGIN_RATE_LIMITER,
-        REGISTER_RATE_LIMITER,
+        VERIFY_REQUEST_RATE_LIMITER,
     )
     from bimdossier_api.cache import client as cache_module
     from bimdossier_api.main import create_app
@@ -660,13 +672,15 @@ async def fake_storage_client(
     app.dependency_overrides[get_storage] = lambda: fake
     for limiter in (
         LOGIN_RATE_LIMITER,
-        REGISTER_RATE_LIMITER,
         FORGOT_RATE_LIMITER,
+        VERIFY_REQUEST_RATE_LIMITER,
         REFRESH_RATE_LIMITER,
         ACCESS_REQUEST_RATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
         REPORT_GEN_LIMITER,
         UPLOAD_INITIATE_LIMITER,
+        INVITE_LIMITER,
+        CAPTURE_INITIATE_LIMITER,
     ):
         app.dependency_overrides[limiter] = lambda: None
 
@@ -1021,7 +1035,9 @@ async def client(
 ) -> AsyncGenerator[AsyncClient, None]:
     from bimdossier_api import db as db_module
     from bimdossier_api.auth.ratelimit import (
+        CAPTURE_INITIATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
+        INVITE_LIMITER,
         REPORT_GEN_LIMITER,
         UPLOAD_INITIATE_LIMITER,
     )
@@ -1029,7 +1045,7 @@ async def client(
     from bimdossier_api.auth.routes import (
         FORGOT_RATE_LIMITER,
         LOGIN_RATE_LIMITER,
-        REGISTER_RATE_LIMITER,
+        VERIFY_REQUEST_RATE_LIMITER,
     )
     from bimdossier_api.cache import client as cache_module
     from bimdossier_api.main import create_app
@@ -1043,13 +1059,15 @@ async def client(
     # Disable rate limiting by default; tests covering rate limiting use `rate_limited_client`.
     for limiter in (
         LOGIN_RATE_LIMITER,
-        REGISTER_RATE_LIMITER,
         FORGOT_RATE_LIMITER,
+        VERIFY_REQUEST_RATE_LIMITER,
         REFRESH_RATE_LIMITER,
         ACCESS_REQUEST_RATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
         REPORT_GEN_LIMITER,
         UPLOAD_INITIATE_LIMITER,
+        INVITE_LIMITER,
+        CAPTURE_INITIATE_LIMITER,
     ):
         app.dependency_overrides[limiter] = lambda: None
 
@@ -1221,6 +1239,12 @@ async def _provision_tenant_schema(engine: AsyncEngine, schema: str) -> None:
         await conn.exec_driver_sql(
             f'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "{schema}" TO bim_app'
         )
+        # Append-only enforcement for this org's audit_log (H8) — mirrors the
+        # production `grant_schema_to_app_role` path. Must follow the grants.
+        from bimdossier_api._rls_sql import audit_log_append_only_statements
+
+        for stmt in audit_log_append_only_statements(schema):
+            await conn.exec_driver_sql(stmt)
 
 
 async def _provision_user_in_org(

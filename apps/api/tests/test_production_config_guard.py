@@ -14,6 +14,7 @@ _SECURE_OVERRIDES = {
     "s3_access_key_id": "AKIAREALKEY",
     "s3_secret_access_key": "a-real-secret-value-from-vault",
     "processor_shared_secret": "a-strong-random-processor-secret-value",
+    "arbiter_shared_secret": "a-strong-random-arbiter-secret-value",
     "cors_origins": "https://app.example.com",
     "jwt_secret": "x" * 40,
 }
@@ -22,6 +23,7 @@ _INSECURE_OVERRIDES = {
     "s3_access_key_id": "bimdossier",
     "s3_secret_access_key": "bimdossier-secret",
     "processor_shared_secret": "dev-shared-secret-change-me",
+    "arbiter_shared_secret": "dev-arbiter-secret-change-me",
     "cors_origins": "*",
     "jwt_secret": "short",
 }
@@ -55,6 +57,7 @@ def test_prod_region_flags_every_insecure_default() -> None:
     assert "S3_ACCESS_KEY_ID" in joined
     assert "S3_SECRET_ACCESS_KEY" in joined
     assert "PROCESSOR_SHARED_SECRET" in joined
+    assert "ARBITER_SHARED_SECRET" in joined
     assert "CORS_ORIGINS" in joined
     assert "JWT_SECRET" in joined
 
@@ -72,6 +75,17 @@ def test_prod_region_flags_only_the_offending_secret() -> None:
     errors = validate_production_config(settings)
     assert len(errors) == 1
     assert "PROCESSOR_SHARED_SECRET" in errors[0]
+
+
+def test_prod_region_flags_only_the_arbiter_secret() -> None:
+    # The Arbiter shared secret is guarded exactly like the processor's: a lone
+    # dev value among secure ones yields exactly one ARBITER_SHARED_SECRET error.
+    update = {"deploy_region": "prod", **_SECURE_OVERRIDES}
+    update["arbiter_shared_secret"] = "dev-arbiter-secret-change-me"
+    settings = get_settings().model_copy(update=update)
+    errors = validate_production_config(settings)
+    assert len(errors) == 1
+    assert "ARBITER_SHARED_SECRET" in errors[0]
 
 
 def test_unset_region_is_treated_as_production() -> None:
@@ -95,6 +109,106 @@ def test_unset_region_with_secure_config_passes() -> None:
     # A correctly-configured deployment that simply forgot DEPLOY_REGION must
     # still boot — production posture flags only actual dev values, not real ones.
     settings = _with_region_unset(get_settings().model_copy(update=dict(_SECURE_OVERRIDES)))
+    assert validate_production_config(settings) == []
+
+
+# ---------------------------------------------------------------------------
+# Forwarded-headers / reverse-proxy trust. uvicorn (proxy_headers=True) rewrites
+# request.client.host from X-Forwarded-For for any peer when FORWARDED_ALLOW_IPS
+# is "*", taking the spoofable left-most hop — re-opening the rate-limit bypass
+# one layer below the app identifier. The guard refuses "*" outside dev for both
+# the uvicorn-level (FORWARDED_ALLOW_IPS) and app-level (TRUSTED_PROXY_IPS) knobs.
+# ---------------------------------------------------------------------------
+
+
+def test_prod_region_flags_wildcard_forwarded_allow_ips() -> None:
+    settings = get_settings().model_copy(
+        update={"deploy_region": "prod", **_SECURE_OVERRIDES, "forwarded_allow_ips": "*"}
+    )
+    errors = validate_production_config(settings)
+    assert len(errors) == 1
+    assert "FORWARDED_ALLOW_IPS" in errors[0]
+
+
+def test_prod_region_flags_wildcard_in_forwarded_allow_ips_list() -> None:
+    # "*" anywhere in the comma list is still always-trust to uvicorn.
+    settings = get_settings().model_copy(
+        update={"deploy_region": "prod", **_SECURE_OVERRIDES, "forwarded_allow_ips": "10.0.0.1, *"}
+    )
+    errors = validate_production_config(settings)
+    assert any("FORWARDED_ALLOW_IPS" in e for e in errors)
+
+
+def test_prod_region_flags_wildcard_trusted_proxy_ips() -> None:
+    settings = get_settings().model_copy(
+        update={"deploy_region": "prod", **_SECURE_OVERRIDES, "trusted_proxy_ips": "*"}
+    )
+    errors = validate_production_config(settings)
+    assert len(errors) == 1
+    assert "TRUSTED_PROXY_IPS" in errors[0]
+
+
+def test_prod_region_accepts_real_cidr_forwarded_allow_ips() -> None:
+    # An explicit proxy subnet (the safe production setting) must not be flagged.
+    settings = get_settings().model_copy(
+        update={"deploy_region": "prod", **_SECURE_OVERRIDES, "forwarded_allow_ips": "10.0.0.0/8"}
+    )
+    assert validate_production_config(settings) == []
+
+
+def test_dev_region_allows_wildcard_forwarded_allow_ips() -> None:
+    # Explicit dev opt-in skips the guard entirely, including the XFF wildcard.
+    settings = get_settings().model_copy(
+        update={"deploy_region": "dev", **_INSECURE_OVERRIDES, "forwarded_allow_ips": "*"}
+    )
+    assert validate_production_config(settings) == []
+
+
+# ---------------------------------------------------------------------------
+# WebSocket lifetime cap. A notification socket re-authenticates on an interval
+# and is hard-capped at WS_MAX_LIFETIME_SECONDS. If that cap exceeds the access
+# token's own TTL, a socket could outlive its token, defeating the lifetime cap
+# (the whole point of the H5 fix). The guard refuses to boot on that inversion.
+# ---------------------------------------------------------------------------
+
+
+def test_prod_region_flags_ws_lifetime_exceeding_access_ttl() -> None:
+    settings = get_settings().model_copy(
+        update={
+            "deploy_region": "prod",
+            **_SECURE_OVERRIDES,
+            "jwt_access_ttl_seconds": 900,
+            "ws_max_lifetime_seconds": 3600,
+        }
+    )
+    errors = validate_production_config(settings)
+    assert len(errors) == 1
+    assert "WS_MAX_LIFETIME_SECONDS" in errors[0]
+
+
+def test_prod_region_accepts_ws_lifetime_within_access_ttl() -> None:
+    # Cap below the access TTL is the safe configuration — no error.
+    settings = get_settings().model_copy(
+        update={
+            "deploy_region": "prod",
+            **_SECURE_OVERRIDES,
+            "jwt_access_ttl_seconds": 900,
+            "ws_max_lifetime_seconds": 600,
+        }
+    )
+    assert validate_production_config(settings) == []
+
+
+def test_dev_region_allows_ws_lifetime_exceeding_access_ttl() -> None:
+    # Explicit dev opt-in skips the guard, including the lifetime inversion.
+    settings = get_settings().model_copy(
+        update={
+            "deploy_region": "dev",
+            **_INSECURE_OVERRIDES,
+            "jwt_access_ttl_seconds": 900,
+            "ws_max_lifetime_seconds": 3600,
+        }
+    )
     assert validate_production_config(settings) == []
 
 

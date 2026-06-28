@@ -6,11 +6,12 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from arbiter.auth import BearerAuthMiddleware
 from arbiter.config import enforce_production_config, get_settings
 from arbiter.rules.engine import evaluate
 from arbiter.rules.loader import RuleIndex
 from arbiter.rules.report import build_payload
-from arbiter.storage import ArtifactReader
+from arbiter.storage import ArtifactReader, validate_artifact_key
 from arbiter.sync.scheduler import get_sync_status, run_sync, start_scheduler
 
 logger = logging.getLogger("arbiter")
@@ -30,6 +31,18 @@ rule_index.load(settings.rules_path)
 logger.info("Loaded %d compliance rules", len(rule_index.all_rules))
 
 artifact_reader = ArtifactReader(settings)
+
+
+def _require_artifact_keys(metadata_key: str, properties_key: str) -> None:
+    """Validate caller-supplied artifact keys before any S3 read.
+
+    Defense in depth behind the bearer auth: even a caller holding the shared
+    secret may only read deterministic extraction artifacts, never an arbitrary
+    object (raw IFC, geometry, report PDFs) or a traversal path. See
+    ``storage.validate_artifact_key``.
+    """
+    validate_artifact_key(metadata_key, suffix=".metadata.json")
+    validate_artifact_key(properties_key, suffix=".properties.json")
 
 
 # ── Tools ──────────────────────────────────────────────────────────────
@@ -106,6 +119,7 @@ async def check_compliance(
         categories: Comma-separated list of categories to check (default: all)
         framework: Regulation framework to check (bbl, wkb). Default: all frameworks.
     """
+    _require_artifact_keys(metadata_key, properties_key)
     metadata = await artifact_reader.get_json(metadata_key)
     properties = await artifact_reader.get_json(properties_key)
 
@@ -149,6 +163,7 @@ async def check_rule(
     if rule is None:
         raise ValueError(f"Rule '{rule_id}' not found")
 
+    _require_artifact_keys(metadata_key, properties_key)
     metadata = await artifact_reader.get_json(metadata_key)
     properties = await artifact_reader.get_json(properties_key)
 
@@ -182,6 +197,7 @@ async def get_compliance_report(
         report_format: Report detail level - summary, detailed, or issues_only
         framework: Regulation framework to check (bbl, wkb). Default: all frameworks.
     """
+    _require_artifact_keys(metadata_key, properties_key)
     metadata = await artifact_reader.get_json(metadata_key)
     properties = await artifact_reader.get_json(properties_key)
 
@@ -249,6 +265,7 @@ async def explain_compliance(
         include_passes: Include passing elements (default True). Set to False
                         for a violations-only narrative.
     """
+    _require_artifact_keys(metadata_key, properties_key)
     metadata = await artifact_reader.get_json(metadata_key)
     properties = await artifact_reader.get_json(properties_key)
 
@@ -447,6 +464,8 @@ def sync_status_resource() -> str:
 
 
 def main() -> None:
+    import uvicorn
+
     logging.basicConfig(level=logging.INFO)
     # Fail closed before serving if a dev-default credential is in use outside
     # an explicit DEPLOY_REGION=dev. (Missing creds already fail at Settings()
@@ -454,7 +473,17 @@ def main() -> None:
     enforce_production_config(settings)
     logger.info("Starting Arbiter MCP server on %s:%d", settings.host, settings.port)
     start_scheduler(rule_index, settings)
-    mcp.run(transport="streamable-http")
+    # Wrap the StreamableHTTP app in the shared-secret bearer gate. This is what
+    # `mcp.run(transport="streamable-http")` does internally (build app → run
+    # uvicorn); we only insert BearerAuthMiddleware so every request is
+    # authenticated before any tool runs.
+    app = mcp.streamable_http_app()
+    uvicorn.run(
+        BearerAuthMiddleware(app, settings.shared_secret),
+        host=settings.host,
+        port=settings.port,
+        log_level=mcp.settings.log_level.lower(),
+    )
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, FrameCorners, Pencil, Trash2, X } from '@bimdossier/ui/icons';
+import { Clock, FrameCorners, MessageSquare, Pencil, Trash2, X } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState, type JSX } from 'react';
 
@@ -9,6 +9,7 @@ import { Badge, Button, IconButton, Tabs, TabsList, TabsTrigger } from '@bimdoss
 import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
 import type { Finding } from '@/lib/api/schemas';
 
+import { FindingCommentsTab } from './FindingCommentsTab';
 import { FindingDetailFields } from './FindingDetailFields';
 import { FindingHistoryTab } from './FindingHistoryTab';
 import { statusBadgeVariant } from './findingBadges';
@@ -22,7 +23,7 @@ type Props = {
   onExpand?: () => void;
 };
 
-type FindingTab = 'edit' | 'history';
+type FindingTab = 'edit' | 'history' | 'comments';
 
 /**
  * Jira-style right-rail detail panel — the dialog-free twin of
@@ -104,6 +105,10 @@ export function FindingDetailPanel({ projectId, finding, onClose, onExpand }: Pr
               <Pencil className="h-4 w-4" />
               {t('tabs.edit')}
             </TabsTrigger>
+            <TabsTrigger value="comments" className={TAB_TRIGGER_CLASS}>
+              <MessageSquare className="h-4 w-4" />
+              {t('tabs.comments')}
+            </TabsTrigger>
             <TabsTrigger value="history" className={TAB_TRIGGER_CLASS}>
               <Clock className="h-4 w-4" />
               {t('tabs.history')}
@@ -115,6 +120,8 @@ export function FindingDetailPanel({ projectId, finding, onClose, onExpand }: Pr
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {isEdit ? (
           <FindingDetailFields projectId={projectId} finding={finding} api={api} />
+        ) : tab === 'comments' ? (
+          <FindingCommentsTab projectId={projectId} finding={finding} />
         ) : (
           <FindingHistoryTab projectId={projectId} finding={finding} />
         )}

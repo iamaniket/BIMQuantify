@@ -155,6 +155,13 @@ async def retry_job(
     `retry_of` lineage and an incremented `attempt`. Raises 409 if the job is
     not in a retryable terminal state, or 429 if the org is at its job limit.
     """
+    # Lock the source job row so concurrent retries of the same job serialize
+    # (M-con3): the first marks it non-retriable below — its retry is now the
+    # live attempt — so the second, unblocking after the first commits, fails
+    # the `retriable` guard instead of spawning a duplicate job. The guards
+    # below then act on freshly-read, locked state.
+    await session.refresh(job, with_for_update=True)
+
     if job.status is not JobStatus.failed:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="JOB_NOT_FAILED")
     if not job.retriable:
@@ -184,6 +191,11 @@ async def retry_job(
     )
     session.add(new_job)
     await session.flush()
+
+    # The old job has been superseded by its retry; mark it non-retriable so a
+    # concurrent retry (serialized behind the row lock acquired above) is
+    # rejected by the `retriable` guard rather than minting a duplicate job.
+    job.retriable = False
 
     await ops.reset(session, job, new_job)
     await session.flush()
@@ -224,6 +236,29 @@ async def rerun_ifc_extraction(
     On a re-dispatch failure the file is rolled forward to `failed` so it never
     sticks in `queued`. Raises 429 if the org is already at its job limit.
     """
+    # Lock the file row so concurrent re-extractions serialize (M-con3): two
+    # discipline flips, or a flip racing a manual retry, would otherwise each
+    # mint an extraction job for the same file. If the first already rolled the
+    # file into a fresh extraction, the second — unblocking after the commit —
+    # returns that in-flight job instead of spawning a duplicate.
+    await session.refresh(file, with_for_update=True)
+    if file.extraction_status in (ExtractionStatus.queued, ExtractionStatus.running):
+        in_flight = (
+            await session.execute(
+                select(Job)
+                .where(
+                    Job.file_id == file.id,
+                    Job.status.in_(
+                        (JobStatus.pending, JobStatus.started, JobStatus.running)
+                    ),
+                )
+                .order_by(Job.created_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if in_flight is not None:
+            return in_flight
+
     payload: dict[str, object] = {
         "file_id": str(file.id),
         "project_id": str(file.project_id),

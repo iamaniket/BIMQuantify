@@ -38,7 +38,7 @@ from bimdossier_api.jobs.dispatcher import DispatchJobError
 from bimdossier_api.jurisdictions import get_deadline_rules, pick_label
 from bimdossier_api.models.deadline import Deadline, DeadlineStatus
 from bimdossier_api.models.deadline_notification_log import DeadlineNotificationLog
-from bimdossier_api.models.notification import NotificationEventType
+from bimdossier_api.models.notification import Notification, NotificationEventType
 from bimdossier_api.models.organization import Organization, OrganizationStatus
 from bimdossier_api.models.project import Project
 from bimdossier_api.models.project_member import ProjectMember
@@ -93,32 +93,56 @@ async def _record_sent(
     await session.flush()
 
 
-async def _get_recipients(
-    session: AsyncSession,
+async def _load_members_by_project(
+    session: AsyncSession, project_ids: set[UUID]
+) -> dict[UUID, list[tuple[User, str]]]:
+    """Batch-load every (member, role) for the given projects in ONE query.
+
+    Replaces the per-deadline ``_get_recipients`` query — the N+1 the sweep used
+    to run inside its tenant transaction (M-en4). Recipients are then filtered in
+    memory per deadline by the effective recipient roles.
+    """
+    if not project_ids:
+        return {}
+    stmt = (
+        select(ProjectMember.project_id, User, ProjectMember.role)
+        .join(ProjectMember, ProjectMember.user_id == User.id)
+        .where(ProjectMember.project_id.in_(project_ids))
+    )
+    by_project: dict[UUID, list[tuple[User, str]]] = {}
+    for project_id, user, role in (await session.execute(stmt)).all():
+        by_project.setdefault(project_id, []).append((user, role.value))
+    return by_project
+
+
+def _recipients_for(
+    members_by_project: dict[UUID, list[tuple[User, str]]],
     project_id: UUID,
     recipient_roles: list[str],
 ) -> list[User]:
-    """Load users who are project members with the given roles."""
-    stmt = (
-        select(User)
-        .join(ProjectMember, ProjectMember.user_id == User.id)
-        .where(
-            ProjectMember.project_id == project_id,
-            ProjectMember.role.in_(recipient_roles),
-        )
-    )
-    result = await session.execute(stmt)
-    return list(result.scalars().all())
+    """In-memory filter of pre-loaded members by role (no DB round-trip)."""
+    roles = set(recipient_roles)
+    return [user for user, role in members_by_project.get(project_id, []) if role in roles]
 
 
 async def _sweep_deadline(
     session: AsyncSession,
     deadline: Deadline,
     project: Project,
-    organization_id: UUID,
     today: date,
+    members_by_project: dict[UUID, list[tuple[User, str]]],
+    *,
+    emails: list[dict[str, object]],
+    notifs: list[Notification],
 ) -> None:
-    """Process a single deadline: check reminders + missed."""
+    """Stage reminder / missed sends for one deadline (DB phase only).
+
+    Resolves settings, checks the idempotency log, builds the email payloads
+    (appended to ``emails``), creates the in-app notification (appended to
+    ``notifs`` to publish after commit), and records the send. The email dispatch
+    + WS publish happen AFTER the tenant txn closes (M-en4), so the pooled
+    connection is never held across that network I/O.
+    """
     if deadline.due_date is None:
         return
 
@@ -160,7 +184,7 @@ async def _sweep_deadline(
         if applicable_tier is not None and not await _already_sent(
             session, deadline.id, "reminder", applicable_tier
         ):
-            recipients = await _get_recipients(session, project.id, effective.recipient_roles)
+            recipients = _recipients_for(members_by_project, project.id, effective.recipient_roles)
             days_word_nl = "dag" if days_until_due == 1 else "dagen"
             days_word_en = "day" if days_until_due == 1 else "days"
             due_str = deadline.due_date.isoformat()
@@ -196,27 +220,21 @@ async def _sweep_deadline(
 
             for user in recipients:
                 name = user.full_name or user.email
-                body = f"Hi {name},\n\n{body_en}{BILINGUAL_SEPARATOR}{body_nl}"
-                try:
-                    await dispatch_action(
-                        "send_email",
-                        {
-                            "to": user.email,
-                            "subject": subject,
-                            "body": body,
-                            "action_url": project_url,
-                            "action_label": "View project",
-                            "type": "reminder",
-                        },
-                        settings,
-                        organization_id,
-                    )
-                except DispatchJobError:
-                    logger.exception(
-                        "Failed to dispatch reminder email to %s for deadline %s",
-                        user.email,
-                        deadline.id,
-                    )
+                # Greet in the project's jurisdiction locale (L10) — the body is
+                # bilingual, but the greeting must not be hardcoded English.
+                greeting = t("deadlines.email.greeting", project_locale, name=name)
+                body = f"{greeting}\n\n{body_en}{BILINGUAL_SEPARATOR}{body_nl}"
+                # Stage the email; dispatch happens after the txn closes (M-en4).
+                emails.append(
+                    {
+                        "to": user.email,
+                        "subject": subject,
+                        "body": body,
+                        "action_url": project_url,
+                        "action_label": "View project",
+                        "type": "reminder",
+                    }
+                )
 
             # In-app notification — single-locale per project's jurisdiction.
             notif_label = label_nl if project_locale == "nl" else label_en
@@ -240,7 +258,7 @@ async def _sweep_deadline(
                     ),
                     project_id=project.id,
                 )
-                await publish_notification(notification, organization_id=organization_id)
+                notifs.append(notification)
             except Exception:
                 logger.exception(
                     "Failed to create in-app notification for deadline %s",
@@ -254,7 +272,7 @@ async def _sweep_deadline(
         if await _already_sent(session, deadline.id, "missed", None):
             return
 
-        recipients = await _get_recipients(session, project.id, effective.recipient_roles)
+        recipients = _recipients_for(members_by_project, project.id, effective.recipient_roles)
         due_str = deadline.due_date.isoformat()
 
         project_locale = resolve_org_locale(project.country)
@@ -285,27 +303,20 @@ async def _sweep_deadline(
 
         for user in recipients:
             name = user.full_name or user.email
-            body = f"Hi {name},\n\n{body_en}{BILINGUAL_SEPARATOR}{body_nl}"
-            try:
-                await dispatch_action(
-                    "send_email",
-                    {
-                        "to": user.email,
-                        "subject": subject,
-                        "body": body,
-                        "action_url": project_url,
-                        "action_label": "View project",
-                        "type": "alert",
-                    },
-                    settings,
-                    organization_id,
-                )
-            except DispatchJobError:
-                logger.exception(
-                    "Failed to dispatch missed-deadline email to %s for deadline %s",
-                    user.email,
-                    deadline.id,
-                )
+            # Greet in the project's jurisdiction locale (L10) — see reminder path.
+            greeting = t("deadlines.email.greeting", project_locale, name=name)
+            body = f"{greeting}\n\n{body_en}{BILINGUAL_SEPARATOR}{body_nl}"
+            # Stage the email; dispatch happens after the txn closes (M-en4).
+            emails.append(
+                {
+                    "to": user.email,
+                    "subject": subject,
+                    "body": body,
+                    "action_url": project_url,
+                    "action_label": "View project",
+                    "type": "alert",
+                }
+            )
 
         # In-app notification — single-locale per project's jurisdiction.
         notif_label = label_nl if project_locale == "nl" else label_en
@@ -327,7 +338,7 @@ async def _sweep_deadline(
                 ),
                 project_id=project.id,
             )
-            await publish_notification(notification, organization_id=organization_id)
+            notifs.append(notification)
         except Exception:
             logger.exception(
                 "Failed to create in-app notification for missed deadline %s",
@@ -341,11 +352,26 @@ async def _sweep_org(
     org_id: UUID,
     schema: str,
 ) -> int:
-    """Sweep all pending deadlines in one tenant schema. Returns count processed."""
+    """Sweep all pending deadlines in one tenant schema. Returns count processed.
+
+    Two phases so the tenant connection is NEVER held across email I/O (M-en4):
+      1. A short tenant transaction loads deadlines + projects + members (ONE
+         member query, not the old per-deadline N+1), decides what to send,
+         creates the in-app notifications, and writes the idempotency log.
+      2. With NO connection held, the staged emails are dispatched and the
+         notifications published. A dispatch failure is logged, not retried —
+         the idempotency log already committed, matching the prior best-effort
+         email semantics.
+    """
     session_maker = get_session_maker()
-    count = 0
+    settings = get_settings()
     today = datetime.now(_AMS).date()
 
+    emails: list[dict[str, object]] = []
+    notifs: list[Notification] = []
+    count = 0
+
+    # --- Phase 1: decide + stage, in a short DB-only transaction. ---
     async with session_maker() as session, session.begin():
         await session.execute(text(f'SET LOCAL search_path = "{schema}", public'))
 
@@ -359,17 +385,26 @@ async def _sweep_org(
         if not deadlines:
             return 0
 
-        # Pre-load projects for these deadlines.
+        # Pre-load projects + members (one members query — kills the N+1).
         project_ids = {d.project_id for d in deadlines}
         projects_result = await session.execute(select(Project).where(Project.id.in_(project_ids)))
         projects_by_id = {p.id: p for p in projects_result.scalars().all()}
+        members_by_project = await _load_members_by_project(session, project_ids)
 
         for deadline in deadlines:
             project = projects_by_id.get(deadline.project_id)
             if project is None:
                 continue
             try:
-                await _sweep_deadline(session, deadline, project, org_id, today)
+                await _sweep_deadline(
+                    session,
+                    deadline,
+                    project,
+                    today,
+                    members_by_project,
+                    emails=emails,
+                    notifs=notifs,
+                )
                 count += 1
             except Exception:
                 logger.exception(
@@ -377,6 +412,16 @@ async def _sweep_org(
                     deadline.id,
                     schema,
                 )
+
+    # --- Phase 2: dispatch emails + publish notifications, NO connection held. ---
+    for payload in emails:
+        try:
+            await dispatch_action("send_email", payload, settings, org_id)
+        except DispatchJobError:
+            logger.exception("Failed to dispatch deadline email for org %s", org_id)
+
+    for notification in notifs:
+        await publish_notification(notification, organization_id=org_id)
 
     return count
 

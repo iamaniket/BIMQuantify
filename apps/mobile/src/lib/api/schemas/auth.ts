@@ -57,6 +57,11 @@ export type AuthMeResponse = z.infer<typeof AuthMeResponseSchema>;
 
 export const AccessTokenResponseSchema = z.object({
   access_token: z.string().min(1),
+  // Present since refresh-token rotation: every /auth/jwt/refresh returns a NEW
+  // refresh token that the client MUST adopt (the presented one is retired, and
+  // replaying it later trips reuse detection). Optional so a non-rotating server
+  // still parses.
+  refresh_token: z.string().min(1).optional(),
   token_type: z.string(),
 });
 

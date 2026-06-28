@@ -470,6 +470,89 @@ async def test_promote_success_emits_notification(
     assert "finding_created" in events
 
 
+async def test_promote_notification_is_assignee_scoped(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    same_org_user: dict[str, str],
+) -> None:
+    """The draft→open assignment notification reaches only the assignee.
+
+    It is created with `recipient_user_id`, so a same-org teammate who is not
+    the assignee must not see the `finding_created` row in their feed — the
+    "assigned" wording only makes sense for the person it was assigned to.
+    """
+    project = await _create_project(client, org_user["access_token"])
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings",
+            json=_payload(),
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    resp = await client.patch(
+        f"/projects/{project['id']}/findings/{created['id']}",
+        json={
+            "status": "open",
+            "deadline_date": "2026-08-01",
+            "assignee_user_id": org_user["id"],
+        },
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+
+    # The assignee sees the assignment notification...
+    assignee_feed = await client.get("/notifications", headers=_auth(org_user["access_token"]))
+    assert "finding_created" in [n["event_type"] for n in assignee_feed.json()["items"]]
+
+    # ...the same-org teammate (not the assignee) does not.
+    teammate_feed = await client.get("/notifications", headers=_auth(same_org_user["access_token"]))
+    assert "finding_created" not in [n["event_type"] for n in teammate_feed.json()["items"]]
+
+
+async def _set_user_locale(user_id: str, locale: str) -> None:
+    """Set a user's `User.locale` directly (no API surface exposes it). Uses the
+    app session maker, like `_create_attachment_row`, so callers need no fixture."""
+    from bimdossier_api.db import get_session_maker
+
+    async with get_session_maker()() as s, s.begin():
+        await s.execute(
+            text("UPDATE public.users SET locale = :loc WHERE id = :id"),
+            {"loc": locale, "id": user_id},
+        )
+
+
+async def test_promote_notification_uses_assignee_locale(
+    client: AsyncClient,
+    org_user: dict[str, str],
+) -> None:
+    """The assignment notification is localized to the *assignee's* locale, not
+    the project's. An English assignee on an NL project (default country) gets
+    the English title instead of the Dutch "Nieuwe bevinding toegewezen"."""
+    await _set_user_locale(org_user["id"], "en")
+    project = await _create_project(client, org_user["access_token"])
+    created = (
+        await client.post(
+            f"/projects/{project['id']}/findings",
+            json=_payload(),
+            headers=_auth(org_user["access_token"]),
+        )
+    ).json()
+    resp = await client.patch(
+        f"/projects/{project['id']}/findings/{created['id']}",
+        json={
+            "status": "open",
+            "deadline_date": "2026-08-01",
+            "assignee_user_id": org_user["id"],
+        },
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+
+    feed = await client.get("/notifications", headers=_auth(org_user["access_token"]))
+    assigned = next(n for n in feed.json()["items"] if n["event_type"] == "finding_created")
+    assert assigned["title"] == "New finding assigned"
+
+
 async def test_promote_with_nonmember_assignee_422(
     client: AsyncClient,
     org_user: dict[str, str],

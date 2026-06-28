@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from email.message import EmailMessage
 from typing import Protocol
@@ -8,6 +9,8 @@ import aiosmtplib
 import httpx
 
 from bimdossier_api.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -35,6 +38,7 @@ class SMTPEmailTransport:
             port=settings.smtp_port,
             start_tls=False,
             use_tls=False,
+            timeout=settings.smtp_timeout_seconds,
         )
 
 
@@ -51,9 +55,7 @@ class PostmarkEmailTransport:
         settings = get_settings()
         token = settings.postmark_server_token
         if not token:
-            raise RuntimeError(
-                "PostmarkEmailTransport selected but POSTMARK_SERVER_TOKEN is unset"
-            )
+            raise RuntimeError("PostmarkEmailTransport selected but POSTMARK_SERVER_TOKEN is unset")
         payload = {
             "From": settings.smtp_from,
             "To": to,
@@ -105,3 +107,29 @@ def get_email_transport() -> EmailTransport:
 def set_email_transport(transport: EmailTransport) -> None:
     global _transport
     _transport = transport
+
+
+async def send_email_best_effort(*, to: str, subject: str, body: str) -> bool:
+    """Send via the active transport, logging and swallowing any failure.
+
+    Transactional emails (activation, password-reset, invites) are awaited
+    inside the request that triggered them, but the underlying mutation has
+    ALREADY committed by the time the email is sent (FastAPI Users commits the
+    user row before `on_after_register` runs; invite endpoints commit the
+    membership first). A transport failure — SMTP down, timeout, bad creds —
+    must therefore never propagate: it would 500 a request whose state change
+    already landed, with nothing to roll back and a confusing error for the
+    admin. Every one of these flows has a resend path, so best-effort is safe:
+    log loudly, return False, never raise. Returns True on a successful send.
+    """
+    try:
+        await get_email_transport().send(to=to, subject=subject, body=body)
+        return True
+    except Exception:
+        logger.warning(
+            "Email send failed (to=%s subject=%r) — swallowed, mutation already committed",
+            to,
+            subject,
+            exc_info=True,
+        )
+        return False

@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, Pencil, Trash2 } from '@bimdossier/ui/icons';
+import { Clock, MessageSquare, Trash2 } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 
@@ -9,6 +9,7 @@ import { AppDialog, Badge, Button, Tabs, TabsList, TabsTrigger } from '@bimdossi
 import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
 import type { Finding } from '@/lib/api/schemas';
 
+import { FindingCommentsTab } from './FindingCommentsTab';
 import { FindingDetailFields } from './FindingDetailFields';
 import { FindingHistoryTab } from './FindingHistoryTab';
 import { statusBadgeVariant } from './findingBadges';
@@ -21,7 +22,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
 };
 
-type FindingTab = 'edit' | 'history';
+type DiscussionTab = 'comments' | 'history';
 
 export function FindingDetailModal({
   projectId,
@@ -32,16 +33,17 @@ export function FindingDetailModal({
   const t = useTranslations('findings.detail');
   const tStatus = useTranslations('findings.status');
   const tCommon = useTranslations('common');
-  const [tab, setTab] = useState<FindingTab>('edit');
+  const [tab, setTab] = useState<DiscussionTab>('comments');
   const api = useFindingDetailForm(projectId, finding, {
     onSaved: () => { onOpenChange(false); },
     onDeleted: () => { onOpenChange(false); },
   });
 
-  // Reset to the Edit tab whenever the dialog (re)opens or targets a new finding.
+  // The edit form is always shown; the bottom strip toggles between the
+  // discussion and the audit history. Reset to comments on (re)open / new finding.
   const findingId = finding?.id ?? null;
   useEffect(() => {
-    if (open) setTab('edit');
+    if (open) setTab('comments');
   }, [open, findingId]);
 
   if (finding === null) {
@@ -49,7 +51,6 @@ export function FindingDetailModal({
   }
 
   const { confirmDelete, setConfirmDelete, isPending, canEdit, canDelete } = api;
-  const isEdit = tab === 'edit';
 
   const deleteFooter = !canDelete ? undefined : confirmDelete ? (
     <div className="flex items-center gap-2">
@@ -97,22 +98,34 @@ export function FindingDetailModal({
           {tStatus(finding.status)}
         </Badge>
       )}
-      {...(isEdit && canEdit ? { onSave: api.save } : {})}
+      {...(canEdit ? { onSave: api.save } : {})}
       saveLabel={t('save')}
       cancelLabel={tCommon('cancel')}
       saveDisabled={isPending}
-      // Save/Delete belong to the Edit tab only. On History keep a minimal
-      // footer node so the Cancel/Close button still renders (the dialog has no
-      // header ✕ and outside-click is disabled).
-      footerInfo={isEdit ? deleteFooter : <span aria-hidden />}
-      width={680}
+      // `deleteFooter` is undefined when the user can't delete; the fallback keeps
+      // a footer node so Cancel always renders (the dialog has no header ✕ and
+      // outside-click is disabled — a read-only viewer would otherwise be trapped).
+      footerInfo={deleteFooter ?? <span aria-hidden />}
+      width={760}
+      height={720}
+      // Strip the body's own padding/gap so its three regions control their own
+      // scroll + padding. The body keeps its default overflow-y-auto as a harmless
+      // fallback (in the happy path the capped form + flex-filling comments region
+      // fit exactly, so only the inner regions scroll).
+      bodyClassName="p-0 gap-0"
     >
-      <div className="sticky top-0 z-10 -mx-5 -mt-4 mb-3 border-b border-border bg-background px-5 pt-3">
-        <Tabs value={tab} onValueChange={(v) => { setTab(v as FindingTab); }}>
+      {/* Pinned form: natural height up to a cap, scrolls internally only if taller. */}
+      <div className="shrink-0 max-h-[60%] overflow-y-auto px-5 pt-4 pb-2">
+        <FindingDetailFields projectId={projectId} finding={finding} api={api} wide />
+      </div>
+
+      {/* Discussion strip — Comments / History toggle below the form. */}
+      <div className="shrink-0 border-t border-border px-5">
+        <Tabs value={tab} onValueChange={(v) => { setTab(v as DiscussionTab); }}>
           <TabsList className="gap-1 rounded-none bg-transparent p-0">
-            <TabsTrigger value="edit" className={TAB_TRIGGER_CLASS}>
-              <Pencil className="h-4 w-4" />
-              {t('tabs.edit')}
+            <TabsTrigger value="comments" className={TAB_TRIGGER_CLASS}>
+              <MessageSquare className="h-4 w-4" />
+              {t('tabs.comments')}
             </TabsTrigger>
             <TabsTrigger value="history" className={TAB_TRIGGER_CLASS}>
               <Clock className="h-4 w-4" />
@@ -121,11 +134,16 @@ export function FindingDetailModal({
           </TabsList>
         </Tabs>
       </div>
-      {isEdit ? (
-        <FindingDetailFields projectId={projectId} finding={finding} api={api} />
-      ) : (
-        <FindingHistoryTab projectId={projectId} finding={finding} />
-      )}
+
+      {/* Independently-scrolling discussion region. `key` remounts on tab switch
+          so the inner scroll resets to the top. */}
+      <div key={tab} className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
+        {tab === 'comments' ? (
+          <FindingCommentsTab projectId={projectId} finding={finding} />
+        ) : (
+          <FindingHistoryTab projectId={projectId} finding={finding} />
+        )}
+      </div>
     </AppDialog>
   );
 }
