@@ -1,6 +1,6 @@
 import { getConfig } from '../config.js';
 import { logger } from '../log.js';
-import { callbackBaseUrl } from './callbackContext.js';
+import { callbackBaseUrl, callbackPath } from './callbackContext.js';
 
 export type PagesCallbackStatus = 'running' | 'succeeded' | 'failed';
 
@@ -30,7 +30,9 @@ export type PagesCallbackPayload = {
 
 export async function postPagesCallback(payload: PagesCallbackPayload): Promise<void> {
   const cfg = getConfig();
-  const url = `${callbackBaseUrl()}/internal/jobs/pages/callback`;
+  // Honor the per-job path override (free-tier PDF → /internal/jobs/free-pages-callback);
+  // tenant jobs carry no override and fall back to the default pages callback.
+  const url = `${callbackBaseUrl()}${callbackPath() ?? '/internal/jobs/pages/callback'}`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {

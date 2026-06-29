@@ -1,13 +1,24 @@
-"""Initial master schema: users, organizations, organization_members,
-access_requests, blog_posts, blog_post_tags.
+"""Initial master schema — the single baseline for the master chain.
 
-Creates the identity layer in the `public` schema via `Base.metadata.create_all`
-over the live models — anything the master-side models declare lands here, so the
-schema follows the models with no per-column DDL. Tenant tables (projects, jobs,
-audit_log, etc.) are NOT created here — they live in per-org schemas managed by
-the tenant chain. Blog tags are normalized into the `blog_post_tags` table (no
-JSONB). The lone index create_all can't express — the partial-unique
-lower(work_email) dedup on active access-requests — is raw SQL in upgrade() below.
+Creates the entire `public` schema via `Base.metadata.create_all` over the live
+master-side models — anything the models declare lands here, so the schema follows
+the models with no per-column DDL. This covers both the identity layer (users,
+organizations, organization_members, access_requests, blog_posts, blog_post_tags)
+AND the pooled free-tier surface (free_projects, free_documents, free_project_files,
+free_project_members, free_findings, free_levels, free_aligned_sheets,
+free_notifications, free_notification_user_state, free_attachments,
+free_finding_attachments). Tenant tables (projects, jobs, audit_log, etc.) are NOT
+created here — they live in per-org schemas managed by the tenant chain.
+
+The handful of things create_all cannot express are applied in upgrade() below:
+the partial-unique lower(work_email) dedup on active access-requests; the app role
++ identity RLS; the explicit DML grants on the free tables; and the free-tier RLS
+(owner-OR-member policies + SECURITY DEFINER helpers, recipient-scoped notification
+policies). The owner-only `enable_free_tier_rls_statements` is deliberately NOT
+used — the final state is the member-aware policy set.
+
+This baseline folds the former free-tier delta chain (0002_free_tier …
+0013_free_attachments) back into one revision; the schema it produces is identical.
 
 Revision ID: 0001_master
 Revises:
@@ -16,25 +27,32 @@ Create Date: 2026-06-02
 
 from __future__ import annotations
 
-from typing import Sequence, Union
-
 from alembic import op
 
 # Revision identifiers, used by Alembic.
 revision: str = "0001_master"
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | tuple[str, ...] | None = None
+depends_on: str | tuple[str, ...] | None = None
 
 
 def upgrade() -> None:
     from bimdossier_api._rls_sql import (
         create_app_role_statements,
+        enable_free_aligned_sheet_rls_statements,
+        enable_free_attachment_rls_statements,
+        enable_free_level_rls_statements,
+        enable_free_member_rls_statements,
+        enable_free_notification_rls_statements,
         enable_rls_statements,
+        grant_free_tables_to_app_role,
     )
     from bimdossier_api.db import Base, is_master_table
+
     # Import every model so they register with Base.metadata, then filter
-    # down to the master-side tables only.
+    # down to the master-side tables only. The explicit names are documentation —
+    # the `bimdossier_api.models` package __init__ imports all of them, so the
+    # free-tier tables register (and so create_all emits them) regardless.
     from bimdossier_api.models import (  # noqa: F401
         AccessRequest,
         AuditLog,
@@ -46,6 +64,17 @@ def upgrade() -> None:
         ChecklistItemResult,
         Deadline,
         Document,
+        FreeAlignedSheet,
+        FreeAttachment,
+        FreeDocument,
+        FreeFinding,
+        FreeFindingAttachment,
+        FreeLevel,
+        FreeNotification,
+        FreeNotificationUserState,
+        FreeProject,
+        FreeProjectFile,
+        FreeProjectMember,
         Job,
         Notification,
         NotificationUserState,
@@ -82,9 +111,34 @@ def upgrade() -> None:
     for stmt in enable_rls_statements():
         op.execute(stmt)
 
+    # Free-tier surface (folds in former deltas 0002…0013). create_app_role only
+    # grants the identity tables, so the pooled free tables need explicit DML
+    # grants; then the member-aware owner-OR-member RLS (which creates the
+    # SECURITY DEFINER helpers), the level / aligned-sheet / attachment policies
+    # that reuse those helpers, and the recipient-scoped notification policies.
+    for stmt in grant_free_tables_to_app_role():
+        op.execute(stmt)
+    for stmt in enable_free_member_rls_statements():
+        op.execute(stmt)
+    for stmt in enable_free_level_rls_statements():
+        op.execute(stmt)
+    for stmt in enable_free_aligned_sheet_rls_statements():
+        op.execute(stmt)
+    for stmt in enable_free_notification_rls_statements():
+        op.execute(stmt)
+    for stmt in enable_free_attachment_rls_statements():
+        op.execute(stmt)
+
 
 def downgrade() -> None:
-    from bimdossier_api._rls_sql import disable_rls_statements
+    from bimdossier_api._rls_sql import (
+        disable_free_aligned_sheet_rls_statements,
+        disable_free_attachment_rls_statements,
+        disable_free_level_rls_statements,
+        disable_free_member_rls_statements,
+        disable_free_notification_rls_statements,
+        disable_rls_statements,
+    )
     from bimdossier_api.db import Base, is_master_table
     from bimdossier_api.models import (  # noqa: F401
         AccessRequest,
@@ -97,6 +151,17 @@ def downgrade() -> None:
         ChecklistItemResult,
         Deadline,
         Document,
+        FreeAlignedSheet,
+        FreeAttachment,
+        FreeDocument,
+        FreeFinding,
+        FreeFindingAttachment,
+        FreeLevel,
+        FreeNotification,
+        FreeNotificationUserState,
+        FreeProject,
+        FreeProjectFile,
+        FreeProjectMember,
         Job,
         Notification,
         NotificationUserState,
@@ -111,6 +176,18 @@ def downgrade() -> None:
     )
 
     bind = op.get_bind()
+    # Reverse the free-tier setup first (policies + SECURITY DEFINER helpers),
+    # then the identity RLS, then drop every master table.
+    for stmt in disable_free_attachment_rls_statements():
+        op.execute(stmt)
+    for stmt in disable_free_notification_rls_statements():
+        op.execute(stmt)
+    for stmt in disable_free_aligned_sheet_rls_statements():
+        op.execute(stmt)
+    for stmt in disable_free_level_rls_statements():
+        op.execute(stmt)
+    for stmt in disable_free_member_rls_statements():
+        op.execute(stmt)
     for stmt in disable_rls_statements():
         op.execute(stmt)
     master_tables = [t for t in Base.metadata.tables.values() if is_master_table(t)]

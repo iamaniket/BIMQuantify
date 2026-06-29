@@ -13,12 +13,15 @@ import { FindingsExportActions } from '@/features/findings/FindingsExportActions
 import { useUpdateFinding } from '@/features/findings/useUpdateFinding';
 import { LogFindingButton } from '@/features/findingTemplates/LogFindingButton';
 import { useProjectPermissions } from '@/features/permissions';
+import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
 import { FindingDetailPanel } from '@/features/projects/detail/FindingDetailPanel';
 import type { Finding, FindingSeverityValue, FindingStatusValue } from '@/lib/api/schemas';
 import type { ProjectMember } from '@/lib/api/schemas';
 
 import { FindingKanbanCard } from './FindingKanbanCard';
+import { FreeFindingsExportButton } from './FreeFindingsExportButton';
+import { FreeNewFindingButton } from './FreeNewFindingButton';
 import { isValidTransition, transitionRejectionReason } from './kanbanTransitions';
 
 const STATUSES: FindingStatusValue[] = ['draft', 'open', 'in_progress', 'resolved', 'verified'];
@@ -47,6 +50,10 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
   const tSeverity = useTranslations('findings.severity');
   const updateMutation = useUpdateFinding(projectId);
   const { can, canVerifyFinding } = useProjectPermissions(projectId);
+  // Free users get a simpler board toolbar: a CSV export + the free "New finding"
+  // dialog. The paid-only surfaces (snag-report PDF, BCF, org templates via
+  // LogFindingButton) stay hidden for them.
+  const { isFreeUser } = useIsFreeUser();
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
   // Re-derive the open finding from the live list: a Kanban drag (or any other
   // background mutation) refetches `findings`, and the detail panel/modal must
@@ -196,13 +203,24 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
               <option key={s} value={s}>{tSeverity(s)}</option>
             ))}
           </Select>
-          <FindingsExportActions
-            projectId={projectId}
-            members={members}
-            severityFilter={severityFilter}
-            assigneeFilter={assigneeFilter}
-          />
-          <LogFindingButton projectId={projectId} size="lg" variant="primary" />
+          {isFreeUser ? (
+            <>
+              <FreeFindingsExportButton projectId={projectId} />
+              {can('finding', 'create') && (
+                <FreeNewFindingButton projectId={projectId} members={members} />
+              )}
+            </>
+          ) : (
+            <>
+              <FindingsExportActions
+                projectId={projectId}
+                members={members}
+                severityFilter={severityFilter}
+                assigneeFilter={assigneeFilter}
+              />
+              <LogFindingButton projectId={projectId} size="lg" variant="primary" />
+            </>
+          )}
         </div>
       </div>
 

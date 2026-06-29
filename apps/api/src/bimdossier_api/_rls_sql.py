@@ -142,7 +142,7 @@ def enable_rls_statements() -> list[str]:
 # org-less, so `get_free_session` sets only `app.current_user_id`.
 FREE_RLS_TABLES = (
     "free_models",
-    "free_snags",
+    "free_findings",
 )
 
 
@@ -193,6 +193,421 @@ def disable_free_tier_rls_statements(
     return stmts
 
 
+# ---------------------------------------------------------------------------
+# Free-tier collaboration: owner-OR-member RLS (migration 0004)
+#
+# Once a free project can have invited members, the simple owner-keyed policies
+# above no longer suffice — a member's `owner_user_id` is NOT the row owner, yet
+# they must read the shared project / its models / its snags. The policies below
+# broaden visibility to "owner OR project member".
+#
+# The membership lookup MUST NOT be inlined as a plain sub-SELECT, because a
+# policy on `free_projects` that reads `free_project_members` (whose own policy
+# reads `free_projects`) is a cross-table RLS recursion. The three SECURITY
+# DEFINER helpers below run as the function owner (the migration's superuser),
+# bypassing RLS entirely, which breaks every cycle. They are the load-bearing
+# boundary — keep them SECURITY DEFINER and keep `search_path` pinned.
+# ---------------------------------------------------------------------------
+
+# The pooled free tables that carry the member-aware policy. Order matters for
+# enable (functions first) but not for the table loop. `free_models` was replaced
+# by the `free_documents` → `free_project_files` mirror of the paid Document →
+# ProjectFile stack (migration 0005).
+FREE_MEMBER_RLS_TABLES = (
+    "free_projects",
+    "free_documents",
+    "free_project_files",
+    "free_findings",
+    "free_project_members",
+)
+
+# The `_uid` GUC expression, repeated in every policy.
+_FREE_UID = "NULLIF(current_setting('app.current_user_id', true), '')::uuid"
+
+
+def free_member_function_statements() -> list[str]:
+    """The three SECURITY DEFINER helpers the member-aware policies key on.
+
+    `search_path` is pinned to `public, pg_temp` and every table is schema-
+    qualified so a SECURITY DEFINER function can't be hijacked by a caller's
+    search_path. Each is owned by whoever runs the migration (a superuser), so
+    it reads the pooled tables with RLS bypassed — that is what stops the
+    cross-table policy recursion. Idempotent via CREATE OR REPLACE.
+    """
+    return [
+        # Is `p_user` an invited member of `p_project_id`? Reads ONLY
+        # free_project_members (RLS-bypassed) so free_projects/free_documents
+        # policies can call it without recursing through this table's policy.
+        """
+        CREATE OR REPLACE FUNCTION public.free_is_member(p_project_id uuid, p_user uuid)
+        RETURNS boolean
+        LANGUAGE sql
+        STABLE
+        SECURITY DEFINER
+        SET search_path = public, pg_temp
+        AS $$
+            SELECT EXISTS (
+                SELECT 1 FROM public.free_project_members m
+                WHERE m.free_project_id = p_project_id AND m.user_id = p_user
+            );
+        $$;
+        """,
+        # Does `p_user` own `p_project_id`? Reads ONLY free_projects so the
+        # free_project_members policy can call it without recursing through the
+        # free_projects policy.
+        """
+        CREATE OR REPLACE FUNCTION public.free_is_project_owner(p_project_id uuid, p_user uuid)
+        RETURNS boolean
+        LANGUAGE sql
+        STABLE
+        SECURITY DEFINER
+        SET search_path = public, pg_temp
+        AS $$
+            SELECT EXISTS (
+                SELECT 1 FROM public.free_projects p
+                WHERE p.id = p_project_id AND p.owner_user_id = p_user
+            );
+        $$;
+        """,
+        # The project a document (container) belongs to. Reads ONLY free_documents
+        # so the free_project_files / free_findings policies can resolve a row's
+        # project without recursing through the free_documents policy.
+        """
+        CREATE OR REPLACE FUNCTION public.free_document_project(p_document_id uuid)
+        RETURNS uuid
+        LANGUAGE sql
+        STABLE
+        SECURITY DEFINER
+        SET search_path = public, pg_temp
+        AS $$
+            SELECT free_project_id FROM public.free_documents WHERE id = p_document_id;
+        $$;
+        """,
+    ]
+
+
+def drop_free_member_function_statements() -> list[str]:
+    """Reverse of `free_member_function_statements`."""
+    return [
+        "DROP FUNCTION IF EXISTS public.free_is_member(uuid, uuid);",
+        "DROP FUNCTION IF EXISTS public.free_is_project_owner(uuid, uuid);",
+        "DROP FUNCTION IF EXISTS public.free_document_project(uuid);",
+    ]
+
+
+def enable_free_member_rls_statements() -> list[str]:
+    """ENABLE + FORCE owner-OR-member RLS on all four pooled free tables.
+
+    Replaces the simple owner-keyed policies installed by 0002/0003 (same policy
+    name `<table>_owner_isolation`, so the DROP IF EXISTS below removes them).
+    Self-contained: creates the SECURITY DEFINER helpers first, then the
+    per-table policies. Idempotent.
+
+    WITH CHECK is deliberately tighter than USING:
+      * free_projects / free_documents / free_project_files — only the owner may
+        INSERT/UPDATE the row (a member's editor/viewer write permission is
+        enforced in the router, not RLS), so WITH CHECK is owner-only even though
+        USING is owner-OR-member for reads.
+      * free_findings — an editor member may file a snag, so WITH CHECK matches
+        USING (owner-OR-member). The editor/viewer distinction is enforced in
+        the router, not here (RLS = isolation, router = permissions).
+    """
+    stmts: list[str] = list(free_member_function_statements())
+
+    for table in FREE_MEMBER_RLS_TABLES:
+        stmts.append(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
+        stmts.append(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
+        stmts.append(f"DROP POLICY IF EXISTS {table}_owner_isolation ON {table};")
+
+    # free_projects: owner via column, members via the membership table.
+    stmts.append(
+        f"""
+        CREATE POLICY free_projects_owner_isolation ON public.free_projects
+        USING (
+            owner_user_id = {_FREE_UID}
+            OR public.free_is_member(id, {_FREE_UID})
+        )
+        WITH CHECK (owner_user_id = {_FREE_UID});
+        """
+    )
+    # free_documents: owner via column, members via the container's project
+    # (free_project_id is NOT NULL — every container belongs to a project).
+    stmts.append(
+        f"""
+        CREATE POLICY free_documents_owner_isolation ON public.free_documents
+        USING (
+            owner_user_id = {_FREE_UID}
+            OR public.free_is_member(free_project_id, {_FREE_UID})
+        )
+        WITH CHECK (owner_user_id = {_FREE_UID});
+        """
+    )
+    # free_project_files: owner via column, members via the parent document's
+    # project (resolved by the SECURITY DEFINER helper to avoid cross-table
+    # recursion into the free_documents policy).
+    stmts.append(
+        f"""
+        CREATE POLICY free_project_files_owner_isolation ON public.free_project_files
+        USING (
+            owner_user_id = {_FREE_UID}
+            OR public.free_is_member(public.free_document_project(free_document_id), {_FREE_UID})
+        )
+        WITH CHECK (owner_user_id = {_FREE_UID});
+        """
+    )
+    # free_findings: owner via column, members via the parent document's project.
+    stmts.append(
+        f"""
+        CREATE POLICY free_findings_owner_isolation ON public.free_findings
+        USING (
+            owner_user_id = {_FREE_UID}
+            OR public.free_is_member(public.free_document_project(free_document_id), {_FREE_UID})
+        )
+        WITH CHECK (
+            owner_user_id = {_FREE_UID}
+            OR public.free_is_member(public.free_document_project(free_document_id), {_FREE_UID})
+        );
+        """
+    )
+    # free_project_members: visible to the member themselves and to the project
+    # owner. WITH CHECK is owner-only (only the owner manages membership).
+    stmts.append(
+        f"""
+        CREATE POLICY free_project_members_owner_isolation ON public.free_project_members
+        USING (
+            user_id = {_FREE_UID}
+            OR public.free_is_project_owner(free_project_id, {_FREE_UID})
+        )
+        WITH CHECK (
+            public.free_is_project_owner(free_project_id, {_FREE_UID})
+        );
+        """
+    )
+    return stmts
+
+
+def disable_free_member_rls_statements() -> list[str]:
+    """Reverse of `enable_free_member_rls_statements` (0004 downgrade / test
+    teardown). Drops the policies, the FORCE/ENABLE flags, and the helpers."""
+    stmts: list[str] = []
+    for table in FREE_MEMBER_RLS_TABLES:
+        stmts.append(f"DROP POLICY IF EXISTS {table}_owner_isolation ON {table};")
+        stmts.append(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY;")
+        stmts.append(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")
+    stmts.extend(drop_free_member_function_statements())
+    return stmts
+
+
+# ---------------------------------------------------------------------------
+# Free-tier levels + aligned sheets: owner-OR-member RLS (migrations 0010/0011)
+#
+# `public.free_levels` (a project's building levels) and `public.free_aligned_sheets`
+# (PDF↔IFC calibration) are project-scoped, so isolation is owner-OR-member through
+# the project — reusing the `free_is_member` SECURITY DEFINER helper created by the
+# free-member RLS (migration 0004). Owner-only writes (members read); the
+# editor/viewer distinction is enforced in the router, not RLS.
+# ---------------------------------------------------------------------------
+
+
+def enable_free_level_rls_statements() -> list[str]:
+    """ENABLE + FORCE owner-OR-member RLS on `public.free_levels`. Idempotent.
+    Relies on `public.free_is_member` (created by the free-member RLS)."""
+    return [
+        "ALTER TABLE public.free_levels ENABLE ROW LEVEL SECURITY;",
+        "ALTER TABLE public.free_levels FORCE ROW LEVEL SECURITY;",
+        "DROP POLICY IF EXISTS free_levels_owner_isolation ON public.free_levels;",
+        f"""
+        CREATE POLICY free_levels_owner_isolation ON public.free_levels
+        USING (
+            owner_user_id = {_FREE_UID}
+            OR public.free_is_member(free_project_id, {_FREE_UID})
+        )
+        WITH CHECK (owner_user_id = {_FREE_UID});
+        """,
+    ]
+
+
+def disable_free_level_rls_statements() -> list[str]:
+    return [
+        "DROP POLICY IF EXISTS free_levels_owner_isolation ON public.free_levels;",
+        "ALTER TABLE public.free_levels NO FORCE ROW LEVEL SECURITY;",
+        "ALTER TABLE public.free_levels DISABLE ROW LEVEL SECURITY;",
+    ]
+
+
+def enable_free_aligned_sheet_rls_statements() -> list[str]:
+    """ENABLE + FORCE owner-OR-member RLS on `public.free_aligned_sheets`. Idempotent.
+    Relies on `public.free_is_member` (created by the free-member RLS)."""
+    return [
+        "ALTER TABLE public.free_aligned_sheets ENABLE ROW LEVEL SECURITY;",
+        "ALTER TABLE public.free_aligned_sheets FORCE ROW LEVEL SECURITY;",
+        "DROP POLICY IF EXISTS free_aligned_sheets_owner_isolation ON public.free_aligned_sheets;",
+        f"""
+        CREATE POLICY free_aligned_sheets_owner_isolation ON public.free_aligned_sheets
+        USING (
+            owner_user_id = {_FREE_UID}
+            OR public.free_is_member(free_project_id, {_FREE_UID})
+        )
+        WITH CHECK (owner_user_id = {_FREE_UID});
+        """,
+    ]
+
+
+def disable_free_aligned_sheet_rls_statements() -> list[str]:
+    return [
+        "DROP POLICY IF EXISTS free_aligned_sheets_owner_isolation ON public.free_aligned_sheets;",
+        "ALTER TABLE public.free_aligned_sheets NO FORCE ROW LEVEL SECURITY;",
+        "ALTER TABLE public.free_aligned_sheets DISABLE ROW LEVEL SECURITY;",
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Free-tier notifications: per-recipient RLS (migration 0008)
+#
+# `public.free_notifications` (+ `free_notification_user_state`) back the free
+# bell. Rows are PER-RECIPIENT, so isolation is a direct equality on the user GUC
+# — no membership join (unlike the owner-OR-member free tables above). Reads run as
+# `bim_app` via `get_free_session` with only `app.current_user_id` set; the
+# emission path runs as the superuser (RLS-bypassing) to fan out to other users.
+# ---------------------------------------------------------------------------
+
+FREE_NOTIFICATION_RLS_TABLES = (
+    "free_notifications",
+    "free_notification_user_state",
+)
+# (table, recipient-key column) — both scope to a single user.
+_FREE_NOTIFICATION_POLICY_KEYS = (
+    ("free_notifications", "recipient_user_id"),
+    ("free_notification_user_state", "user_id"),
+)
+
+
+def enable_free_notification_rls_statements() -> list[str]:
+    """ENABLE + FORCE RLS on the pooled free-notification tables with a
+    user-scoped policy (`<key> = app.current_user_id`). Load-bearing: it stops
+    user A reading/dismissing user B's free notifications. Idempotent (DROP POLICY
+    IF EXISTS before CREATE)."""
+    stmts: list[str] = []
+    for table, key in _FREE_NOTIFICATION_POLICY_KEYS:
+        stmts.append(f"ALTER TABLE public.{table} ENABLE ROW LEVEL SECURITY;")
+        stmts.append(f"ALTER TABLE public.{table} FORCE ROW LEVEL SECURITY;")
+        stmts.append(f"DROP POLICY IF EXISTS {table}_recipient_isolation ON public.{table};")
+        stmts.append(
+            f"""
+            CREATE POLICY {table}_recipient_isolation ON public.{table}
+            USING ({key} = {_FREE_UID})
+            WITH CHECK ({key} = {_FREE_UID});
+            """
+        )
+    return stmts
+
+
+def disable_free_notification_rls_statements() -> list[str]:
+    """Reverse of `enable_free_notification_rls_statements` (0008 downgrade / test
+    teardown)."""
+    stmts: list[str] = []
+    for table in FREE_NOTIFICATION_RLS_TABLES:
+        stmts.append(f"DROP POLICY IF EXISTS {table}_recipient_isolation ON public.{table};")
+        stmts.append(f"ALTER TABLE public.{table} NO FORCE ROW LEVEL SECURITY;")
+        stmts.append(f"ALTER TABLE public.{table} DISABLE ROW LEVEL SECURITY;")
+    return stmts
+
+
+# ---------------------------------------------------------------------------
+# Free-tier attachments: owner-OR-member RLS (migration 0013)
+#
+# `public.free_attachments` (photo/file evidence) is project-scoped, and
+# `public.free_finding_attachments` (snag→attachment links) is finding-scoped.
+# Both carry owner-OR-member isolation through the project — owner via the
+# denormalized `owner_user_id`, members via the `free_is_member` SECURITY DEFINER
+# helper (created by the free-member RLS, migration 0004). Members may upload
+# evidence + link it to a snag they file, so WITH CHECK matches USING (the
+# editor/viewer write split is enforced in the router, not RLS).
+# ---------------------------------------------------------------------------
+
+
+def enable_free_attachment_rls_statements() -> list[str]:
+    """ENABLE + FORCE owner-OR-member RLS on the free attachment tables. Idempotent.
+    Relies on `public.free_is_member` / `public.free_document_project` (free-member RLS)."""
+    return [
+        "ALTER TABLE public.free_attachments ENABLE ROW LEVEL SECURITY;",
+        "ALTER TABLE public.free_attachments FORCE ROW LEVEL SECURITY;",
+        "DROP POLICY IF EXISTS free_attachments_owner_isolation ON public.free_attachments;",
+        f"""
+        CREATE POLICY free_attachments_owner_isolation ON public.free_attachments
+        USING (
+            owner_user_id = {_FREE_UID}
+            OR public.free_is_member(free_project_id, {_FREE_UID})
+        )
+        WITH CHECK (
+            owner_user_id = {_FREE_UID}
+            OR public.free_is_member(free_project_id, {_FREE_UID})
+        );
+        """,
+        "ALTER TABLE public.free_finding_attachments ENABLE ROW LEVEL SECURITY;",
+        "ALTER TABLE public.free_finding_attachments FORCE ROW LEVEL SECURITY;",
+        "DROP POLICY IF EXISTS free_finding_attachments_owner_isolation "
+        "ON public.free_finding_attachments;",
+        f"""
+        CREATE POLICY free_finding_attachments_owner_isolation
+        ON public.free_finding_attachments
+        USING (
+            owner_user_id = {_FREE_UID}
+            OR public.free_is_member(
+                public.free_document_project(free_document_id), {_FREE_UID}
+            )
+        )
+        WITH CHECK (
+            owner_user_id = {_FREE_UID}
+            OR public.free_is_member(
+                public.free_document_project(free_document_id), {_FREE_UID}
+            )
+        );
+        """,
+    ]
+
+
+def disable_free_attachment_rls_statements() -> list[str]:
+    """Reverse of `enable_free_attachment_rls_statements` (0013 downgrade / test
+    teardown)."""
+    return [
+        "DROP POLICY IF EXISTS free_finding_attachments_owner_isolation "
+        "ON public.free_finding_attachments;",
+        "ALTER TABLE public.free_finding_attachments NO FORCE ROW LEVEL SECURITY;",
+        "ALTER TABLE public.free_finding_attachments DISABLE ROW LEVEL SECURITY;",
+        "DROP POLICY IF EXISTS free_attachments_owner_isolation ON public.free_attachments;",
+        "ALTER TABLE public.free_attachments NO FORCE ROW LEVEL SECURITY;",
+        "ALTER TABLE public.free_attachments DISABLE ROW LEVEL SECURITY;",
+    ]
+
+
+# Every pooled free-tier table the app role needs DML on. The squashed master
+# baseline grants these in one shot AFTER create_all — mirroring the per-table
+# GRANTs the (now-squashed) free-tier deltas applied inline. Necessary because
+# create_app_role_statements() only grants the master identity tables
+# (APP_GRANT_TABLES), and its ALTER DEFAULT PRIVILEGES does not reach tables that
+# create_all already made before it ran.
+FREE_DML_TABLES = (
+    *FREE_MEMBER_RLS_TABLES,
+    "free_levels",
+    "free_aligned_sheets",
+    *FREE_NOTIFICATION_RLS_TABLES,
+    "free_attachments",
+    "free_finding_attachments",
+)
+
+
+def grant_free_tables_to_app_role() -> list[str]:
+    """GRANT DML on every pooled free-tier table to the app role + sequence usage.
+
+    Must run AFTER the free tables exist (create_all). Idempotent."""
+    tables = ", ".join(f"public.{t}" for t in FREE_DML_TABLES)
+    return [
+        f"GRANT SELECT, INSERT, UPDATE, DELETE ON {tables} TO {APP_ROLE};",
+        f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {APP_ROLE};",
+    ]
+
+
 def disable_rls_statements() -> list[str]:
     """Reverse of `enable_rls_statements`; used by migration downgrade."""
     stmts: list[str] = []
@@ -218,9 +633,9 @@ def grant_schema_to_app_role(schema: str) -> list[str]:
         f'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "{schema}" TO {APP_ROLE};',
         f'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "{schema}" TO {APP_ROLE};',
         f'ALTER DEFAULT PRIVILEGES IN SCHEMA "{schema}" '
-        f'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {APP_ROLE};',
+        f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {APP_ROLE};",
         f'ALTER DEFAULT PRIVILEGES IN SCHEMA "{schema}" '
-        f'GRANT USAGE, SELECT ON SEQUENCES TO {APP_ROLE};',
+        f"GRANT USAGE, SELECT ON SEQUENCES TO {APP_ROLE};",
         # audit_log is append-only — strip the UPDATE/DELETE the blanket grant
         # above just handed out, and install the deny trigger. MUST come after
         # the `GRANT ... ON ALL TABLES` or the grant re-adds the privileges.

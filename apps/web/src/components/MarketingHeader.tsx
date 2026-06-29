@@ -1,7 +1,7 @@
 'use client';
 
 import { BrandMark } from '@bimdossier/brand';
-import { ThemeToggle } from '@bimdossier/ui';
+import { Button, ThemeToggle } from '@bimdossier/ui';
 import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
@@ -12,10 +12,11 @@ import { portalHref } from '@/lib/portalLinks';
 type NavItem = { label: string; href: string; activeMatch?: string; external?: boolean };
 
 /**
- * Sticky marketing top-nav. Surfaces Blog (and Features / Request access) on
- * every marketing page — previously the blog was reachable only from the
- * footer. Carries the language + theme toggles (moved out of the hero corner).
- * Active state is derived from the locale-stripped pathname.
+ * Sticky marketing top-nav. Surfaces Features, FAQ, Security and Blog on every
+ * marketing page, plus the two front-door actions on the right: a Log in link
+ * and the primary Start for free button (both link out to the portal). Carries
+ * the language + theme toggles. Active state is derived from the locale-stripped
+ * pathname.
  */
 export function MarketingHeader(): JSX.Element {
   const t = useTranslations('header');
@@ -27,8 +28,6 @@ export function MarketingHeader(): JSX.Element {
     { label: t('faq'), href: '/#faq' },
     { label: t('security'), href: '/security', activeMatch: '/security' },
     { label: t('blog'), href: '/blog', activeMatch: '/blog' },
-    // Request access lives in the portal — link out, no in-site active state.
-    { label: t('requestAccess'), href: portalHref(locale, '/request-access'), external: true },
   ];
 
   return (
@@ -58,6 +57,17 @@ export function MarketingHeader(): JSX.Element {
         </nav>
 
         <div className="flex items-center gap-2">
+          <a
+            href={portalHref(locale, '/login')}
+            className="hidden text-body2 font-medium text-foreground-secondary transition-colors hover:text-primary sm:inline"
+          >
+            {t('login')}
+          </a>
+          <a href={portalHref(locale, '/signup')}>
+            <Button variant="primary" size="md">
+              {t('startFree')}
+            </Button>
+          </a>
           <LanguageToggle />
           <ThemeToggle ariaLabel={t('themeToggle')} />
         </div>

@@ -10,6 +10,13 @@ import {
   listAlignedSheets,
   updateAlignedSheet,
 } from '@/lib/api/alignedSheets';
+import {
+  calibrateFreeAlignedSheet,
+  createFreeAlignedSheet,
+  deleteFreeAlignedSheet,
+  listFreeAlignedSheets,
+  updateFreeAlignedSheet,
+} from '@/lib/api/freeAlignedSheets';
 import type {
   AlignedSheet,
   AlignedSheetCreateInput,
@@ -17,14 +24,20 @@ import type {
   AlignedSheetUpdateInput,
   CalibrateAlignedSheetInput,
 } from '@/lib/api/schemas';
+import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import { useAuthMutation, useAuthQuery } from '@/lib/query/useAuthQuery';
 
 import { alignedSheetsKey } from './queryKeys';
 
+/** Free-aware: free projects now have their own pooled aligned sheets
+ * (`/free/projects/{id}/aligned-sheets`, same schema with a null page_id), so
+ * both tiers fetch the real list. The free list is unfiltered (small; the caller
+ * filters client-side). */
 export function useAlignedSheets(
   projectId: string,
   filters: AlignedSheetFilters = {},
 ): UseQueryResult<AlignedSheetList> {
+  const { isFreeUser } = useIsFreeUser();
   return useAuthQuery({
     // Filter values are part of the cache key so each scope caches separately.
     queryKey: [
@@ -33,7 +46,10 @@ export function useAlignedSheets(
       filters.levelId ?? null,
       filters.pdfModelId ?? null,
     ] as const,
-    queryFn: (accessToken) => listAlignedSheets(accessToken, projectId, filters),
+    queryFn: (accessToken) =>
+      isFreeUser
+        ? listFreeAlignedSheets(accessToken, projectId)
+        : listAlignedSheets(accessToken, projectId, filters),
     enabled: projectId.length > 0,
   });
 }
@@ -45,9 +61,12 @@ export function useCreateAlignedSheet(): UseMutationResult<
   Error,
   CreateInput
 > {
+  const { isFreeUser } = useIsFreeUser();
   return useAuthMutation({
     mutationFn: (accessToken, { projectId, input }) =>
-      createAlignedSheet(accessToken, projectId, input),
+      isFreeUser
+        ? createFreeAlignedSheet(accessToken, projectId, input)
+        : createAlignedSheet(accessToken, projectId, input),
     invalidateKeys: ({ projectId }) => [alignedSheetsKey(projectId)],
   });
 }
@@ -63,9 +82,12 @@ export function useUpdateAlignedSheet(): UseMutationResult<
   Error,
   UpdateInput
 > {
+  const { isFreeUser } = useIsFreeUser();
   return useAuthMutation({
     mutationFn: (accessToken, { projectId, sheetId, input }) =>
-      updateAlignedSheet(accessToken, projectId, sheetId, input),
+      isFreeUser
+        ? updateFreeAlignedSheet(accessToken, projectId, sheetId, input)
+        : updateAlignedSheet(accessToken, projectId, sheetId, input),
     invalidateKeys: ({ projectId }) => [alignedSheetsKey(projectId)],
   });
 }
@@ -81,9 +103,12 @@ export function useCalibrateAlignedSheet(): UseMutationResult<
   Error,
   CalibrateInput
 > {
+  const { isFreeUser } = useIsFreeUser();
   return useAuthMutation({
     mutationFn: (accessToken, { projectId, sheetId, input }) =>
-      calibrateAlignedSheet(accessToken, projectId, sheetId, input),
+      isFreeUser
+        ? calibrateFreeAlignedSheet(accessToken, projectId, sheetId, input)
+        : calibrateAlignedSheet(accessToken, projectId, sheetId, input),
     invalidateKeys: ({ projectId }) => [alignedSheetsKey(projectId)],
   });
 }
@@ -95,9 +120,12 @@ export function useDeleteAlignedSheet(): UseMutationResult<
   Error,
   DeleteInput
 > {
+  const { isFreeUser } = useIsFreeUser();
   return useAuthMutation({
     mutationFn: (accessToken, { projectId, sheetId }) =>
-      deleteAlignedSheet(accessToken, projectId, sheetId),
+      isFreeUser
+        ? deleteFreeAlignedSheet(accessToken, projectId, sheetId)
+        : deleteAlignedSheet(accessToken, projectId, sheetId),
     invalidateKeys: ({ projectId }) => [alignedSheetsKey(projectId)],
   });
 }

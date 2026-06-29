@@ -7,15 +7,21 @@ const EXTENSIONS_BY_FILE_TYPE: Record<string, readonly string[]> = {
   dwg: ['.dwg'],
 };
 const ALL_EXTENSIONS = ['.ifc', '.ifczip', '.pdf', '.dxf', '.dwg'] as const;
+// The free tier accepts IFC (3D) + PDF (2D drawings) only — no DXF/DWG (the
+// backend rejects those with INVALID_FILE_EXTENSION).
+const FREE_EXTENSIONS = ['.ifc', '.ifczip', '.pdf'] as const;
 
-export function acceptedExtensions(lockedFileType: string | null): readonly string[] {
+export function acceptedExtensions(
+  lockedFileType: string | null,
+  free = false,
+): readonly string[] {
   if (lockedFileType !== null) {
     return EXTENSIONS_BY_FILE_TYPE[lockedFileType] ?? [`.${lockedFileType}`];
   }
-  return ALL_EXTENSIONS;
+  return free ? FREE_EXTENSIONS : ALL_EXTENSIONS;
 }
 
-export function isAllowedFile(file: File, lockedFileType: string | null): boolean {
+export function isAllowedFile(file: File, lockedFileType: string | null, free = false): boolean {
   const lower = file.name.toLowerCase();
-  return acceptedExtensions(lockedFileType).some((ext) => lower.endsWith(ext));
+  return acceptedExtensions(lockedFileType, free).some((ext) => lower.endsWith(ext));
 }

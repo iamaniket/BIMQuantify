@@ -1,18 +1,20 @@
 """Free → paid conversion (pool → silo).
 
-The explicit upgrade action (D7): inside a real project a user imports a model
-they uploaded for free. We copy the raw IFC into the project's storage
-namespace, create a `Document` + `ProjectFile`, run the NORMAL tenant extraction
-(the free fragments are NOT reused — re-extraction at the paid threshold of 1
-guarantees first-class storeys/geometry), map the free snags to real `findings`,
-and stamp `free_models.converted_to_file_id` so a re-import is a no-op.
+The explicit upgrade action (D7): inside a real project a user imports a free
+container they built. We copy the HEAD version's raw IFC into the project's
+storage namespace, create a `Document` + `ProjectFile`, run the NORMAL tenant
+extraction (the free fragments are NOT reused — re-extraction at the paid
+threshold of 1 guarantees first-class storeys/geometry), map the free snags to
+real `findings`, and stamp the head `free_project_files.converted_to_file_id` so
+a re-import is a no-op. Only the head version is copied — re-extraction makes
+copying older versions pointless.
 
-Idempotency + concurrency: the free row is `SELECT ... FOR UPDATE` locked for the
-whole import transaction, so two concurrent imports serialize and the second
-sees `converted_to_file_id` already set and no-ops. The free row lives in
-`public` and is reachable from the tenant session (search_path includes public),
-and the owner-keyed free RLS — fed by the `app.current_user_id` GUC the tenant
-session also sets — scopes it to the caller.
+Idempotency + concurrency: the head free file row is `SELECT ... FOR UPDATE`
+locked for the whole import transaction, so two concurrent imports serialize and
+the second sees `converted_to_file_id` already set and no-ops. The free rows live
+in `public` and are reachable from the tenant session (search_path includes
+public), and the owner-keyed free RLS — fed by the `app.current_user_id` GUC the
+tenant session also sets — scopes them to the caller.
 
 Not gated on FREE_TIER_ENABLED: turning the wedge off must not trap a free
 user's data — converting it to a paid project is exactly the funnel we want to
@@ -37,8 +39,9 @@ from bimdossier_api.config import Settings, get_settings
 from bimdossier_api.jobs import DispatchJobError, dispatch_job
 from bimdossier_api.models.document import Document, DocumentDiscipline, DocumentStatus
 from bimdossier_api.models.finding import Finding, FindingSeverity, FindingStatus
-from bimdossier_api.models.free_model import FreeModel
-from bimdossier_api.models.free_snag import FreeSnag
+from bimdossier_api.models.free_document import FreeDocument
+from bimdossier_api.models.free_finding import FreeFinding
+from bimdossier_api.models.free_project_file import FreeProjectFile
 from bimdossier_api.models.job import Job, JobStatus, JobType
 from bimdossier_api.models.project_file import (
     ExtractionStatus,
@@ -57,7 +60,8 @@ router = APIRouter(tags=["free-conversion"])
 
 
 class ImportFreeModelRequest(BaseModel):
-    free_model_id: UUID
+    # The free container (FreeDocument) to import; its HEAD version is copied.
+    free_document_id: UUID
 
 
 class ImportFreeModelResponse(BaseModel):
@@ -66,8 +70,8 @@ class ImportFreeModelResponse(BaseModel):
     findings_created: int
 
 
-def _map_snag_to_finding(
-    snag: FreeSnag,
+def _map_free_finding_to_finding(
+    snag: FreeFinding,
     *,
     project_id: UUID,
     document_id: UUID,
@@ -100,6 +104,12 @@ def _map_snag_to_finding(
         severity=severity,
         status=finding_status,
         created_by_user_id=user_id,
+        # Carry assignment as-is: assigned_to_user_id references public.users
+        # (global), so the FK is valid in the tenant schema. The assignee may not
+        # yet be a member of the destination paid org/project — that's acceptable
+        # (lossless; the importer can re-assign), and dropping it would lose data.
+        assignee_user_id=snag.assigned_to_user_id,
+        deadline_date=snag.deadline_date,
         linked_document_id=document_id,
         linked_file_id=file_id,
         linked_element_global_id=snag.linked_element_global_id,
@@ -137,25 +147,55 @@ async def import_free_model(
         require_permission(membership.role, Resource.document, Action.create)
         require_project_writable(project)
 
-        # Lock the free row for the whole txn — serializes concurrent imports and
-        # makes the converted_to_file_id idempotency check race-free.
-        free = (
+        # Load the free container (owner-scoped) and resolve its HEAD version: the
+        # head_file_id pointer when set + still importable, else the newest
+        # ready + extraction-succeeded version.
+        document = (
             await session.execute(
-                select(FreeModel)
-                .where(
-                    FreeModel.id == payload.free_model_id,
-                    FreeModel.owner_user_id == user.id,
+                select(FreeDocument).where(
+                    FreeDocument.id == payload.free_document_id,
+                    FreeDocument.owner_user_id == user.id,
+                    FreeDocument.deleted_at.is_(None),
                 )
-                .with_for_update()
             )
         ).scalar_one_or_none()
+        if document is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="FREE_DOCUMENT_NOT_FOUND"
+            )
+        candidates = list(
+            (
+                await session.execute(
+                    select(FreeProjectFile)
+                    .where(
+                        FreeProjectFile.free_document_id == document.id,
+                        FreeProjectFile.status == "ready",
+                        FreeProjectFile.extraction_status == "succeeded",
+                        FreeProjectFile.deleted_at.is_(None),
+                    )
+                    .order_by(FreeProjectFile.version_number.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
+        head_id = document.head_file_id
+        if head_id is None or not any(c.id == head_id for c in candidates):
+            head_id = candidates[0].id if candidates else None
+        if head_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="NO_IMPORTABLE_VERSION"
+            )
+
+        # Lock the head file for the whole txn — serializes concurrent imports and
+        # makes the converted_to_file_id idempotency check race-free.
+        free = await session.get(FreeProjectFile, head_id, with_for_update=True)
         if free is None:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="FREE_MODEL_NOT_FOUND"
+                status_code=status.HTTP_404_NOT_FOUND, detail="FREE_DOCUMENT_NOT_FOUND"
             )
         if free.converted_to_file_id is not None:
-            # Already imported — idempotent no-op. We don't know the original
-            # document id here, so report the recorded file id.
+            # Already imported — idempotent no-op.
             return ImportFreeModelResponse(
                 document_id=document_id,
                 file_id=free.converted_to_file_id,
@@ -176,7 +216,7 @@ async def import_free_model(
             Document(
                 id=document_id,
                 project_id=project.id,
-                name=free.name,
+                name=document.name,
                 discipline=DocumentDiscipline.architectural,
                 status=DocumentStatus.active,
                 primary_file_type=FileType.ifc,
@@ -224,12 +264,12 @@ async def import_free_model(
         # Map snags → findings (v1). RLS scopes the snag read to the owner.
         snags = (
             await session.execute(
-                select(FreeSnag).where(FreeSnag.free_model_id == free.id)
+                select(FreeFinding).where(FreeFinding.free_document_id == document.id)
             )
         ).scalars().all()
         for snag in snags:
             session.add(
-                _map_snag_to_finding(
+                _map_free_finding_to_finding(
                     snag,
                     project_id=project.id,
                     document_id=document_id,

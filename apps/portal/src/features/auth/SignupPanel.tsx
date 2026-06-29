@@ -26,7 +26,11 @@ export function SignupPanel(): JSX.Element {
   const t = useTranslations('signup');
   const locale = useLocale();
   const emailId = useId();
+  const nameId = useId();
+  const companyId = useId();
 
+  const [name, setName] = useState('');
+  const [company, setCompany] = useState('');
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [disabled, setDisabled] = useState(false);
@@ -47,7 +51,12 @@ export function SignupPanel(): JSX.Element {
     }
     setPending(true);
     try {
-      await apiClient.postNoContent('/auth/signup', '', { email: trimmed, locale });
+      await apiClient.postNoContent('/auth/signup', '', {
+        email: trimmed,
+        locale,
+        full_name: name.trim() || null,
+        company: company.trim() || null,
+      });
       setSubmitted(true);
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
@@ -104,6 +113,26 @@ export function SignupPanel(): JSX.Element {
     <>
       <AuthFormIntro eyebrow={t('eyebrow')} heading={t('title')} subtitle={t('subtitle')} />
       <form noValidate onSubmit={onSubmit} className="flex w-full flex-col gap-3.5">
+        <FormField label={t('field.name')} htmlFor={nameId}>
+          <Input
+            id={nameId}
+            type="text"
+            autoComplete="name"
+            placeholder={t('namePlaceholder')}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </FormField>
+        <FormField label={t('field.company')} htmlFor={companyId}>
+          <Input
+            id={companyId}
+            type="text"
+            autoComplete="organization"
+            placeholder={t('companyPlaceholder')}
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+          />
+        </FormField>
         <FormField label={t('field.email')} htmlFor={emailId}>
           <Input
             id={emailId}

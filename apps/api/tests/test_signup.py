@@ -92,6 +92,9 @@ async def test_signup_creates_orgless_user_and_sends_activation(
         assert user.is_superuser is False
         assert user.is_active is True
         assert user.locale == "en"
+        # No name/company submitted on this call → stored as NULL.
+        assert user.full_name is None
+        assert user.company is None
         user_id = user.id
 
     # Org-less: signup must NOT create any OrganizationMember row.
@@ -113,6 +116,32 @@ async def test_signup_creates_orgless_user_and_sends_activation(
     assert login.status_code == 200, login.text
     decoded = decode_token_full(login.json()["access_token"], "access")
     assert decoded.active_organization_id is None
+
+
+async def test_signup_persists_optional_name_and_company(
+    free_tier_client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """The free-signup form's optional name + company are trimmed and stored on
+    the org-less user so an operator can spot founding-partner candidates among
+    self-serve signups."""
+    email = "signup-lead@example.com"
+    resp = await free_tier_client.post(
+        "/auth/signup",
+        json={
+            "email": email,
+            "full_name": "  Tess Tester  ",
+            "company": "  Bouwbedrijf Tester BV  ",
+        },
+    )
+    assert resp.status_code == 202, resp.text
+
+    async with session_maker() as session:
+        user = (
+            await session.execute(select(User).where(User.email == email))
+        ).scalar_one()
+        assert user.full_name == "Tess Tester"
+        assert user.company == "Bouwbedrijf Tester BV"
 
 
 async def test_orgless_user_me_has_no_memberships(

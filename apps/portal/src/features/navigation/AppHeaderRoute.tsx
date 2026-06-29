@@ -12,7 +12,6 @@ import { NotificationsBell } from '@/features/notifications/NotificationsBell';
 import { ModelSwitcher } from '@/features/navigation/ModelSwitcher';
 import { useViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
 import { useProject } from '@/features/projects/useProject';
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import { usePathname } from '@/i18n/navigation';
 
 type RouteParams = {
@@ -105,7 +104,6 @@ export function AppHeaderRoute(): JSX.Element {
 
   const projectQuery = useProject(projectId);
   const modelsQuery = useDocuments(projectId);
-  const { isFreeUser } = useIsFreeUser();
 
   const { status, crumbs: crumbsOverride } = useAppHeaderOverrides();
 
@@ -137,7 +135,7 @@ export function AppHeaderRoute(): JSX.Element {
               activeLabel={modelName ?? t('model')}
             />
           ) : null}
-          {isFreeUser ? null : <NotificationsBell />}
+          <NotificationsBell />
         </>
       }
     />

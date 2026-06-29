@@ -36,6 +36,8 @@ type SideRailProps = {
   onTogglePanel: (id: PanelId) => void;
   /** Per-tab count + visibility indicators. Absent tabs render no pill. */
   badges?: Partial<Record<PanelId, RailBadge>> | undefined;
+  /** Panels to omit (e.g. BCF for free-tier users, who have no org BCF surface). */
+  hiddenPanels?: readonly PanelId[] | undefined;
 };
 
 type RailButton = {
@@ -116,9 +118,12 @@ export function SideRail({
   activePanel,
   onTogglePanel,
   badges,
+  hiddenPanels,
 }: SideRailProps): JSX.Element {
   const t = useTranslations('viewer.sidePanel');
-  const buttons = BUTTONS_BY_FORMAT[format];
+  const buttons = hiddenPanels === undefined
+    ? BUTTONS_BY_FORMAT[format]
+    : BUTTONS_BY_FORMAT[format].filter((b) => !hiddenPanels.includes(b.id));
   return (
     <div
       className="z-30 flex w-[46px] shrink-0 flex-col items-center gap-[7px] border-l border-t border-white/12 px-[6px] py-3"

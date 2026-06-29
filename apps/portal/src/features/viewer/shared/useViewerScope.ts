@@ -8,6 +8,7 @@ import {
 import type { ViewerBundle } from '@bimdossier/viewer';
 
 import { federatedModelId } from '@/features/viewer/3d/federation/federatedModelId';
+import { useIsFreeContext } from '@/hooks/useIsFreeUser';
 import { ApiError } from '@/lib/api/client';
 import { getProjectViewerBundle, getViewerBundle } from '@/lib/api/projectFiles';
 import type { ProjectViewerDocumentEntry, ViewerBundleResponse } from '@/lib/api/schemas';
@@ -143,6 +144,13 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
   const target = useViewerTarget(projectId);
   const { tokens } = useAuth();
   const accessToken = tokens === null ? null : tokens.access_token;
+  // Route bundle fetches at the SINGLE coupling point: org-less free users hit the
+  // pooled `/free/*` viewer endpoints (identical paid schema), paid hit the org
+  // ones. Gate `enabled` on `freeReady` (/auth/me) so a free user never briefly
+  // fetches the org-only endpoint before the tier is known. For free, the single
+  // "modelId" is the free_document_id (container) and "fileId" the head file —
+  // exactly what DocumentsTableRow sets as the viewer target.
+  const { isFreeUser, ready: freeReady } = useIsFreeContext();
 
   const isSingle = target.kind === 'single';
   const singleModelId = target.kind === 'single' ? target.modelId : '';
@@ -152,9 +160,9 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
     queryKey: viewerKeys.bundle(projectId, singleModelId, singleFileId),
     queryFn: () => {
       if (accessToken === null) throw new Error('Not authenticated');
-      return getViewerBundle(accessToken, projectId, singleModelId, singleFileId);
+      return getViewerBundle(accessToken, projectId, singleModelId, singleFileId, isFreeUser);
     },
-    enabled: ready && isSingle && accessToken !== null,
+    enabled: ready && freeReady && isSingle && accessToken !== null,
     staleTime: 60_000,
   });
 
@@ -162,10 +170,11 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
     queryKey: viewerKeys.projectBundle(projectId),
     queryFn: () => {
       if (accessToken === null) throw new Error('Not authenticated');
-      return getProjectViewerBundle(accessToken, projectId);
+      return getProjectViewerBundle(accessToken, projectId, isFreeUser);
     },
     // Drawings mode (persona A) renders its own by-Level browser — no IFC manifest.
-    enabled: ready && !isSingle && target.kind !== 'drawings' && accessToken !== null,
+    enabled:
+      ready && freeReady && !isSingle && target.kind !== 'drawings' && accessToken !== null,
     staleTime: 60_000,
   });
 

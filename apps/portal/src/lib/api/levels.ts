@@ -8,28 +8,26 @@ import {
   type LevelUpdateInput,
 } from './schemas';
 
+// Free (org-less) users hit the pooled `/free/projects/...` levels surface, which
+// returns the IDENTICAL paid Level schema; paid hit the org endpoints.
+const base = (projectId: string, free: boolean): string =>
+  `${free ? '/free/projects' : '/projects'}/${projectId}/levels`;
+
 export async function listLevels(
   accessToken: string,
   projectId: string,
+  free = false,
 ): Promise<LevelList> {
-  return apiClient.get<LevelList>(
-    `/projects/${projectId}/levels`,
-    LevelListSchema,
-    accessToken,
-  );
+  return apiClient.get<LevelList>(base(projectId, free), LevelListSchema, accessToken);
 }
 
 export async function createLevel(
   accessToken: string,
   projectId: string,
   input: LevelCreateInput,
+  free = false,
 ): Promise<Level> {
-  return apiClient.post<Level>(
-    `/projects/${projectId}/levels`,
-    input,
-    LevelSchema,
-    accessToken,
-  );
+  return apiClient.post<Level>(base(projectId, free), input, LevelSchema, accessToken);
 }
 
 export async function updateLevel(
@@ -37,9 +35,10 @@ export async function updateLevel(
   projectId: string,
   levelId: string,
   input: LevelUpdateInput,
+  free = false,
 ): Promise<Level> {
   return apiClient.patch<Level>(
-    `/projects/${projectId}/levels/${levelId}`,
+    `${base(projectId, free)}/${levelId}`,
     input,
     LevelSchema,
     accessToken,
@@ -50,6 +49,7 @@ export async function deleteLevel(
   accessToken: string,
   projectId: string,
   levelId: string,
+  free = false,
 ): Promise<void> {
-  return apiClient.delete(`/projects/${projectId}/levels/${levelId}`, accessToken);
+  return apiClient.delete(`${base(projectId, free)}/${levelId}`, accessToken);
 }

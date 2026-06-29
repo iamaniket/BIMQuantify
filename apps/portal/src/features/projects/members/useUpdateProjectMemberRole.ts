@@ -2,6 +2,7 @@
 
 import type { UseMutationResult } from '@tanstack/react-query';
 
+import { useIsFreeContext } from '@/hooks/useIsFreeUser';
 import { updateProjectMemberRole } from '@/lib/api/projectMembers';
 import type { ProjectMember, ProjectMemberUpdateInput } from '@/lib/api/schemas';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
@@ -19,9 +20,10 @@ export function useUpdateProjectMemberRole(): UseMutationResult<
   Error,
   UpdateProjectMemberRoleArgs
 > {
+  const { isFreeUser } = useIsFreeContext();
   return useAuthMutation({
     mutationFn: (accessToken, { projectId, userId, input }) =>
-      updateProjectMemberRole(accessToken, projectId, userId, input),
+      updateProjectMemberRole(accessToken, projectId, userId, input, isFreeUser),
     invalidateKeys: (variables) => [projectMembersKey(variables.projectId)],
   });
 }

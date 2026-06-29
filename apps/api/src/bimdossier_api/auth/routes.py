@@ -36,6 +36,7 @@ from bimdossier_api.models.organization_member import (
     OrganizationMemberStatus,
 )
 from bimdossier_api.models.user import User
+from bimdossier_api.routers.free_access import user_has_free_participation
 from bimdossier_api.schemas.user import UserRead, UserUpdate
 from bimdossier_api.storage import get_attachments_bucket, get_storage
 
@@ -79,6 +80,16 @@ class AuthMeResponse(BaseModel):
     active_organization_id: UUID | None
     memberships: list[OrgMembershipBrief]
     pending_invitations_count: int
+    # True when the user owns or is a member of ≥1 free project — drives whether
+    # the portal shows a "Free workspace" entry in the org switcher.
+    has_free_workspace: bool = False
+
+
+class SwitchToFreeRequest(BaseModel):
+    # Optional current refresh token, revoked alongside the access token so a
+    # replayed pre-switch refresh can't keep minting org-scoped access. Mirrors
+    # SwitchOrgRequest.
+    refresh_token: str | None = None
 
 
 class SwitchOrgRequest(BaseModel):
@@ -112,6 +123,11 @@ class SignupRequest(BaseModel):
 
     email: EmailStr
     locale: str | None = None
+    # Optional lead enrichment captured on the free-signup form. No validation
+    # (both optional); truncated to the column width in the handler so an
+    # oversized value can never break the always-202 contract.
+    full_name: str | None = None
+    company: str | None = None
 
 
 async def _decode_verify_token_to_user(
@@ -460,11 +476,16 @@ def build_auth_router() -> APIRouter:
             if m.status == OrganizationMemberStatus.pending
         )
 
+        # Free participation (owns or is a member of a free project) — drives the
+        # "Free workspace" switcher entry. RLS-bypassed here (superuser session).
+        has_free = await user_has_free_participation(session, user.id)
+
         return AuthMeResponse(
             user=UserRead.model_validate(user, from_attributes=True),
             active_organization_id=active_org_id,
             memberships=memberships,
             pending_invitations_count=pending_count,
+            has_free_workspace=has_free,
         )
 
     @me_router.post("/switch-organization", response_model=TokenPair)
@@ -578,6 +599,69 @@ def build_auth_router() -> APIRouter:
             refresh_token=create_token(
                 user.id, "refresh", active_organization_id=payload.organization_id
             ),
+        )
+
+    @me_router.post("/switch-to-free", response_model=TokenPair)
+    async def switch_to_free(
+        request: Request,
+        payload: SwitchToFreeRequest,
+        user: User = Depends(current_active_user),
+        session: AsyncSession = Depends(get_async_session),
+        redis: Any = Depends(get_redis_dep),
+    ) -> TokenPair:
+        # The free workspace is a selectable context: dropping the active org →
+        # the next tokens carry NO `org` claim, so org endpoints 409 and /free/*
+        # serves the user's pooled data. Only enter it if there's something
+        # there — the user owns or is a member of ≥1 free project.
+        if not await user_has_free_participation(session, user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="FREE_WORKSPACE_UNAVAILABLE",
+            )
+        # Revoke the current org-scoped access token (mirrors switch-organization)
+        # so it can't keep acting in the previous org until its natural expiry.
+        auth_header = request.headers.get("authorization") or ""
+        if auth_header.lower().startswith("bearer "):
+            current_access = auth_header.split(" ", 1)[1].strip()
+            try:
+                decoded = decode_token_full(current_access, "access")
+            except TokenError:
+                decoded = None
+            if decoded is not None and decoded.jti is not None and decoded.exp is not None:
+                ttl = max(decoded.exp - int(datetime.now(UTC).timestamp()), 1)
+                try:
+                    await revoke_jti(redis, decoded.jti, ttl)
+                except RedisError as exc:
+                    # Fail CLOSED — same rationale as switch-organization.
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="SWITCH_REVOCATION_UNAVAILABLE",
+                    ) from exc
+        if payload.refresh_token:
+            try:
+                old_refresh = decode_token_full(payload.refresh_token, "refresh")
+            except TokenError:
+                old_refresh = None
+            if (
+                old_refresh is not None
+                and old_refresh.user_id == user.id
+                and old_refresh.jti is not None
+            ):
+                ttl = max(old_refresh.exp - int(datetime.now(UTC).timestamp()), 1)
+                try:
+                    await revoke_jti(redis, old_refresh.jti, ttl)
+                except RedisError as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="SWITCH_REVOCATION_UNAVAILABLE",
+                    ) from exc
+        await session.execute(
+            update(User).where(User.id == user.id).values(active_organization_id=None)
+        )
+        await session.commit()
+        return TokenPair(
+            access_token=create_token(user.id, "access", active_organization_id=None),
+            refresh_token=create_token(user.id, "refresh", active_organization_id=None),
         )
 
     router.include_router(me_router)
@@ -770,6 +854,8 @@ def build_auth_router() -> APIRouter:
                 is_verified=False,
                 is_superuser=False,
                 locale=coerce_locale(payload.locale),
+                full_name=(payload.full_name or "").strip()[:255] or None,
+                company=(payload.company or "").strip()[:255] or None,
             )
             session.add(user)
             await session.commit()

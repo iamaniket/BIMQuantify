@@ -3,7 +3,6 @@
 import type { UseQueryResult } from '@tanstack/react-query';
 
 import { useIsFreeUser } from '@/hooks/useIsFreeUser';
-import { getFreeProjectOverview } from '@/lib/api/freeProjects';
 import { getProjectOverview } from '@/lib/api/projects';
 import type { ProjectOverview } from '@/lib/api/schemas';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
@@ -32,9 +31,7 @@ export function useProjectOverview<TSelect = ProjectOverview>(
   return useAuthQuery<ProjectOverview, TSelect>({
     queryKey: projectOverviewKey(projectId),
     queryFn: (accessToken) =>
-      isFreeUser
-        ? getFreeProjectOverview(accessToken, projectId)
-        : getProjectOverview(accessToken, projectId),
+      getProjectOverview(accessToken, projectId, isFreeUser),
     enabled: projectId.length > 0 && ready,
     // `exactOptionalPropertyTypes` forbids passing `select: undefined`, so only
     // include the key when a selector was actually supplied.

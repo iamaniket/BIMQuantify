@@ -2,10 +2,14 @@
   "signup": {
     "eyebrow": "Free preview",
     "title": "Create your free account",
-    "subtitle": "Enter your email and we'll send you a link to set a password. Then you can upload an IFC model and view it in 3D — free.",
+    "subtitle": "Enter your email and we'll send a link to set a password. Then you can upload an IFC model, view it in 3D and place snags, free.",
     "emailPlaceholder": "you@company.nl",
+    "namePlaceholder": "Your name",
+    "companyPlaceholder": "Your company",
     "field": {
-      "email": "Email address"
+      "email": "Email address",
+      "name": "Name (optional)",
+      "company": "Company (optional)"
     },
     "cta": "Create free account",
     "submitting": "Sending…",
@@ -50,13 +54,17 @@
         "running": "Processing…",
         "succeeded": "Ready to view",
         "failed": "Processing failed"
-      }
+      },
+      "failedReason": "Processing failed: {reason}"
     },
     "viewer": {
       "back": "Back",
       "title": "Free viewer",
       "loading": "Loading model…",
       "loadError": "This model couldn't be loaded.",
+      "processing": "Still processing your model — this can take a minute…",
+      "failed": "This model couldn't be processed.",
+      "failedReason": "This model couldn't be processed: {reason}",
       "snags": "Snags",
       "snagTitle": "Snag title",
       "snagNote": "Note (optional)",
@@ -66,7 +74,19 @@
       "addSnag": "Add snag",
       "close": "Close",
       "reopen": "Reopen",
-      "delete": "Delete"
+      "delete": "Delete",
+      "newFinding": "New finding",
+      "container": "Container",
+      "boardCreateSubtitle": "Add a finding to one of your containers.",
+      "createHint": "Right-click an element in the model to pin a finding, or fill this in and pin it.",
+      "noFindings": "No findings yet. Right-click the model or use New finding to add one.",
+      "assignee": "Assignee",
+      "unassigned": "Unassigned",
+      "deadline": "Deadline",
+      "statusLabel": "Status",
+      "save": "Save",
+      "cancel": "Cancel",
+      "edit": "Edit"
     }
   },
   "imageAnnotator": {
@@ -111,7 +131,8 @@
     "switcher": {
       "label": "Switch organization",
       "empty": "No active organization",
-      "adminBadge": "Admin"
+      "adminBadge": "Admin",
+      "freeWorkspace": "Free workspace"
     }
   },
   "activate": {
@@ -493,6 +514,20 @@
       "seatsLabel": "Org seats",
       "seatsValue": "{used} of {limit} used",
       "seatsUnlimited": "Unlimited"
+    },
+    "plan": {
+      "title": "Plan & usage",
+      "planLabel": "Plan",
+      "freePlanName": "Free",
+      "freeWorkspaceSub": "Personal workspace",
+      "storageLabel": "Storage",
+      "projectsLabel": "Projects",
+      "containersLabel": "Containers",
+      "findingsLabel": "Findings",
+      "usageValue": "{used} of {cap}",
+      "usagePct": "{pct}%",
+      "countOfCap": "{count} of {cap}",
+      "ofValue": "of {value}"
     }
   },
   "projects": {
@@ -718,12 +753,14 @@
         "listHeading": "People to add ({count})",
         "emptyState": "No one added yet.",
         "minOneHint": "Add at least one person to create the project.",
+        "freeInviteHint": "Invite up to {max} people to collaborate (optional — you can add them later).",
         "inviteBadge": "Invite",
         "partialFailure": "Project created, but some people couldn't be added: {names}. Add them from the project's access page.",
         "errors": {
           "pickUser": "Select a member to add.",
           "invalidEmail": "Enter a valid email address.",
-          "duplicate": "This person is already in the list."
+          "duplicate": "This person is already in the list.",
+          "inviteCap": "You can invite up to {max} members on a free project."
         }
       }
     }
@@ -1432,6 +1469,10 @@
           "viewFile": "View file",
           "selectAria": "Select {name} to load in the viewer",
           "noViewableFile": "No viewable file yet",
+          "extractionQueued": "Queued…",
+          "extractionProcessing": "Processing…",
+          "extractionFailed": "Processing failed",
+          "extractionFailedReason": "Processing failed: {reason}",
           "uploadFile": "Upload file",
           "checkBbl": "Check Bbl",
           "view": "View",
@@ -2621,7 +2662,7 @@
   },
   "auth": {
     "brand": {
-      "tagline": "Wkb-compliant BIM platform"
+      "tagline": "Building quality platform"
     },
     "hero": {
       "checksBadge": "{wkb} Wkb · {bbl} BBL checks live",
@@ -3360,6 +3401,72 @@
           "orgNameTaken": "An organization with this name already exists. Pick a different name."
         },
         "success": "Approved! Tenant \"{org}\" has been provisioned and an activation email sent."
+      }
+    },
+    "freeUsers": {
+      "tab": "Free users",
+      "loadError": "We couldn't load the free users. Please try again.",
+      "searchPlaceholder": "Search by email or name…",
+      "searchAria": "Search free users",
+      "panel": {
+        "eyebrow": "Free tier",
+        "title": "Free users ({count})"
+      },
+      "table": {
+        "user": "User",
+        "company": "Company",
+        "storage": "Storage",
+        "storageUsage": "{used} / {cap}",
+        "storagePct": "{pct}%",
+        "containers": "Containers",
+        "countOfCap": "{count} / {cap}",
+        "created": "Created",
+        "lastActive": "Last active",
+        "neverActive": "Never",
+        "staleBadge": "Stale",
+        "snags": "Snags",
+        "sharedWith": "Shared with",
+        "status": "Status",
+        "statusActive": "Active",
+        "statusSuspended": "Suspended",
+        "statusUnverified": "Unverified",
+        "lockedBadge": "Locked",
+        "manage": "Manage",
+        "empty": "No free users yet."
+      },
+      "detail": {
+        "storage": "{used} / {cap}",
+        "storagePct": "{pct}%",
+        "projectsStat": "{count} / {cap} projects",
+        "containersStat": "{count} / {cap} containers",
+        "snagsStat": "{count} snags",
+        "sharedStat": "{count} shared",
+        "filesStat": "{count} files",
+        "accountCreated": "Account created",
+        "lastActive": "Last active",
+        "firstContent": "First activity",
+        "never": "Never",
+        "loadError": "We couldn't load this user's content.",
+        "projectsTitle": "Projects ({count})",
+        "noProjects": "No projects.",
+        "projectMeta": "{containers} containers · {snags} snags · {size}",
+        "containersTitle": "Containers ({count})",
+        "noContainers": "No containers.",
+        "containerMeta": "{files} versions · {size}",
+        "snagsTitle": "Snags ({count})",
+        "noSnags": "No snags.",
+        "sharedTitle": "Shared with this user ({count})",
+        "sendReset": "Send password reset",
+        "resendActivation": "Resend activation",
+        "suspend": "Suspend",
+        "reactivate": "Reactivate",
+        "delete": "Delete account",
+        "reactivated": "Account reactivated.",
+        "suspended": "Account suspended.",
+        "resetSent": "Password reset email sent.",
+        "activationResent": "Activation email resent.",
+        "deleteConfirm": "Permanently anonymize {email}? This scrubs their data and disables sign-in. This cannot be undone.",
+        "deleted": "Account deleted."
       }
     },
     "users": {

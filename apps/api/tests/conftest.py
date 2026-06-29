@@ -82,9 +82,17 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
     from bimdossier_api._rls_sql import (
         audit_log_append_only_statements,
         create_app_role_statements,
-        disable_free_tier_rls_statements,
+        disable_free_aligned_sheet_rls_statements,
+        disable_free_attachment_rls_statements,
+        disable_free_level_rls_statements,
+        disable_free_member_rls_statements,
+        disable_free_notification_rls_statements,
         disable_rls_statements,
-        enable_free_tier_rls_statements,
+        enable_free_aligned_sheet_rls_statements,
+        enable_free_attachment_rls_statements,
+        enable_free_level_rls_statements,
+        enable_free_member_rls_statements,
+        enable_free_notification_rls_statements,
         enable_rls_statements,
     )
     from bimdossier_api.db import Base
@@ -98,8 +106,8 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         ChecklistItem,
         ChecklistItemResult,
         Deadline,
-        Job,
         Document,
+        Job,
         Notification,
         NotificationUserState,
         Organization,
@@ -128,7 +136,11 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         # the schema from metadata. `create_all` is DDL-only — RLS policies are
         # applied separately below to mirror what the migration does.
         for stmt in (
-            *disable_free_tier_rls_statements(("free_models", "free_snags", "free_projects")),
+            *disable_free_attachment_rls_statements(),
+            *disable_free_aligned_sheet_rls_statements(),
+            *disable_free_level_rls_statements(),
+            *disable_free_notification_rls_statements(),
+            *disable_free_member_rls_statements(),
             *disable_rls_statements(),
         ):
             await conn.exec_driver_sql(
@@ -173,7 +185,8 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
             "WHERE status IN ('draft', 'published')"
         )
         # Partial unique index for "one active access-request per email" —
-        # mirrors alembic migration 0003_dedup_pending_access_requests.
+        # mirrors the ux_access_requests_active_email index in the master baseline
+        # (0001_initial_master), not expressible in __table_args__.
         await conn.exec_driver_sql(
             "CREATE UNIQUE INDEX ux_access_requests_active_email "
             "ON access_requests(lower(work_email)) "
@@ -199,11 +212,22 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
             await conn.exec_driver_sql(stmt)
         for stmt in enable_rls_statements():
             await conn.exec_driver_sql(stmt)
-        # Pooled free-tier tables get owner-keyed RLS (mirrors the 0002 migration)
+        # Pooled free-tier tables get owner-OR-member RLS (mirrors migration 0004)
         # so the free RLS-isolation tests exercise the real boundary as bim_app.
-        for stmt in enable_free_tier_rls_statements(
-            ("free_models", "free_snags", "free_projects")
-        ):
+        for stmt in enable_free_member_rls_statements():
+            await conn.exec_driver_sql(stmt)
+        # Pooled free-notification tables get per-recipient RLS (migration 0008)
+        # so the free-notification isolation tests exercise the real boundary.
+        for stmt in enable_free_notification_rls_statements():
+            await conn.exec_driver_sql(stmt)
+        # Pooled free-levels get owner-OR-member RLS (migration 0010).
+        for stmt in enable_free_level_rls_statements():
+            await conn.exec_driver_sql(stmt)
+        # Pooled free-aligned-sheets get owner-OR-member RLS (migration 0011).
+        for stmt in enable_free_aligned_sheet_rls_statements():
+            await conn.exec_driver_sql(stmt)
+        # Pooled free-attachments get owner-OR-member RLS (migration 0013).
+        for stmt in enable_free_attachment_rls_statements():
             await conn.exec_driver_sql(stmt)
 
     yield eng
@@ -215,7 +239,11 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         for (schema,) in rows.fetchall():
             await conn.exec_driver_sql(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
         for stmt in (
-            *disable_free_tier_rls_statements(("free_models", "free_snags", "free_projects")),
+            *disable_free_attachment_rls_statements(),
+            *disable_free_aligned_sheet_rls_statements(),
+            *disable_free_level_rls_statements(),
+            *disable_free_notification_rls_statements(),
+            *disable_free_member_rls_statements(),
             *disable_rls_statements(),
         ):
             await conn.exec_driver_sql(
@@ -323,7 +351,9 @@ async def _clean_tables(
                     text(
                         "TRUNCATE TABLE checklist_item_results, checklist_items, "
                         "borgingsmomenten, borgingsplans, deadlines, "
-                        "capture_links, blog_posts, free_snags, free_models, free_projects, "
+                        "capture_links, blog_posts, free_finding_attachments, "
+                        "free_attachments, free_findings, free_project_files, "
+                        "free_documents, free_project_members, free_projects, "
                         "risks, access_requests, reports, jobs, project_files, documents, "
                         "project_members, projects, notification_user_state, "
                         "notifications, audit_log, certificates, org_certificates, "
@@ -670,8 +700,8 @@ async def fake_storage_client(
     from bimdossier_api import db as db_module
     from bimdossier_api.auth.ratelimit import (
         CAPTURE_INITIATE_LIMITER,
-        FREE_UPLOAD_INITIATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
+        FREE_UPLOAD_INITIATE_LIMITER,
         INVITE_LIMITER,
         REPORT_GEN_LIMITER,
         UPLOAD_INITIATE_LIMITER,
@@ -1061,8 +1091,8 @@ async def client(
     from bimdossier_api import db as db_module
     from bimdossier_api.auth.ratelimit import (
         CAPTURE_INITIATE_LIMITER,
-        FREE_UPLOAD_INITIATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
+        FREE_UPLOAD_INITIATE_LIMITER,
         INVITE_LIMITER,
         REPORT_GEN_LIMITER,
         UPLOAD_INITIATE_LIMITER,
@@ -1118,8 +1148,8 @@ async def free_tier_client(
     from bimdossier_api import db as db_module
     from bimdossier_api.auth.ratelimit import (
         CAPTURE_INITIATE_LIMITER,
-        FREE_UPLOAD_INITIATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
+        FREE_UPLOAD_INITIATE_LIMITER,
         INVITE_LIMITER,
         REPORT_GEN_LIMITER,
         UPLOAD_INITIATE_LIMITER,

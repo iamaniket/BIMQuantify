@@ -46,10 +46,33 @@ from bimdossier_api.models.finding_attachment import (
     FindingAttachment,
 )
 from bimdossier_api.models.finding_comment import FindingComment, FindingCommentMention
-from bimdossier_api.models.free_model import (
-    FREE_EXTRACTION_STATUSES,
-    FREE_MODEL_STATUSES,
-    FreeModel,
+from bimdossier_api.models.free_aligned_sheet import FreeAlignedSheet
+from bimdossier_api.models.free_attachment import (
+    FREE_ATTACHMENT_CATEGORIES,
+    FREE_ATTACHMENT_STATUSES,
+    FreeAttachment,
+)
+from bimdossier_api.models.free_document import (
+    FREE_DOC_DISCIPLINES,
+    FREE_DOC_FILE_TYPES,
+    FREE_DOC_STATUSES,
+    FreeDocument,
+)
+from bimdossier_api.models.free_finding import (
+    FREE_FINDING_NOTE_MAX,
+    FREE_FINDING_SEVERITIES,
+    FREE_FINDING_STATUSES,
+    FreeFinding,
+)
+from bimdossier_api.models.free_finding_attachment import (
+    FREE_FINDING_ATTACHMENT_KINDS,
+    FreeFindingAttachment,
+)
+from bimdossier_api.models.free_level import FREE_LEVEL_SOURCES, FreeLevel
+from bimdossier_api.models.free_notification import (
+    FREE_NOTIFICATION_EVENT_TYPES,
+    FreeNotification,
+    FreeNotificationUserState,
 )
 from bimdossier_api.models.free_project import (
     FREE_PROJECT_BUILDING_TYPES,
@@ -57,12 +80,16 @@ from bimdossier_api.models.free_project import (
     FREE_PROJECT_PHASES,
     FreeProject,
 )
-from bimdossier_api.models.free_snag import (
-    FREE_SNAG_NOTE_MAX,
-    FREE_SNAG_SEVERITIES,
-    FREE_SNAG_STATUSES,
-    FreeSnag,
+from bimdossier_api.models.free_project_file import (
+    FREE_FILE_EXTRACTION_STATUSES,
+    FREE_FILE_STATUSES,
+    FreeProjectFile,
 )
+from bimdossier_api.models.free_project_member import (
+    FREE_MEMBER_ROLES,
+    FreeProjectMember,
+)
+from bimdossier_api.models.free_user_limits import FreeUserLimits
 from bimdossier_api.models.job import _JOB_TERMINAL, Job, JobStatus, JobType
 from bimdossier_api.models.levels import Level, LevelSource
 from bimdossier_api.models.notification import (
@@ -106,11 +133,23 @@ __all__ = [
     "ATTACHMENT_ALLOWED_EXTENSIONS",
     "CHECKLIST_RESULT_ATTACHMENT_KINDS",
     "FINDING_ATTACHMENT_KINDS",
-    "FREE_EXTRACTION_STATUSES",
-    "FREE_MODEL_STATUSES",
-    "FREE_SNAG_NOTE_MAX",
-    "FREE_SNAG_SEVERITIES",
-    "FREE_SNAG_STATUSES",
+    "FREE_ATTACHMENT_CATEGORIES",
+    "FREE_ATTACHMENT_STATUSES",
+    "FREE_FINDING_ATTACHMENT_KINDS",
+    "FREE_DOC_DISCIPLINES",
+    "FREE_DOC_FILE_TYPES",
+    "FREE_DOC_STATUSES",
+    "FREE_FILE_EXTRACTION_STATUSES",
+    "FREE_FILE_STATUSES",
+    "FREE_MEMBER_ROLES",
+    "FREE_FINDING_NOTE_MAX",
+    "FREE_FINDING_SEVERITIES",
+    "FREE_FINDING_STATUSES",
+    "FREE_LEVEL_SOURCES",
+    "FREE_NOTIFICATION_EVENT_TYPES",
+    "FREE_PROJECT_BUILDING_TYPES",
+    "FREE_PROJECT_LIFECYCLE_STATES",
+    "FREE_PROJECT_PHASES",
     "TRANSFORM_TYPE_SIMILARITY",
     "_JOB_TERMINAL",
     "_REPORT_TERMINAL",
@@ -156,9 +195,18 @@ __all__ = [
     "FindingCommentMention",
     "FindingSeverity",
     "FindingStatus",
-    "FreeModel",
+    "FreeAlignedSheet",
+    "FreeAttachment",
+    "FreeDocument",
+    "FreeFindingAttachment",
+    "FreeLevel",
+    "FreeNotification",
+    "FreeNotificationUserState",
     "FreeProject",
-    "FreeSnag",
+    "FreeProjectFile",
+    "FreeProjectMember",
+    "FreeUserLimits",
+    "FreeFinding",
     "IfcSchema",
     "InspectionVerdict",
     "Job",

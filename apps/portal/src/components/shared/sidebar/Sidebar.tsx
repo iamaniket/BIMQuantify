@@ -27,16 +27,14 @@ function BrandFooter({ collapsed }: { collapsed: boolean }): JSX.Element {
         collapsed ? 'flex justify-center px-0 py-3' : 'flex items-center gap-2.5 px-4 py-3'
       }`}
     >
-      <div className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-md border border-white/[0.28] bg-white/[0.16]">
-        <DossierLogo size={17} color="#fff" />
-      </div>
+      <DossierLogo size={32} className="shrink-0" />
       {!collapsed && (
         <div className="min-w-0 flex-1">
           <div className="text-[14.5px] font-semibold leading-[1.1] tracking-tight text-white">
             {'BimDossier'}
           </div>
-          <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/55">
-            {'NL · Wkb + BBL'}
+          <div className="mt-0.5 whitespace-nowrap text-[8.5px] font-semibold uppercase tracking-[0.04em] text-white/55">
+            {'Building quality platform'}
           </div>
         </div>
       )}

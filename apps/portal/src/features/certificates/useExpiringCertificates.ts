@@ -5,6 +5,7 @@ import { useQueries } from '@tanstack/react-query';
 
 import { listCertificates } from '@/lib/api/certificates';
 import type { Certificate, Project } from '@/lib/api/schemas';
+import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { getCertificateExpiryState } from './expiry';
@@ -29,10 +30,14 @@ export function useExpiringCertificates(
 ): ExpiringCertificatesSummary {
   const { tokens } = useAuth();
   const accessToken = tokens?.access_token ?? null;
+  // Certificates are org-only — a free user has none and `GET /projects/{id}/
+  // certificates` is tenant-scoped (409s without an org). Skip the fetch entirely
+  // for free users so this collapses to an empty summary with zero requests.
+  const { isFreeUser } = useIsFreeUser();
 
   const activeProjects = useMemo(
-    () => projects.filter((p) => p.lifecycle_state === 'active'),
-    [projects],
+    () => (isFreeUser ? [] : projects.filter((p) => p.lifecycle_state === 'active')),
+    [projects, isFreeUser],
   );
 
   const cutoff = useMemo(() => expiringBeforeDate(), []);
@@ -48,7 +53,7 @@ export function useExpiringCertificates(
           expiringBefore: cutoff,
         });
       },
-      enabled: accessToken !== null,
+      enabled: accessToken !== null && !isFreeUser,
       staleTime: 5 * 60 * 1000,
     })),
   });

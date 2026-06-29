@@ -2,11 +2,14 @@
 
 import { useMemo } from 'react';
 
+import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import type {
   PermissionAction,
   PermissionResource,
   ProjectRole,
 } from '@/lib/api/schemas';
+import { useAuth } from '@/providers/AuthProvider';
 
 import { can } from './can';
 import { useMyProjectRole } from './useMyProjectRole';
@@ -35,10 +38,44 @@ export type ProjectPermissions = {
  * `can(resource, action)` plus the two named policy exceptions.
  */
 export function useProjectPermissions(projectId: string): ProjectPermissions {
+  const { isFreeUser } = useIsFreeUser();
+  const { me } = useAuth();
   const matrixQuery = usePermissionMatrix();
   const { role, isOrgAdmin, isSuperuser, isLoading } = useMyProjectRole(projectId);
+  // Resolve the caller's free role from the members list (owner / editor /
+  // viewer). Gated to free so paid surfaces don't take an extra members fetch.
+  const freeMembersQuery = useProjectMembers(projectId, { enabled: isFreeUser });
+  const myUserId = me?.user.id ?? null;
 
   return useMemo<ProjectPermissions>(() => {
+    if (isFreeUser) {
+      // Free projects now have owner + up to 3 editor/viewer members. Owner:
+      // manages containers + members + snags. Editor: works snags incl. CREATE
+      // (pinned in the 3D viewer or filed from the board; no model upload —
+      // that's owner-only). Viewer: read-only. No compliance / certificate
+      // surface. Backend RLS + role checks are authoritative; this only gates
+      // the UI.
+      const myMember = (freeMembersQuery.data ?? []).find((m) => m.user_id === myUserId);
+      const freeRole: ProjectRole = myMember?.role ?? 'owner';
+      const isOwner = freeRole === 'owner';
+      const canWrite = isOwner || freeRole === 'editor';
+      return {
+        role: freeRole,
+        isOrgAdmin: false,
+        isSuperuser: false,
+        isLoading: freeMembersQuery.isLoading,
+        can: (resource, _action) => {
+          // Model/container management is owner-only in the free tier.
+          if (resource === 'document') return isOwner;
+          // Findings: owner + editor may create / update / delete (full snag
+          // lifecycle); viewers are read-only.
+          if (resource === 'finding') return canWrite;
+          return false;
+        },
+        canVerifyFinding: canWrite,
+        canManageMembers: isOwner,
+      };
+    }
     const ctx = {
       isOrgAdmin,
       isSuperuser,
@@ -52,5 +89,16 @@ export function useProjectPermissions(projectId: string): ProjectPermissions {
       canVerifyFinding: role === 'inspector',
       canManageMembers: isSuperuser || isOrgAdmin || role === 'owner',
     };
-  }, [matrixQuery.data, matrixQuery.isLoading, role, isOrgAdmin, isSuperuser, isLoading]);
+  }, [
+    matrixQuery.data,
+    matrixQuery.isLoading,
+    role,
+    isOrgAdmin,
+    isSuperuser,
+    isLoading,
+    isFreeUser,
+    freeMembersQuery.data,
+    freeMembersQuery.isLoading,
+    myUserId,
+  ]);
 }

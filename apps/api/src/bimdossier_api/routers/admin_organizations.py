@@ -699,6 +699,80 @@ async def unlock_user(
     return AdminUserRead.model_validate(user, from_attributes=True)
 
 
+@router.post(
+    "/users/{user_id}/send-password-reset", status_code=status.HTTP_202_ACCEPTED
+)
+async def admin_send_password_reset(
+    user_id: UUID,
+    request: Request,
+    requester: User = Depends(require_superuser),
+    session: AsyncSession = Depends(get_async_session),
+    user_manager: UserManager = Depends(get_user_manager),
+) -> None:
+    """Email a password-reset link to a (free) user on the admin's behalf.
+
+    Reuses the same `forgot_password` hook as the public `/auth/forgot-password`
+    shadow route, so the link + token semantics are identical. A suspended
+    account can't sign in even after a reset, so we 409 rather than send a
+    dead-end email — reactivate first.
+    """
+    user = await session.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="USER_NOT_FOUND")
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="USER_INACTIVE")
+    await user_manager.forgot_password(user, request)
+    await audit.record_for_org(
+        session,
+        None,
+        action="user.password_reset_sent",
+        resource_type="user",
+        resource_id=user.id,
+        after={"email": user.email},
+        actor_user_id=requester.id,
+        request=request,
+    )
+    await session.commit()
+
+
+@router.post(
+    "/users/{user_id}/resend-activation", status_code=status.HTTP_202_ACCEPTED
+)
+async def admin_resend_activation(
+    user_id: UUID,
+    request: Request,
+    requester: User = Depends(require_superuser),
+    session: AsyncSession = Depends(get_async_session),
+    user_manager: UserManager = Depends(get_user_manager),
+) -> None:
+    """Re-send the activation email to a user who never verified.
+
+    Reuses `request_verify` (the same hook behind `/auth/request-verify-token`).
+    A 409 `USER_ALREADY_VERIFIED` makes the no-op explicit for the admin rather
+    than silently swallowing it (the public route stays enumeration-safe; this
+    one is superuser-only, so being explicit leaks nothing).
+    """
+    user = await session.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="USER_NOT_FOUND")
+    if user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="USER_ALREADY_VERIFIED"
+        )
+    await user_manager.request_verify(user, request)
+    await audit.record_for_org(
+        session,
+        None,
+        action="user.activation_resent",
+        resource_type="user",
+        resource_id=user.id,
+        after={"email": user.email},
+        actor_user_id=requester.id,
+        request=request,
+    )
+    await session.commit()
+
+
 # ---------------------------------------------------------------------------
 # Access requests — lead review + approve/reject
 # ---------------------------------------------------------------------------

@@ -44,3 +44,10 @@ export async function switchOrganization(
     accessToken,
   );
 }
+
+/** Enter the org-less "Free workspace": re-mints a token pair with NO org claim
+ * so the next requests run in the pooled free context. Same atomic-replace rule
+ * as switchOrganization. */
+export async function switchToFree(accessToken: string): Promise<TokenPair> {
+  return apiClient.post('/auth/switch-to-free', {}, TokenPairSchema, accessToken);
+}

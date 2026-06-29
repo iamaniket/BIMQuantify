@@ -2,6 +2,7 @@
 
 import type { UseQueryResult } from '@tanstack/react-query';
 
+import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import { listDocumentsWithVersions } from '@/lib/api/documents';
 import type { DocumentWithVersionsList } from '@/lib/api/schemas';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
@@ -15,9 +16,13 @@ export function useDocumentsWithVersions(
   /** When true, refetches every 3 s while any file is in-flight. */
   pollWhileExtracting = false,
 ): UseQueryResult<DocumentWithVersionsList> {
+  // Free-aware: the free documents endpoint already returns the with-versions
+  // shape (one synthetic version per pooled model).
+  const { isFreeUser } = useIsFreeUser();
   return useAuthQuery({
     queryKey: documentsWithVersionsKey(projectId),
-    queryFn: (accessToken) => listDocumentsWithVersions(accessToken, projectId),
+    queryFn: (accessToken) =>
+      listDocumentsWithVersions(accessToken, projectId, isFreeUser),
     enabled: projectId.length > 0,
     refetchInterval: pollWhileExtracting
       ? (query) => {

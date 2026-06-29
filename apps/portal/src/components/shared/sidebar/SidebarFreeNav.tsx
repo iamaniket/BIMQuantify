@@ -25,8 +25,7 @@ export function SidebarFreeNav(): JSX.Element {
 
   const isActive =
     pathname === '/projects'
-    || pathname.startsWith('/projects/')
-    || pathname.startsWith('/free-viewer');
+    || pathname.startsWith('/projects/');
 
   return (
     <div className={collapsed ? 'flex flex-col gap-0.5 px-0 py-2' : 'flex flex-col gap-0.5 px-3 py-2'}>

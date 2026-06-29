@@ -291,8 +291,36 @@ class Settings(BaseSettings):
     free_upload_max_bytes: int = Field(
         default=250 * 1024 * 1024, alias="FREE_UPLOAD_MAX_BYTES"
     )
-    # Per-user model cap (D6) — bounds storage at ~1.25 GB/user worst case.
+    # Per-user CONTAINER cap (free_documents) — a coarse backstop alongside the
+    # aggregate storage cap. (Each container holds versioned model files.)
     free_max_models_per_user: int = Field(default=5, alias="FREE_MAX_MODELS_PER_USER")
+    # Per-user PROJECT cap (owned free_projects; shared projects don't count). The
+    # "multiple projects" allowance for a free user — tunable so the cohort limit
+    # can be widened/narrowed without a code change. Enforced at project-create.
+    free_max_projects_per_user: int = Field(
+        default=3, alias="FREE_MAX_PROJECTS_PER_USER"
+    )
+    # Per-project INVITED-member cap (the owner is not counted, so owner + cap =
+    # total seats). The "add up to N collaborators" allowance — tunable. Enforced
+    # at member-invite.
+    free_max_members_per_project: int = Field(
+        default=3, alias="FREE_MAX_MEMBERS_PER_PROJECT"
+    )
+    # Per-user AGGREGATE storage cap (the 1 GB ceiling) — the binding constraint
+    # on a free user's footprint. Enforced at upload-initiate against the sum of
+    # the owner's own model bytes (members can't upload, so it is owner-only).
+    free_storage_max_bytes: int = Field(
+        default=1024 ** 3, alias="FREE_STORAGE_MAX_BYTES"
+    )
+    # Free-account TRIAL window in days, anchored on `users.created_at`. After it
+    # elapses the account goes READ-ONLY (every free write returns 403
+    # FREE_ACCOUNT_EXPIRED) to nudge an upgrade; existing data stays viewable.
+    # This is the GLOBAL default — a super-admin can override (or exempt) a single
+    # account via `public.free_user_limits`. Starts at 90; intended to tighten to
+    # ~30 later, which is a pure env change. See free_limits.resolve_free_limits.
+    free_account_max_age_days: int = Field(
+        default=90, alias="FREE_ACCOUNT_MAX_AGE_DAYS"
+    )
     # Per-user/hour presign churn on the free upload-initiate endpoint.
     rate_limit_free_upload_initiate_per_hour: int = Field(
         default=30, alias="RATE_LIMIT_FREE_UPLOAD_INITIATE_PER_HOUR"
@@ -462,10 +490,32 @@ def validate_production_config(settings: Settings) -> list[str]:
                 "FREE_TIER_ENABLED is on but FREE_MAX_MODELS_PER_USER < 1; set a "
                 "positive per-user model cap to bound storage."
             )
+        if settings.free_max_projects_per_user < 1:
+            errors.append(
+                "FREE_TIER_ENABLED is on but FREE_MAX_PROJECTS_PER_USER < 1; set a "
+                "positive per-user project cap (a free user needs at least one)."
+            )
+        if settings.free_max_members_per_project < 1:
+            errors.append(
+                "FREE_TIER_ENABLED is on but FREE_MAX_MEMBERS_PER_PROJECT < 1; set a "
+                "positive per-project invited-member cap."
+            )
         if settings.free_upload_max_bytes < 1:
             errors.append(
                 "FREE_TIER_ENABLED is on but FREE_UPLOAD_MAX_BYTES < 1; set a positive "
                 "per-model size cap."
+            )
+        if settings.free_storage_max_bytes < settings.free_upload_max_bytes:
+            errors.append(
+                "FREE_TIER_ENABLED is on but FREE_STORAGE_MAX_BYTES is below "
+                "FREE_UPLOAD_MAX_BYTES; the aggregate cap must be at least one "
+                "model's worth or no upload can ever succeed."
+            )
+        if settings.free_account_max_age_days < 1:
+            errors.append(
+                "FREE_TIER_ENABLED is on but FREE_ACCOUNT_MAX_AGE_DAYS < 1; set a "
+                "positive trial window (a free account needs at least one day "
+                "before it goes read-only), or grant individual exemptions."
             )
     return errors
 

@@ -38,8 +38,8 @@ def assert_free_key_scoped(
     """Reject a free-tier key not scoped to ``free/<user_id>/`` (``None`` passes).
 
     Load-bearing on the free extraction callback: that path runs as the
-    superuser (RLS-bypassing) and writes artifact keys onto ``free_models``, so
-    this prefix check is the only thing binding a callback's keys to their
+    superuser (RLS-bypassing) and writes artifact keys onto ``free_project_files``,
+    so this prefix check is the only thing binding a callback's keys to their
     owner's namespace — without it user A's callback could stamp a key under
     user B's prefix. Raises ``HTTPException(400, detail=detail)`` on mismatch.
     """

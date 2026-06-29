@@ -76,6 +76,8 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
   const { can } = useProjectPermissions(projectId);
   const canCreateDocument = can('document', 'create');
 
+  const onNewClick = (): void => { setNewDocumentOpen(true); };
+
   // Checkbox selection turns the "Load all" button into "Load selected".
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(new Set());
 
@@ -205,6 +207,8 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
   };
 
   const goViewer = (target: ViewerTarget): void => {
+    // Free + paid share the unified viewer; useViewerScope routes the bundle
+    // fetch to the `/free/*` endpoints for an org-less user.
     setViewerTarget(projectId, target);
     router.push(`/projects/${projectId}/viewer`);
   };
@@ -406,11 +410,7 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
               />
             ) : null}
             {canCreateDocument ? (
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => { setNewDocumentOpen(true); }}
-              >
+              <Button variant="primary" size="md" onClick={onNewClick}>
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 {t('newModel')}
               </Button>
@@ -432,11 +432,7 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
               title={t('emptyState')}
               description={t('emptyDescription')}
               action={canCreateDocument ? (
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => { setNewDocumentOpen(true); }}
-                >
+                <Button variant="primary" size="md" onClick={onNewClick}>
                   <Plus className="mr-1.5 h-3.5 w-3.5" />
                   {t('newModel')}
                 </Button>

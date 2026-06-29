@@ -3,7 +3,6 @@
 import type { UseQueryResult } from '@tanstack/react-query';
 
 import { useIsFreeUser } from '@/hooks/useIsFreeUser';
-import { listFreeProjects } from '@/lib/api/freeProjects';
 import { listProjects } from '@/lib/api/projects';
 import type { ProjectList } from '@/lib/api/schemas';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
@@ -21,7 +20,7 @@ export function useProjects(): UseQueryResult<ProjectList> {
   return useAuthQuery({
     queryKey: projectsKey,
     queryFn: (accessToken) =>
-      isFreeUser ? listFreeProjects(accessToken) : listProjects(accessToken),
+      listProjects(accessToken, isFreeUser),
     enabled: ready,
   });
 }

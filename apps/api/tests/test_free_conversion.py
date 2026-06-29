@@ -1,10 +1,12 @@
 """Tests for free → paid conversion: POST /projects/{id}/import-free-model.
 
-Covers the model copy + Document/ProjectFile creation + tenant extraction
-dispatch, the snag → finding mapping (v1), idempotency via converted_to_file_id,
-and cross-user isolation (you can't import someone else's free model).
+Covers the HEAD-version copy + Document/ProjectFile creation + tenant extraction
+dispatch, the snag → finding mapping (v1), idempotency via the head file's
+converted_to_file_id, and cross-user isolation (you can't import someone else's
+free container).
 """
 
+from datetime import date
 from uuid import UUID, uuid4
 
 from httpx import AsyncClient
@@ -13,8 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from bimdossier_api.models.document import Document
 from bimdossier_api.models.finding import Finding
-from bimdossier_api.models.free_model import FreeModel
-from bimdossier_api.models.free_snag import FreeSnag
+from bimdossier_api.models.free_document import FreeDocument
+from bimdossier_api.models.free_finding import FreeFinding
+from bimdossier_api.models.free_project import FreeProject
+from bimdossier_api.models.free_project_file import FreeProjectFile
 from bimdossier_api.tenancy import schema_name_for
 from tests.conftest import FakeStorage, _create_project
 
@@ -23,36 +27,64 @@ def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-async def _seed_free_model(
+async def _seed_free_container(
     session_maker: async_sessionmaker[AsyncSession],
     fake: FakeStorage,
     owner_id: str,
     *,
     with_snag: bool = True,
     snag_status: str = "open",
-) -> tuple[UUID, str]:
-    """Insert a ready+succeeded free model (+ optional snag) for `owner_id` and
-    seed its source object in fake storage. Returns (model_id, storage_key)."""
-    model_id = uuid4()
-    storage_key = f"free/{owner_id}/{model_id}/source.ifc"
+    assignee_id: str | None = None,
+    deadline: str | None = None,
+) -> tuple[UUID, UUID, str]:
+    """Insert a free project + container + ready/succeeded head file (+ optional
+    snag) for `owner_id`, seeding the head source object in fake storage. Returns
+    (document_id, file_id, storage_key)."""
+    project_id = uuid4()
+    document_id = uuid4()
+    file_id = uuid4()
+    storage_key = f"free/{owner_id}/{document_id}/{file_id}/source.ifc"
     async with session_maker() as s:
+        # Flush in FK order (project → document → file) — the document↔file
+        # use_alter cycle otherwise confuses the unit-of-work insert ordering.
+        s.add(FreeProject(id=project_id, owner_user_id=UUID(owner_id), name="Free P"))
+        await s.flush()
         s.add(
-            FreeModel(
-                id=model_id,
+            FreeDocument(
+                id=document_id,
                 owner_user_id=UUID(owner_id),
-                name="MyHouse.ifc",
-                original_filename="MyHouse.ifc",
+                free_project_id=project_id,
+                name="MyHouse",
+                discipline="other",
+                status="active",
+                primary_file_type="ifc",
+            )
+        )
+        await s.flush()
+        s.add(
+            FreeProjectFile(
+                id=file_id,
+                owner_user_id=UUID(owner_id),
+                free_document_id=document_id,
+                version_number=1,
                 storage_key=storage_key,
+                original_filename="MyHouse.ifc",
                 size_bytes=1234,
                 ifc_schema="IFC4",
                 status="ready",
                 extraction_status="succeeded",
             )
         )
+        # Flush the file before the finding so its linked_file_id FK resolves: the
+        # free_documents↔free_project_files use_alter cycle defeats the UOW insert
+        # sort, which then falls back to alphabetical table order (free_findings
+        # would otherwise insert before free_project_files).
+        await s.flush()
         if with_snag:
             s.add(
-                FreeSnag(
-                    free_model_id=model_id,
+                FreeFinding(
+                    free_document_id=document_id,
+                    linked_file_id=file_id,
                     owner_user_id=UUID(owner_id),
                     title="Cracked beam",
                     note="grid C3",
@@ -63,11 +95,13 @@ async def _seed_free_model(
                     anchor_y=2.5,
                     anchor_z=3.5,
                     linked_element_global_id="2O2Fr$t4X7Zf8NOew3FNld",
+                    assigned_to_user_id=UUID(assignee_id) if assignee_id else None,
+                    deadline_date=date.fromisoformat(deadline) if deadline else None,
                 )
             )
         await s.commit()
     fake.objects[storage_key] = b"ISO-10303-21;\n... ifc bytes ..."
-    return model_id, storage_key
+    return document_id, file_id, storage_key
 
 
 async def _tenant_counts(
@@ -81,7 +115,7 @@ async def _tenant_counts(
     return docs or 0, findings or 0
 
 
-async def test_import_free_model_copies_and_maps_snags(
+async def test_import_free_container_copies_and_maps_snags(
     org_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
@@ -90,13 +124,13 @@ async def test_import_free_model_copies_and_maps_snags(
     client, fake = fake_storage_client
     token = org_user["access_token"]
     project = await _create_project(client, token, name="PaidProj")
-    model_id, free_key = await _seed_free_model(
+    document_id, file_id, free_key = await _seed_free_container(
         session_maker, fake, org_user["id"]
     )
 
     resp = await client.post(
         f"/projects/{project['id']}/import-free-model",
-        json={"free_model_id": str(model_id)},
+        json={"free_document_id": str(document_id)},
         headers=_auth(token),
     )
     assert resp.status_code == 200, resp.text
@@ -119,14 +153,14 @@ async def test_import_free_model_copies_and_maps_snags(
     assert docs == 1
     assert findings == 1
 
-    # The free row is marked converted.
+    # The head free file is marked converted.
     async with session_maker() as s:
-        free = await s.get(FreeModel, model_id)
+        free = await s.get(FreeProjectFile, file_id)
         assert free is not None
         assert free.converted_to_file_id == UUID(body["file_id"])
 
 
-async def test_import_free_model_is_idempotent(
+async def test_import_free_container_is_idempotent(
     org_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
@@ -134,45 +168,41 @@ async def test_import_free_model_is_idempotent(
     client, fake = fake_storage_client
     token = org_user["access_token"]
     project = await _create_project(client, token, name="PaidProj2")
-    model_id, _ = await _seed_free_model(
+    document_id, _file_id, _ = await _seed_free_container(
         session_maker, fake, org_user["id"], with_snag=False
     )
 
     first = await client.post(
         f"/projects/{project['id']}/import-free-model",
-        json={"free_model_id": str(model_id)},
+        json={"free_document_id": str(document_id)},
         headers=_auth(token),
     )
     assert first.status_code == 200, first.text
 
     second = await client.post(
         f"/projects/{project['id']}/import-free-model",
-        json={"free_model_id": str(model_id)},
+        json={"free_document_id": str(document_id)},
         headers=_auth(token),
     )
     assert second.status_code == 200, second.text
     assert second.json()["findings_created"] == 0
     assert second.json()["file_id"] == first.json()["file_id"]
 
-    # Still exactly one document — the re-import created nothing.
     docs, _ = await _tenant_counts(session_maker, org_user["organization_id"])
     assert docs == 1
 
 
-async def test_import_other_users_free_model_404(
+async def test_import_other_users_free_container_404(
     org_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
-    """A free model owned by a different user is invisible (RLS) → 404."""
+    """A free container owned by a different user is invisible (RLS) → 404."""
     client, _ = fake_storage_client
     token = org_user["access_token"]
     project = await _create_project(client, token, name="PaidProj3")
-    # Free model owned by a stranger, not org_user.
     stranger_id = str(uuid4())
-    model_id = uuid4()
     async with session_maker() as s:
-        # The owner FK requires a real user row; insert a bare one.
         await s.execute(
             text(
                 "INSERT INTO users (id, email, hashed_password, is_active, "
@@ -180,27 +210,18 @@ async def test_import_other_users_free_model_404(
             ),
             {"id": stranger_id, "email": f"stranger-{stranger_id}@example.com"},
         )
-        s.add(
-            FreeModel(
-                id=model_id,
-                owner_user_id=UUID(stranger_id),
-                name="Theirs.ifc",
-                original_filename="Theirs.ifc",
-                storage_key=f"free/{stranger_id}/{model_id}/source.ifc",
-                size_bytes=10,
-                status="ready",
-                extraction_status="succeeded",
-            )
-        )
         await s.commit()
+    document_id, _file_id, _ = await _seed_free_container(
+        session_maker, FakeStorage(), stranger_id, with_snag=False
+    )
 
     resp = await client.post(
         f"/projects/{project['id']}/import-free-model",
-        json={"free_model_id": str(model_id)},
+        json={"free_document_id": str(document_id)},
         headers=_auth(token),
     )
     assert resp.status_code == 404
-    assert resp.json()["detail"] == "FREE_MODEL_NOT_FOUND"
+    assert resp.json()["detail"] == "FREE_DOCUMENT_NOT_FOUND"
 
 
 async def test_import_maps_snag_status_one_to_one(
@@ -213,13 +234,13 @@ async def test_import_maps_snag_status_one_to_one(
     client, fake = fake_storage_client
     token = org_user["access_token"]
     project = await _create_project(client, token, name="StatusProj")
-    model_id, _ = await _seed_free_model(
+    document_id, _file_id, _ = await _seed_free_container(
         session_maker, fake, org_user["id"], snag_status="in_progress"
     )
 
     resp = await client.post(
         f"/projects/{project['id']}/import-free-model",
-        json={"free_model_id": str(model_id)},
+        json={"free_document_id": str(document_id)},
         headers=_auth(token),
     )
     assert resp.status_code == 200, resp.text
@@ -231,3 +252,41 @@ async def test_import_maps_snag_status_one_to_one(
         status_value = await s.scalar(select(Finding.status))
     assert status_value is not None
     assert status_value.value == "in_progress"
+
+
+async def test_import_carries_assignee_and_deadline(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """Conversion carries the free snag's assignee + deadline onto the tenant
+    finding. The assignee id references public.users (global), so it's carried
+    as-is even if that user is not (yet) a member of the destination paid org."""
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token, name="AssignConvProj")
+    # Assign to the importer (a real, existing user) + a deadline.
+    document_id, _file_id, _ = await _seed_free_container(
+        session_maker,
+        fake,
+        org_user["id"],
+        assignee_id=org_user["id"],
+        deadline="2026-10-01",
+    )
+
+    resp = await client.post(
+        f"/projects/{project['id']}/import-free-model",
+        json={"free_document_id": str(document_id)},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["findings_created"] == 1
+
+    schema = schema_name_for(UUID(org_user["organization_id"]))
+    async with session_maker() as s:
+        await s.execute(text(f'SET search_path = "{schema}", public'))
+        row = (
+            await s.execute(select(Finding.assignee_user_id, Finding.deadline_date))
+        ).one()
+    assert str(row[0]) == org_user["id"]
+    assert row[1] == date(2026, 10, 1)

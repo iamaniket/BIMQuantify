@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { projectScope } from './scope';
 import {
   ProjectInvitationResponseSchema,
   ProjectMemberListSchema,
@@ -12,12 +13,21 @@ import {
 
 export type { ProjectInvitationResponse } from './schemas';
 
+// `free` swaps the `/free/projects` vs `/projects` prefix for the shared member
+// ops (list/update-role/remove). Adding a member differs by tier: paid invites an
+// existing org member by user_id (`addProjectMember`) or by email via
+// `/invitations` (`inviteToProject`); free invites by email straight to `/members`
+// (`inviteFreeProjectMember`, in freeProjects.ts) — both paid-only here.
+const membersBase = (projectId: string, free: boolean): string =>
+  `${projectScope(projectId, free)}/members`;
+
 export async function listProjectMembers(
   accessToken: string,
   projectId: string,
+  free = false,
 ): Promise<ProjectMemberList> {
   return apiClient.get<ProjectMemberList>(
-    `/projects/${projectId}/members`,
+    membersBase(projectId, free),
     ProjectMemberListSchema,
     accessToken,
   );
@@ -29,7 +39,7 @@ export async function addProjectMember(
   input: ProjectMemberCreateInput,
 ): Promise<ProjectMember> {
   return apiClient.post<ProjectMember>(
-    `/projects/${projectId}/members`,
+    membersBase(projectId, false),
     input,
     ProjectMemberSchema,
     accessToken,
@@ -41,9 +51,10 @@ export async function updateProjectMemberRole(
   projectId: string,
   userId: string,
   input: ProjectMemberUpdateInput,
+  free = false,
 ): Promise<ProjectMember> {
   return apiClient.patch<ProjectMember>(
-    `/projects/${projectId}/members/${userId}`,
+    `${membersBase(projectId, free)}/${userId}`,
     input,
     ProjectMemberSchema,
     accessToken,
@@ -54,9 +65,10 @@ export async function removeProjectMember(
   accessToken: string,
   projectId: string,
   userId: string,
+  free = false,
 ): Promise<void> {
   return apiClient.delete(
-    `/projects/${projectId}/members/${userId}`,
+    `${membersBase(projectId, free)}/${userId}`,
     accessToken,
   );
 }

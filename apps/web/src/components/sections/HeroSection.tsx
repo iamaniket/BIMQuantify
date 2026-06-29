@@ -30,16 +30,7 @@ export function HeroSection(): JSX.Element {
       <p className="max-w-2xl text-title3 text-white/80">{t('subtitle')}</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <BrandAccentCta>{t('ctaPrimary')}</BrandAccentCta>
-        <a href={portalHref(locale, '/signup')}>
-          <Button
-            variant="ghost"
-            size="lg"
-            className="border border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
-          >
-            {t('ctaFree')}
-          </Button>
-        </a>
+        <BrandAccentCta href={portalHref(locale, '/signup')}>{t('ctaPrimary')}</BrandAccentCta>
         <Link href="/#showcase">
           <Button
             variant="ghost"

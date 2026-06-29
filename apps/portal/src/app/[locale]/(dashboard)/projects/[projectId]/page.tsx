@@ -15,6 +15,7 @@ import { useTranslations } from 'next-intl';
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
 import { useDocuments } from '@/features/documents/useDocuments';
+import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import { useProjectOverview } from '@/features/projects/useProjectOverview';
 import { projectDeadlinesKey, projectKey, projectMembersKey } from '@/features/projects/queryKeys';
 import { PageShell } from '@/components/shared/layout/PageShell';
@@ -40,6 +41,7 @@ export default function ProjectDetailPage(): JSX.Element {
   // panels all read from this single query (see `useProjectOverview`). The only
   // remaining cold-load request is the documents list (head versions), which
   // the aggregate intentionally does not carry.
+  const { isFreeUser } = useIsFreeUser();
   const overviewQuery = useProjectOverview(projectId);
   const documentsQuery = useDocuments(projectId);
   const [editOpen, setEditOpen] = useState(false);
@@ -113,19 +115,25 @@ export default function ProjectDetailPage(): JSX.Element {
         <Pencil className="mr-1 h-3.5 w-3.5" />
         {tHero('editProject')}
       </Button>
-      <Button
-        variant="border"
-        disabled={isProjectArchived(project)}
-        onClick={() => { setSettingsOpen(true); }}
-      >
-        <Settings className="mr-1 h-3.5 w-3.5" />
-        {tHero('settings')}
-      </Button>
-      <Button variant="border" size="md" asChild>
-        <Link href={`/projects/${project.id}/access`}>
-          <Share2 className="mr-1 h-3.5 w-3.5" /> {tHero('projectAccess')}
-        </Link>
-      </Button>
+      {/* Settings + Project Access are org-scoped (team / org settings) — hidden
+          for free projects, which are single-owner. */}
+      {!isFreeUser && (
+        <>
+          <Button
+            variant="border"
+            disabled={isProjectArchived(project)}
+            onClick={() => { setSettingsOpen(true); }}
+          >
+            <Settings className="mr-1 h-3.5 w-3.5" />
+            {tHero('settings')}
+          </Button>
+          <Button variant="border" size="md" asChild>
+            <Link href={`/projects/${project.id}/access`}>
+              <Share2 className="mr-1 h-3.5 w-3.5" /> {tHero('projectAccess')}
+            </Link>
+          </Button>
+        </>
+      )}
       <RemoveProjectButton project={project} />
     </>
   );
@@ -140,6 +148,7 @@ export default function ProjectDetailPage(): JSX.Element {
             attachmentCount={overview.stats.attachments_count}
             dossierPct={overview.completeness.dossier.pct}
             action={heroAction}
+            isFree={isFreeUser}
           />
         }
       >
@@ -153,19 +162,23 @@ export default function ProjectDetailPage(): JSX.Element {
             <ProjectChartsPanel
               completeness={overview.completeness}
               country={project.country}
+              findingsOnly={isFreeUser}
             />
-            <ActivityTimelinePanel
-              projectId={projectId}
-              headerAction={(
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href={`/projects/${projectId}/activity`}>
-                    <Activity className="mr-1 h-3.5 w-3.5" />
-                    {tActivity('viewAll')}
-                    <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                  </Link>
-                </Button>
-              )}
-            />
+            {/* The activity timeline is the org audit feed — paid-only. */}
+            {!isFreeUser && (
+              <ActivityTimelinePanel
+                projectId={projectId}
+                headerAction={(
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href={`/projects/${projectId}/activity`}>
+                      <Activity className="mr-1 h-3.5 w-3.5" />
+                      {tActivity('viewAll')}
+                      <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                )}
+              />
+            )}
           </div>
 
           <RightColumnTabs
@@ -174,6 +187,7 @@ export default function ProjectDetailPage(): JSX.Element {
             documents={documents}
             deadlinesTotal={overview.deadlines.total}
             dossier={overview.completeness.dossier}
+            isFree={isFreeUser}
           />
         </div>
       </PageShell>

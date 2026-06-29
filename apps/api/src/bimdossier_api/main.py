@@ -26,16 +26,16 @@ from bimdossier_api.data_lifecycle import (
 )
 from bimdossier_api.db import get_engine
 from bimdossier_api.deadlines.reminder_engine import DeadlineReminderSweeper
+from bimdossier_api.free_reconcile import (
+    FreeExtractionReconcileSweeper,
+    IdleFreeContainerSweeper,
+)
 from bimdossier_api.i18n.http_errors import (
     generic_exception_handler,
     http_exception_handler,
     validation_exception_handler,
 )
 from bimdossier_api.jobs.dispatcher import close_http_client
-from bimdossier_api.free_reconcile import (
-    FreeExtractionReconcileSweeper,
-    IdleFreeModelSweeper,
-)
 from bimdossier_api.jobs.reconcile import JobReconcileSweeper
 from bimdossier_api.logging_config import configure_logging
 from bimdossier_api.middleware import (
@@ -52,6 +52,7 @@ from bimdossier_api.observability import init_sentry
 from bimdossier_api.routers.access_requests import router as access_requests_router
 from bimdossier_api.routers.activity import router as activity_router
 from bimdossier_api.routers.admin_blog import router as admin_blog_router
+from bimdossier_api.routers.admin_free_users import router as admin_free_users_router
 from bimdossier_api.routers.admin_impersonate import router as admin_impersonate_router
 from bimdossier_api.routers.admin_jobs import router as admin_jobs_router
 from bimdossier_api.routers.admin_organizations import router as admin_organizations_router
@@ -85,10 +86,15 @@ from bimdossier_api.routers.documents import router as documents_router
 from bimdossier_api.routers.element_inspections import router as element_inspections_router
 from bimdossier_api.routers.finding import router as finding_router
 from bimdossier_api.routers.finding_comment import router as finding_comment_router
+from bimdossier_api.routers.free_account import router as free_account_router
+from bimdossier_api.routers.free_aligned_sheets import router as free_aligned_sheets_router
+from bimdossier_api.routers.free_attachments import router as free_attachments_router
 from bimdossier_api.routers.free_conversion import router as free_conversion_router
+from bimdossier_api.routers.free_documents import internal_router as free_internal_router
+from bimdossier_api.routers.free_documents import router as free_documents_router
+from bimdossier_api.routers.free_levels import router as free_levels_router
+from bimdossier_api.routers.free_notifications import router as free_notifications_router
 from bimdossier_api.routers.free_projects import router as free_projects_router
-from bimdossier_api.routers.free_viewer import internal_router as free_internal_router
-from bimdossier_api.routers.free_viewer import router as free_viewer_router
 from bimdossier_api.routers.health import router as health_router
 from bimdossier_api.routers.inspection import router as inspection_router
 from bimdossier_api.routers.jobs import router as jobs_router
@@ -244,7 +250,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         settings.job_stuck_timeout_minutes,
     )
     free_reconcile_sweeper.start()
-    free_idle_sweeper = IdleFreeModelSweeper(
+    free_idle_sweeper = IdleFreeContainerSweeper(
         settings.free_idle_sweep_interval_minutes,
         settings.free_model_idle_ttl_days,
     )
@@ -413,6 +419,7 @@ def create_app() -> FastAPI:
     app.include_router(permissions_router)
     app.include_router(build_auth_router())
     app.include_router(admin_organizations_router)
+    app.include_router(admin_free_users_router)
     app.include_router(admin_jobs_router)
     app.include_router(admin_blog_router)
     app.include_router(admin_impersonate_router)
@@ -431,8 +438,12 @@ def create_app() -> FastAPI:
     app.include_router(project_files_router)
     app.include_router(project_viewer_router)
     app.include_router(jobs_internal_router)
-    app.include_router(free_viewer_router)
+    app.include_router(free_account_router)
+    app.include_router(free_documents_router)
     app.include_router(free_projects_router)
+    app.include_router(free_levels_router)
+    app.include_router(free_aligned_sheets_router)
+    app.include_router(free_attachments_router)
     app.include_router(free_internal_router)
     app.include_router(free_conversion_router)
     app.include_router(compliance_router)
@@ -459,6 +470,7 @@ def create_app() -> FastAPI:
     app.include_router(reports_router)
     app.include_router(activity_router)
     app.include_router(notifications_router)
+    app.include_router(free_notifications_router)
     app.include_router(ws_notifications_router)
     return app
 

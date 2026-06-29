@@ -464,24 +464,63 @@ def _finding_element_reference(f: Finding) -> str:
     return ""
 
 
-def _finding_csv_row(f: Finding) -> dict[str, str]:
+def _csv_row_dict(
+    *,
+    id: str,
+    title: str,
+    description: str,
+    severity: str,
+    status: str,
+    bbl_article_ref: str,
+    assignee: str,
+    deadline_date: str,
+    created_by: str,
+    created_at: str,
+    updated_at: str,
+    element_reference: str,
+    photo_count: str,
+    resolution_evidence_count: str,
+    resolution_note: str,
+) -> dict[str, str]:
+    """Pure row builder over plain strings (no ORM dependency) so both the paid
+    `Finding` path and the free `FreeFinding` export can share one column set."""
     return {
-        "id": str(f.id),
-        "title": f.title,
-        "description": f.description,
-        "severity": f.severity.value,
-        "status": f.status.value,
-        "bbl_article_ref": f.bbl_article_ref or "",
-        "assignee": _display_name(f.assignee),
-        "deadline_date": f.deadline_date.isoformat() if f.deadline_date else "",
-        "created_by": _display_name(f.created_by),
-        "created_at": f.created_at.isoformat() if f.created_at else "",
-        "updated_at": f.updated_at.isoformat() if f.updated_at else "",
-        "element_reference": _finding_element_reference(f),
-        "photo_count": str(len(f.photo_ids or [])),
-        "resolution_evidence_count": str(len(f.resolution_evidence_ids or [])),
-        "resolution_note": f.resolution_note or "",
+        "id": id,
+        "title": title,
+        "description": description,
+        "severity": severity,
+        "status": status,
+        "bbl_article_ref": bbl_article_ref,
+        "assignee": assignee,
+        "deadline_date": deadline_date,
+        "created_by": created_by,
+        "created_at": created_at,
+        "updated_at": updated_at,
+        "element_reference": element_reference,
+        "photo_count": photo_count,
+        "resolution_evidence_count": resolution_evidence_count,
+        "resolution_note": resolution_note,
     }
+
+
+def _finding_csv_row(f: Finding) -> dict[str, str]:
+    return _csv_row_dict(
+        id=str(f.id),
+        title=f.title,
+        description=f.description,
+        severity=f.severity.value,
+        status=f.status.value,
+        bbl_article_ref=f.bbl_article_ref or "",
+        assignee=_display_name(f.assignee),
+        deadline_date=f.deadline_date.isoformat() if f.deadline_date else "",
+        created_by=_display_name(f.created_by),
+        created_at=f.created_at.isoformat() if f.created_at else "",
+        updated_at=f.updated_at.isoformat() if f.updated_at else "",
+        element_reference=_finding_element_reference(f),
+        photo_count=str(len(f.photo_ids or [])),
+        resolution_evidence_count=str(len(f.resolution_evidence_ids or [])),
+        resolution_note=f.resolution_note or "",
+    )
 
 
 def _findings_export_base(

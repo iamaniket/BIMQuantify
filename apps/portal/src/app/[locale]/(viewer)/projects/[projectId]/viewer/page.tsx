@@ -77,6 +77,7 @@ import { useSpaceVisibility } from '@/features/viewer/3d/spaces';
 import { usePerformanceCulling } from '@/features/viewer/3d/performanceCulling';
 import { useDisplayMode } from '@/features/viewer/3d/displayMode';
 import { useViewerMode } from '@/features/viewer/3d/useViewerMode';
+import { useIsFreeContext } from '@/hooks/useIsFreeUser';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 import type { Finding } from '@/lib/api/schemas';
@@ -102,6 +103,10 @@ const DocumentViewer = dynamic(
   () => import('@bimdossier/viewer').then((m) => m.DocumentViewer),
   { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
 );
+
+// BCF is an org-only surface (its `/projects/<id>/bcf-topics` endpoint requires an
+// active org). Free (org-less) users get the same viewer minus that one rail tab.
+const FREE_HIDDEN_PANELS: PanelId[] = ['bcf'];
 
 export default function ViewerPage(): JSX.Element {
   const params = useParams<{ projectId: string }>();
@@ -462,8 +467,11 @@ export default function ViewerPage(): JSX.Element {
   // Split / 2D modes (and the view switcher) require a floor-plan artifact.
   const hasFloorPlans = Boolean(isIfc && scope.planFloorPlansUrl);
 
-  // "Align" (PDF↔model calibration) is offered to any editor on an IFC model.
-  // CalibrationPane guides the user to upload a PDF when the project has none.
+  // "Align" (PDF↔model calibration) is offered on an IFC model to anyone who can
+  // edit the project's documents — free + paid alike (free now has PDF upload +
+  // pooled aligned sheets). For free, `can('document','update')` resolves to
+  // owner-only, exactly matching the owner-gated free aligned-sheet endpoints.
+  const { isFreeUser: isFree } = useIsFreeContext();
   const perms = useProjectPermissions(projectId);
   const canCalibrate = isIfc && !perms.isLoading && perms.can('document', 'update');
 
@@ -1021,7 +1029,7 @@ export default function ViewerPage(): JSX.Element {
                   isLoading={isLoadingDrawingMetadata}
                 />
               ) : undefined}
-              bcfContent={isIfc ? (
+              bcfContent={!isFree && isIfc ? (
                 <BcfPanel
                   projectId={projectId}
                   controller={bcf3dController}
@@ -1158,6 +1166,7 @@ export default function ViewerPage(): JSX.Element {
             activePanel={activePanel}
             onTogglePanel={togglePanel}
             badges={railBadges}
+            hiddenPanels={isFree ? FREE_HIDDEN_PANELS : undefined}
           />
         </div>
       ) : null}

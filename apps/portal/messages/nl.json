@@ -2,10 +2,14 @@
   "signup": {
     "eyebrow": "Gratis preview",
     "title": "Maak uw gratis account",
-    "subtitle": "Vul uw e-mailadres in en we sturen u een link om een wachtwoord in te stellen. Daarna kunt u een IFC-model uploaden en gratis in 3D bekijken.",
+    "subtitle": "Vul uw e-mailadres in en we sturen u een link om een wachtwoord in te stellen. Daarna kunt u een IFC-model uploaden, in 3D bekijken en opleverpunten plaatsen, gratis.",
     "emailPlaceholder": "jij@bedrijf.nl",
+    "namePlaceholder": "Uw naam",
+    "companyPlaceholder": "Uw bedrijf",
     "field": {
-      "email": "E-mailadres"
+      "email": "E-mailadres",
+      "name": "Naam (optioneel)",
+      "company": "Bedrijf (optioneel)"
     },
     "cta": "Gratis account aanmaken",
     "submitting": "Versturen…",
@@ -50,13 +54,17 @@
         "running": "Verwerken…",
         "succeeded": "Klaar om te bekijken",
         "failed": "Verwerking mislukt"
-      }
+      },
+      "failedReason": "Verwerking mislukt: {reason}"
     },
     "viewer": {
       "back": "Terug",
       "title": "Gratis viewer",
       "loading": "Model laden…",
       "loadError": "Dit model kon niet worden geladen.",
+      "processing": "Uw model wordt nog verwerkt — dit kan even duren…",
+      "failed": "Dit model kon niet worden verwerkt.",
+      "failedReason": "Dit model kon niet worden verwerkt: {reason}",
       "snags": "Bevindingen",
       "snagTitle": "Titel bevinding",
       "snagNote": "Notitie (optioneel)",
@@ -66,7 +74,19 @@
       "addSnag": "Bevinding toevoegen",
       "close": "Sluiten",
       "reopen": "Heropenen",
-      "delete": "Verwijderen"
+      "delete": "Verwijderen",
+      "newFinding": "Nieuwe bevinding",
+      "container": "Container",
+      "boardCreateSubtitle": "Voeg een bevinding toe aan een van uw containers.",
+      "createHint": "Klik met de rechtermuisknop op een element in het model om een bevinding te plaatsen, of vul dit in en plaats hem.",
+      "noFindings": "Nog geen bevindingen. Klik met de rechtermuisknop op het model of gebruik Nieuwe bevinding om er een toe te voegen.",
+      "assignee": "Toegewezen aan",
+      "unassigned": "Niet toegewezen",
+      "deadline": "Deadline",
+      "statusLabel": "Status",
+      "save": "Opslaan",
+      "cancel": "Annuleren",
+      "edit": "Bewerken"
     }
   },
   "imageAnnotator": {
@@ -111,7 +131,8 @@
     "switcher": {
       "label": "Wissel van organisatie",
       "empty": "Geen actieve organisatie",
-      "adminBadge": "Beheerder"
+      "adminBadge": "Beheerder",
+      "freeWorkspace": "Gratis werkruimte"
     }
   },
   "activate": {
@@ -493,6 +514,20 @@
       "seatsLabel": "Org-seats",
       "seatsValue": "{used} van {limit} gebruikt",
       "seatsUnlimited": "Onbeperkt"
+    },
+    "plan": {
+      "title": "Abonnement & gebruik",
+      "planLabel": "Abonnement",
+      "freePlanName": "Gratis",
+      "freeWorkspaceSub": "Persoonlijke werkruimte",
+      "storageLabel": "Opslag",
+      "projectsLabel": "Projecten",
+      "containersLabel": "Containers",
+      "findingsLabel": "Bevindingen",
+      "usageValue": "{used} van {cap}",
+      "usagePct": "{pct}%",
+      "countOfCap": "{count} van {cap}",
+      "ofValue": "van {value}"
     }
   },
   "projects": {
@@ -718,12 +753,14 @@
         "listHeading": "Toe te voegen mensen ({count})",
         "emptyState": "Nog niemand toegevoegd.",
         "minOneHint": "Voeg minstens één persoon toe om het project aan te maken.",
+        "freeInviteHint": "Nodig tot {max} mensen uit om samen te werken (optioneel — je kunt ze later toevoegen).",
         "inviteBadge": "Uitnodiging",
         "partialFailure": "Project aangemaakt, maar sommige mensen konden niet worden toegevoegd: {names}. Voeg ze toe via de toegangspagina van het project.",
         "errors": {
           "pickUser": "Selecteer een lid om toe te voegen.",
           "invalidEmail": "Voer een geldig e-mailadres in.",
-          "duplicate": "Deze persoon staat al in de lijst."
+          "duplicate": "Deze persoon staat al in de lijst.",
+          "inviteCap": "Je kunt maximaal {max} leden uitnodigen voor een gratis project."
         }
       }
     }
@@ -1432,6 +1469,10 @@
           "viewFile": "Bestand bekijken",
           "selectAria": "{name} selecteren om in de viewer te laden",
           "noViewableFile": "Nog geen weergeefbaar bestand",
+          "extractionQueued": "In wachtrij…",
+          "extractionProcessing": "Verwerken…",
+          "extractionFailed": "Verwerking mislukt",
+          "extractionFailedReason": "Verwerking mislukt: {reason}",
           "uploadFile": "Bestand uploaden",
           "checkBbl": "Bbl controleren",
           "view": "Bekijken",
@@ -2621,7 +2662,7 @@
   },
   "auth": {
     "brand": {
-      "tagline": "Wkb-conform BIM-platform"
+      "tagline": "Bouwkwaliteitsplatform"
     },
     "hero": {
       "checksBadge": "{wkb} Wkb · {bbl} BBL-toetsen actief",
@@ -3360,6 +3401,72 @@
           "orgNameTaken": "Er bestaat al een organisatie met deze naam. Kies een andere naam."
         },
         "success": "Goedgekeurd! Tenant \"{org}\" is ingericht en een activatie-e-mail is verzonden."
+      }
+    },
+    "freeUsers": {
+      "tab": "Gratis gebruikers",
+      "loadError": "We konden de gratis gebruikers niet laden. Probeer het opnieuw.",
+      "searchPlaceholder": "Zoek op e-mail of naam…",
+      "searchAria": "Zoek gratis gebruikers",
+      "panel": {
+        "eyebrow": "Gratis tier",
+        "title": "Gratis gebruikers ({count})"
+      },
+      "table": {
+        "user": "Gebruiker",
+        "company": "Bedrijf",
+        "storage": "Opslag",
+        "storageUsage": "{used} / {cap}",
+        "storagePct": "{pct}%",
+        "containers": "Informatiecontainers",
+        "countOfCap": "{count} / {cap}",
+        "created": "Aangemaakt",
+        "lastActive": "Laatst actief",
+        "neverActive": "Nooit",
+        "staleBadge": "Inactief",
+        "snags": "Meldingen",
+        "sharedWith": "Gedeeld met",
+        "status": "Status",
+        "statusActive": "Actief",
+        "statusSuspended": "Opgeschort",
+        "statusUnverified": "Niet geverifieerd",
+        "lockedBadge": "Vergrendeld",
+        "manage": "Beheren",
+        "empty": "Nog geen gratis gebruikers."
+      },
+      "detail": {
+        "storage": "{used} / {cap}",
+        "storagePct": "{pct}%",
+        "projectsStat": "{count} / {cap} projecten",
+        "containersStat": "{count} / {cap} containers",
+        "snagsStat": "{count} meldingen",
+        "sharedStat": "{count} gedeeld",
+        "filesStat": "{count} bestanden",
+        "accountCreated": "Account aangemaakt",
+        "lastActive": "Laatst actief",
+        "firstContent": "Eerste activiteit",
+        "never": "Nooit",
+        "loadError": "We konden de inhoud van deze gebruiker niet laden.",
+        "projectsTitle": "Projecten ({count})",
+        "noProjects": "Geen projecten.",
+        "projectMeta": "{containers} containers · {snags} meldingen · {size}",
+        "containersTitle": "Informatiecontainers ({count})",
+        "noContainers": "Geen containers.",
+        "containerMeta": "{files} versies · {size}",
+        "snagsTitle": "Meldingen ({count})",
+        "noSnags": "Geen meldingen.",
+        "sharedTitle": "Gedeeld met deze gebruiker ({count})",
+        "sendReset": "Wachtwoordherstel versturen",
+        "resendActivation": "Activatie opnieuw versturen",
+        "suspend": "Opschorten",
+        "reactivate": "Heractiveren",
+        "delete": "Account verwijderen",
+        "reactivated": "Account geheractiveerd.",
+        "suspended": "Account opgeschort.",
+        "resetSent": "Wachtwoordherstel-e-mail verzonden.",
+        "activationResent": "Activatie-e-mail opnieuw verzonden.",
+        "deleteConfirm": "{email} permanent anonimiseren? Dit wist hun gegevens en schakelt inloggen uit. Dit kan niet ongedaan worden gemaakt.",
+        "deleted": "Account verwijderd."
       }
     },
     "users": {

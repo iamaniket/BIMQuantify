@@ -52,6 +52,10 @@ export const AuthMeResponseSchema = z.object({
   active_organization_id: z.union([z.string(), z.null()]),
   memberships: z.array(OrgMembershipBriefSchema),
   pending_invitations_count: z.number().int(),
+  // True when the user owns or is a member of ≥1 free project — drives whether
+  // the org switcher shows a "Free workspace" entry. Optional so older server
+  // responses (and test mocks) still parse; consumers read it as `?? false`.
+  has_free_workspace: z.boolean().optional(),
 });
 
 export type AuthMeResponse = z.infer<typeof AuthMeResponseSchema>;

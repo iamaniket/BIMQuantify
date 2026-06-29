@@ -29,45 +29,63 @@ function seatLabel(used: number, limit: number | null): string {
   return `${used} / ${limit}`;
 }
 
+// Sentinel id for the org-less "Free workspace" entry in the switcher.
+const FREE_WORKSPACE_ID = '__free__';
+
 export function SidebarTenantCard(): JSX.Element | null {
   const { collapsed } = useSidebar();
-  const { me, activeMembership, switchOrganization } = useAuth();
+  const { me, activeMembership, switchOrganization, switchToFree } = useAuth();
   const t = useTranslations('sidebar.tenant');
   const tOrgSwitcher = useTranslations('org.switcher');
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
 
-  if (activeMembership === null) return null;
-
   const memberships = (me?.memberships ?? []).filter(
     (membership) => membership.member_status === 'active',
   );
-  const canSwitch = memberships.length > 1;
+  const isFreeContext = me != null && me.active_organization_id == null;
+  // Offer the Free-workspace entry to anyone who participates in one — and
+  // always while already in it (so they can switch back out).
+  const showFreeOption = (me?.has_free_workspace ?? false) || isFreeContext;
 
-  const name = activeMembership.organization_name;
-  const used = activeMembership.seat_count_used;
-  const limit = activeMembership.seat_limit;
+  // A pure free user (no orgs, in free context) gets the trimmed sidebar with no
+  // tenant card. Otherwise we need a resolved context to render.
+  if (isFreeContext && memberships.length === 0) return null;
+  if (!isFreeContext && activeMembership === null) return null;
+
+  const freeLabel = tOrgSwitcher('freeWorkspace');
+  const name = isFreeContext ? freeLabel : activeMembership!.organization_name;
   const acronym = initials(name);
-  const ariaLabel = `${name} — ${seatLabel(used, limit)} ${t('seats')}`;
+  const ariaLabel = isFreeContext
+    ? freeLabel
+    : `${name} — ${seatLabel(activeMembership!.seat_count_used, activeMembership!.seat_limit)} ${t('seats')}`;
 
-  const onSelect = async (organizationId: string): Promise<void> => {
-    if (organizationId === me?.active_organization_id) {
+  const optionCount = memberships.length + (showFreeOption ? 1 : 0);
+  const canSwitch = optionCount > 1;
+
+  const onSelect = async (targetId: string): Promise<void> => {
+    const isCurrent =
+      targetId === FREE_WORKSPACE_ID ? isFreeContext : targetId === me?.active_organization_id;
+    if (isCurrent) {
       setOpen(false);
       return;
     }
-    setPending(organizationId);
+    setPending(targetId);
     try {
-      // `switchOrganization` already invalidates the cache for the new org —
-      // no second blanket `invalidateQueries()` here (it ran the full refetch
-      // storm twice per switch).
-      await switchOrganization(organizationId);
+      // The switch helpers already invalidate the cache for the new context —
+      // no second blanket invalidateQueries() here.
+      if (targetId === FREE_WORKSPACE_ID) {
+        await switchToFree();
+      } else {
+        await switchOrganization(targetId);
+      }
     } finally {
       setPending(null);
       setOpen(false);
     }
   };
 
-  const imageUrl = activeMembership.organization_image_url ?? null;
+  const imageUrl = isFreeContext ? null : (activeMembership!.organization_image_url ?? null);
 
   if (collapsed) {
     return (
@@ -173,6 +191,27 @@ export function SidebarTenantCard(): JSX.Element | null {
                 </li>
               );
             })}
+            {showFreeOption && (
+              <li role="option" aria-selected={isFreeContext}>
+                <button
+                  type="button"
+                  disabled={pending === FREE_WORKSPACE_ID}
+                  onClick={() => {
+                    void onSelect(FREE_WORKSPACE_ID);
+                  }}
+                  className={`block w-full px-3 py-2 text-left text-xs hover:bg-sidebar-hover disabled:opacity-50 ${
+                    isFreeContext ? 'font-semibold text-sidebar-fg' : 'text-sidebar-fg-subtle'
+                  }`}
+                >
+                  <span className="flex items-center gap-2 truncate">
+                    <span className="grid h-4 w-4 shrink-0 place-items-center rounded bg-sidebar-accent text-[6px] font-extrabold text-sidebar-fg">
+                      {initials(freeLabel)}
+                    </span>
+                    <span className="truncate">{freeLabel}</span>
+                  </span>
+                </button>
+              </li>
+            )}
           </ul>
         )}
       </div>

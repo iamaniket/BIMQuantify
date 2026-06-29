@@ -24,6 +24,9 @@ type Props = {
    * the old client-side recompute from the full findings/deadlines arrays. */
   completeness: CompletenessBlock;
   country: string;
+  /** Free tier: only the Findings wedge exists (no dossier/deadlines), so render
+   * a single findings ring and base the overall percentage on it alone. */
+  findingsOnly?: boolean;
 };
 
 /** Distinct token palette for the dossier-by-category breakdown. */
@@ -44,7 +47,7 @@ const OVERFLOW_COLOR = 'var(--foreground-tertiary)';
  * already-fetched dossier/findings/deadlines into wedge props and owns the card
  * shell; all interaction + animation lives in the primitive.
  */
-export function ProjectChartsPanel({ completeness, country }: Props): JSX.Element {
+export function ProjectChartsPanel({ completeness, country, findingsOnly = false }: Props): JSX.Element {
   const tRings = useTranslations('projectDetail.tabs.chartsPanel.rings');
   const tExp = useTranslations('projectDetail.tabs.chartsPanel.expanded');
   const tStatus = useTranslations('findingsBoard.columns');
@@ -57,7 +60,7 @@ export function ProjectChartsPanel({ completeness, country }: Props): JSX.Elemen
     const categoryLabel = (code: string): string =>
       jurisdiction?.dossier_category_labels[code] ?? code;
 
-    return [
+    const all: DonutWedge[] = [
       {
         key: 'dossier',
         label: tRings('dossierLabel'),
@@ -109,11 +112,17 @@ export function ProjectChartsPanel({ completeness, country }: Props): JSX.Elemen
         empty: tExp('emptyDeadlines'),
       },
     ];
-  }, [dossier, findingsB, deadlinesB, tRings, tExp, tStatus, jurisdiction]);
+    return findingsOnly ? all.filter((w) => w.key === 'findings') : all;
+  }, [dossier, findingsB, deadlinesB, tRings, tExp, tStatus, jurisdiction, findingsOnly]);
 
-  // Overall completeness aggregates the three metrics' filled/total counts.
-  const overallFilled = dossier.filled + findingsB.complete + deadlinesB.met;
-  const overallTotal = dossier.total + findingsB.total + deadlinesB.total;
+  // Overall completeness aggregates the wedges' filled/total counts (findings
+  // only for the free tier, where the other two wedges don't exist).
+  const overallFilled = findingsOnly
+    ? findingsB.complete
+    : dossier.filled + findingsB.complete + deadlinesB.met;
+  const overallTotal = findingsOnly
+    ? findingsB.total
+    : dossier.total + findingsB.total + deadlinesB.total;
   const overallPct = ringPct(overallFilled, overallTotal);
 
   const ringTooltip = (w: DonutWedge): string =>

@@ -23,6 +23,21 @@ export async function getViewerBundle(
   );
 }
 
+// FREE-tier viewer bundle — same `ViewerBundleResponse` shape, `/free` prefix.
+// Free PDFs now carry `pdf_pages_url` too (server rasterizes them for mobile).
+export async function getFreeViewerBundle(
+  accessToken: string,
+  projectId: string,
+  documentId: string,
+  fileId: string,
+): Promise<ViewerBundleResponse> {
+  return apiClient.get<ViewerBundleResponse>(
+    `/free/projects/${projectId}/documents/${documentId}/files/${fileId}/viewer-bundle`,
+    ViewerBundleResponseSchema,
+    accessToken,
+  );
+}
+
 /**
  * The camelCase shape the embedded viewer's `IfcViewer` consumes (mirrors
  * `@bimdossier/viewer`'s `ViewerBundle`). Defined locally — mobile doesn't depend

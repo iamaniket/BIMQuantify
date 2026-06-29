@@ -11,17 +11,18 @@
     "blog": "Blog",
     "security": "Beveiliging",
     "requestAccess": "Word partner",
+    "login": "Inloggen",
+    "startFree": "Begin gratis",
     "contactSales": "Neem contact op",
     "themeToggle": "Thema wisselen"
   },
   "hero": {
-    "badge": "Founding partners · beperkt aantal plekken voor Nederlandse aannemers",
+    "badge": "Gratis te proberen · we nemen nog founding partners aan in Nederland",
     "headline": "Het bouwkwaliteitsplatform, gebouwd op uw model. Van eerste opleverpunt tot definitief dossier.",
     "subtitle": "Zet elke bevinding vast op uw 3D-model, of op een PDF-plattegrond als u nog geen model heeft. Voeg foto's toe, wijs de oplossing toe en volg hem tot hij klaar is. Deadlines bewaken zichzelf, zodat uw Wkb-dossier klaarligt van bouwmelding tot gereedmelding.",
     "trust": "Samen met founding partners in Nederland gebouwd · EU-gehost, AVG-conform, inclusief verwerkersovereenkomst · Werkt naast elke kwaliteitsborger en elk instrument",
-    "ctaPrimary": "Word founding partner",
-    "ctaDemo": "Bekijk het op het model",
-    "ctaFree": "Bekijk uw model gratis"
+    "ctaPrimary": "Begin gratis",
+    "ctaDemo": "Bekijk het op het model"
   },
   "features": {
     "eyebrow": "Mogelijkheden",
@@ -136,9 +137,8 @@
   },
   "cta": {
     "headline": "Stop met achter papierwerk aan jagen. Laat zien dat het werk goed is gedaan.",
-    "subtitle": "Opleverpunten, inspecties en uw Wkb-dossier, allemaal op uw model. Word founding partner en sta er bij uw volgende gereedmelding helemaal klaar voor.",
-    "button": "Word founding partner",
-    "buttonFree": "Bekijk uw model gratis"
+    "subtitle": "Upload uw model, zet uw eerste opleverpunten en zie uw project samenkomen. Gratis te beginnen, geen creditcard nodig.",
+    "button": "Begin gratis"
   },
   "footer": {
     "product": "Product",
@@ -182,8 +182,7 @@
     "eyebrow": "Kwaliteitsborging, live",
     "headline": "Vang gebreken voordat ze geld kosten.",
     "subtitle": "Sleep om het model te draaien. Bevindingen worden er direct op gemarkeerd zodra inspecteurs ze vinden en oplossen.",
-    "cta": "Word founding partner",
-    "ctaFree": "Bekijk uw model gratis",
+    "cta": "Begin gratis",
     "hintDrag": "Sleep om te draaien",
     "hintWatch": "Elke speld markeert een echte bevinding",
     "learnMoreBlog": "Lees op de blog hoe opleveren werkt",
@@ -238,7 +237,7 @@
     "items": {
       "hosting": {
         "title": "EU-gehost, inclusief verwerkersovereenkomst",
-        "body": "Uw gegevens draaien op EU-infrastructuur en verlaten die nooit, conform de AVG (GDPR). Met elke founding partner sluiten we een verwerkersovereenkomst (DPA)."
+        "body": "Uw gegevens draaien op EU-infrastructuur en verlaten die nooit, conform de AVG (GDPR). Met klanten op een betaald plan sluiten we een verwerkersovereenkomst (DPA)."
       },
       "instrument": {
         "title": "Werkt naast uw kwaliteitsborger",
@@ -246,7 +245,7 @@
       },
       "team": {
         "title": "Een Nederlands team, bereikbaar",
-        "body": "Gebouwd in Nederland door het team achter BimDossier. Als founding partner heeft u direct contact met ons. Geen ticketwachtrij."
+        "body": "Gebouwd in Nederland door het team achter BimDossier. U heeft direct contact met ons. Geen ticketwachtrij."
       }
     },
     "dpaLink": "Lees onze verwerkersovereenkomst",
@@ -257,12 +256,16 @@
     "headline": "Wat aannemers ons als eerste vragen",
     "items": [
       {
+        "q": "Is het echt gratis om te beginnen?",
+        "a": "Ja. Maak een account, upload een IFC-model, bekijk het in 3D en zet opleverpunten, gratis. Het gratis plan dekt een paar projecten en een gigabyte opslag. Het Wkb-dossier, compliancerapporten en certificaten horen bij het betaalde plan. Geen creditcard nodig om te beginnen."
+      },
+      {
         "q": "Wat betekent founding partner worden voor mij?",
-        "a": "We nemen een kleine groep Nederlandse aannemers persoonlijk aan boord. Als founding partner bent u er vroeg bij, heeft u een directe lijn met het team en echte inspraak in wat we hierna bouwen. In ruil vragen we om eerlijke feedback uit de praktijk."
+        "a": "U kunt gratis beginnen, zonder aanvraag. Founding partners gaan een stap verder: we nemen een kleine groep Nederlandse aannemers persoonlijk aan boord, met een directe lijn naar het team en echte inspraak in wat we hierna bouwen. In ruil vragen we om eerlijke feedback uit de praktijk."
       },
       {
         "q": "Waar staan mijn gegevens, en is er een verwerkersovereenkomst?",
-        "a": "Alles draait op EU-infrastructuur en verlaat die nooit. Met elke founding partner sluiten we een verwerkersovereenkomst (DPA). Bekijk onze verwerkersovereenkomst voor de details."
+        "a": "Alles draait op EU-infrastructuur en verlaat die nooit. Met klanten op een betaald plan sluiten we een verwerkersovereenkomst (DPA). Bekijk onze verwerkersovereenkomst voor de details."
       },
       {
         "q": "Heb ik BIM-modellen nodig, of werken PDF-plattegronden ook?",

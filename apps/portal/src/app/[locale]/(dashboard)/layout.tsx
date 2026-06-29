@@ -20,9 +20,13 @@ export default function DashboardLayout({ children }: Props): JSX.Element {
   const router = useRouter();
   const { tokens, hasHydrated } = useAuth();
   const { isFreeUser, ready } = useIsFreeUser();
-  // Notifications are org-scoped — never open the socket for a free (org-less)
-  // user, and wait until /auth/me resolves so we don't connect-then-drop.
-  useNotificationSocket(ready && !isFreeUser && tokens !== null ? tokens.access_token : null);
+  // Open the notification socket once /auth/me resolves (so we don't
+  // connect-then-drop), pointing free (org-less) users at their per-user free
+  // channel and paid users at the org channel.
+  useNotificationSocket(
+    ready && tokens !== null ? tokens.access_token : null,
+    { free: isFreeUser },
+  );
 
   useEffect(() => {
     if (hasHydrated && tokens === null) {

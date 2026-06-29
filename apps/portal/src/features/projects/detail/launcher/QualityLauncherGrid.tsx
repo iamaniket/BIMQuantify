@@ -17,7 +17,22 @@ import { ReportsLauncherCard } from './ReportsLauncherCard';
  * sensible floor on short viewports (enough for ~4 preview rows per card),
  * where the parent panel scrolls.
  */
-export function QualityLauncherGrid({ projectId }: { projectId: string }): JSX.Element {
+export function QualityLauncherGrid({
+  projectId,
+  isFree = false,
+}: {
+  projectId: string;
+  /** Free tier: certificates / attachments / reports are paid-only, so render
+   * just the Findings launcher (full width). */
+  isFree?: boolean;
+}): JSX.Element {
+  if (isFree) {
+    return (
+      <div className="grid h-full min-h-[30rem] grid-cols-1 gap-2">
+        <FindingsLauncherCard projectId={projectId} />
+      </div>
+    );
+  }
   return (
     <div className="grid h-full min-h-[30rem] grid-cols-2 grid-rows-2 gap-2">
       <FindingsLauncherCard projectId={projectId} />

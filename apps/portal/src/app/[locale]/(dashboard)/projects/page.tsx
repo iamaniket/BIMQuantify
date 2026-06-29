@@ -2,21 +2,21 @@
 
 import { type JSX } from 'react';
 
-import { FreeProjectsView } from '@/features/free-viewer/FreeProjectsView';
 import { PaidProjectsView } from '@/features/projects/PaidProjectsView';
 import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 
 /**
- * The dashboard home. A free (org-less) user has no org-scoped projects, so the
- * page selects on `isFreeUser`: free users see their uploaded free models
- * (`FreeProjectsView`), paid users the real org projects (`PaidProjectsView`).
- * Splitting into child components keeps the org-scoped `useProjects()` hook off
- * the free path entirely. Defer until `/auth/me` resolves to avoid a flash.
+ * The dashboard home — the SAME projects UI for paid and free (org-less) users.
+ * `PaidProjectsView`'s data hooks (`useProjects`, `useExpiringCertificates`, the
+ * per-project members fetch) are free-aware and branch on `useIsFreeUser()`, so
+ * a free user lists their pooled `free_projects` through the identical
+ * components. Defer the first render until `/auth/me` resolves so the hooks know
+ * which tier to fetch for (avoids a wrong-endpoint flash).
  */
 export default function ProjectsPage(): JSX.Element {
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { ready } = useIsFreeUser();
   if (!ready) {
     return <main className="flex flex-1 items-center justify-center" />;
   }
-  return isFreeUser ? <FreeProjectsView /> : <PaidProjectsView />;
+  return <PaidProjectsView />;
 }

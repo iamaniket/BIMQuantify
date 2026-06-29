@@ -30,6 +30,9 @@ type Props = {
   attachmentCount?: number;
   dossierPct?: number;
   action?: ReactNode;
+  /** Free tier: deadlines / attachments / dossier-holdback are paid-only, so the
+   * header shows just the delivery-date KPI. */
+  isFree?: boolean;
 };
 
 export function ProjectDetailHeader({
@@ -38,6 +41,7 @@ export function ProjectDetailHeader({
   attachmentCount,
   dossierPct,
   action,
+  isFree = false,
 }: Props): JSX.Element {
   const locale = useLocale() as Locale;
   const tPhases = useTranslations('projects.phases');
@@ -136,37 +140,42 @@ export function ProjectDetailHeader({
       badge={badgeRow}
       subtitle={subtitleRow}
       kpis={[
-        {
-          label: tHero('deadlines'),
-          value: deadlinesSummary !== undefined && deadlinesSummary.total > 0
-            ? `${String(deadlinesSummary.met)}/${String(deadlinesSummary.total)}`
-            : tHero('noDeadlines'),
-          sub: deadlinesSummary !== undefined && deadlinesSummary.total > 0
-            ? tHero('deadlinesMetCount', { met: deadlinesSummary.met, total: deadlinesSummary.total })
-            : tHero('noDeadlines'),
-          ...(deadlinesSummary !== undefined && deadlinesSummary.overdue > 0
-            ? { color: 'var(--error)' }
-            : {}),
-        },
-        {
-          label: tHero('attachments'),
-          value: attachmentCount !== undefined && attachmentCount > 0
-            ? String(attachmentCount)
-            : '—',
-          sub: attachmentCount !== undefined && attachmentCount > 0
-            ? tHero('attachmentsCount', { count: attachmentCount })
-            : tHero('noAttachments'),
-        },
-        {
-          label: tHero('holdback'),
-          value: dossierPct !== undefined ? `${String(dossierPct)}%` : '—',
-          sub: tHero('dossierReady', { pct: dossierPct ?? 0 }),
-          ...(dossierPct !== undefined && dossierPct >= 85
-            ? { color: 'var(--success)' }
-            : dossierPct !== undefined && dossierPct >= 70
-              ? { color: 'var(--warning)' }
-              : {}),
-        },
+        // Deadlines / attachments / holdback are org-only — dropped for free.
+        ...(isFree
+          ? []
+          : [
+              {
+                label: tHero('deadlines'),
+                value: deadlinesSummary !== undefined && deadlinesSummary.total > 0
+                  ? `${String(deadlinesSummary.met)}/${String(deadlinesSummary.total)}`
+                  : tHero('noDeadlines'),
+                sub: deadlinesSummary !== undefined && deadlinesSummary.total > 0
+                  ? tHero('deadlinesMetCount', { met: deadlinesSummary.met, total: deadlinesSummary.total })
+                  : tHero('noDeadlines'),
+                ...(deadlinesSummary !== undefined && deadlinesSummary.overdue > 0
+                  ? { color: 'var(--error)' }
+                  : {}),
+              },
+              {
+                label: tHero('attachments'),
+                value: attachmentCount !== undefined && attachmentCount > 0
+                  ? String(attachmentCount)
+                  : '—',
+                sub: attachmentCount !== undefined && attachmentCount > 0
+                  ? tHero('attachmentsCount', { count: attachmentCount })
+                  : tHero('noAttachments'),
+              },
+              {
+                label: tHero('holdback'),
+                value: dossierPct !== undefined ? `${String(dossierPct)}%` : '—',
+                sub: tHero('dossierReady', { pct: dossierPct ?? 0 }),
+                ...(dossierPct !== undefined && dossierPct >= 85
+                  ? { color: 'var(--success)' }
+                  : dossierPct !== undefined && dossierPct >= 70
+                    ? { color: 'var(--warning)' }
+                    : {}),
+              },
+            ]),
         { label: tHero('delivery'), value: opleveringValue, sub: opleveringSub },
       ]}
       action={action}

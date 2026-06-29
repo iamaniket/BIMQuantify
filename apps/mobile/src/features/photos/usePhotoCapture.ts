@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 
+import { useIsFree } from '@/lib/hooks/useIsFree';
 import { getNetworkStatus } from '@/lib/offline/networkStatus';
 import { enqueue } from '@/lib/offline/outbox';
 import { useAuth } from '@/providers/AuthProvider';
@@ -35,6 +36,7 @@ export type PhotoCapture = {
  */
 export function usePhotoCapture(projectId: string): PhotoCapture {
   const { tokens } = useAuth();
+  const isFree = useIsFree();
   const offline = useOffline();
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
 
@@ -50,7 +52,7 @@ export function usePhotoCapture(projectId: string): PhotoCapture {
           { localId: captured.localId, thumbnailUri: captured.thumbnailUri, status: 'uploading' },
         ]);
         try {
-          const remoteId = await uploadPhoto(token, projectId, captured);
+          const remoteId = await uploadPhoto(token, projectId, captured, isFree);
           setPhotos((prev) =>
             prev.map((p) =>
               p.localId === captured.localId ? { ...p, status: 'uploaded', remoteId } : p,
@@ -88,7 +90,7 @@ export function usePhotoCapture(projectId: string): PhotoCapture {
         },
       ]);
     },
-    [tokens, projectId, offline],
+    [tokens, projectId, offline, isFree],
   );
 
   const remove = useCallback((localId: string): void => {

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type JSX } from 'react';
 import { Badge, Button, IconButton, Tabs, TabsList, TabsTrigger } from '@bimdossier/ui';
 
 import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
+import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import type { Finding } from '@/lib/api/schemas';
 
 import { FindingCommentsTab } from './FindingCommentsTab';
@@ -35,6 +36,8 @@ type FindingTab = 'edit' | 'history' | 'comments';
 export function FindingDetailPanel({ projectId, finding, onClose, onExpand }: Props): JSX.Element {
   const t = useTranslations('findings.detail');
   const tStatus = useTranslations('findings.status');
+  // Comments + history are org-backed — hidden for free users (edit tab only).
+  const { isFreeUser } = useIsFreeUser();
   const [tab, setTab] = useState<FindingTab>('edit');
   const api = useFindingDetailForm(projectId, finding, {
     onSaved: onClose,
@@ -124,14 +127,18 @@ export function FindingDetailPanel({ projectId, finding, onClose, onExpand }: Pr
               <Pencil className="h-4 w-4" />
               {t('tabs.edit')}
             </TabsTrigger>
-            <TabsTrigger value="comments" className={TAB_TRIGGER_CLASS}>
-              <MessageSquare className="h-4 w-4" />
-              {t('tabs.comments')}
-            </TabsTrigger>
-            <TabsTrigger value="history" className={TAB_TRIGGER_CLASS}>
-              <Clock className="h-4 w-4" />
-              {t('tabs.history')}
-            </TabsTrigger>
+            {!isFreeUser && (
+              <>
+                <TabsTrigger value="comments" className={TAB_TRIGGER_CLASS}>
+                  <MessageSquare className="h-4 w-4" />
+                  {t('tabs.comments')}
+                </TabsTrigger>
+                <TabsTrigger value="history" className={TAB_TRIGGER_CLASS}>
+                  <Clock className="h-4 w-4" />
+                  {t('tabs.history')}
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
         </Tabs>
       </div>

@@ -2,6 +2,7 @@
 
 import type { UseMutationResult } from '@tanstack/react-query';
 
+import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { uploadFileEnd2End, type UploadProgressEvent } from '@/lib/api/projectFiles';
 import type { ProjectFile } from '@/lib/api/schemas';
@@ -17,9 +18,10 @@ type UploadInput = {
 };
 
 export function useUploadDocumentFile(): UseMutationResult<ProjectFile, Error, UploadInput> {
+  const { isFreeUser } = useIsFreeUser();
   return useAuthMutation({
     mutationFn: (accessToken, { projectId, documentId, file, onProgress }) =>
-      uploadFileEnd2End(accessToken, projectId, documentId, file, onProgress),
+      uploadFileEnd2End(accessToken, projectId, documentId, file, onProgress, isFreeUser),
     invalidateKeys: ({ projectId, documentId }) => [
       documentFilesKey(projectId, documentId),
       documentKey(projectId, documentId),
