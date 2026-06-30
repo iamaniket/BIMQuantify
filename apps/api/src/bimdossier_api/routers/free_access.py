@@ -63,7 +63,17 @@ _FREE_WRITE_ROLES = (ProjectRole.owner.value, ProjectRole.editor.value)
 def require_free_tier_enabled() -> None:
     """Gate every user-facing /free/* endpoint on the kill-switch (403
     FREE_TIER_DISABLED when off). The worker callback is secret-gated, not
-    flag-gated, so in-flight extractions still complete if the flag is flipped."""
+    flag-gated, so in-flight extractions still complete if the flag is flipped.
+
+    NOTE — two distinct axes, deliberately not conflated:
+      * ``FREE_TIER_ENABLED`` (this gate) is the OPERATIONAL mount/launch
+        kill-switch: "is the free data plane offered/served at all right now".
+      * The per-account ENTITLEMENT — "is THIS principal on the free plan" — is
+        ``entitlements.resolve_plan(...) == PLAN_FREE`` (today: org-less). The
+        free caps/trial gates (`assert_can_create_free_content`,
+        `assert_free_account_not_expired`) are that entitlement re-check.
+    Conversion (free→paid) intentionally does NOT call this gate, so disabling
+    sales never traps a user's data behind the upgrade funnel."""
     if not get_settings().free_tier_enabled:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="FREE_TIER_DISABLED"

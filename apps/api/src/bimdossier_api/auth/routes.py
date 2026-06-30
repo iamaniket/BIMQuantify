@@ -29,6 +29,7 @@ from bimdossier_api.cache import get_redis_dep
 from bimdossier_api.cache.blocklist import revoke_jti
 from bimdossier_api.config import get_settings
 from bimdossier_api.db import get_async_session, get_session_maker
+from bimdossier_api.entitlements import PLAN_FREE, PLAN_PAID, resolve_plan
 from bimdossier_api.i18n import coerce_locale
 from bimdossier_api.models.organization import Organization, OrganizationStatus
 from bimdossier_api.models.organization_member import (
@@ -73,6 +74,10 @@ class OrgMembershipBrief(BaseModel):
     active_storage_limit_gb: int | None
     active_storage_used_gb: float
     organization_image_url: str | None = None
+    # The org's entitlement/plan (e.g. "paid"). The ENTITLEMENT axis, distinct
+    # from ISOLATION — see entitlements.resolve_plan. Defaults so older callers
+    # that don't send it still validate.
+    plan: str = PLAN_PAID
 
 
 class AuthMeResponse(BaseModel):
@@ -83,6 +88,11 @@ class AuthMeResponse(BaseModel):
     # True when the user owns or is a member of ≥1 free project — drives whether
     # the portal shows a "Free workspace" entry in the org switcher.
     has_free_workspace: bool = False
+    # The acting principal's PLAN (entitlement) for the active scope: "free" when
+    # org-less (pooled), else the active org's plan. This is the read-only TIER
+    # signal the client gates UI on — ORTHOGONAL to the isolation surface
+    # (active_organization_id). Re-checked server-side on gated actions.
+    plan: str = PLAN_FREE
 
 
 class SwitchToFreeRequest(BaseModel):
@@ -468,6 +478,7 @@ def build_auth_router() -> APIRouter:
                     active_storage_limit_gb=org.active_storage_limit_gb,
                     active_storage_used_gb=storage_usage.get(org.id, 0.0),
                     organization_image_url=image_urls.get(org.id),
+                    plan=org.plan or PLAN_PAID,
                 )
             )
 
@@ -480,12 +491,22 @@ def build_auth_router() -> APIRouter:
         # "Free workspace" switcher entry. RLS-bypassed here (superuser session).
         has_free = await user_has_free_participation(session, user.id)
 
+        # ENTITLEMENT (plan) for the active scope — orthogonal to ISOLATION
+        # (active_organization_id). Org-less → "free"; otherwise the active org's
+        # plan. The active org is the membership matching the JWT's `org` claim;
+        # a stale claim with no matching membership falls through to "free".
+        active_org = next(
+            (org for _m, org in rows if org.id == active_org_id), None
+        ) if active_org_id is not None else None
+        plan = resolve_plan(active_org)
+
         return AuthMeResponse(
             user=UserRead.model_validate(user, from_attributes=True),
             active_organization_id=active_org_id,
             memberships=memberships,
             pending_invitations_count=pending_count,
             has_free_workspace=has_free,
+            plan=plan,
         )
 
     @me_router.post("/switch-organization", response_model=TokenPair)

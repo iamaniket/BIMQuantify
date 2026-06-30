@@ -164,6 +164,9 @@ async def test_orgless_user_me_has_no_memberships(
     body = me.json()
     assert body["active_organization_id"] is None
     assert body["memberships"] == []
+    # Entitlement axis: an org-less account is on the FREE plan (orthogonal to the
+    # isolation surface — see entitlements.resolve_plan).
+    assert body["plan"] == "free"
 
 
 async def test_signup_existing_email_is_enumeration_safe(

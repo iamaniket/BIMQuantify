@@ -8,9 +8,6 @@
  * the one place the `/free` prefix is written.
  */
 
-/** Prefix for top-level mirrored collections, e.g. `${freePrefix(free)}/notifications`. */
-export const freePrefix = (free: boolean): string => (free ? '/free' : '');
-
 /** Base path for a project's resources, e.g. `${projectScope(id, free)}/documents`. */
 export const projectScope = (projectId: string, free: boolean): string =>
   `${free ? '/free/projects' : '/projects'}/${projectId}`;
