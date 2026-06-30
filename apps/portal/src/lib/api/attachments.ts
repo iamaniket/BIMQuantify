@@ -1,5 +1,6 @@
 import { computeFileSha256 } from '../upload/sha256';
 import { apiClient, type PaginatedResponse } from './client';
+import { projectScope } from './scope';
 import {
   CaptureLinkListSchema,
   CreateCaptureLinkResponseSchema,
@@ -151,9 +152,12 @@ export async function getAttachmentViewUrl(
   accessToken: string,
   projectId: string,
   attachmentId: string,
+  // Free (org-less) findings carry free attachments on the `/free/*` surface; the
+  // response schema is identical, so the same fetcher serves both tiers.
+  free = false,
 ): Promise<AttachmentDownloadResponse> {
   return apiClient.get<AttachmentDownloadResponse>(
-    `/projects/${projectId}/attachments/${attachmentId}/download?disposition=inline`,
+    `${projectScope(projectId, free)}/attachments/${attachmentId}/download?disposition=inline`,
     AttachmentDownloadResponseSchema,
     accessToken,
   );

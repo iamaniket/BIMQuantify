@@ -959,9 +959,19 @@ def _free_finding_to_finding(
         anchor_z=s.anchor_z,
         anchor_page=s.anchor_page,
         anchor_page_id=None,
-        photo_ids=s.photo_ids if include_photos else None,
+        # FindingRead.photo_ids / resolution_evidence_ids are list[str]; the free
+        # snag's properties return list[UUID], so stringify (only when including).
+        photo_ids=(
+            [str(p) for p in s.photo_ids]
+            if include_photos and s.photo_ids is not None
+            else None
+        ),
         resolution_note=None,
-        resolution_evidence_ids=s.resolution_evidence_ids if include_photos else None,
+        resolution_evidence_ids=(
+            [str(e) for e in s.resolution_evidence_ids]
+            if include_photos and s.resolution_evidence_ids is not None
+            else None
+        ),
         reference_attachment_ids=None,
         template_id=None,
         custom_values=None,

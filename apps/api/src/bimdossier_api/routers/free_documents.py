@@ -1307,10 +1307,14 @@ async def update_free_finding(
             session, snag, document, add_evidence_ids, "resolution_evidence"
         )
     await session.flush()
-    # New link rows were inserted directly, so reload the (already eager-loaded)
-    # collection to reflect them before reading photo_ids / resolution_evidence_ids.
+    # `updated_at` is onupdate-expired by the flush; the paid FindingRead shape
+    # reads it (the old FreeFindingRead did not), so refresh it before serializing
+    # or the read lazy-loads → MissingGreenlet. Reload attachment_links too when new
+    # link rows were inserted, so photo_ids / resolution_evidence_ids reflect them.
+    refresh_attrs = ["updated_at"]
     if links_changed:
-        await session.refresh(snag, attribute_names=["attachment_links"])
+        refresh_attrs.append("attachment_links")
+    await session.refresh(snag, attribute_names=refresh_attrs)
     return _free_finding_to_finding(snag, document.free_project_id, include_photos=True)
 
 
