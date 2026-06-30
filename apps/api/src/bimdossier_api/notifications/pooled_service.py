@@ -1,8 +1,8 @@
 """Emission + Redis publish for free-tier notifications (pooled, per-recipient).
 
 Mirrors `notifications/service.py` on the free side. The free extraction callback
-(`routers/pooled_documents.py::free_extraction_callback`) calls
-`emit_free_job_notification` POST-commit so a slow Redis/notification step never
+(`routers/pooled_documents.py::pooled_extraction_callback`) calls
+`emit_pooled_job_notification` POST-commit so a slow Redis/notification step never
 extends the row lock or fails the worker callback.
 
 Localized PER RECIPIENT (each is a known `User`), unlike paid job notifications
@@ -31,17 +31,17 @@ logger = logging.getLogger(__name__)
 
 # Per-user Redis channel — the ConnectionManager fans a free push to this user's
 # sockets only. Kept distinct from the paid `notifications:org:` prefix.
-CHANNEL_PREFIX_FREE = "notifications:free:user:"
+CHANNEL_PREFIX_POOLED = "notifications:pooled:user:"
 
 # Free terminal-extraction event → the `notifications.extraction.<stem>` catalog
 # stem (reused from the paid path; values match NotificationEventType).
-_FREE_EVENT_STEM: dict[str, str] = {
+_POOLED_EVENT_STEM: dict[str, str] = {
     "job_succeeded": "completed",
     "job_failed": "failed",
 }
 
 
-async def _upsert_free_notification(
+async def _upsert_pooled_notification(
     session: AsyncSession,
     *,
     recipient_user_id: UUID,
@@ -100,7 +100,7 @@ async def _upsert_free_notification(
     return notification
 
 
-async def publish_free_notification(notification: PooledNotification) -> None:
+async def publish_pooled_notification(notification: PooledNotification) -> None:
     """Publish a free notification on its recipient's Redis channel.
 
     The JSON shape matches the paid notification payload (so the portal's shared
@@ -125,7 +125,7 @@ async def publish_free_notification(notification: PooledNotification) -> None:
             "created_at": created_at.isoformat() if created_at else None,
         }
     )
-    channel = f"{CHANNEL_PREFIX_FREE}{notification.recipient_user_id}"
+    channel = f"{CHANNEL_PREFIX_POOLED}{notification.recipient_user_id}"
     try:
         redis = get_redis()
         await redis.publish(channel, payload)
@@ -133,7 +133,7 @@ async def publish_free_notification(notification: PooledNotification) -> None:
         logger.exception("Failed to publish free notification to %s", channel)
 
 
-async def emit_free_job_notification(
+async def emit_pooled_job_notification(
     *,
     recipients: list[UUID],
     event_type: str,
@@ -152,7 +152,7 @@ async def emit_free_job_notification(
     """
     from bimdossier_api.db import get_session_maker
 
-    stem = _FREE_EVENT_STEM.get(event_type)
+    stem = _POOLED_EVENT_STEM.get(event_type)
     if stem is None or not recipients:
         return
     try:
@@ -178,7 +178,7 @@ async def emit_free_job_notification(
                 else:
                     body = t(f"notifications.extraction.{stem}.body", locale, filename=filename)
                 created.append(
-                    await _upsert_free_notification(
+                    await _upsert_pooled_notification(
                         session,
                         recipient_user_id=user.id,
                         event_type=event_type,
@@ -191,7 +191,7 @@ async def emit_free_job_notification(
                 )
         # Publish AFTER commit so the rows are visible to readers.
         for notification in created:
-            await publish_free_notification(notification)
+            await publish_pooled_notification(notification)
     except Exception:
         logger.warning(
             "Failed to emit free %s notification for file %s",

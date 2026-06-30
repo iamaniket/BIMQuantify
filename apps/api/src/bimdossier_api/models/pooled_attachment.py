@@ -16,7 +16,7 @@ OWNER (the RLS / quota key) even when an invited member uploads the photo;
 Two-phase presigned upload mirrors the paid attachments flow (initiate → PUT →
 complete). Objects live under the owner's free key prefix
 (`free/<owner_user_id>/attachments/<id>/source<ext>`), validated by
-`assert_free_key_scoped`.
+`assert_pooled_key_scoped`.
 """
 
 from datetime import datetime

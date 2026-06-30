@@ -8,7 +8,7 @@ paid branch keeps the exact membership/suspension gating of
 ``require_active_organization``.
 
 The resolver ONLY selects between the two existing context managers
-(``open_free_session`` / ``open_tenant_session``) — it never merges the sessions
+(``open_pooled_session`` / ``open_tenant_session``) — it never merges the sessions
 or the RLS boundary. The cross-surface isolation INVARIANT (free token can never
 reach a tenant schema, org token can never read pooled ``free_*`` rows) lives in
 ``test_scope_isolation.py``.

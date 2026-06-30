@@ -1,7 +1,7 @@
 """Free-tier project activity timeline — derived from existing free-table rows.
 
 The free wedge records NO audit_log (that table is tenant-scoped and unreachable
-from a free `get_free_session`, which runs `search_path = public`). So unlike the
+from a free `get_pooled_session`, which runs `search_path = public`). So unlike the
 paid feed (`routers/activity.py`, backed by `audit_log`), there is no event store
 to read. Instead we SYNTHESIZE the activity-over-time trend from the timestamps
 that already live on the pooled free tables:
@@ -41,9 +41,9 @@ from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.models.pooled_project_member import PooledProjectMember
 from bimdossier_api.models.project_file import ExtractionStatus
 from bimdossier_api.models.user import User
-from bimdossier_api.routers.free_access import require_free_tier_enabled, resolve_free_role
+from bimdossier_api.routers.free_access import require_free_tier_enabled, resolve_pooled_role
 from bimdossier_api.schemas.activity import ActivityTimelineBucket
-from bimdossier_api.tenancy import get_free_session
+from bimdossier_api.tenancy import get_pooled_session
 
 router = APIRouter(
     prefix="/free/projects/{project_id}/activity",
@@ -65,7 +65,7 @@ class _BucketAcc:
     by_resource: defaultdict[str, int] = field(default_factory=lambda: defaultdict(int))
 
 
-async def compute_free_activity_timeline(
+async def compute_pooled_activity_timeline(
     session: AsyncSession,
     project_id: UUID,
     *,
@@ -161,22 +161,22 @@ async def compute_free_activity_timeline(
 
 
 @router.get("/timeline", response_model=list[ActivityTimelineBucket])
-async def free_project_activity_timeline(
+async def pooled_project_activity_timeline(
     project_id: UUID,
     bucket: str = Query(default="week", pattern="^(day|week)$"),
     since: datetime | None = Query(default=None),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
     user: User = Depends(current_verified_user),
 ) -> list[ActivityTimelineBucket]:
     """Activity-over-time trend for a free project's detail-page card.
 
     Gates on participation (owner or member) — ``None`` role → 404 — then
-    delegates to :func:`compute_free_activity_timeline`. Not paginated.
+    delegates to :func:`compute_pooled_activity_timeline`. Not paginated.
     """
-    role = await resolve_free_role(session, project_id, user.id)
+    role = await resolve_pooled_role(session, project_id, user.id)
     if role is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FREE_PROJECT_NOT_FOUND")
-    return await compute_free_activity_timeline(session, project_id, bucket=bucket, since=since)
+    return await compute_pooled_activity_timeline(session, project_id, bucket=bucket, since=since)
 
 
-__all__ = ["compute_free_activity_timeline", "router"]
+__all__ = ["compute_pooled_activity_timeline", "router"]

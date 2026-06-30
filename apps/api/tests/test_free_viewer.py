@@ -189,7 +189,7 @@ async def test_create_document_and_complete_dispatches_free_extraction(
     assert call["job_type"] == "ifc_extraction"
     assert call["priority"] == get_settings().job_priority_free  # 100 (free)
     assert call["payload"]["callback_path"] == "/internal/jobs/free-callback"
-    assert call["payload"]["geometry_threshold"] == get_settings().free_job_geometry_threshold
+    assert call["payload"]["geometry_threshold"] == get_settings().pooled_job_geometry_threshold
     assert call["payload"]["file_id"] == init["file_id"]
 
 
@@ -684,7 +684,7 @@ async def test_free_stuck_extraction_reaper(
 ) -> None:
     """A free file stuck in `running` past the timeout is force-failed by the
     reconciliation sweep (free files have no tenant Job)."""
-    from bimdossier_api.free_reconcile import sweep_stuck_free_extractions
+    from bimdossier_api.pooled_reconcile import sweep_stuck_pooled_extractions
 
     client, _ = free_tier_storage_client
     token = await _free_token(client, session_maker, "free-reaper@example.com")
@@ -703,7 +703,7 @@ async def test_free_stuck_extraction_reaper(
         )
         await s.commit()
 
-    failed = await sweep_stuck_free_extractions(60)
+    failed = await sweep_stuck_pooled_extractions(60)
     assert failed >= 1
     doc = await client.get(
         f"/free/projects/{pid}/documents/{did}", headers=_auth(token)
@@ -717,7 +717,7 @@ async def test_idle_free_container_reaper(
 ) -> None:
     """A free container with no viewer activity past the TTL is deleted (rows +
     objects) by the idle reaper."""
-    from bimdossier_api.free_reconcile import sweep_idle_free_containers
+    from bimdossier_api.pooled_reconcile import sweep_idle_pooled_containers
 
     client, fake = free_tier_storage_client
     token = await _free_token(client, session_maker, "free-idle@example.com")
@@ -736,7 +736,7 @@ async def test_idle_free_container_reaper(
         )
         await s.commit()
 
-    reaped = await sweep_idle_free_containers(30, storage=fake)
+    reaped = await sweep_idle_pooled_containers(30, storage=fake)
     assert reaped >= 1
     detail = await client.get(
         f"/free/projects/{pid}/documents/{did}", headers=_auth(token)

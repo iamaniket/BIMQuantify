@@ -211,7 +211,7 @@ async def get_tenant_session(
 
 
 @asynccontextmanager
-async def open_free_session(user_id: UUID) -> AsyncIterator[AsyncSession]:
+async def open_pooled_session(user_id: UUID) -> AsyncIterator[AsyncSession]:
     """Pooled free-tier session — distinct from `open_tenant_session`.
 
     Free accounts are ORG-LESS pooled rows in `public`, so there is no tenant
@@ -239,7 +239,7 @@ async def open_free_session(user_id: UUID) -> AsyncIterator[AsyncSession]:
         yield session
 
 
-async def get_free_session(
+async def get_pooled_session(
     user: User = Depends(current_verified_user),
 ) -> AsyncGenerator[AsyncSession, None]:
     """Yield a pooled free-tier session scoped to the calling user.
@@ -247,7 +247,7 @@ async def get_free_session(
     Used by the free-viewer endpoints. The caller need not have any org
     membership — a free account is org-less by design.
     """
-    async with open_free_session(user.id) as session:
+    async with open_pooled_session(user.id) as session:
         yield session
 
 
@@ -261,7 +261,7 @@ async def get_free_session(
 # bridge model is that the silo/pool branch lives in ONE place in the data-access
 # layer — never in endpoint or client code. `get_scoped_session` is that place.
 #
-# It ONLY *selects* between the two existing context managers (`open_free_session`
+# It ONLY *selects* between the two existing context managers (`open_pooled_session`
 # / `open_tenant_session`); it never abstracts or merges the sessions or the RLS
 # boundary. The schema-per-tenant vs pooled-RLS security seam stays intact.
 
@@ -321,7 +321,7 @@ async def get_scoped_session(
     explicit commit drops the role/search_path/GUCs and breaks isolation.
     """
     if org_id is None:
-        async with open_free_session(user.id) as session:
+        async with open_pooled_session(user.id) as session:
             yield session
     else:
         # Membership + org-status gating identical to require_active_organization,

@@ -171,7 +171,7 @@ async def get_viewer_bundle(
         # legacy /free/.../files/{id}/viewer-bundle route serves the same logic.
         from bimdossier_api.routers import pooled_documents
 
-        return await pooled_documents.free_file_viewer_bundle(
+        return await pooled_documents.pooled_file_viewer_bundle(
             project_id=project_id,
             document_id=document_id,
             file_id=file_id,

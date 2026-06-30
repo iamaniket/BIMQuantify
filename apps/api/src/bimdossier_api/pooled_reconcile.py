@@ -46,7 +46,7 @@ _REASON = (
 )
 
 
-async def sweep_stuck_free_extractions(stuck_timeout_minutes: int) -> int:
+async def sweep_stuck_pooled_extractions(stuck_timeout_minutes: int) -> int:
     """Force-fail abandoned free extractions. Returns the number flipped."""
     session_maker = get_session_maker()
     now = datetime.now(UTC)
@@ -80,24 +80,24 @@ async def sweep_stuck_free_extractions(stuck_timeout_minutes: int) -> int:
     return len(stuck)
 
 
-class FreeExtractionReconcileSweeper(PeriodicSweeper):
-    """Runs ``sweep_stuck_free_extractions`` on an interval. Leader-elected via
+class PooledExtractionReconcileSweeper(PeriodicSweeper):
+    """Runs ``sweep_stuck_pooled_extractions`` on an interval. Leader-elected via
     advisory lock (only one instance runs each cycle). ``interval_minutes=0``
     disables it."""
 
     def __init__(self, interval_minutes: int, stuck_timeout_minutes: int) -> None:
         super().__init__(
-            name="free_extraction_reconcile_sweeper",
+            name="pooled_extraction_reconcile_sweeper",
             interval_seconds=interval_minutes * 60,
             lock_key="sweep:free_reconcile",
         )
         self.stuck_timeout_minutes = stuck_timeout_minutes
 
     async def run_once(self) -> None:
-        await sweep_stuck_free_extractions(self.stuck_timeout_minutes)
+        await sweep_stuck_pooled_extractions(self.stuck_timeout_minutes)
 
 
-async def sweep_idle_free_containers(
+async def sweep_idle_pooled_containers(
     ttl_days: int, storage: StorageBackend | None = None
 ) -> int:
     """Delete free containers with no viewer activity for ``ttl_days`` + their S3
@@ -148,17 +148,17 @@ async def sweep_idle_free_containers(
     return reaped
 
 
-class IdleFreeContainerSweeper(PeriodicSweeper):
+class IdlePooledContainerSweeper(PeriodicSweeper):
     """Deletes idle free containers (+ objects) past the TTL on an interval.
     Leader-elected; ``interval_minutes=0`` disables it."""
 
     def __init__(self, interval_minutes: int, idle_ttl_days: int) -> None:
         super().__init__(
-            name="idle_free_container_sweeper",
+            name="idle_pooled_container_sweeper",
             interval_seconds=interval_minutes * 60,
             lock_key="sweep:free_idle",
         )
         self.idle_ttl_days = idle_ttl_days
 
     async def run_once(self) -> None:
-        await sweep_idle_free_containers(self.idle_ttl_days)
+        await sweep_idle_pooled_containers(self.idle_ttl_days)

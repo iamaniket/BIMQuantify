@@ -109,19 +109,19 @@ def _recipient_visible_expr(user_id: UUID) -> ColumnElement[bool]:
 # ---------------------------------------------------------------------------
 
 
-def _free_unread_count_key(user_id: UUID) -> str:
+def _pooled_unread_count_key(user_id: UUID) -> str:
     return f"notif:free:unread:{user_id}"
 
 
-async def _free_invalidate_unread_count(redis: Redis, user_id: UUID) -> None:
-    key = _free_unread_count_key(user_id)
+async def _pooled_invalidate_unread_count(redis: Redis, user_id: UUID) -> None:
+    key = _pooled_unread_count_key(user_id)
     try:
         await redis.delete(key)
     except Exception:
         logger.warning("free unread-count cache invalidation failed for %s", key, exc_info=True)
 
 
-def _free_to_out(notif: PooledNotification, *, is_read: bool) -> NotificationOut:
+def _pooled_to_out(notif: PooledNotification, *, is_read: bool) -> NotificationOut:
     """Map a free row onto the shared paid ``NotificationOut`` (sentinel org, free
     ids as project/file, no job) so the portal bell/Zod schema is unchanged."""
     return NotificationOut(
@@ -138,7 +138,7 @@ def _free_to_out(notif: PooledNotification, *, is_read: bool) -> NotificationOut
     )
 
 
-def _free_is_read_expr(user_id: UUID) -> ColumnElement[bool]:
+def _pooled_is_read_expr(user_id: UUID) -> ColumnElement[bool]:
     return exists(
         select(PooledNotificationUserState.notification_id).where(
             PooledNotificationUserState.notification_id == PooledNotification.id,
@@ -148,7 +148,7 @@ def _free_is_read_expr(user_id: UUID) -> ColumnElement[bool]:
     )
 
 
-def _free_dismissed_expr(user_id: UUID) -> ColumnElement[bool]:
+def _pooled_dismissed_expr(user_id: UUID) -> ColumnElement[bool]:
     return exists(
         select(PooledNotificationUserState.notification_id).where(
             PooledNotificationUserState.notification_id == PooledNotification.id,
@@ -158,7 +158,7 @@ def _free_dismissed_expr(user_id: UUID) -> ColumnElement[bool]:
     )
 
 
-async def _free_load_or_404(session: AsyncSession, notification_id: UUID, user_id: UUID) -> None:
+async def _pooled_load_or_404(session: AsyncSession, notification_id: UUID, user_id: UUID) -> None:
     notif = (
         await session.execute(
             select(PooledNotification.id).where(
@@ -225,7 +225,7 @@ async def list_notifications(
         else:
             page_stmt = page_stmt.offset(offset)
         rows = (await session.execute(page_stmt)).all()
-        items = [_free_to_out(row.PooledNotification, is_read=row.is_read) for row in rows]
+        items = [_pooled_to_out(row.PooledNotification, is_read=row.is_read) for row in rows]
         next_cursor: str | None = None
         if len(rows) == limit and rows:
             last = rows[-1].PooledNotification
@@ -328,7 +328,7 @@ async def unread_count(
     user = scope.user
     if scope.is_free:
         require_free_tier_enabled()
-        key = _free_unread_count_key(user.id)
+        key = _pooled_unread_count_key(user.id)
         try:
             cached = await redis.get(key)
             if cached is not None:
@@ -340,8 +340,8 @@ async def unread_count(
             .select_from(PooledNotification)
             .where(
                 PooledNotification.recipient_user_id == user.id,
-                ~_free_is_read_expr(user.id),
-                ~_free_dismissed_expr(user.id),
+                ~_pooled_is_read_expr(user.id),
+                ~_pooled_dismissed_expr(user.id),
             )
         )
         count = (await session.scalar(stmt)) or 0
@@ -390,7 +390,7 @@ async def mark_read(
     user = scope.user
     if scope.is_free:
         require_free_tier_enabled()
-        await _free_load_or_404(session, notification_id, user.id)
+        await _pooled_load_or_404(session, notification_id, user.id)
         stmt = (
             pg_insert(PooledNotificationUserState)
             .values(notification_id=notification_id, user_id=user.id, read_at=func.now())
@@ -402,7 +402,7 @@ async def mark_read(
         )
         await session.execute(stmt)
         await session.flush()
-        await _free_invalidate_unread_count(redis, user.id)
+        await _pooled_invalidate_unread_count(redis, user.id)
         return
 
     assert scope.org_id is not None
@@ -448,7 +448,7 @@ async def dismiss(
     user = scope.user
     if scope.is_free:
         require_free_tier_enabled()
-        await _free_load_or_404(session, notification_id, user.id)
+        await _pooled_load_or_404(session, notification_id, user.id)
         stmt = (
             pg_insert(PooledNotificationUserState)
             .values(notification_id=notification_id, user_id=user.id, dismissed_at=func.now())
@@ -460,7 +460,7 @@ async def dismiss(
         )
         await session.execute(stmt)
         await session.flush()
-        await _free_invalidate_unread_count(redis, user.id)
+        await _pooled_invalidate_unread_count(redis, user.id)
         return
 
     assert scope.org_id is not None
@@ -506,8 +506,8 @@ async def mark_all_read(
                 await session.execute(
                     select(PooledNotification.id).where(
                         PooledNotification.recipient_user_id == user.id,
-                        ~_free_is_read_expr(user.id),
-                        ~_free_dismissed_expr(user.id),
+                        ~_pooled_is_read_expr(user.id),
+                        ~_pooled_dismissed_expr(user.id),
                     )
                 )
             )
@@ -531,7 +531,7 @@ async def mark_all_read(
             )
             await session.execute(stmt)
             await session.flush()
-            await _free_invalidate_unread_count(redis, user.id)
+            await _pooled_invalidate_unread_count(redis, user.id)
         return
 
     assert scope.org_id is not None
@@ -577,7 +577,7 @@ async def clear(
                 await session.execute(
                     select(PooledNotification.id).where(
                         PooledNotification.recipient_user_id == user.id,
-                        ~_free_dismissed_expr(user.id),
+                        ~_pooled_dismissed_expr(user.id),
                     )
                 )
             )
@@ -601,7 +601,7 @@ async def clear(
             )
             await session.execute(stmt)
             await session.flush()
-            await _free_invalidate_unread_count(redis, user.id)
+            await _pooled_invalidate_unread_count(redis, user.id)
         return
 
     assert scope.org_id is not None

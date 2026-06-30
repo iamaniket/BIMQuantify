@@ -5,7 +5,7 @@ overlays a free PDF drawing page on a free IFC model in the unified viewer, reus
 `alignment.similarity.solve_similarity`. The PDF page is referenced by
 `page_number` (int) — free has no pooled pdf_pages table.
 
-Owner writes, members read; owner-OR-member RLS (`get_free_session`) is the
+Owner writes, members read; owner-OR-member RLS (`get_pooled_session`) is the
 isolation boundary, the explicit owner load is the permission gate.
 """
 
@@ -31,11 +31,11 @@ from bimdossier_api.routers.free_access import (
     require_free_tier_enabled,
 )
 from bimdossier_api.routers.pooled_projects import (
-    _load_accessible_free_project_or_404,
-    _load_free_project_or_404,
+    _load_accessible_pooled_project_or_404,
+    _load_pooled_project_or_404,
 )
 from bimdossier_api.schemas.aligned_sheet import CalibrateRequest
-from bimdossier_api.tenancy import get_free_session
+from bimdossier_api.tenancy import get_pooled_session
 
 router = APIRouter(
     prefix="/free/projects/{project_id}/aligned-sheets",
@@ -170,13 +170,13 @@ async def _doc_in_project(
 
 
 @router.post("", response_model=PooledAlignedSheetRead, status_code=status.HTTP_201_CREATED)
-async def create_free_aligned_sheet(
+async def create_pooled_aligned_sheet(
     project_id: UUID,
     payload: PooledAlignedSheetCreate,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
 ) -> PooledAlignedSheetRead:
-    project = await _load_free_project_or_404(session, project_id, user.id)  # owner-only
+    project = await _load_pooled_project_or_404(session, project_id, user.id)  # owner-only
     await assert_free_account_not_expired(user)
     # The PDF document must exist in the project and actually be a PDF.
     if await _doc_in_project(session, payload.pdf_document_id, project.id, pdf=True) is None:
@@ -223,9 +223,9 @@ async def create_free_aligned_sheet(
 async def list_pooled_aligned_sheets(
     project_id: UUID,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
 ) -> list[PooledAlignedSheetRead]:
-    await _load_accessible_free_project_or_404(session, project_id)  # owner-or-member
+    await _load_accessible_pooled_project_or_404(session, project_id)  # owner-or-member
     rows = (
         (
             await session.execute(
@@ -244,14 +244,14 @@ async def list_pooled_aligned_sheets(
 
 
 @router.post("/{sheet_id}/calibrate", response_model=PooledAlignedSheetRead)
-async def calibrate_free_aligned_sheet(
+async def calibrate_pooled_aligned_sheet(
     project_id: UUID,
     sheet_id: UUID,
     payload: CalibrateRequest,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
 ) -> PooledAlignedSheetRead:
-    await _load_free_project_or_404(session, project_id, user.id)  # owner-only
+    await _load_pooled_project_or_404(session, project_id, user.id)  # owner-only
     await assert_free_account_not_expired(user)
     sheet = await _load_sheet_or_404(session, project_id, sheet_id)
 
@@ -286,15 +286,15 @@ async def calibrate_free_aligned_sheet(
 
 
 @router.patch("/{sheet_id}", response_model=PooledAlignedSheetRead)
-async def update_free_aligned_sheet(
+async def update_pooled_aligned_sheet(
     project_id: UUID,
     sheet_id: UUID,
     payload: PooledAlignedSheetUpdate,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
 ) -> PooledAlignedSheetRead:
     """Re-pin a sheet to a different level / page (owner-only)."""
-    await _load_free_project_or_404(session, project_id, user.id)  # owner-only
+    await _load_pooled_project_or_404(session, project_id, user.id)  # owner-only
     await assert_free_account_not_expired(user)
     sheet = await _load_sheet_or_404(session, project_id, sheet_id)
     updates = payload.model_dump(exclude_unset=True)
@@ -322,13 +322,13 @@ async def update_free_aligned_sheet(
 
 
 @router.delete("/{sheet_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_free_aligned_sheet(
+async def delete_pooled_aligned_sheet(
     project_id: UUID,
     sheet_id: UUID,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
 ) -> Response:
-    await _load_free_project_or_404(session, project_id, user.id)  # owner-only
+    await _load_pooled_project_or_404(session, project_id, user.id)  # owner-only
     sheet = await _load_sheet_or_404(session, project_id, sheet_id)
     await session.delete(sheet)
     await session.flush()

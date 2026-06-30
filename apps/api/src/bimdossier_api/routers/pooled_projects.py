@@ -75,9 +75,9 @@ from bimdossier_api.routers.finding import (
 from bimdossier_api.routers.free_access import (
     assert_can_create_free_content,
     assert_free_account_not_expired,
-    count_free_members,
+    count_pooled_members,
     require_free_tier_enabled,
-    resolve_free_role,
+    resolve_pooled_role,
 )
 from bimdossier_api.routers.projects._shared import _validate_country
 from bimdossier_api.schemas.finding import FindingExport, FindingRead
@@ -97,8 +97,8 @@ from bimdossier_api.schemas.project_overview import (
     ReportsBlock,
 )
 from bimdossier_api.storage import StorageBackend, get_storage
-from bimdossier_api.storage.scoping import free_key_prefix
-from bimdossier_api.tenancy import get_free_session, open_free_session
+from bimdossier_api.storage.scoping import pooled_key_prefix
+from bimdossier_api.tenancy import get_pooled_session, open_pooled_session
 
 router = APIRouter(
     prefix="/free",
@@ -118,10 +118,10 @@ _AMS = ZoneInfo("Europe/Amsterdam")
 
 
 @router.post("/projects", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
-async def create_free_project(
+async def create_pooled_project(
     payload: ProjectCreate,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
     storage: StorageBackend = Depends(get_storage),
 ) -> ProjectRead:
     # Create-gate: only org-less users whose trial is still open may create free
@@ -135,7 +135,7 @@ async def create_free_project(
     # TOCTOU-raced. Transaction-scoped (released on the free session's commit).
     await session.execute(
         sql_text("SELECT pg_advisory_xact_lock(:k)"),
-        {"k": lock_id_for(f"free_project_create:{user.id}")},
+        {"k": lock_id_for(f"pooled_project_create:{user.id}")},
     )
     count = (
         await session.scalar(
@@ -171,13 +171,13 @@ async def create_free_project(
     )
     session.add(project)
     await session.flush()
-    return await _free_project_to_read(project, ProjectRole.owner, storage)
+    return await _pooled_project_to_read(project, ProjectRole.owner, storage)
 
 
 @router.get("/projects", response_model=list[ProjectRead])
 async def list_pooled_projects(
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
     storage: StorageBackend = Depends(get_storage),
 ) -> list[ProjectRead]:
     # RLS returns owned AND shared-with-me projects. Resolve the caller's role
@@ -207,31 +207,31 @@ async def list_pooled_projects(
             role = ProjectRole.owner
         else:
             role = _role_enum(member_roles.get(p.id))
-        out.append(await _free_project_to_read(p, role, storage))
+        out.append(await _pooled_project_to_read(p, role, storage))
     return out
 
 
 @router.get("/projects/{project_id}", response_model=ProjectRead)
-async def get_free_project(
+async def get_pooled_project(
     project_id: UUID,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
     storage: StorageBackend = Depends(get_storage),
 ) -> ProjectRead:
-    project = await _load_accessible_free_project_or_404(session, project_id)
-    role = _role_enum(await resolve_free_role(session, project_id, user.id))
-    return await _free_project_to_read(project, role, storage)
+    project = await _load_accessible_pooled_project_or_404(session, project_id)
+    role = _role_enum(await resolve_pooled_role(session, project_id, user.id))
+    return await _pooled_project_to_read(project, role, storage)
 
 
 @router.patch("/projects/{project_id}", response_model=ProjectRead)
-async def update_free_project(
+async def update_pooled_project(
     project_id: UUID,
     payload: ProjectUpdate,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
     storage: StorageBackend = Depends(get_storage),
 ) -> ProjectRead:
-    project = await _load_free_project_or_404(session, project_id, user.id)
+    project = await _load_pooled_project_or_404(session, project_id, user.id)
     await assert_free_account_not_expired(user)
     data = payload.model_dump(exclude_unset=True)
     if "country" in data:
@@ -247,11 +247,11 @@ async def update_free_project(
             continue  # free projects don't store the Wkb instrument
         else:
             setattr(project, field, value)
-    return await _free_project_to_read(project, storage=storage)
+    return await _pooled_project_to_read(project, storage=storage)
 
 
 @router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_free_project(
+async def delete_pooled_project(
     project_id: UUID,
     user: User = Depends(current_verified_user),
     storage: StorageBackend = Depends(get_storage),
@@ -259,8 +259,8 @@ async def delete_free_project(
     # Container/file/snag rows cascade (FK ON DELETE CASCADE); their storage
     # objects don't, so collect the container ids first and best-effort delete
     # each container's object prefix after the rows are gone (reaper backstops).
-    async with open_free_session(user.id) as session:
-        project = await _load_free_project_or_404(session, project_id, user.id)
+    async with open_pooled_session(user.id) as session:
+        project = await _load_pooled_project_or_404(session, project_id, user.id)
         doc_ids = list(
             (
                 await session.execute(
@@ -274,15 +274,15 @@ async def delete_free_project(
         )
         await session.delete(project)
     for did in doc_ids:
-        await storage.delete_prefix(f"{free_key_prefix(user.id)}{did}/")
+        await storage.delete_prefix(f"{pooled_key_prefix(user.id)}{did}/")
 
 
 @router.post("/projects/{project_id}/thumbnail", response_model=ProjectRead)
-async def update_free_project_thumbnail(
+async def update_pooled_project_thumbnail(
     project_id: UUID,
     thumbnail: Annotated[UploadFile, File()],
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
 ) -> ProjectRead:
@@ -293,7 +293,7 @@ async def update_free_project_thumbnail(
     free key prefix (`free/<uid>/thumbnails/…`) so it stays inside the user's
     storage scope — NOT the org thumbnail prefix.
     """
-    project = await _load_free_project_or_404(session, project_id, user.id)
+    project = await _load_pooled_project_or_404(session, project_id, user.id)
     await assert_free_account_not_expired(user)
 
     allowed_types = [t.strip() for t in settings.thumbnail_allowed_content_types.split(",")]
@@ -311,7 +311,7 @@ async def update_free_project_thumbnail(
         )
 
     ext = content_type.split("/")[-1].replace("jpeg", "jpg")
-    prefix = f"{free_key_prefix(user.id)}thumbnails/"
+    prefix = f"{pooled_key_prefix(user.id)}thumbnails/"
     new_key = f"{prefix}{uuid4()}.{ext}"
     await storage.put_object(new_key, content_type, data)
 
@@ -322,11 +322,11 @@ async def update_free_project_thumbnail(
             await storage.delete_object(old_key)
 
     project.thumbnail_url = new_key
-    # No explicit flush (mirrors update_free_project): the change commits with the
+    # No explicit flush (mirrors update_pooled_project): the change commits with the
     # free session at request end. Flushing here would expire the server-side
     # `updated_at`, and the subsequent in-memory read would lazy-load it under
     # async SQLAlchemy → MissingGreenlet.
-    return await _free_project_to_read(project, storage=storage)
+    return await _pooled_project_to_read(project, storage=storage)
 
 
 # ---------------------------------------------------------------------------
@@ -335,20 +335,20 @@ async def update_free_project_thumbnail(
 
 
 @router.get("/projects/{project_id}/findings", response_model=list[FindingRead])
-async def list_free_project_snags(
+async def list_pooled_project_snags(
     project_id: UUID,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
 ) -> list[FindingRead]:
-    await _load_accessible_free_project_or_404(session, project_id)
+    await _load_accessible_pooled_project_or_404(session, project_id)
     rows = await _load_project_snags(session, project_id)
-    return [_free_finding_to_finding(s, project_id) for s in rows]
+    return [_pooled_finding_to_finding(s, project_id) for s in rows]
 
 
 # --- Findings export (CSV / XLSX / JSON) -----------------------------------
 # These run on the SUPERUSER session (like the members endpoint) so they can
 # resolve assignee/creator display names past the per-user `users` RLS; access
-# is validated by hand via `_assert_free_participant`. No audit row (free has no
+# is validated by hand via `_assert_pooled_participant`. No audit row (free has no
 # pooled audit_log); the data volume is tiny (capped), so no streaming cursor.
 
 
@@ -358,16 +358,16 @@ async def export_pooled_findings_csv(
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> Response:
-    project = await _load_free_project_superuser_or_404(session, project_id)
-    await _assert_free_participant(session, project, user.id)
+    project = await _load_pooled_project_superuser_or_404(session, project_id)
+    await _assert_pooled_participant(session, project, user.id)
     snags = await _load_project_snags(session, project_id)
-    names = await _resolve_free_user_names(session, snags)
+    names = await _resolve_pooled_user_names(session, snags)
 
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=list(_FINDINGS_CSV_COLUMNS), extrasaction="ignore")
     writer.writeheader()
     for s in snags:
-        writer.writerow(_free_finding_csv_row(s, names))
+        writer.writerow(_pooled_finding_csv_row(s, names))
     return Response(
         content=buf.getvalue().encode("utf-8"),
         media_type="text/csv; charset=utf-8",
@@ -383,16 +383,16 @@ async def export_pooled_findings_xlsx(
 ) -> Response:
     from openpyxl import Workbook  # type: ignore[import-untyped]  # cold path
 
-    project = await _load_free_project_superuser_or_404(session, project_id)
-    await _assert_free_participant(session, project, user.id)
+    project = await _load_pooled_project_superuser_or_404(session, project_id)
+    await _assert_pooled_participant(session, project, user.id)
     snags = await _load_project_snags(session, project_id)
-    names = await _resolve_free_user_names(session, snags)
+    names = await _resolve_pooled_user_names(session, snags)
 
     wb = Workbook(write_only=True)
     ws = wb.create_sheet("Findings")
     ws.append(list(_FINDINGS_CSV_COLUMNS))
     for s in snags:
-        row = _free_finding_csv_row(s, names)
+        row = _pooled_finding_csv_row(s, names)
         ws.append([row[c] for c in _FINDINGS_CSV_COLUMNS])
     buf = io.BytesIO()
     wb.save(buf)
@@ -409,25 +409,25 @@ async def export_pooled_findings_json(
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> FindingExport:
-    project = await _load_free_project_superuser_or_404(session, project_id)
-    await _assert_free_participant(session, project, user.id)
+    project = await _load_pooled_project_superuser_or_404(session, project_id)
+    await _assert_pooled_participant(session, project, user.id)
     snags = await _load_project_snags(session, project_id)
     return FindingExport(
         project_id=project_id,
         count=len(snags),
-        findings=[_free_finding_to_finding(s, project_id) for s in snags],
+        findings=[_pooled_finding_to_finding(s, project_id) for s in snags],
     )
 
 
 @router.get("/projects/{project_id}/overview", response_model=ProjectOverviewRead)
-async def get_free_project_overview(
+async def get_pooled_project_overview(
     project_id: UUID,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
     storage: StorageBackend = Depends(get_storage),
 ) -> ProjectOverviewRead:
-    project = await _load_accessible_free_project_or_404(session, project_id)
-    my_role = _role_enum(await resolve_free_role(session, project_id, user.id))
+    project = await _load_accessible_pooled_project_or_404(session, project_id)
+    my_role = _role_enum(await resolve_pooled_role(session, project_id, user.id))
     snags = await _load_project_snags(session, project_id)
 
     by_status: dict[str, int] = {s.value: 0 for s in FindingStatus}
@@ -454,7 +454,7 @@ async def get_free_project_overview(
 
     # Newest-first preview (snags come back created_at ASC for the board).
     preview = [
-        _free_finding_to_finding(s, project_id)
+        _pooled_finding_to_finding(s, project_id)
         for s in sorted(snags, key=lambda s: s.created_at, reverse=True)[:_OVERVIEW_PREVIEW_LIMIT]
     ]
     findings_block = FindingsBlock(count=total, open=open_count, preview=preview)
@@ -481,7 +481,7 @@ async def get_free_project_overview(
     )
 
     return ProjectOverviewRead(
-        project=await _free_project_to_read(project, my_role, storage),
+        project=await _pooled_project_to_read(project, my_role, storage),
         completeness=completeness,
         stats=stats,
         findings=findings_block,
@@ -511,12 +511,12 @@ async def get_free_project_overview(
 _FREE_ASSIGNABLE_ROLES = (ProjectRole.editor, ProjectRole.viewer)
 
 
-class FreeMemberInvite(BaseModel):
+class PooledMemberInvite(BaseModel):
     email: EmailStr
     role: ProjectRole = ProjectRole.viewer
 
 
-class FreeMemberRoleUpdate(BaseModel):
+class PooledMemberRoleUpdate(BaseModel):
     role: ProjectRole
 
 
@@ -526,8 +526,8 @@ async def list_pooled_project_members(
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> list[ProjectMemberRead]:
-    project = await _load_free_project_superuser_or_404(session, project_id)
-    await _assert_free_participant(session, project, user.id)
+    project = await _load_pooled_project_superuser_or_404(session, project_id)
+    await _assert_pooled_participant(session, project, user.id)
     members: list[ProjectMemberRead] = []
     owner = await session.get(User, project.owner_user_id)
     if owner is not None:
@@ -569,9 +569,9 @@ async def list_pooled_project_members(
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(INVITE_LIMITER)],
 )
-async def add_free_project_member(
+async def add_pooled_project_member(
     project_id: UUID,
-    payload: FreeMemberInvite,
+    payload: PooledMemberInvite,
     request: Request,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_async_session),
@@ -581,7 +581,7 @@ async def add_free_project_member(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="VALIDATION_ERROR"
         )
-    project = await _load_free_project_superuser_or_404(session, project_id)
+    project = await _load_pooled_project_superuser_or_404(session, project_id)
     if project.owner_user_id != user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="FREE_FORBIDDEN")
 
@@ -598,7 +598,7 @@ async def add_free_project_member(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="FREE_ACCOUNT_EXPIRED"
         )
-    if await count_free_members(session, project_id) >= limits.max_members_per_project:
+    if await count_pooled_members(session, project_id) >= limits.max_members_per_project:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="FREE_MEMBER_CAP_REACHED"
         )
@@ -667,10 +667,10 @@ async def add_free_project_member(
     "/projects/{project_id}/members/{member_user_id}",
     response_model=ProjectMemberRead,
 )
-async def update_free_project_member(
+async def update_pooled_project_member(
     project_id: UUID,
     member_user_id: UUID,
-    payload: FreeMemberRoleUpdate,
+    payload: PooledMemberRoleUpdate,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> ProjectMemberRead:
@@ -678,7 +678,7 @@ async def update_free_project_member(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="VALIDATION_ERROR"
         )
-    project = await _load_free_project_superuser_or_404(session, project_id)
+    project = await _load_pooled_project_superuser_or_404(session, project_id)
     if project.owner_user_id != user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="FREE_FORBIDDEN")
     member = await session.scalar(
@@ -710,13 +710,13 @@ async def update_free_project_member(
     "/projects/{project_id}/members/{member_user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def remove_free_project_member(
+async def remove_pooled_project_member(
     project_id: UUID,
     member_user_id: UUID,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> None:
-    project = await _load_free_project_superuser_or_404(session, project_id)
+    project = await _load_pooled_project_superuser_or_404(session, project_id)
     # Owner may remove anyone; a member may remove only themselves (leave).
     if project.owner_user_id != user.id and member_user_id != user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="FREE_FORBIDDEN")
@@ -739,7 +739,7 @@ async def remove_free_project_member(
 # ---------------------------------------------------------------------------
 
 
-async def _load_free_project_superuser_or_404(
+async def _load_pooled_project_superuser_or_404(
     session: AsyncSession, project_id: UUID
 ) -> PooledProject:
     """Load a free project on the SUPERUSER session (RLS-bypassed). Ownership /
@@ -752,7 +752,7 @@ async def _load_free_project_superuser_or_404(
     return project
 
 
-async def _assert_free_participant(
+async def _assert_pooled_participant(
     session: AsyncSession, project: PooledProject, user_id: UUID
 ) -> None:
     """404 (hide existence) unless the caller owns the project or is a member."""
@@ -770,7 +770,7 @@ async def _assert_free_participant(
         )
 
 
-async def _load_free_project_or_404(
+async def _load_pooled_project_or_404(
     session: AsyncSession, project_id: UUID, user_id: UUID
 ) -> PooledProject:
     """OWNER-only project load — used by the owner-only mutations (PATCH/DELETE
@@ -788,7 +788,7 @@ async def _load_free_project_or_404(
     return project
 
 
-async def _load_accessible_free_project_or_404(
+async def _load_accessible_pooled_project_or_404(
     session: AsyncSession, project_id: UUID
 ) -> PooledProject:
     """PARTICIPANT project load — owner OR member (RLS-scoped). Used by the read
@@ -801,7 +801,7 @@ async def _load_accessible_free_project_or_404(
     return project
 
 
-async def _resolve_free_user_names(
+async def _resolve_pooled_user_names(
     session: AsyncSession, snags: list[PooledFinding]
 ) -> dict[UUID, str]:
     """Map participant user ids (assignees + creators across the snags) to a
@@ -819,7 +819,7 @@ async def _resolve_free_user_names(
     return {uid: (full_name or email) for uid, full_name, email in rows}
 
 
-def _free_finding_element_reference(s: PooledFinding) -> str:
+def _pooled_finding_element_reference(s: PooledFinding) -> str:
     """Readable location string for the export — the IFC GlobalId, else the
     file (+ page for a PDF anchor), else blank. Mirrors the paid helper."""
     if s.linked_element_global_id:
@@ -831,7 +831,7 @@ def _free_finding_element_reference(s: PooledFinding) -> str:
     return ""
 
 
-def _free_finding_csv_row(s: PooledFinding, names: dict[UUID, str]) -> dict[str, str]:
+def _pooled_finding_csv_row(s: PooledFinding, names: dict[UUID, str]) -> dict[str, str]:
     """Build an export row from a free snag, reusing the paid column builder. The
     paid-only columns (bbl ref, photos, resolution evidence/note) are blank/zero."""
     return _csv_row_dict(
@@ -846,7 +846,7 @@ def _free_finding_csv_row(s: PooledFinding, names: dict[UUID, str]) -> dict[str,
         created_by=names.get(s.created_by_user_id, "") if s.created_by_user_id else "",
         created_at=s.created_at.isoformat() if s.created_at else "",
         updated_at=s.updated_at.isoformat() if s.updated_at else "",
-        element_reference=_free_finding_element_reference(s),
+        element_reference=_pooled_finding_element_reference(s),
         photo_count="0",
         resolution_evidence_count="0",
         resolution_note="",
@@ -868,7 +868,7 @@ async def _load_project_snags(session: AsyncSession, project_id: UUID) -> list[P
     )
 
 
-async def _free_project_to_read(
+async def _pooled_project_to_read(
     p: PooledProject,
     my_role: ProjectRole = ProjectRole.owner,
     storage: StorageBackend | None = None,
@@ -920,7 +920,7 @@ def _role_enum(role: str | None) -> ProjectRole:
         return ProjectRole.viewer
 
 
-def _free_finding_to_finding(
+def _pooled_finding_to_finding(
     s: PooledFinding, project_id: UUID, *, include_photos: bool = False
 ) -> FindingRead:
     """Adapt a pooled free snag to the paid FindingRead shape so the kanban board,

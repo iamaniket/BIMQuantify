@@ -37,7 +37,7 @@ from bimdossier_api.models.organization_member import (
     OrganizationMemberStatus,
 )
 from bimdossier_api.models.user import User
-from bimdossier_api.routers.free_access import user_has_free_participation
+from bimdossier_api.routers.free_access import user_has_pooled_participation
 from bimdossier_api.schemas.user import UserRead, UserUpdate
 from bimdossier_api.storage import get_attachments_bucket, get_storage
 
@@ -489,7 +489,7 @@ def build_auth_router() -> APIRouter:
 
         # Free participation (owns or is a member of a free project) — drives the
         # "Free workspace" switcher entry. RLS-bypassed here (superuser session).
-        has_free = await user_has_free_participation(session, user.id)
+        has_free = await user_has_pooled_participation(session, user.id)
 
         # ENTITLEMENT (plan) for the active scope — orthogonal to ISOLATION
         # (active_organization_id). Org-less → "free"; otherwise the active org's
@@ -634,7 +634,7 @@ def build_auth_router() -> APIRouter:
         # the next tokens carry NO `org` claim, so org endpoints 409 and /free/*
         # serves the user's pooled data. Only enter it if there's something
         # there — the user owns or is a member of ≥1 free project.
-        if not await user_has_free_participation(session, user.id):
+        if not await user_has_pooled_participation(session, user.id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="FREE_WORKSPACE_UNAVAILABLE",

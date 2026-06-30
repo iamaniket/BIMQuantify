@@ -7,7 +7,7 @@ analog of `models.document.Document`: a named container that holds one or more
 versioned `PooledProjectFile` rows (see `free_project_file.PooledProjectFile`).
 
 Pooled-in-`public`, never a tenant `org_<hex>` schema — isolation is owner-keyed
-RLS on `owner_user_id` (the `app.current_user_id` GUC set by `get_free_session`)
+RLS on `owner_user_id` (the `app.current_user_id` GUC set by `get_pooled_session`)
 plus owner-OR-member visibility through the project (see
 `_rls_sql.enable_pooled_member_rls_statements`). IFC-only.
 

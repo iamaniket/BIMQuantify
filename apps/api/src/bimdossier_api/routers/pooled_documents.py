@@ -10,11 +10,11 @@ Replaces the old single-table `free_models` surface (`/free/models/*`): a free u
 now creates a Container under a free project, then adds versioned model files to
 it, exactly like a paid user.
 
-Isolation: users hit `get_free_session` (search_path=public, ROLE bim_app, only
+Isolation: users hit `get_pooled_session` (search_path=public, ROLE bim_app, only
 `app.current_user_id` set) — never `get_tenant_session`. Owner-OR-member RLS on
 the free tables does it; the extraction callback runs as the superuser
 (RLS-bypassing) and so must additionally validate every artifact key with
-`assert_free_key_scoped`.
+`assert_pooled_key_scoped`.
 
 Surface (all under `/free`):
   POST   /projects/{pid}/documents                              create container
@@ -86,18 +86,18 @@ from bimdossier_api.models.project_file import (
     ProjectFileStatus,
 )
 from bimdossier_api.models.user import User
-from bimdossier_api.notifications.free_service import emit_free_job_notification
+from bimdossier_api.notifications.pooled_service import emit_pooled_job_notification
 from bimdossier_api.routers.free_access import (
     assert_assignee_is_participant,
     assert_can_create_free_content,
     assert_free_account_not_expired,
-    assert_free_project_owned,
-    free_owner_used_bytes,
+    assert_pooled_project_owned,
+    pooled_owner_used_bytes,
     require_free_tier_enabled,
-    require_free_write_role,
-    resolve_free_document_role,
+    require_pooled_write_role,
+    resolve_pooled_document_role,
 )
-from bimdossier_api.routers.pooled_projects import _free_finding_to_finding
+from bimdossier_api.routers.pooled_projects import _pooled_finding_to_finding
 from bimdossier_api.schemas.document import DocumentRead, DocumentWithVersions
 from bimdossier_api.schemas.finding import FindingRead
 from bimdossier_api.schemas.project_file import (
@@ -111,11 +111,11 @@ from bimdossier_api.schemas.project_file import (
 from bimdossier_api.storage import StorageBackend, get_storage
 from bimdossier_api.storage.minio import ObjectNotFoundError
 from bimdossier_api.storage.scoping import (
-    assert_free_key_scoped,
+    assert_pooled_key_scoped,
     assert_key_scoped,
-    free_key_prefix,
+    pooled_key_prefix,
 )
-from bimdossier_api.tenancy import get_free_session, open_free_session
+from bimdossier_api.tenancy import get_pooled_session, open_pooled_session
 
 # Free tier accepts IFC (3D) and PDF (2D drawings) — viewer parity. (.ifczip is a
 # zipped IFC; .pdf is a 2D drawing rendered client-side by pdfjs.)
@@ -298,7 +298,7 @@ def _document_to_with_versions(
     )
 
 
-def _resolve_free_head(
+def _resolve_pooled_head(
     document: PooledDocument, candidates_desc: list[PooledProjectFile]
 ) -> UUID | None:
     """Free analog of resolve_head_file_id: the document's head_file_id when set
@@ -315,7 +315,7 @@ def _resolve_free_head(
 # ---------------------------------------------------------------------------
 
 
-async def create_free_document(
+async def create_pooled_document(
     session: AsyncSession,
     user: User,
     project_id: UUID,
@@ -327,7 +327,7 @@ async def create_free_document(
     # Create-gate: only org-less users (trial still open) may create free CONTENT;
     # only the project owner may add containers to it. Returns effective caps.
     limits = await assert_can_create_free_content(user)
-    await assert_free_project_owned(session, project_id, user.id)
+    await assert_pooled_project_owned(session, project_id, user.id)
     # Serialize this user's concurrent creates so the per-user container cap can't
     # be TOCTOU-raced (transaction-scoped; released at commit).
     await session.execute(
@@ -366,7 +366,7 @@ async def create_free_document(
     return _document_to_read(document)
 
 
-async def list_free_project_documents(
+async def list_pooled_project_documents(
     session: AsyncSession,
     project_id: UUID,
 ) -> list[DocumentWithVersions]:
@@ -412,7 +412,7 @@ async def list_free_project_documents(
     return [_document_to_with_versions(d, files_by_doc.get(d.id, [])) for d in documents]
 
 
-async def get_free_document(
+async def get_pooled_document(
     session: AsyncSession,
     project_id: UUID,
     document_id: UUID,
@@ -437,7 +437,7 @@ async def get_free_document(
     return _document_to_with_versions(document, files)
 
 
-async def update_free_document(
+async def update_pooled_document(
     session: AsyncSession,
     user: User,
     project_id: UUID,
@@ -484,7 +484,7 @@ async def update_free_document(
     return _document_to_read(document)
 
 
-async def delete_free_document(
+async def delete_pooled_document(
     user: User,
     project_id: UUID,
     document_id: UUID,
@@ -492,11 +492,11 @@ async def delete_free_document(
 ) -> None:
     """Free-tier container delete (+ object cleanup). Opens its own short session.
     Called from the unified documents router's free branch."""
-    async with open_free_session(user.id) as session:
+    async with open_pooled_session(user.id) as session:
         document = await _load_owned_document_or_404(
             session, project_id, document_id, user.id
         )
-        prefix = f"{free_key_prefix(user.id)}{document_id}/"
+        prefix = f"{pooled_key_prefix(user.id)}{document_id}/"
         await session.delete(document)  # cascades pooled_project_files + pooled_findings
     # Storage cleanup after the rows are gone (best-effort; reaper backstops).
     await storage.delete_prefix(prefix)
@@ -507,7 +507,7 @@ async def delete_free_document(
 # ---------------------------------------------------------------------------
 
 
-def _build_free_extraction_job(
+def _build_pooled_extraction_job(
     *,
     file_id: UUID,
     document_id: UUID,
@@ -545,14 +545,14 @@ def _build_free_extraction_job(
             "project_id": str(document_id),
             "storage_key": storage_key,
             "callback_path": FREE_CALLBACK_PATH,
-            "geometry_threshold": settings.free_job_geometry_threshold,
+            "geometry_threshold": settings.pooled_job_geometry_threshold,
             "compressed": ext == ".ifczip",
             "discipline": doc_discipline,
         },
     )
 
 
-async def _dispatch_free_pages_rasterization(
+async def _dispatch_pooled_pages_rasterization(
     *, file_id: UUID, document_id: UUID, storage_key: str, settings: Settings
 ) -> None:
     """Best-effort dispatch of `pdf_pages_rasterization` for a free PDF.
@@ -591,12 +591,12 @@ async def _dispatch_free_pages_rasterization(
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(FREE_UPLOAD_INITIATE_LIMITER)],
 )
-async def initiate_free_file_upload(
+async def initiate_pooled_file_upload(
     project_id: UUID,
     document_id: UUID,
     payload: InitiateUploadRequest,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
 ) -> InitiateUploadResponse:
@@ -623,7 +623,7 @@ async def initiate_free_file_upload(
     # Per-user aggregate storage cap (the 1 GB ceiling): the OWNER's model-file
     # bytes PLUS attachment (photo) bytes (FSL-1) — uploads are owner-only here, so
     # the owner's RLS session sees all of their own bytes.
-    used_bytes = await free_owner_used_bytes(session, user.id)
+    used_bytes = await pooled_owner_used_bytes(session, user.id)
     if used_bytes + payload.size_bytes > limits.storage_max_bytes:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -657,7 +657,7 @@ async def initiate_free_file_upload(
         )
 
     file_id = uuid4()
-    storage_key = f"{free_key_prefix(user.id)}{document.id}/{file_id}/source{ext}"
+    storage_key = f"{pooled_key_prefix(user.id)}{document.id}/{file_id}/source{ext}"
     max_version = (
         await session.scalar(
             select(func.coalesce(func.max(PooledProjectFile.version_number), 0)).where(
@@ -701,7 +701,7 @@ async def initiate_free_file_upload(
     "/projects/{project_id}/documents/{document_id}/files/{file_id}/complete",
     response_model=ProjectFileRead,
 )
-async def complete_free_file_upload(
+async def complete_pooled_file_upload(
     project_id: UUID,
     document_id: UUID,
     file_id: UUID,
@@ -717,7 +717,7 @@ async def complete_free_file_upload(
     await assert_can_create_free_content(user)
     # Phase A — load + snapshot (short free session). Validate document ownership,
     # then snapshot the file row's fields the later phases need.
-    async with open_free_session(user.id) as session:
+    async with open_pooled_session(user.id) as session:
         document = await _load_owned_document_or_404(
             session, project_id, document_id, user.id
         )
@@ -770,7 +770,7 @@ async def complete_free_file_upload(
             return await _reload_file(user.id, document_id, file_id)
 
         # Phase C — flip to ready, lock the document type, reclaim the head.
-        async with open_free_session(user.id) as session:
+        async with open_pooled_session(user.id) as session:
             await session.execute(
                 update(PooledProjectFile)
                 .where(
@@ -794,14 +794,14 @@ async def complete_free_file_upload(
             )
 
     # Phase D — claim a global+per-user extraction slot, then dispatch.
-    claimed = await _claim_free_extraction_slot(file_id, user.id, settings)
+    claimed = await _claim_pooled_extraction_slot(file_id, user.id, settings)
     if not claimed:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="FREE_EXTRACTION_BUSY",
         )
 
-    detached = _build_free_extraction_job(
+    detached = _build_pooled_extraction_job(
         file_id=file_id,
         document_id=document_id,
         storage_key=storage_key,
@@ -819,7 +819,7 @@ async def complete_free_file_upload(
     # Best-effort sibling: rasterize PDF pages so the mobile (pdfjs-free) viewer
     # can render this drawing. Never blocks/fails the file.
     if ext == ".pdf":
-        await _dispatch_free_pages_rasterization(
+        await _dispatch_pooled_pages_rasterization(
             file_id=file_id,
             document_id=document_id,
             storage_key=storage_key,
@@ -832,7 +832,7 @@ async def complete_free_file_upload(
     "/projects/{project_id}/documents/{document_id}/files/{file_id}/retry-extraction",
     response_model=ProjectFileRead,
 )
-async def retry_free_extraction(
+async def retry_pooled_extraction(
     project_id: UUID,
     document_id: UUID,
     file_id: UUID,
@@ -843,7 +843,7 @@ async def retry_free_extraction(
     """Re-dispatch extraction for a free file whose previous attempt failed (only
     valid when status=ready and extraction_status=failed)."""
     await assert_can_create_free_content(user)
-    async with open_free_session(user.id) as session:
+    async with open_pooled_session(user.id) as session:
         document = await _load_owned_document_or_404(
             session, project_id, document_id, user.id
         )
@@ -860,13 +860,13 @@ async def retry_free_extraction(
         ext = os.path.splitext(storage_key)[1].lower()
         doc_discipline = document.discipline
 
-    claimed = await _claim_free_extraction_slot(file_id, user.id, settings)
+    claimed = await _claim_pooled_extraction_slot(file_id, user.id, settings)
     if not claimed:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="FREE_EXTRACTION_BUSY",
         )
-    detached = _build_free_extraction_job(
+    detached = _build_pooled_extraction_job(
         file_id=file_id,
         document_id=document_id,
         storage_key=storage_key,
@@ -884,7 +884,7 @@ async def retry_free_extraction(
     # Best-effort sibling: rasterize PDF pages so the mobile (pdfjs-free) viewer
     # can render this drawing. Never blocks/fails the file.
     if ext == ".pdf":
-        await _dispatch_free_pages_rasterization(
+        await _dispatch_pooled_pages_rasterization(
             file_id=file_id,
             document_id=document_id,
             storage_key=storage_key,
@@ -897,12 +897,12 @@ async def retry_free_extraction(
     "/projects/{project_id}/documents/{document_id}/files/{file_id}/restore",
     response_model=DocumentRead,
 )
-async def restore_free_version(
+async def restore_pooled_version(
     project_id: UUID,
     document_id: UUID,
     file_id: UUID,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
 ) -> DocumentRead:
     """Make an older version the current head (F7). Repoints head_file_id; no
     bytes copied, no new row. Source must be ready + extraction-succeeded and not
@@ -928,7 +928,7 @@ async def restore_free_version(
         .scalars()
         .all()
     )
-    if source.id == _resolve_free_head(document, ready_versions):
+    if source.id == _resolve_pooled_head(document, ready_versions):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="VERSION_ALREADY_HEAD"
         )
@@ -945,7 +945,7 @@ async def restore_free_version(
 # ---------------------------------------------------------------------------
 
 
-async def _presign_free_bundle(
+async def _presign_pooled_bundle(
     f: PooledProjectFile, storage: StorageBackend
 ) -> ViewerBundleResponse:
     async def _get(key: str | None, name: str) -> str | None:
@@ -993,12 +993,12 @@ async def _presign_free_bundle(
     "/projects/{project_id}/documents/{document_id}/files/{file_id}/viewer-bundle",
     response_model=ViewerBundleResponse,
 )
-async def free_file_viewer_bundle(
+async def pooled_file_viewer_bundle(
     project_id: UUID,
     document_id: UUID,
     file_id: UUID,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
     storage: StorageBackend = Depends(get_storage),
 ) -> ViewerBundleResponse:
     document = await _load_accessible_document_or_404(session, project_id, document_id)
@@ -1008,17 +1008,17 @@ async def free_file_viewer_bundle(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="FREE_NOT_READY")
     # Stamp last-viewed on the container so the idle reaper doesn't reap it.
     document.last_viewed_at = func.now()
-    return await _presign_free_bundle(row, storage)
+    return await _presign_pooled_bundle(row, storage)
 
 
 @router.get(
     "/projects/{project_id}/viewer-bundle",
     response_model=ProjectViewerManifestResponse,
 )
-async def free_project_viewer_bundle(
+async def pooled_project_viewer_bundle(
     project_id: UUID,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
     storage: StorageBackend = Depends(get_storage),
 ) -> ProjectViewerManifestResponse:
     """Federated manifest: the head ready, extraction-succeeded version of every
@@ -1065,13 +1065,13 @@ async def free_project_viewer_bundle(
     chosen: list[tuple[PooledDocument, PooledProjectFile]] = []
     for d in documents:
         group = rows_by_doc.get(d.id, [])
-        head_id = _resolve_free_head(d, group)
+        head_id = _resolve_pooled_head(d, group)
         head = next((r for r in group if r.id == head_id), None)
         if head is not None:
             chosen.append((d, head))
     entries: list[ProjectViewerDocumentEntry] = []
     for d, r in chosen:
-        bundle = await _presign_free_bundle(r, storage)
+        bundle = await _presign_pooled_bundle(r, storage)
         entries.append(
             ProjectViewerDocumentEntry(
                 file_id=r.id,
@@ -1167,18 +1167,18 @@ async def _attach_links_to_snag(
     response_model=FindingRead,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_free_finding(
+async def create_pooled_finding(
     document_id: UUID,
     payload: PooledFindingCreate,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
 ) -> FindingRead:
     if payload.severity not in POOLED_FINDING_SEVERITIES:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="VALIDATION_ERROR"
         )
     document = await _load_accessible_document_by_id_or_404(session, document_id)
-    require_free_write_role(await resolve_free_document_role(session, document, user.id))
+    require_pooled_write_role(await resolve_pooled_document_role(session, document, user.id))
     await assert_free_account_not_expired(user)
     if payload.assigned_to_user_id is not None:
         await assert_assignee_is_participant(
@@ -1211,14 +1211,14 @@ async def create_free_finding(
         await session.flush()
     # Eager-load the links so `photo_ids` reads them in-memory (no async lazy-load).
     await session.refresh(snag, attribute_names=["attachment_links"])
-    return _free_finding_to_finding(snag, document.pooled_project_id, include_photos=True)
+    return _pooled_finding_to_finding(snag, document.pooled_project_id, include_photos=True)
 
 
 @router.get("/documents/{document_id}/findings", response_model=list[FindingRead])
 async def list_pooled_findings(
     document_id: UUID,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
 ) -> list[FindingRead]:
     document = await _load_accessible_document_by_id_or_404(session, document_id)
     rows = (
@@ -1230,16 +1230,16 @@ async def list_pooled_findings(
         )
     ).scalars().all()
     return [
-        _free_finding_to_finding(s, document.pooled_project_id, include_photos=True)
+        _pooled_finding_to_finding(s, document.pooled_project_id, include_photos=True)
         for s in rows
     ]
 
 
 @router.get("/findings/{finding_id}", response_model=FindingRead)
-async def get_free_finding(
+async def get_pooled_finding(
     finding_id: UUID,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
 ) -> FindingRead:
     """Single free snag (mobile `useFinding` + offline 422-conflict refetch). RLS
     scopes visibility to participants; 404 otherwise."""
@@ -1251,19 +1251,19 @@ async def get_free_finding(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="FREE_DOCUMENT_NOT_FOUND"
         )
-    return _free_finding_to_finding(snag, project_id, include_photos=True)
+    return _pooled_finding_to_finding(snag, project_id, include_photos=True)
 
 
 @router.patch("/findings/{finding_id}", response_model=FindingRead)
-async def update_free_finding(
+async def update_pooled_finding(
     finding_id: UUID,
     payload: PooledFindingUpdate,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
 ) -> FindingRead:
     snag = await _load_accessible_snag_or_404(session, finding_id)
     document = await _load_accessible_document_by_id_or_404(session, snag.pooled_document_id)
-    require_free_write_role(await resolve_free_document_role(session, document, user.id))
+    require_pooled_write_role(await resolve_pooled_document_role(session, document, user.id))
     await assert_free_account_not_expired(user)
 
     # exclude_unset distinguishes an OMITTED field (leave unchanged) from an
@@ -1315,18 +1315,18 @@ async def update_free_finding(
     if links_changed:
         refresh_attrs.append("attachment_links")
     await session.refresh(snag, attribute_names=refresh_attrs)
-    return _free_finding_to_finding(snag, document.pooled_project_id, include_photos=True)
+    return _pooled_finding_to_finding(snag, document.pooled_project_id, include_photos=True)
 
 
 @router.delete("/findings/{finding_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_free_finding(
+async def delete_pooled_finding(
     finding_id: UUID,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
 ) -> None:
     snag = await _load_accessible_snag_or_404(session, finding_id)
     document = await _load_accessible_document_by_id_or_404(session, snag.pooled_document_id)
-    require_free_write_role(await resolve_free_document_role(session, document, user.id))
+    require_pooled_write_role(await resolve_pooled_document_role(session, document, user.id))
     await session.delete(snag)
 
 
@@ -1336,7 +1336,7 @@ async def delete_free_finding(
 
 
 @internal_router.post("/free-callback", status_code=status.HTTP_200_OK)
-async def free_extraction_callback(
+async def pooled_extraction_callback(
     payload: PooledCallbackRequest,
     _: None = Depends(require_worker_secret),
 ) -> dict[str, bool]:
@@ -1367,7 +1367,7 @@ async def free_extraction_callback(
             # free/<owner>/<document>/<file>/, reconstructed here from trusted row
             # columns. The owner check stays as the cross-user boundary; the
             # file-prefix check adds the cross-file boundary within the owner.
-            file_prefix = f"{free_key_prefix(owner)}{row.pooled_document_id}/{row.id}/"
+            file_prefix = f"{pooled_key_prefix(owner)}{row.pooled_document_id}/{row.id}/"
             for key in (
                 payload.fragments_key,
                 payload.metadata_key,
@@ -1376,7 +1376,7 @@ async def free_extraction_callback(
                 payload.floor_plans_key,
                 payload.geometry_key,
             ):
-                assert_free_key_scoped(key, owner)
+                assert_pooled_key_scoped(key, owner)
                 assert_key_scoped(key, file_prefix, detail="INVALID_FREE_STORAGE_KEY")
             row.fragments_storage_key = payload.fragments_key
             row.metadata_storage_key = payload.metadata_key
@@ -1434,12 +1434,12 @@ async def free_extraction_callback(
             }
 
     if notify is not None:
-        await emit_free_job_notification(**notify)  # type: ignore[arg-type]
+        await emit_pooled_job_notification(**notify)  # type: ignore[arg-type]
     return {"ok": True}
 
 
 @internal_router.post("/free-pages-callback", status_code=status.HTTP_200_OK)
-async def free_pages_rasterization_callback(
+async def pooled_pages_rasterization_callback(
     payload: PooledPagesCallbackRequest,
     _: None = Depends(require_worker_secret),
 ) -> dict[str, bool]:
@@ -1457,10 +1457,10 @@ async def free_pages_rasterization_callback(
         row = await session.get(PooledProjectFile, payload.file_id, with_for_update=True)
         if row is None:
             return {"ok": True}  # file gone — nothing to stamp
-        assert_free_key_scoped(payload.pdf_pages_key, row.owner_user_id)
+        assert_pooled_key_scoped(payload.pdf_pages_key, row.owner_user_id)
         assert_key_scoped(
             payload.pdf_pages_key,
-            f"{free_key_prefix(row.owner_user_id)}{row.pooled_document_id}/{row.id}/",
+            f"{pooled_key_prefix(row.owner_user_id)}{row.pooled_document_id}/{row.id}/",
             detail="INVALID_FREE_STORAGE_KEY",
         )
         row.pdf_pages_storage_key = payload.pdf_pages_key
@@ -1590,14 +1590,14 @@ async def _load_accessible_snag_or_404(
 async def _reload_file(
     user_id: UUID, document_id: UUID, file_id: UUID
 ) -> ProjectFileRead:
-    async with open_free_session(user_id) as session:
+    async with open_pooled_session(user_id) as session:
         document = await _load_accessible_document_by_id_or_404(session, document_id)
         row = await _load_owned_file_or_404(session, document_id, file_id, user_id)
         return _file_to_read(row, document.pooled_project_id)
 
 
 async def _set_file_rejected(user_id: UUID, file_id: UUID, reason: str) -> None:
-    async with open_free_session(user_id) as session:
+    async with open_pooled_session(user_id) as session:
         await session.execute(
             update(PooledProjectFile)
             .where(
@@ -1611,7 +1611,7 @@ async def _set_file_rejected(user_id: UUID, file_id: UUID, reason: str) -> None:
 async def _set_extraction_failed(file_id: UUID, user_id: UUID, error: str) -> None:
     # Superuser session (RLS-bypassed) — the owner_user_id predicate is the only
     # structural guard, so it MUST be present (parity with _set_file_rejected /
-    # _claim_free_extraction_slot). Without it a stray file_id would flip an
+    # _claim_pooled_extraction_slot). Without it a stray file_id would flip an
     # arbitrary user's row to failed.
     async with get_session_maker()() as session, session.begin():
         await session.execute(
@@ -1624,7 +1624,7 @@ async def _set_extraction_failed(file_id: UUID, user_id: UUID, error: str) -> No
         )
 
 
-async def _claim_free_extraction_slot(
+async def _claim_pooled_extraction_slot(
     file_id: UUID, user_id: UUID, settings: Settings
 ) -> bool:
     """Atomically check the global + per-user free-extraction caps and claim a
@@ -1643,7 +1643,7 @@ async def _claim_free_extraction_slot(
                 .where(PooledProjectFile.extraction_status.in_(_ACTIVE_EXTRACTION))
             )
         ) or 0
-        if global_active >= settings.free_extraction_concurrency_global:
+        if global_active >= settings.pooled_extraction_concurrency_global:
             return False
         user_active = (
             await session.scalar(
@@ -1655,7 +1655,7 @@ async def _claim_free_extraction_slot(
                 )
             )
         ) or 0
-        if user_active >= settings.free_extraction_concurrency_per_user:
+        if user_active >= settings.pooled_extraction_concurrency_per_user:
             return False
         await session.execute(
             update(PooledProjectFile)

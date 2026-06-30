@@ -53,25 +53,25 @@ from bimdossier_api.models.project_file import (
 )
 from bimdossier_api.models.user import User
 from bimdossier_api.storage import StorageBackend, get_storage
-from bimdossier_api.storage.scoping import assert_free_key_scoped
+from bimdossier_api.storage.scoping import assert_pooled_key_scoped
 from bimdossier_api.tenancy import open_tenant_session, require_active_organization
 
 router = APIRouter(tags=["free-conversion"])
 
 
 
-class ImportFreeModelRequest(BaseModel):
+class ImportPooledModelRequest(BaseModel):
     # The free container (PooledDocument) to import; its HEAD version is copied.
     pooled_document_id: UUID
 
 
-class ImportFreeModelResponse(BaseModel):
+class ImportPooledModelResponse(BaseModel):
     document_id: UUID
     file_id: UUID
     findings_created: int
 
 
-def _map_free_finding_to_finding(
+def _map_pooled_finding_to_finding(
     snag: PooledFinding,
     *,
     project_id: UUID,
@@ -124,17 +124,17 @@ def _map_free_finding_to_finding(
 
 @router.post(
     "/projects/{project_id}/import-free-model",
-    response_model=ImportFreeModelResponse,
+    response_model=ImportPooledModelResponse,
 )
-async def import_free_model(
+async def import_pooled_model(
     project_id: UUID,
-    payload: ImportFreeModelRequest,
+    payload: ImportPooledModelRequest,
     request: Request,
     user: User = Depends(current_verified_user),
     active_org_id: UUID = Depends(require_active_organization),
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
-) -> ImportFreeModelResponse:
+) -> ImportPooledModelResponse:
     schema: str = request.state.active_schema
     # Pre-mint the IDs so the destination key is known before any DB write; the
     # S3 copy is the last I/O before commit so a copy failure rolls the rows back
@@ -197,7 +197,7 @@ async def import_free_model(
             )
         if free.converted_to_file_id is not None:
             # Already imported — idempotent no-op.
-            return ImportFreeModelResponse(
+            return ImportPooledModelResponse(
                 document_id=document_id,
                 file_id=free.converted_to_file_id,
                 findings_created=0,
@@ -270,7 +270,7 @@ async def import_free_model(
         ).scalars().all()
         for snag in snags:
             session.add(
-                _map_free_finding_to_finding(
+                _map_pooled_finding_to_finding(
                     snag,
                     project_id=project.id,
                     document_id=document_id,
@@ -291,7 +291,7 @@ async def import_free_model(
         # it crosses into the tenant bucket prefix — this is the one place a pooled
         # free key is copied into a silo, so it goes through the storage/scoping.py
         # choke-point (defense-in-depth over the owner-scoped RLS read of `free`).
-        assert_free_key_scoped(free.storage_key, user.id)
+        assert_pooled_key_scoped(free.storage_key, user.id)
         await storage.copy_object(free.storage_key, new_key)
         findings_created = len(snags)
 
@@ -310,7 +310,7 @@ async def import_free_model(
             status_code=status.HTTP_502_BAD_GATEWAY, detail="PROCESSOR_UNREACHABLE"
         ) from exc
 
-    return ImportFreeModelResponse(
+    return ImportPooledModelResponse(
         document_id=document_id,
         file_id=file_id,
         findings_created=findings_created,

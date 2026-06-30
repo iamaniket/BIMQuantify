@@ -74,7 +74,7 @@ def test_free_tier_disabled_skips_free_checks() -> None:
             "deploy_region": "prod",
             **_SECURE_OVERRIDES,
             "free_tier_enabled": False,
-            "free_extraction_concurrency_global": 100000,
+            "pooled_extraction_concurrency_global": 100000,
             "free_max_documents_per_user": 0,
         }
     )
@@ -87,11 +87,11 @@ def test_free_tier_enabled_flags_unbounded_global_cap() -> None:
             "deploy_region": "prod",
             **_SECURE_OVERRIDES,
             "free_tier_enabled": True,
-            "free_extraction_concurrency_global": 100000,
+            "pooled_extraction_concurrency_global": 100000,
         }
     )
     joined = "\n".join(validate_production_config(settings))
-    assert "FREE_EXTRACTION_CONCURRENCY_GLOBAL" in joined
+    assert "POOLED_EXTRACTION_CONCURRENCY_GLOBAL" in joined
 
 
 def test_free_tier_enabled_flags_zero_caps() -> None:
@@ -100,13 +100,13 @@ def test_free_tier_enabled_flags_zero_caps() -> None:
             "deploy_region": "prod",
             **_SECURE_OVERRIDES,
             "free_tier_enabled": True,
-            "free_extraction_concurrency_global": 0,
+            "pooled_extraction_concurrency_global": 0,
             "free_max_documents_per_user": 0,
             "free_upload_max_bytes": 0,
         }
     )
     joined = "\n".join(validate_production_config(settings))
-    assert "FREE_EXTRACTION_CONCURRENCY_GLOBAL" in joined
+    assert "POOLED_EXTRACTION_CONCURRENCY_GLOBAL" in joined
     assert "FREE_MAX_MODELS_PER_USER" in joined
     assert "FREE_UPLOAD_MAX_BYTES" in joined
 
@@ -117,7 +117,7 @@ def test_free_tier_enabled_with_sane_caps_passes() -> None:
             "deploy_region": "prod",
             **_SECURE_OVERRIDES,
             "free_tier_enabled": True,
-            "free_extraction_concurrency_global": 1,
+            "pooled_extraction_concurrency_global": 1,
             "free_max_documents_per_user": 5,
             "free_upload_max_bytes": 250 * 1024 * 1024,
         }

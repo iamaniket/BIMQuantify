@@ -150,7 +150,7 @@ async def get_project_viewer_bundle(
         # project_files.access). The free helper reads the pooled free_* tables.
         from bimdossier_api.routers import pooled_documents
 
-        return await pooled_documents.free_project_viewer_bundle(
+        return await pooled_documents.pooled_project_viewer_bundle(
             project_id=project_id, user=scope.user, session=session, storage=storage
         )
 

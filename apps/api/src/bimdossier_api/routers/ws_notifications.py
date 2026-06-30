@@ -267,7 +267,7 @@ async def ws_notifications(ws: WebSocket, token: str | None = Query(default=None
         manager.disconnect(ws, org_id)
 
 
-async def authenticate_ws_free_token(
+async def authenticate_ws_pooled_token(
     token: str,
     redis: Redis,
     session: AsyncSession,
@@ -279,7 +279,7 @@ async def authenticate_ws_free_token(
     per-JTI blocklist, the user row existing AND ``is_active``, and the per-user
     ``tokens_valid_after`` epoch — but DROPS the org-membership check (a free
     account has no org). No participation check is needed: a free socket only ever
-    subscribes to its own ``notifications:free:user:<uid>`` channel, so it can never
+    subscribes to its own ``notifications:pooled:user:<uid>`` channel, so it can never
     receive another user's notification regardless of project membership.
     """
     try:
@@ -304,9 +304,9 @@ async def authenticate_ws_free_token(
 async def ws_pooled_notifications(ws: WebSocket, token: str | None = Query(default=None)) -> None:
     """Free-tier notification stream — per-user channel, no org.
 
-    Mirrors ``ws_notifications`` but authenticates via ``authenticate_ws_free_token``
+    Mirrors ``ws_notifications`` but authenticates via ``authenticate_ws_pooled_token``
     (no org membership) and registers on the manager's per-user free index so a push
-    on ``notifications:free:user:<uid>`` reaches only this user's sockets.
+    on ``notifications:pooled:user:<uid>`` reaches only this user's sockets.
     """
     auth_token, accept_subprotocol = _resolve_ws_token(ws.scope.get("subprotocols", []), token)
     if auth_token is None:
@@ -315,7 +315,7 @@ async def ws_pooled_notifications(ws: WebSocket, token: str | None = Query(defau
 
     redis = get_redis()
     async with get_session_maker()() as session:
-        result = await authenticate_ws_free_token(auth_token, redis, session)
+        result = await authenticate_ws_pooled_token(auth_token, redis, session)
 
     if isinstance(result, str):
         await ws.close(code=WS_CLOSE_AUTH_FAILED, reason=result)
@@ -324,7 +324,7 @@ async def ws_pooled_notifications(ws: WebSocket, token: str | None = Query(defau
 
     settings = get_settings()
     manager = get_manager()
-    accepted = await manager.connect_free(
+    accepted = await manager.connect_pooled(
         ws,
         user.id,
         max_per_user=settings.ws_max_connections_per_user,
@@ -347,7 +347,7 @@ async def ws_pooled_notifications(ws: WebSocket, token: str | None = Query(defau
     revalidate_task = asyncio.create_task(
         _revalidation_loop(
             auth_token,
-            authenticate=authenticate_ws_free_token,
+            authenticate=authenticate_ws_pooled_token,
             close=safe_close,
             interval_seconds=settings.ws_revalidate_interval_seconds,
             max_lifetime_seconds=settings.ws_max_lifetime_seconds,
@@ -360,4 +360,4 @@ async def ws_pooled_notifications(ws: WebSocket, token: str | None = Query(defau
         drain_task.cancel()
         revalidate_task.cancel()
         await asyncio.gather(drain_task, revalidate_task, return_exceptions=True)
-        manager.disconnect_free(ws, user.id)
+        manager.disconnect_pooled(ws, user.id)

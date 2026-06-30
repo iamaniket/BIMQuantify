@@ -26,9 +26,9 @@ from bimdossier_api.data_lifecycle import (
 )
 from bimdossier_api.db import get_engine
 from bimdossier_api.deadlines.reminder_engine import DeadlineReminderSweeper
-from bimdossier_api.free_reconcile import (
-    FreeExtractionReconcileSweeper,
-    IdleFreeContainerSweeper,
+from bimdossier_api.pooled_reconcile import (
+    PooledExtractionReconcileSweeper,
+    IdlePooledContainerSweeper,
 )
 from bimdossier_api.i18n.http_errors import (
     generic_exception_handler,
@@ -86,12 +86,12 @@ from bimdossier_api.routers.documents import router as documents_router
 from bimdossier_api.routers.element_inspections import router as element_inspections_router
 from bimdossier_api.routers.finding import router as finding_router
 from bimdossier_api.routers.finding_comment import router as finding_comment_router
-from bimdossier_api.routers.free_account import router as free_account_router
-from bimdossier_api.routers.free_activity import router as free_activity_router
+from bimdossier_api.routers.pooled_account import router as pooled_account_router
+from bimdossier_api.routers.pooled_activity import router as pooled_activity_router
 from bimdossier_api.routers.pooled_aligned_sheets import router as pooled_aligned_sheets_router
 from bimdossier_api.routers.pooled_attachments import router as pooled_attachments_router
-from bimdossier_api.routers.free_conversion import router as free_conversion_router
-from bimdossier_api.routers.pooled_documents import internal_router as free_internal_router
+from bimdossier_api.routers.pooled_conversion import router as pooled_conversion_router
+from bimdossier_api.routers.pooled_documents import internal_router as pooled_internal_router
 from bimdossier_api.routers.pooled_documents import router as pooled_documents_router
 from bimdossier_api.routers.pooled_projects import router as pooled_projects_router
 from bimdossier_api.routers.health import router as health_router
@@ -244,16 +244,16 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # Free-tier extractions have no tenant Job row, so JobReconcileSweeper can't
     # see them — this is their reconciliation backstop (reuses the same interval +
     # stuck timeout).
-    free_reconcile_sweeper = FreeExtractionReconcileSweeper(
+    pooled_reconcile_sweeper = PooledExtractionReconcileSweeper(
         settings.job_reconcile_interval_minutes,
         settings.job_stuck_timeout_minutes,
     )
-    free_reconcile_sweeper.start()
-    free_idle_sweeper = IdleFreeContainerSweeper(
-        settings.free_idle_sweep_interval_minutes,
+    pooled_reconcile_sweeper.start()
+    pooled_idle_sweeper = IdlePooledContainerSweeper(
+        settings.pooled_idle_sweep_interval_minutes,
         settings.pooled_document_idle_ttl_days,
     )
-    free_idle_sweeper.start()
+    pooled_idle_sweeper.start()
     # Data-lifecycle reapers (L11): abandoned pending uploads + expired/revoked
     # unused capture links.
     pending_upload_sweeper = PendingUploadSweeper(
@@ -275,8 +275,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         await close_http_client()
         await capture_link_sweeper.stop()
         await pending_upload_sweeper.stop()
-        await free_idle_sweeper.stop()
-        await free_reconcile_sweeper.stop()
+        await pooled_idle_sweeper.stop()
+        await pooled_reconcile_sweeper.stop()
         await job_reconcile_sweeper.stop()
         await deadline_sweeper.stop()
         await invitation_sweeper.stop()
@@ -445,14 +445,14 @@ def create_app() -> FastAPI:
     app.include_router(project_files_router)
     app.include_router(project_viewer_router)
     app.include_router(jobs_internal_router)
-    app.include_router(free_account_router)
-    app.include_router(free_activity_router)
+    app.include_router(pooled_account_router)
+    app.include_router(pooled_activity_router)
     app.include_router(pooled_documents_router)
     app.include_router(pooled_projects_router)
     app.include_router(pooled_aligned_sheets_router)
     app.include_router(pooled_attachments_router)
-    app.include_router(free_internal_router)
-    app.include_router(free_conversion_router)
+    app.include_router(pooled_internal_router)
+    app.include_router(pooled_conversion_router)
     app.include_router(compliance_router)
     app.include_router(compliance_project_router)
     app.include_router(deadlines_router)

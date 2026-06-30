@@ -1,7 +1,7 @@
 """Tests for the free-tier activity timeline (derived, card-only).
 
 The free wedge keeps no `audit_log`, so the trend is SYNTHESIZED from existing
-free-table timestamps (`routers/free_activity.compute_free_activity_timeline`).
+free-table timestamps (`routers/free_activity.compute_pooled_activity_timeline`).
 These tests assert the derived buckets reflect real events, that the participant
 gate + kill-switch hold, and that an empty project yields no buckets.
 """

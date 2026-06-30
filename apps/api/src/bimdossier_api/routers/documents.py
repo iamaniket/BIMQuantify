@@ -98,7 +98,7 @@ async def create_document(
 ) -> Document | DocumentRead:
     if scope.is_free:
         require_free_tier_enabled()
-        return await pooled_documents.create_free_document(
+        return await pooled_documents.create_pooled_document(
             session=session,
             user=scope.user,
             project_id=project_id,
@@ -164,7 +164,7 @@ async def list_documents(
         require_free_tier_enabled()
         # Free always returns the with-versions shape (the free client never asks
         # for the light list); status/discipline/paging filters are paid-only.
-        docs = await pooled_documents.list_free_project_documents(session, project_id)
+        docs = await pooled_documents.list_pooled_project_documents(session, project_id)
         response.headers["X-Total-Count"] = str(len(docs))
         return [d.model_dump() for d in docs]
 
@@ -223,7 +223,7 @@ async def get_document(
 ) -> dict[str, object]:
     if scope.is_free:
         require_free_tier_enabled()
-        doc = await pooled_documents.get_free_document(session, project_id, document_id)
+        doc = await pooled_documents.get_pooled_document(session, project_id, document_id)
         return doc.model_dump()
 
     user = scope.user
@@ -274,7 +274,7 @@ async def update_document(
 ) -> Document | DocumentRead:
     if scope.is_free:
         require_free_tier_enabled()
-        return await pooled_documents.update_free_document(
+        return await pooled_documents.update_pooled_document(
             session=session,
             user=scope.user,
             project_id=project_id,
@@ -411,7 +411,7 @@ async def delete_document(
 ) -> Response:
     if scope.is_free:
         require_free_tier_enabled()
-        await pooled_documents.delete_free_document(
+        await pooled_documents.delete_pooled_document(
             user=scope.user,
             project_id=project_id,
             document_id=document_id,

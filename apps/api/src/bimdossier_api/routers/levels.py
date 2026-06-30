@@ -42,8 +42,8 @@ from bimdossier_api.routers.free_access import (
     require_free_tier_enabled,
 )
 from bimdossier_api.routers.pooled_projects import (
-    _load_accessible_free_project_or_404,
-    _load_free_project_or_404,
+    _load_accessible_pooled_project_or_404,
+    _load_pooled_project_or_404,
 )
 from bimdossier_api.schemas.level import LevelCreate, LevelRead, LevelUpdate
 from bimdossier_api.tenancy import ScopeContext, get_scope_context, get_scoped_session
@@ -76,7 +76,7 @@ async def _load_level_or_404(session: AsyncSession, project_id: UUID, level_id: 
 # ---------------------------------------------------------------------------
 
 
-def _free_to_read(level: PooledLevel) -> LevelRead:
+def _pooled_to_read(level: PooledLevel) -> LevelRead:
     """Adapt a pooled PooledLevel to the paid LevelRead shape (rename
     ``pooled_project_id`` → ``project_id``)."""
     return LevelRead(
@@ -91,7 +91,7 @@ def _free_to_read(level: PooledLevel) -> LevelRead:
     )
 
 
-async def _load_free_level_or_404(
+async def _load_pooled_level_or_404(
     session: AsyncSession, project_id: UUID, level_id: UUID
 ) -> PooledLevel:
     level = (
@@ -123,7 +123,7 @@ async def create_level(
 ) -> LevelRead | Level:
     if scope.is_free:
         require_free_tier_enabled()
-        free_project = await _load_free_project_or_404(
+        free_project = await _load_pooled_project_or_404(
             session, project_id, scope.user.id
         )  # owner-only
         await assert_free_account_not_expired(scope.user)
@@ -142,7 +142,7 @@ async def create_level(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="LEVEL_NAME_CONFLICT"
             ) from exc
-        return _free_to_read(free_level)
+        return _pooled_to_read(free_level)
 
     user = scope.user
     project = await load_project_or_404(session, project_id)
@@ -190,7 +190,7 @@ async def list_levels(
     # as the stable tiebreaker — same ordering for both tiers.
     if scope.is_free:
         require_free_tier_enabled()
-        await _load_accessible_free_project_or_404(session, project_id)  # owner-or-member
+        await _load_accessible_pooled_project_or_404(session, project_id)  # owner-or-member
         rows = list(
             (
                 await session.execute(
@@ -210,7 +210,7 @@ async def list_levels(
             .all()
         )
         set_total_count(response, len(rows))
-        return [_free_to_read(r) for r in rows]
+        return [_pooled_to_read(r) for r in rows]
 
     user = scope.user
     # Non-free ⇒ get_scoped_session already verified the org membership, so org_id
@@ -238,9 +238,9 @@ async def update_level(
 ) -> LevelRead | Level:
     if scope.is_free:
         require_free_tier_enabled()
-        await _load_free_project_or_404(session, project_id, scope.user.id)  # owner-only
+        await _load_pooled_project_or_404(session, project_id, scope.user.id)  # owner-only
         await assert_free_account_not_expired(scope.user)
-        free_level = await _load_free_level_or_404(session, project_id, level_id)
+        free_level = await _load_pooled_level_or_404(session, project_id, level_id)
         for field, value in payload.model_dump(exclude_unset=True).items():
             setattr(free_level, field, value)
         try:
@@ -250,9 +250,9 @@ async def update_level(
                 status_code=status.HTTP_409_CONFLICT, detail="LEVEL_NAME_CONFLICT"
             ) from exc
         # Refresh so the onupdate-expired updated_at is re-fetched (avoids a
-        # MissingGreenlet lazy-load in _free_to_read).
+        # MissingGreenlet lazy-load in _pooled_to_read).
         await session.refresh(free_level)
-        return _free_to_read(free_level)
+        return _pooled_to_read(free_level)
 
     user = scope.user
     project = await load_project_or_404(session, project_id)
@@ -297,8 +297,8 @@ async def delete_level(
 ) -> Response:
     if scope.is_free:
         require_free_tier_enabled()
-        await _load_free_project_or_404(session, project_id, scope.user.id)  # owner-only
-        free_level = await _load_free_level_or_404(session, project_id, level_id)
+        await _load_pooled_project_or_404(session, project_id, scope.user.id)  # owner-only
+        free_level = await _load_pooled_level_or_404(session, project_id, level_id)
         # Hard delete (mirrors paid): pooled_documents.level_id is SET NULL, so
         # assigned drawings revert to Unassigned.
         await session.delete(free_level)

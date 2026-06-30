@@ -410,7 +410,7 @@ def disable_pooled_aligned_sheet_rls_statements() -> list[str]:
 # `public.pooled_notifications` (+ `pooled_notification_user_state`) back the free
 # bell. Rows are PER-RECIPIENT, so isolation is a direct equality on the user GUC
 # — no membership join (unlike the owner-OR-member free tables above). Reads run as
-# `bim_app` via `get_free_session` with only `app.current_user_id` set; the
+# `bim_app` via `get_pooled_session` with only `app.current_user_id` set; the
 # emission path runs as the superuser (RLS-bypassing) to fan out to other users.
 # ---------------------------------------------------------------------------
 

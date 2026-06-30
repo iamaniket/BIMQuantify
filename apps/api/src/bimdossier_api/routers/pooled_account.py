@@ -21,7 +21,7 @@ from bimdossier_api.free_usage import compute_free_usage
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.free_access import require_free_tier_enabled
 from bimdossier_api.schemas.admin import FreeAccountLimits, FreeUserUsage
-from bimdossier_api.tenancy import get_free_session
+from bimdossier_api.tenancy import get_pooled_session
 
 router = APIRouter(
     prefix="/free",
@@ -31,9 +31,9 @@ router = APIRouter(
 
 
 @router.get("/account/usage", response_model=FreeUserUsage)
-async def get_free_account_usage(
+async def get_pooled_account_usage(
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
 ) -> FreeUserUsage:
     """The caller's own free-tier usage vs. their EFFECTIVE caps (per-user
     override ?? env default). Zeros for an account that has created nothing yet —
@@ -46,7 +46,7 @@ async def get_free_account_usage(
 
 
 @router.get("/account/limits", response_model=FreeAccountLimits)
-async def get_free_account_limits(
+async def get_pooled_account_limits(
     user: User = Depends(current_verified_user),
 ) -> FreeAccountLimits:
     """The caller's own effective free caps + trial countdown — drives the portal

@@ -3,7 +3,7 @@
 The free tier has two planes:
 
   * **Data plane** (`pooled_projects` / `free_models` / `pooled_findings`) — served via
-    `get_free_session` (ROLE bim_app, only `app.current_user_id` set). Owner-OR-
+    `get_pooled_session` (ROLE bim_app, only `app.current_user_id` set). Owner-OR-
     member RLS (see `_rls_sql.enable_pooled_member_rls_statements`) does the
     isolation. The role helpers below run INSIDE that session and rely on RLS to
     scope what they can see.
@@ -13,17 +13,17 @@ The free tier has two planes:
     session's RLS hides (there is no `app.current_org_id` for an org-less
     account, so the org-keyed policies match zero rows). These MUST run on a
     SUPERUSER session (RLS-bypassing) with ownership validated by hand — the same
-    pattern the org-invite flow and `_claim_free_extraction_slot` already use.
+    pattern the org-invite flow and `_claim_pooled_extraction_slot` already use.
 
 Both routers (`pooled_projects`, `free_viewer`) import from here.
 
 **HARD RULE — superuser free probes MUST carry an owner predicate.** Any query
 that runs on a SUPERUSER session over a pooled `free_*` table (i.e. NOT through
-`get_free_session` / `open_free_session`, so RLS is bypassed) MUST filter on
+`get_pooled_session` / `open_pooled_session`, so RLS is bypassed) MUST filter on
 `owner_user_id == <owner>` (or `user_id == <user>` for per-user tables). RLS is
 OFF on these sessions, so the hand-written predicate is the ONLY thing scoping the
 read to one user — drop it and the probe silently reads across every free user.
-`user_has_org_membership`, `free_owner_used_bytes`, `assert_assignee_is_participant`
+`user_has_org_membership`, `pooled_owner_used_bytes`, `assert_assignee_is_participant`
 and the `resolve_free_limits` probe all follow this; a new probe added in this
 style without the predicate is a cross-user leak. `tests/test_scope_isolation.py`
 guards the aggregate-byte probe against regression.
@@ -80,7 +80,7 @@ def require_free_tier_enabled() -> None:
         )
 
 
-async def assert_free_project_owned(
+async def assert_pooled_project_owned(
     session: AsyncSession, project_id: UUID, user_id: UUID
 ) -> None:
     """404 FREE_PROJECT_NOT_FOUND unless the caller OWNS the free project. Used by
@@ -117,7 +117,7 @@ async def user_has_org_membership(user_id: UUID) -> bool:
     return found is not None
 
 
-async def user_has_free_participation(
+async def user_has_pooled_participation(
     session: AsyncSession, user_id: UUID
 ) -> bool:
     """True if the user owns ≥1 free project OR is a member of ≥1 — drives the
@@ -189,7 +189,7 @@ async def assert_free_account_not_expired(user: User) -> None:
         )
 
 
-async def resolve_free_role(
+async def resolve_pooled_role(
     session: AsyncSession, project_id: UUID, user_id: UUID
 ) -> str | None:
     """The caller's role on a free project: 'owner' | 'editor' | 'viewer' | None.
@@ -214,7 +214,7 @@ async def resolve_free_role(
     return role
 
 
-async def resolve_free_document_role(
+async def resolve_pooled_document_role(
     session: AsyncSession, document: PooledDocument, user_id: UUID
 ) -> str | None:
     """The caller's role on the project a document (container) belongs to.
@@ -223,10 +223,10 @@ async def resolve_free_document_role(
     unlike the old ungrouped-model case — there is always a project to resolve."""
     if document.owner_user_id == user_id:
         return "owner"
-    return await resolve_free_role(session, document.pooled_project_id, user_id)
+    return await resolve_pooled_role(session, document.pooled_project_id, user_id)
 
 
-def require_free_write_role(role: str | None) -> None:
+def require_pooled_write_role(role: str | None) -> None:
     """403 FREE_FORBIDDEN unless the caller may write (owner or editor)."""
     if role not in _POOLED_WRITE_ROLES:
         raise HTTPException(
@@ -243,7 +243,7 @@ async def assert_assignee_is_participant(
     Runs on its own SUPERUSER session (RLS-bypassing): the request's free
     (bim_app) session only lets the caller see their OWN membership row, so it
     can't confirm that *another* user is a member. Same control-plane pattern as
-    `user_has_org_membership` / `_claim_free_extraction_slot`.
+    `user_has_org_membership` / `_claim_pooled_extraction_slot`.
     """
     async with get_session_maker()() as session, session.begin():
         owner_id = await session.scalar(
@@ -264,7 +264,7 @@ async def assert_assignee_is_participant(
         )
 
 
-async def count_free_members(session: AsyncSession, project_id: UUID) -> int:
+async def count_pooled_members(session: AsyncSession, project_id: UUID) -> int:
     """Number of INVITED members on a project (owner excluded)."""
     return (
         await session.scalar(
@@ -275,7 +275,7 @@ async def count_free_members(session: AsyncSession, project_id: UUID) -> int:
     ) or 0
 
 
-async def free_owner_used_bytes(session: AsyncSession, owner_id: UUID) -> int:
+async def pooled_owner_used_bytes(session: AsyncSession, owner_id: UUID) -> int:
     """Total active free storage footprint for an owner: model-file bytes +
     attachment (photo/evidence) bytes (FSL-1). The 1 GB aggregate cap is enforced
     against this combined sum so photos can't bypass the ceiling. Both sums are

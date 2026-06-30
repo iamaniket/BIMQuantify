@@ -4,7 +4,7 @@ The free wedge keeps free users as POOLED rows in `public`, never their own
 `org_<hex>` tenant schema. A free "project" is therefore NOT a tenant
 `models.project.Project` (which lives in `org_<hex>.projects`); it is a pooled
 row here, isolated by owner-keyed RLS (`app.current_user_id` GUC set by
-`get_free_session`), exactly like `pooled_documents`/`pooled_findings`.
+`get_pooled_session`), exactly like `pooled_documents`/`pooled_findings`.
 
 Columns deliberately mirror the paid `Project` (minus tenant-only concepts) so
 the row serializes to the SAME `Project` API shape — the portal renders free

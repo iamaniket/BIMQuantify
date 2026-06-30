@@ -1,6 +1,6 @@
 """Auth-decision tests for the free-tier notification WebSocket.
 
-Exercise the extracted `authenticate_ws_free_token` helper: it enforces the SAME
+Exercise the extracted `authenticate_ws_pooled_token` helper: it enforces the SAME
 token gates as the org path (JTI blocklist, user active, token epoch) but drops the
 org-membership check (a free account is org-less). Mirrors `test_ws_notifications`.
 """
@@ -14,7 +14,7 @@ from uuid import UUID
 from bimdossier_api.auth.tokens import decode_token_full
 from bimdossier_api.cache.blocklist import revoke_jti
 from bimdossier_api.models.user import User
-from bimdossier_api.routers.ws_notifications import authenticate_ws_free_token
+from bimdossier_api.routers.ws_notifications import authenticate_ws_pooled_token
 from tests.conftest import make_test_user
 
 if TYPE_CHECKING:
@@ -44,7 +44,7 @@ async def test_ws_free_auth_success_returns_user(
 ) -> None:
     uid, token = await _free_login(client, session_maker, "ws-free-ok@example.com")
     async with session_maker() as session:
-        result = await authenticate_ws_free_token(token, redis_client, session)
+        result = await authenticate_ws_pooled_token(token, redis_client, session)
     assert not isinstance(result, str), result
     assert str(result.id) == uid
 
@@ -62,7 +62,7 @@ async def test_ws_free_auth_rejects_token_predating_epoch(
         await session.commit()
 
     async with session_maker() as session:
-        result = await authenticate_ws_free_token(token, redis_client, session)
+        result = await authenticate_ws_pooled_token(token, redis_client, session)
     assert result == "token_revoked"
 
 
@@ -79,7 +79,7 @@ async def test_ws_free_auth_rejects_deactivated_user(
         await session.commit()
 
     async with session_maker() as session:
-        result = await authenticate_ws_free_token(token, redis_client, session)
+        result = await authenticate_ws_pooled_token(token, redis_client, session)
     assert result == "user_not_found"
 
 
@@ -94,7 +94,7 @@ async def test_ws_free_auth_rejects_revoked_jti(
     await revoke_jti(redis_client, decoded.jti, 60)
 
     async with session_maker() as session:
-        result = await authenticate_ws_free_token(token, redis_client, session)
+        result = await authenticate_ws_pooled_token(token, redis_client, session)
     assert result == "token_revoked"
 
 
@@ -103,5 +103,5 @@ async def test_ws_free_auth_rejects_invalid_token(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     async with session_maker() as session:
-        result = await authenticate_ws_free_token("not-a-jwt", redis_client, session)
+        result = await authenticate_ws_pooled_token("not-a-jwt", redis_client, session)
     assert result == "invalid_token"

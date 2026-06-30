@@ -5,12 +5,12 @@ The pooled analog of `routers.attachments` — a two-phase presigned upload
 the mobile snagging app so a free inspector can attach photos to a finding, and by
 the offline outbox (idempotency-key replay).
 
-Isolation: `get_free_session` (ROLE bim_app, only `app.current_user_id`) +
+Isolation: `get_pooled_session` (ROLE bim_app, only `app.current_user_id`) +
 owner-OR-member RLS on `pooled_attachments`. Objects live under the project owner's
 free key prefix (`free/<owner>/attachments/...`) in the default bucket (same as
 free models), so they inherit the free CORS config. Members (owner or editor) may
 upload evidence for a snag they file; viewers are read-only — gated by
-`require_free_write_role` (the editor/viewer split RLS doesn't express).
+`require_pooled_write_role` (the editor/viewer split RLS doesn't express).
 
 The finding→photo link is created by `routers.pooled_documents` (the snag create /
 update accepts `photo_ids` / `resolution_evidence_ids`), not here — the offline
@@ -39,20 +39,20 @@ from bimdossier_api.models.project_file import ATTACHMENT_ALLOWED_EXTENSIONS
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.free_access import (
     assert_free_account_not_expired,
-    free_owner_used_bytes,
+    pooled_owner_used_bytes,
     require_free_tier_enabled,
-    require_free_write_role,
-    resolve_free_role,
+    require_pooled_write_role,
+    resolve_pooled_role,
 )
-from bimdossier_api.schemas.free_attachment import (
+from bimdossier_api.schemas.pooled_attachment import (
     PooledAttachmentDownloadResponse,
     PooledAttachmentInitiateRequest,
     PooledAttachmentInitiateResponse,
     PooledAttachmentRead,
 )
 from bimdossier_api.storage import StorageBackend, get_storage, upload_service
-from bimdossier_api.storage.scoping import free_key_prefix
-from bimdossier_api.tenancy import get_free_session, open_free_session
+from bimdossier_api.storage.scoping import pooled_key_prefix
+from bimdossier_api.tenancy import get_pooled_session, open_pooled_session
 
 router = APIRouter(
     prefix="/free/projects/{project_id}/attachments",
@@ -75,8 +75,8 @@ async def _project_owner_for_write(session: AsyncSession, project_id: UUID, user
     )
     if owner_id is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FREE_PROJECT_NOT_FOUND")
-    role = "owner" if owner_id == user.id else await resolve_free_role(session, project_id, user.id)
-    require_free_write_role(role)
+    role = "owner" if owner_id == user.id else await resolve_pooled_role(session, project_id, user.id)
+    require_pooled_write_role(role)
     await assert_free_account_not_expired(user)
     return owner_id
 
@@ -107,11 +107,11 @@ async def _load_attachment_or_404(
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(FREE_UPLOAD_INITIATE_LIMITER)],
 )
-async def initiate_free_attachment_upload(
+async def initiate_pooled_attachment_upload(
     project_id: UUID,
     payload: PooledAttachmentInitiateRequest,
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
     idempotency_key: str | None = Depends(idempotency_key_header),
@@ -167,7 +167,7 @@ async def initiate_free_attachment_upload(
             if owner is not None
             else settings.free_storage_max_bytes
         )
-        used_bytes = await free_owner_used_bytes(probe, owner_id)
+        used_bytes = await pooled_owner_used_bytes(probe, owner_id)
     if used_bytes + payload.size_bytes > cap:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -175,7 +175,7 @@ async def initiate_free_attachment_upload(
         )
 
     attachment_id = uuid4()
-    storage_key = f"{free_key_prefix(owner_id)}attachments/{attachment_id}/source{ext}"
+    storage_key = f"{pooled_key_prefix(owner_id)}attachments/{attachment_id}/source{ext}"
     capture_meta = (
         payload.capture_metadata.model_dump(mode="json")
         if payload.capture_metadata is not None
@@ -219,7 +219,7 @@ async def initiate_free_attachment_upload(
 
 
 @router.post("/{attachment_id}/complete", response_model=PooledAttachmentRead)
-async def complete_free_attachment_upload(
+async def complete_pooled_attachment_upload(
     project_id: UUID,
     attachment_id: UUID,
     user: User = Depends(current_verified_user),
@@ -230,7 +230,7 @@ async def complete_free_attachment_upload(
     The S3 HEAD runs with NO DB connection held (phase B), the same multi-phase
     discipline as the free model `complete`."""
     # Phase A — load + write-gate + snapshot (short free session).
-    async with open_free_session(user.id) as session:
+    async with open_pooled_session(user.id) as session:
         await _project_owner_for_write(session, project_id, user)
         att = await _load_attachment_or_404(session, project_id, attachment_id)
         if att.status != "pending":
@@ -244,7 +244,7 @@ async def complete_free_attachment_upload(
     actual = await upload_service.head_verify_size(storage, storage_key)
 
     # Phase C — flip ready (or reject on size mismatch), then re-read.
-    async with open_free_session(user.id) as session:
+    async with open_pooled_session(user.id) as session:
         att = await _load_attachment_or_404(session, project_id, attachment_id)
         if actual != declared:
             att.status = "rejected"
@@ -262,12 +262,12 @@ async def complete_free_attachment_upload(
 
 
 @router.get("/{attachment_id}/download", response_model=PooledAttachmentDownloadResponse)
-async def download_free_attachment(
+async def download_pooled_attachment(
     project_id: UUID,
     attachment_id: UUID,
     disposition: Annotated[Literal["attachment", "inline"], Query()] = "inline",
     user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
+    session: AsyncSession = Depends(get_pooled_session),
     storage: StorageBackend = Depends(get_storage),
 ) -> PooledAttachmentDownloadResponse:
     att = await _load_attachment_or_404(session, project_id, attachment_id)

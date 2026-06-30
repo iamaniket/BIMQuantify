@@ -32,13 +32,13 @@ from bimdossier_api.models.pooled_project import PooledProject
 from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.free_access import (
-    free_owner_used_bytes,
+    pooled_owner_used_bytes,
     user_has_org_membership,
 )
 from bimdossier_api.routers.pooled_documents import PooledFindingCreate
 from bimdossier_api.tenancy import (
     get_scoped_session,
-    open_free_session,
+    open_pooled_session,
     open_tenant_session,
     schema_name_for,
 )
@@ -115,7 +115,7 @@ async def test_free_session_cannot_read_other_free_users_pooled_rows(
     assert snag.status_code == 201, snag.text
 
     # C's pooled session sees none of B's rows — RLS keys on app.current_user_id=C.
-    async with open_free_session(c_id) as s:
+    async with open_pooled_session(c_id) as s:
         n_proj = await s.scalar(select(func.count()).select_from(PooledProject))
         n_find = await s.scalar(select(func.count()).select_from(PooledFinding))
     assert n_proj == 0
@@ -214,7 +214,7 @@ async def test_free_owner_used_bytes_probe_is_owner_scoped(
     free_tier_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
-    """`free_owner_used_bytes` runs on a SUPERUSER session (RLS bypassed) and must
+    """`pooled_owner_used_bytes` runs on a SUPERUSER session (RLS bypassed) and must
     attribute storage only to its `owner_user_id` argument — drop that predicate
     and it would sum every user's bytes. Regression guard for the hard rule in
     `free_access.py`."""
@@ -242,10 +242,10 @@ async def test_free_owner_used_bytes_probe_is_owner_scoped(
         )
 
     async with session_maker() as s:
-        assert await free_owner_used_bytes(s, a_id) == 1234
+        assert await pooled_owner_used_bytes(s, a_id) == 1234
         # B owns nothing — if the owner predicate were dropped this would leak A's
         # 1234 bytes into B's usage total.
-        assert await free_owner_used_bytes(s, b_id) == 0
+        assert await pooled_owner_used_bytes(s, b_id) == 0
 
     # The org-membership probe is user-keyed too; both are org-less free accounts.
     assert (await user_has_org_membership(a_id)) is False
@@ -279,7 +279,7 @@ async def test_free_finding_owner_is_server_derived_not_client_supplied(
         headers=_auth(token_a),
     )
     assert resp.status_code == 201, resp.text
-    async with open_free_session(a_id) as s:
+    async with open_pooled_session(a_id) as s:
         owner = await s.scalar(
             select(PooledFinding.owner_user_id).where(
                 PooledFinding.id == UUID(resp.json()["id"])
@@ -303,7 +303,7 @@ async def test_bim_app_session_cannot_read_free_user_limits(
     REVOKEs it after the blanket test grant; migration 0002 REVOKEs it too)."""
     uid = await make_test_user(session_maker, email="h6@example.com", is_verified=True)
     with pytest.raises(ProgrammingError):
-        async with open_free_session(UUID(uid)) as s:
+        async with open_pooled_session(UUID(uid)) as s:
             await s.execute(text("SELECT count(*) FROM public.free_user_limits"))
 
 
@@ -333,7 +333,7 @@ def test_security_definer_helpers_pin_search_path() -> None:
 
 
 def test_tenancy_session_layer_never_commits_explicitly() -> None:
-    """`open_free_session` / `open_tenant_session` commit via the wrapping
+    """`open_pooled_session` / `open_tenant_session` commit via the wrapping
     `session.begin()`; an explicit `session.commit()` inside the tenancy layer would
     drop the SET LOCAL ROLE + search_path + GUCs and leak tenant context to the next
     pooled request (the classic SET-vs-SET-LOCAL pooling footgun)."""

@@ -1,7 +1,7 @@
 """Shared declarative mixins + helpers for the pooled free-tier tables (`public.free_*`).
 
 Every pooled free table denormalizes the row owner (`owner_user_id`, the RLS key
-fed by the `app.current_user_id` GUC that `get_free_session` sets) and most carry
+fed by the `app.current_user_id` GUC that `get_pooled_session` sets) and most carry
 the standard created/updated timestamps; several also build CHECK constraints from
 a value tuple derived from the paid enums. Each model used to re-declare all of
 this inline — the same `id` PK, the same owner FK, the same timestamp columns, and
