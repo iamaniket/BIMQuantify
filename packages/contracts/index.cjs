@@ -55,10 +55,36 @@ function federatedModelId(fileId) {
   return `file-${fileId}`;
 }
 
+// --- Free vs paid API-surface routing ---------------------------------------
+// Free (org-less) and paid (org-scoped) endpoints return IDENTICAL schemas (the
+// backend emits the paid shape for free callers), so a single `free: boolean`
+// selects the URL prefix. The clients (apps/portal, apps/mobile) MUST agree with
+// the backend's route registration (`/pooled/*` aliases vs the canonical paths in
+// apps/api main.py) — this is the one place that prefix is written. Used to be
+// hand-duplicated char-for-char in each app's lib/api/scope.ts.
+
+/** Prefix for top-level mirrored collections, e.g. `${pooledPrefix(free)}/notifications`. */
+function pooledPrefix(free) {
+  return free ? '/pooled' : '';
+}
+
+/** Base path for a project's resources, e.g. `${projectScope(id, free)}/levels`. */
+function projectScope(projectId, free) {
+  return `${free ? '/pooled/projects' : '/projects'}/${projectId}`;
+}
+
+/** Base path for the projects collection itself. */
+function projectsScope(free) {
+  return free ? '/pooled/projects' : '/projects';
+}
+
 module.exports = {
   OUTLINE_MAGIC,
   FLOORPLAN_MAGIC,
   BRIDGE_RECEIVE_GLOBAL,
   VIEWER_EMBED_ASSET_SUBDIR,
   federatedModelId,
+  pooledPrefix,
+  projectScope,
+  projectsScope,
 };

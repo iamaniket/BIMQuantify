@@ -21,3 +21,12 @@ export declare const VIEWER_EMBED_ASSET_SUBDIR: 'viewer-embed';
 
 /** Deterministic viewer scene id for a project file (`file-<fileId>`). */
 export declare function federatedModelId(fileId: string): string;
+
+/** Prefix for top-level mirrored collections (free → `/pooled`, paid → ``). */
+export declare function pooledPrefix(free: boolean): string;
+
+/** Base path for a project's resources (`${projectScope(id, free)}/levels`). */
+export declare function projectScope(projectId: string, free: boolean): string;
+
+/** Base path for the projects collection (free → `/pooled/projects`, paid → `/projects`). */
+export declare function projectsScope(free: boolean): string;
