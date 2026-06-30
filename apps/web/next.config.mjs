@@ -8,6 +8,10 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 // once the move is final to pass link equity.
 const PORTAL_URL = (process.env.NEXT_PUBLIC_PORTAL_URL ?? 'http://localhost:3001').replace(/\/+$/, '');
 
+// Standalone "placeholder" mode (no portal deployed): forward the portal-only
+// routes to the in-site /coming-soon page instead of a dead portal origin.
+const STANDALONE = process.env.NEXT_PUBLIC_STANDALONE === 'true';
+
 // --- Security-response headers (finding B5) -------------------------------
 // The marketing site has no viewer/WASM/worker/storage — a much smaller CSP
 // than the portal. Only Next itself + PostHog analytics. Relaxed (script-src
@@ -63,6 +67,20 @@ const nextConfig = {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
   async redirects() {
+    if (STANDALONE) {
+      return [
+        {
+          source: '/:locale/request-access',
+          destination: '/:locale/coming-soon',
+          permanent: false,
+        },
+        {
+          source: '/:locale/legal/:path*',
+          destination: '/:locale/coming-soon',
+          permanent: false,
+        },
+      ];
+    }
     return [
       {
         source: '/:locale/request-access',

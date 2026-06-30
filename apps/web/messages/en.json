@@ -16,6 +16,16 @@
     "contactSales": "Contact sales",
     "themeToggle": "Toggle theme"
   },
+  "comingSoon": {
+    "metadata": {
+      "title": "Coming soon",
+      "description": "This part of the site is coming soon."
+    },
+    "eyebrow": "Coming soon",
+    "headline": "Coming soon",
+    "subtitle": "We're putting the finishing touches on this. Check back soon, or head back to the homepage.",
+    "backHome": "Back to home"
+  },
   "hero": {
     "badge": "Free to try · still onboarding founding partners in the Netherlands",
     "headline": "The building quality platform, built on your model. From first snag to final dossier.",

@@ -16,6 +16,16 @@
     "contactSales": "Neem contact op",
     "themeToggle": "Thema wisselen"
   },
+  "comingSoon": {
+    "metadata": {
+      "title": "Binnenkort beschikbaar",
+      "description": "Dit onderdeel van de site is binnenkort beschikbaar."
+    },
+    "eyebrow": "Binnenkort",
+    "headline": "Binnenkort beschikbaar",
+    "subtitle": "We leggen hier de laatste hand aan. Kom binnenkort terug, of ga terug naar de homepage.",
+    "backHome": "Terug naar home"
+  },
   "hero": {
     "badge": "Gratis te proberen · we nemen nog founding partners aan in Nederland",
     "headline": "Het bouwkwaliteitsplatform, gebouwd op uw model. Van eerste opleverpunt tot definitief dossier.",
