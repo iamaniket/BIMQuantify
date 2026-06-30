@@ -31,7 +31,7 @@ export async function listPooledProjectSnags(
   );
 }
 
-export type FreeMemberInviteInput = { email: string; role: ProjectRole };
+export type PooledMemberInviteInput = { email: string; role: ProjectRole };
 
 /** Invite a member to a free project by email (owner-only, max 3). Unlike paid's
  * `/invitations` flow this posts straight to `/members` and returns the created
@@ -39,7 +39,7 @@ export type FreeMemberInviteInput = { email: string; role: ProjectRole };
 export async function invitePooledProjectMember(
   accessToken: string,
   id: string,
-  input: FreeMemberInviteInput,
+  input: PooledMemberInviteInput,
 ): Promise<ProjectMember> {
   return apiClient.post<ProjectMember>(
     `/pooled/projects/${id}/members`,

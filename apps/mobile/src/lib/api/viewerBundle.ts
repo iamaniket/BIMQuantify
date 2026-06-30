@@ -25,7 +25,7 @@ export async function getViewerBundle(
 
 // FREE-tier viewer bundle — same `ViewerBundleResponse` shape, `/free` prefix.
 // Free PDFs now carry `pdf_pages_url` too (server rasterizes them for mobile).
-export async function getFreeViewerBundle(
+export async function getPooledViewerBundle(
   accessToken: string,
   projectId: string,
   documentId: string,

@@ -7,10 +7,10 @@ import {
 } from './schemas';
 
 // The free snag endpoints now emit the PAID `Finding` shape server-side (the
-// single serializer `_free_finding_to_finding`), so the client needs no
+// single serializer `_pooled_finding_to_finding`), so the client needs no
 // free→paid adapter — only the free REQUEST shapes + the `/free` URLs differ.
 
-export type FreeFindingCreateInput = {
+export type PooledFindingCreateInput = {
   title: string;
   note?: string | null;
   severity: 'low' | 'medium' | 'high';
@@ -26,7 +26,7 @@ export type FreeFindingCreateInput = {
   deadline_date?: string | null;
 };
 
-export type FreeFindingUpdateInput = {
+export type PooledFindingUpdateInput = {
   title?: string;
   note?: string | null;
   severity?: 'low' | 'medium' | 'high';
@@ -51,7 +51,7 @@ export async function listPooledFindings(
 export async function createPooledFinding(
   accessToken: string,
   documentId: string,
-  input: FreeFindingCreateInput,
+  input: PooledFindingCreateInput,
 ): Promise<Finding> {
   return apiClient.post<Finding>(
     `/pooled/documents/${documentId}/findings`,
@@ -64,7 +64,7 @@ export async function createPooledFinding(
 export async function updatePooledFinding(
   accessToken: string,
   snagId: string,
-  input: FreeFindingUpdateInput,
+  input: PooledFindingUpdateInput,
 ): Promise<Finding> {
   return apiClient.patch<Finding>(
     `/pooled/findings/${snagId}`,

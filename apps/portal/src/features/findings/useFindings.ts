@@ -80,7 +80,7 @@ export function useFileFindings(
   const target = useViewerTarget(projectId);
   // For free, the container id (free_document_id) is the open single-mode target's
   // modelId; fall back to fileId defensively (paid ignores this entirely).
-  const freeContainerId =
+  const pooledContainerId =
     target.kind === 'single' && target.modelId !== '' ? target.modelId : fileId;
   // An empty string is NOT a valid file id. In multi-model mode
   // `scope.activeFileId` is `''` until the manifest resolves; `'' !== null` is
@@ -93,15 +93,15 @@ export function useFileFindings(
       fileId ?? '',
       // Free findings cache by container, not file, so two files of the same
       // container share results; '' keeps the paid key shape unchanged.
-      isPooled ? `c:${freeContainerId ?? ''}` : '',
+      isPooled ? `c:${pooledContainerId ?? ''}` : '',
     ] as const,
     queryFn: isPooled
       ? async (accessToken) => {
-          if (freeContainerId === null || freeContainerId === '') {
+          if (pooledContainerId === null || pooledContainerId === '') {
             throw new Error('Missing container');
           }
           // The free endpoint already emits the paid `Finding` shape (no adapter).
-          const data = await listPooledFindings(accessToken, freeContainerId);
+          const data = await listPooledFindings(accessToken, pooledContainerId);
           return { data, totalCount: data.length };
         }
       : (accessToken, offset, limit) => {

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.test_free_viewer import (
+from tests.test_pooled_viewer import (
     _auth,
     _callback_succeeded,
     _create_document,

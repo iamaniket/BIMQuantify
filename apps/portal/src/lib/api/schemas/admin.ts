@@ -186,7 +186,7 @@ export const FreeUserDocumentRowSchema = z.object({
   file_count: z.number().int(),
   size_bytes: z.number().int(),
   last_viewed_at: z.union([z.string(), z.null()]).optional(),
-  free_project_id: z.union([z.string(), z.null()]).optional(),
+  pooled_project_id: z.union([z.string(), z.null()]).optional(),
 });
 
 export const FreeUserSnagRowSchema = z.object({
@@ -198,7 +198,7 @@ export const FreeUserSnagRowSchema = z.object({
 });
 
 export const FreeUserSharedRowSchema = z.object({
-  free_project_id: z.string(),
+  pooled_project_id: z.string(),
   name: z.string(),
   owner_email: z.string().email(),
   role: z.string(),

@@ -9,9 +9,9 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.conftest import FakeStorage
-from tests.test_free_levels import _create_level
-from tests.test_free_pdf import _PDF_BYTES, _pdf_callback_succeeded
-from tests.test_free_viewer import (
+from tests.test_pooled_levels import _create_level
+from tests.test_pooled_pdf import _PDF_BYTES, _pdf_callback_succeeded
+from tests.test_pooled_viewer import (
     _auth,
     _complete_file,
     _create_document,

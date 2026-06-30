@@ -57,8 +57,8 @@ class ConnectionManager:
             for ws in list(conns):
                 with contextlib.suppress(Exception):
                     await ws.close()
-        for free_conns in self._pooled_connections.values():
-            for ws in list(free_conns):
+        for pooled_conns in self._pooled_connections.values():
+            for ws in list(pooled_conns):
                 with contextlib.suppress(Exception):
                     await ws.close()
         self._connections.clear()
@@ -193,20 +193,20 @@ class ConnectionManager:
             if channel.startswith(CHANNEL_PREFIX_POOLED):
                 user_id_str = channel.removeprefix(CHANNEL_PREFIX_POOLED)
                 try:
-                    free_user_id = UUID(user_id_str)
+                    pooled_user_id = UUID(user_id_str)
                 except ValueError:
                     continue
-                free_conns = self._pooled_connections.get(free_user_id)
-                if not free_conns:
+                pooled_conns = self._pooled_connections.get(pooled_user_id)
+                if not pooled_conns:
                     continue
-                free_dead: list[WebSocket] = []
-                for ws in free_conns:
+                pooled_dead: list[WebSocket] = []
+                for ws in pooled_conns:
                     try:
                         await ws.send_text(data)
                     except Exception:
-                        free_dead.append(ws)
-                for ws in free_dead:
-                    self.disconnect_pooled(ws, free_user_id)
+                        pooled_dead.append(ws)
+                for ws in pooled_dead:
+                    self.disconnect_pooled(ws, pooled_user_id)
                 continue
 
             org_id_str = channel.removeprefix(CHANNEL_PREFIX)

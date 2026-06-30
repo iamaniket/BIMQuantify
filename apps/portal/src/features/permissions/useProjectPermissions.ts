@@ -44,7 +44,7 @@ export function useProjectPermissions(projectId: string): ProjectPermissions {
   const { role, isOrgAdmin, isSuperuser, isLoading } = useMyProjectRole(projectId);
   // Resolve the caller's free role from the members list (owner / editor /
   // viewer). Gated to free so paid surfaces don't take an extra members fetch.
-  const freeMembersQuery = useProjectMembers(projectId, { enabled: isPooled });
+  const pooledMembersQuery = useProjectMembers(projectId, { enabled: isPooled });
   const myUserId = me?.user.id ?? null;
 
   return useMemo<ProjectPermissions>(() => {
@@ -55,15 +55,15 @@ export function useProjectPermissions(projectId: string): ProjectPermissions {
       // that's owner-only). Viewer: read-only. No compliance / certificate
       // surface. Backend RLS + role checks are authoritative; this only gates
       // the UI.
-      const myMember = (freeMembersQuery.data ?? []).find((m) => m.user_id === myUserId);
-      const freeRole: ProjectRole = myMember?.role ?? 'owner';
-      const isOwner = freeRole === 'owner';
-      const canWrite = isOwner || freeRole === 'editor';
+      const myMember = (pooledMembersQuery.data ?? []).find((m) => m.user_id === myUserId);
+      const pooledRole: ProjectRole = myMember?.role ?? 'owner';
+      const isOwner = pooledRole === 'owner';
+      const canWrite = isOwner || pooledRole === 'editor';
       return {
-        role: freeRole,
+        role: pooledRole,
         isOrgAdmin: false,
         isSuperuser: false,
-        isLoading: freeMembersQuery.isLoading,
+        isLoading: pooledMembersQuery.isLoading,
         can: (resource, _action) => {
           // Model/container management is owner-only in the free tier.
           if (resource === 'document') return isOwner;
@@ -97,8 +97,8 @@ export function useProjectPermissions(projectId: string): ProjectPermissions {
     isSuperuser,
     isLoading,
     isPooled,
-    freeMembersQuery.data,
-    freeMembersQuery.isLoading,
+    pooledMembersQuery.data,
+    pooledMembersQuery.isLoading,
     myUserId,
   ]);
 }

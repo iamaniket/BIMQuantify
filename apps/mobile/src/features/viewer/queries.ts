@@ -1,5 +1,5 @@
 import {
-  getFreeViewerBundle,
+  getPooledViewerBundle,
   getViewerBundle,
   pdfPagesUrlFor,
   toViewerBundle,
@@ -17,7 +17,7 @@ export function useViewerBundle(projectId: string, documentId: string, fileId: s
   return useAuthQuery<EmbedViewerBundle | null>(
     ['viewer', 'bundle', projectId, documentId, fileId],
     async (token) => {
-      const fetchBundle = isFree ? getFreeViewerBundle : getViewerBundle;
+      const fetchBundle = isFree ? getPooledViewerBundle : getViewerBundle;
       return toViewerBundle(await fetchBundle(token, projectId, documentId, fileId), fileId);
     },
     {
@@ -36,7 +36,7 @@ export function usePdfPagesUrl(projectId: string, documentId: string, fileId: st
   return useAuthQuery<string | null>(
     ['viewer', 'pdf-pages', projectId, documentId, fileId],
     async (token) => {
-      const fetchBundle = isFree ? getFreeViewerBundle : getViewerBundle;
+      const fetchBundle = isFree ? getPooledViewerBundle : getViewerBundle;
       return pdfPagesUrlFor(await fetchBundle(token, projectId, documentId, fileId));
     },
     {

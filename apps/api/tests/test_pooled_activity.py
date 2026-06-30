@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from bimdossier_api.config import get_settings
 from tests.conftest import FakeStorage
-from tests.test_free_viewer import (
+from tests.test_pooled_viewer import (
     _auth,
     _callback_succeeded,
     _create_document,

@@ -13,7 +13,7 @@ filed against (mirrors paid `Finding.linked_file_id`).
 At conversion these map to real `findings`: severity/status translate to the
 `FindingSeverity`/`FindingStatus` enums, and the world-space anchor + GlobalId
 carry over directly (both are stable across re-extraction). See
-`free_document.PooledDocument` for the pooling rationale.
+`pooled_document.PooledDocument` for the pooling rationale.
 """
 
 from datetime import date

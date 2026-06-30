@@ -158,7 +158,7 @@ async def initiate_pooled_attachment_upload(
     # don't share.
     await session.execute(
         sql_text("SELECT pg_advisory_xact_lock(:k)"),
-        {"k": lock_id_for(f"free_upload:{owner_id}")},
+        {"k": lock_id_for(f"pooled_upload:{owner_id}")},
     )
     async with get_session_maker()() as probe, probe.begin():
         owner = await probe.get(User, owner_id)

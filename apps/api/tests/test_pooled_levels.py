@@ -11,7 +11,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.conftest import FakeStorage
-from tests.test_free_viewer import _auth, _create_document, _create_project, _free_token
+from tests.test_pooled_viewer import _auth, _create_document, _create_project, _free_token
 
 
 async def _create_level(

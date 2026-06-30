@@ -16,14 +16,14 @@ import {
 // the file and needs no auth header), so the client here only owns the two
 // token-gated JSON calls. `free` routes to the `/free/*` attachment endpoints.
 //
-// The free `complete` returns FreeAttachmentRead (`free_project_id`, not
+// The free `complete` returns PooledAttachmentRead (`pooled_project_id`, not
 // `project_id`); the upload flow only needs the id, so a minimal schema decouples
 // it (paid still parses the full `AttachmentRead`). Both expose `id`.
 
 const attachmentScope = (projectId: string, free: boolean): string =>
   `${projectScope(projectId, free)}/attachments`;
 
-const FreeAttachmentReadSchema = z.object({ id: z.string().uuid() });
+const PooledAttachmentReadSchema = z.object({ id: z.string().uuid() });
 
 export async function initiateAttachment(
   token: string,
@@ -49,7 +49,7 @@ export async function completeAttachment(
 ): Promise<{ id: string }> {
   // The complete endpoint takes no body; an empty object satisfies the JSON POST.
   const path = `${attachmentScope(projectId, free)}/${attachmentId}/complete`;
-  if (free) return apiClient.post(path, {}, FreeAttachmentReadSchema, token);
+  if (free) return apiClient.post(path, {}, PooledAttachmentReadSchema, token);
   return apiClient.post(path, {}, AttachmentReadSchema, token);
 }
 

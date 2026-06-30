@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.test_free_notifications import _seed_succeeded_model
-from tests.test_free_viewer import _auth, _free_token
+from tests.test_pooled_notifications import _seed_succeeded_model
+from tests.test_pooled_viewer import _auth, _free_token
 
 if TYPE_CHECKING:
     from httpx import AsyncClient

@@ -9,7 +9,7 @@ import {
 } from '@/lib/api/schemas/findings';
 
 // The free snag endpoints now emit the PAID `Finding` shape server-side (the
-// single serializer `_free_finding_to_finding`), so the mobile client needs no
+// single serializer `_pooled_finding_to_finding`), so the mobile client needs no
 // free→paid adapter — only the free REQUEST mapping + the `/free` URLs differ.
 // `projectId` is kept on the signatures (callers pass it) though the server now
 // supplies the canonical project_id on the response.

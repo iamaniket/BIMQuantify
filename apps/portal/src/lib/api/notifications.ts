@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { freePrefix } from './scope';
+import { pooledPrefix } from './scope';
 import {
   NotificationListResponseSchema,
   UnreadCountResponseSchema,
@@ -11,7 +11,7 @@ import {
 // Both return the IDENTICAL paid schema — the backend emits the paid shape for free
 // (sentinel org, free ids as project/file, null job_id) — so the bell renders
 // unchanged. Pass `free` from `useIsPooledContext`.
-const base = (free: boolean): string => `${freePrefix(free)}/notifications`;
+const base = (free: boolean): string => `${pooledPrefix(free)}/notifications`;
 
 export async function listNotifications(
   accessToken: string,

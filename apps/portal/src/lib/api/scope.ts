@@ -8,8 +8,8 @@
  * place the `/free` prefix is written.
  */
 
-/** Prefix for top-level mirrored collections, e.g. `${freePrefix(free)}/notifications`. */
-export const freePrefix = (free: boolean): string => (free ? '/pooled' : '');
+/** Prefix for top-level mirrored collections, e.g. `${pooledPrefix(free)}/notifications`. */
+export const pooledPrefix = (free: boolean): string => (free ? '/pooled' : '');
 
 /** Base path for a project's resources, e.g. `${projectScope(id, free)}/levels`. */
 export const projectScope = (projectId: string, free: boolean): string =>

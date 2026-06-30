@@ -123,26 +123,26 @@ async def create_level(
 ) -> LevelRead | Level:
     if scope.is_free:
         require_free_tier_enabled()
-        free_project = await _load_pooled_project_or_404(
+        pooled_project = await _load_pooled_project_or_404(
             session, project_id, scope.user.id
         )  # owner-only
         await assert_free_account_not_expired(scope.user)
-        free_level = PooledLevel(
-            owner_user_id=free_project.owner_user_id,
-            pooled_project_id=free_project.id,
+        pooled_level = PooledLevel(
+            owner_user_id=pooled_project.owner_user_id,
+            pooled_project_id=pooled_project.id,
             name=payload.name,
             elevation_m=payload.elevation_m,
             ordering=payload.ordering,
             source="manual",
         )
-        session.add(free_level)
+        session.add(pooled_level)
         try:
             await session.flush()
         except IntegrityError as exc:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="LEVEL_NAME_CONFLICT"
             ) from exc
-        return _pooled_to_read(free_level)
+        return _pooled_to_read(pooled_level)
 
     user = scope.user
     project = await load_project_or_404(session, project_id)
@@ -240,9 +240,9 @@ async def update_level(
         require_free_tier_enabled()
         await _load_pooled_project_or_404(session, project_id, scope.user.id)  # owner-only
         await assert_free_account_not_expired(scope.user)
-        free_level = await _load_pooled_level_or_404(session, project_id, level_id)
+        pooled_level = await _load_pooled_level_or_404(session, project_id, level_id)
         for field, value in payload.model_dump(exclude_unset=True).items():
-            setattr(free_level, field, value)
+            setattr(pooled_level, field, value)
         try:
             await session.flush()
         except IntegrityError as exc:
@@ -251,8 +251,8 @@ async def update_level(
             ) from exc
         # Refresh so the onupdate-expired updated_at is re-fetched (avoids a
         # MissingGreenlet lazy-load in _pooled_to_read).
-        await session.refresh(free_level)
-        return _pooled_to_read(free_level)
+        await session.refresh(pooled_level)
+        return _pooled_to_read(pooled_level)
 
     user = scope.user
     project = await load_project_or_404(session, project_id)
@@ -298,10 +298,10 @@ async def delete_level(
     if scope.is_free:
         require_free_tier_enabled()
         await _load_pooled_project_or_404(session, project_id, scope.user.id)  # owner-only
-        free_level = await _load_pooled_level_or_404(session, project_id, level_id)
+        pooled_level = await _load_pooled_level_or_404(session, project_id, level_id)
         # Hard delete (mirrors paid): pooled_documents.level_id is SET NULL, so
         # assigned drawings revert to Unassigned.
-        await session.delete(free_level)
+        await session.delete(pooled_level)
         await session.flush()
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 

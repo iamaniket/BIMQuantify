@@ -332,7 +332,7 @@ async def create_pooled_document(
     # be TOCTOU-raced (transaction-scoped; released at commit).
     await session.execute(
         sql_text("SELECT pg_advisory_xact_lock(:k)"),
-        {"k": lock_id_for(f"free_doc:{user.id}")},
+        {"k": lock_id_for(f"pooled_doc:{user.id}")},
     )
     existing = (
         await session.scalar(
@@ -612,7 +612,7 @@ async def initiate_pooled_file_upload(
     # can't be TOCTOU-raced (transaction-scoped; released at commit).
     await session.execute(
         sql_text("SELECT pg_advisory_xact_lock(:k)"),
-        {"k": lock_id_for(f"free_upload:{user.id}")},
+        {"k": lock_id_for(f"pooled_upload:{user.id}")},
     )
     if payload.size_bytes > settings.free_upload_max_bytes:
         raise HTTPException(
@@ -1634,7 +1634,7 @@ async def _claim_pooled_extraction_slot(
     async with get_session_maker()() as session, session.begin():
         await session.execute(
             sql_text("SELECT pg_advisory_xact_lock(:k)"),
-            {"k": lock_id_for("free_extraction:global")},
+            {"k": lock_id_for("pooled_extraction:global")},
         )
         global_active = (
             await session.scalar(

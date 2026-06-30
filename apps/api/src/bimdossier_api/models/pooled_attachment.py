@@ -5,7 +5,7 @@ Photo (and other file) evidence for free snags, the pooled analog of the paid
 `role='attachment'`). A free attachment is a project-scoped row (NOT
 finding-scoped): the mobile offline outbox uploads a photo BEFORE the snag that
 references it exists, so the upload can't carry a finding id. The finding→photo
-link lives in `free_finding_attachment.PooledFindingAttachment`.
+link lives in `pooled_finding_attachment.PooledFindingAttachment`.
 
 Pooled-in-`public`, isolation by owner-keyed RLS on `owner_user_id` plus
 owner-OR-member visibility resolved through `pooled_project_id` (see

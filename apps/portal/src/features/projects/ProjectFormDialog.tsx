@@ -115,7 +115,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
 
   // The Team step is create-only (existing projects manage members on the access
   // page). Both paid and free creates get it — free invites up to 3 members by
-  // email (StepMembers freeMode). It stays OPTIONAL for free (see submitDisabled).
+  // email (StepMembers pooledMode). It stays OPTIONAL for free (see submitDisabled).
   const steps =
     mode === 'create' ? PROJECT_CREATE_WIZARD_STEPS : PROJECT_WIZARD_STEPS;
   const LAST_STEP = steps.length - 1;
@@ -479,7 +479,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
                     onAdd={handleAddTeam}
                     onRemove={handleRemoveTeam}
                     onChangeRole={handleChangeTeamRole}
-                    freeMode={isPooled}
+                    pooledMode={isPooled}
                   />
                 )}
               </div>

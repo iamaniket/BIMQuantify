@@ -56,7 +56,7 @@ export type StepMembersProps = {
   onChangeRole: (index: number, role: ProjectRole) => void;
   /** Free workspace: email-invites only (no org picker), roles limited to
    * editor/viewer, capped at 3 invited members. */
-  freeMode?: boolean;
+  pooledMode?: boolean;
 };
 
 export function StepMembers({
@@ -66,15 +66,15 @@ export function StepMembers({
   onAdd,
   onRemove,
   onChangeRole,
-  freeMode = false,
+  pooledMode = false,
 }: StepMembersProps): JSX.Element {
   const t = useTranslations('projects.wizard.members');
   const tRoles = useTranslations('projectAccess.table.roles');
   const selectableQuery = useSelectableOrgMembers(organizationId);
-  const roles = freeMode ? FREE_ASSIGNABLE_ROLES : ASSIGNABLE_ROLES;
-  const atInviteCap = freeMode && entries.length >= FREE_MAX_INVITES;
+  const roles = pooledMode ? FREE_ASSIGNABLE_ROLES : ASSIGNABLE_ROLES;
+  const atInviteCap = pooledMode && entries.length >= FREE_MAX_INVITES;
 
-  const [tab, setTab] = useState<'fromOrg' | 'invite'>(freeMode ? 'invite' : 'fromOrg');
+  const [tab, setTab] = useState<'fromOrg' | 'invite'>(pooledMode ? 'invite' : 'fromOrg');
   const [userId, setUserId] = useState('');
   const [orgRole, setOrgRole] = useState<ProjectRole>('viewer');
   const [email, setEmail] = useState('');
@@ -163,7 +163,7 @@ export function StepMembers({
             setAddError(null);
           }}
         >
-          {!freeMode && (
+          {!pooledMode && (
             <TabsList className="mb-3 w-full">
               <TabsTrigger value="fromOrg" className="flex-1">{t('tabs.fromOrg')}</TabsTrigger>
               <TabsTrigger value="invite" className="flex-1">{t('tabs.inviteByEmail')}</TabsTrigger>
@@ -172,7 +172,7 @@ export function StepMembers({
 
           <ErrorBanner message={addError} className="mb-3" />
 
-          {!freeMode && (
+          {!pooledMode && (
           <TabsContent value="fromOrg">
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
@@ -324,7 +324,7 @@ export function StepMembers({
           </ul>
         )}
 
-        {freeMode ? (
+        {pooledMode ? (
           <p className="text-caption text-foreground-tertiary">
             {t('pooledInviteHint', { max: FREE_MAX_INVITES })}
           </p>

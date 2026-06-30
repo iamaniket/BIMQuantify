@@ -146,11 +146,11 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
   const accessToken = tokens === null ? null : tokens.access_token;
   // Route bundle fetches at the SINGLE coupling point: org-less free users hit the
   // pooled `/free/*` viewer endpoints (identical paid schema), paid hit the org
-  // ones. Gate `enabled` on `freeReady` (/auth/me) so a free user never briefly
+  // ones. Gate `enabled` on `pooledReady` (/auth/me) so a free user never briefly
   // fetches the org-only endpoint before the tier is known. For free, the single
   // "modelId" is the free_document_id (container) and "fileId" the head file —
   // exactly what DocumentsTableRow sets as the viewer target.
-  const { isPooled, ready: freeReady } = useIsPooledContext();
+  const { isPooled, ready: pooledReady } = useIsPooledContext();
 
   const isSingle = target.kind === 'single';
   const singleModelId = target.kind === 'single' ? target.modelId : '';
@@ -162,7 +162,7 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
       if (accessToken === null) throw new Error('Not authenticated');
       return getViewerBundle(accessToken, projectId, singleModelId, singleFileId, isPooled);
     },
-    enabled: ready && freeReady && isSingle && accessToken !== null,
+    enabled: ready && pooledReady && isSingle && accessToken !== null,
     staleTime: 60_000,
   });
 
@@ -174,7 +174,7 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
     },
     // Drawings mode (persona A) renders its own by-Level browser — no IFC manifest.
     enabled:
-      ready && freeReady && !isSingle && target.kind !== 'drawings' && accessToken !== null,
+      ready && pooledReady && !isSingle && target.kind !== 'drawings' && accessToken !== null,
     staleTime: 60_000,
   });
 

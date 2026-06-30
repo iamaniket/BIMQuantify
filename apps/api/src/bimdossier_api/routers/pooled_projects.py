@@ -589,7 +589,7 @@ async def add_pooled_project_member(
     # TOCTOU-raced. Transaction-scoped (released on commit below).
     await session.execute(
         sql_text("SELECT pg_advisory_xact_lock(:k)"),
-        {"k": lock_id_for(f"free_members:{project_id}")},
+        {"k": lock_id_for(f"pooled_members:{project_id}")},
     )
     # The owner's effective caps + trial. `session` is the superuser session here,
     # so it can read the (no-bim_app-grant) free_user_limits override row.

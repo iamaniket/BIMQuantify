@@ -438,7 +438,7 @@ export function FreeUserDetailPanel({ user, open, onOpenChange }: Props): JSX.El
               {detail.data.shared_projects.length > 0 && (
                 <Section title={t('sharedTitle', { count: detail.data.shared_projects.length })}>
                   {detail.data.shared_projects.map((s) => (
-                    <Row key={s.free_project_id} primary={s.name} secondary={s.owner_email}>
+                    <Row key={s.pooled_project_id} primary={s.name} secondary={s.owner_email}>
                       <Badge variant="info">{s.role}</Badge>
                     </Row>
                   ))}

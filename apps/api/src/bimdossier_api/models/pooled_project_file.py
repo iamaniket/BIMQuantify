@@ -2,7 +2,7 @@
 
 The pooled analog of `models.project_file.ProjectFile` (the `model_source` facet
 only — free is IFC-only and single-role). A `PooledProjectFile` is one version of a
-`PooledDocument` container (see `free_document.PooledDocument`); the document holds
+`PooledDocument` container (see `pooled_document.PooledDocument`); the document holds
 many versions anchored by `(pooled_document_id, version_number)`, with the F7 head
 pinned by `pooled_documents.head_file_id`.
 

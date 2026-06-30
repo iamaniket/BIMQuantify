@@ -4,7 +4,7 @@ The free wedge mirrors the paid **Document ("Container") → ProjectFile** stack
 the portal renders free models through the identical paid components and the
 free→paid conversion is a near 1:1 row copy. A `PooledDocument` is the pooled
 analog of `models.document.Document`: a named container that holds one or more
-versioned `PooledProjectFile` rows (see `free_project_file.PooledProjectFile`).
+versioned `PooledProjectFile` rows (see `pooled_project_file.PooledProjectFile`).
 
 Pooled-in-`public`, never a tenant `org_<hex>` schema — isolation is owner-keyed
 RLS on `owner_user_id` (the `app.current_user_id` GUC set by `get_pooled_session`)

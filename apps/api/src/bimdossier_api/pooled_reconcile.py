@@ -76,7 +76,7 @@ async def sweep_stuck_pooled_extractions(stuck_timeout_minutes: int) -> int:
             row.extraction_error = _REASON
 
     if stuck:
-        logger.info("free_reconcile: force-failed %d stuck free extractions", len(stuck))
+        logger.info("pooled_reconcile: force-failed %d stuck free extractions", len(stuck))
     return len(stuck)
 
 
@@ -89,7 +89,7 @@ class PooledExtractionReconcileSweeper(PeriodicSweeper):
         super().__init__(
             name="pooled_extraction_reconcile_sweeper",
             interval_seconds=interval_minutes * 60,
-            lock_key="sweep:free_reconcile",
+            lock_key="sweep:pooled_reconcile",
         )
         self.stuck_timeout_minutes = stuck_timeout_minutes
 
@@ -135,7 +135,7 @@ async def sweep_idle_pooled_containers(
             await store.delete_prefix(prefix)
         except Exception:
             logger.exception(
-                "free_reconcile: idle reap could not delete objects for %s", document_id
+                "pooled_reconcile: idle reap could not delete objects for %s", document_id
             )
         async with session_maker() as session, session.begin():
             await session.execute(
@@ -144,7 +144,7 @@ async def sweep_idle_pooled_containers(
         reaped += 1
 
     if reaped:
-        logger.info("free_reconcile: idle-reaped %d free containers", reaped)
+        logger.info("pooled_reconcile: idle-reaped %d free containers", reaped)
     return reaped
 
 
@@ -156,7 +156,7 @@ class IdlePooledContainerSweeper(PeriodicSweeper):
         super().__init__(
             name="idle_pooled_container_sweeper",
             interval_seconds=interval_minutes * 60,
-            lock_key="sweep:free_idle",
+            lock_key="sweep:pooled_idle",
         )
         self.idle_ttl_days = idle_ttl_days
 

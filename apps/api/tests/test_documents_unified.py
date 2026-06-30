@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.test_free_viewer import _auth, _create_project, _free_token
+from tests.test_pooled_viewer import _auth, _create_project, _free_token
 
 if TYPE_CHECKING:
     from httpx import AsyncClient

@@ -14,10 +14,10 @@ import { findingsKey } from './queryKeys';
 /** Thrown when a free finding is created without a container to attach it to.
  * Free snags require a non-null `free_document_id`, so the caller must resolve a
  * container (`linked_document_id`) first (the viewer has one; the board picks one). */
-export class FreeFindingNoContainerError extends Error {
+export class PooledFindingNoContainerError extends Error {
   constructor() {
     super('FREE_FINDING_NO_CONTAINER');
-    this.name = 'FreeFindingNoContainerError';
+    this.name = 'PooledFindingNoContainerError';
   }
 }
 
@@ -38,7 +38,7 @@ export function useCreateFinding(
   // carries it as `linked_document_id`; an unpinned / PDF-page / project-level
   // create does not, so fall back to the open viewer container (the single-mode
   // selection target's modelId). Without this, PDF and unpinned creates threw
-  // FreeFindingNoContainerError and never posted.
+  // PooledFindingNoContainerError and never posted.
   const target = useViewerTarget(projectId);
   const fallbackContainerId =
     target.kind === 'single' && target.modelId !== '' ? target.modelId : null;
@@ -50,7 +50,7 @@ export function useCreateFinding(
             ? input.linked_document_id
             : fallbackContainerId;
         if (containerId == null || containerId === '') {
-          throw new FreeFindingNoContainerError();
+          throw new PooledFindingNoContainerError();
         }
         // The free create endpoint already returns the paid `Finding` shape.
         return createPooledFinding(accessToken, containerId, {

@@ -43,7 +43,7 @@ from bimdossier_api.tenancy import (
     schema_name_for,
 )
 from tests.conftest import make_test_user
-from tests.test_free_viewer import _create_document, _create_project, _free_token
+from tests.test_pooled_viewer import _create_document, _create_project, _free_token
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
