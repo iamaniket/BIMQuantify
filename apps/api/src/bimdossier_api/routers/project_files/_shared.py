@@ -21,7 +21,6 @@ from bimdossier_api.access import (
     load_project_or_404,
     require_project_read_access,
 )
-from bimdossier_api.auth.fastapi_users import current_verified_user
 from bimdossier_api.models.document import Document
 from bimdossier_api.models.project_file import (
     ExtractionStatus,
@@ -29,13 +28,13 @@ from bimdossier_api.models.project_file import (
     ProjectFile,
     ProjectFileRole,
 )
-from bimdossier_api.models.user import User
+from bimdossier_api.routers.free_access import require_free_tier_enabled
 from bimdossier_api.schemas.project_file import (
     ProjectViewerDocumentEntry,
     ProjectViewerManifestResponse,
 )
 from bimdossier_api.storage import StorageBackend, get_storage
-from bimdossier_api.tenancy import get_tenant_session, require_active_organization
+from bimdossier_api.tenancy import ScopeContext, get_scope_context, get_scoped_session
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +52,7 @@ router = APIRouter(
 HEADER_PEEK_BYTES = 2048
 
 
-async def _load_file_or_404(
-    session: AsyncSession, document_id: UUID, file_id: UUID
-) -> ProjectFile:
+async def _load_file_or_404(session: AsyncSession, document_id: UUID, file_id: UUID) -> ProjectFile:
     row = (
         await session.execute(
             select(ProjectFile).where(
@@ -86,9 +83,7 @@ def resolve_head_file_id(document: Document, candidates_desc: list[ProjectFile])
     return candidates_desc[0].id if candidates_desc else None
 
 
-async def _presign_ifc_bundle(
-    row: ProjectFile, storage: StorageBackend
-) -> dict[str, str | None]:
+async def _presign_ifc_bundle(row: ProjectFile, storage: StorageBackend) -> dict[str, str | None]:
     """Presign the IFC artifact set for one extraction-succeeded file.
 
     Returns a dict keyed fragments_url / metadata_url / properties_url /
@@ -110,9 +105,7 @@ async def _presign_ifc_bundle(
         specs.append(("outline_url", row.outline_storage_key, "outline.bin"))
     if row.floor_plans_storage_key is not None:
         specs.append(("floor_plans_url", row.floor_plans_storage_key, "floor-plans.bin"))
-    urls = await asyncio.gather(
-        *(storage.presigned_get_url(key, name) for _, key, name in specs)
-    )
+    urls = await asyncio.gather(*(storage.presigned_get_url(key, name) for _, key, name in specs))
     out: dict[str, str | None] = {
         "fragments_url": None,
         "metadata_url": None,
@@ -136,9 +129,8 @@ project_viewer_router = APIRouter(prefix="/projects/{project_id}", tags=["projec
 @project_viewer_router.get("/viewer-bundle", response_model=ProjectViewerManifestResponse)
 async def get_project_viewer_bundle(
     project_id: UUID,
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
+    session: AsyncSession = Depends(get_scoped_session),
+    scope: ScopeContext = Depends(get_scope_context),
     storage: StorageBackend = Depends(get_storage),
 ) -> ProjectViewerManifestResponse:
     """Federated viewer manifest: the latest ready, extraction-succeeded IFC
@@ -147,7 +139,24 @@ async def get_project_viewer_bundle(
     one scene, toggle each on/off, and source the 2D floor plan from the
     `detected_kind == 'architectural'` entry. Documents with no ready IFC file
     are omitted.
+
+    Tier-unified: a free (org-less) caller is served the pooled free manifest via
+    the free helper (the legacy `/free/projects/{id}/viewer-bundle` route still
+    serves the same logic during migration).
     """
+    if scope.is_free:
+        require_free_tier_enabled()
+        # Local import avoids any import-order cycle (free_documents deferred-imports
+        # project_files.access). The free helper reads the pooled free_* tables.
+        from bimdossier_api.routers import free_documents
+
+        return await free_documents.free_project_viewer_bundle(
+            project_id=project_id, user=scope.user, session=session, storage=storage
+        )
+
+    user = scope.user
+    assert scope.org_id is not None
+    active_org_id = scope.org_id
     project = await load_project_or_404(session, project_id)
     await require_project_read_access(session, project.id, user, active_org_id)
 
