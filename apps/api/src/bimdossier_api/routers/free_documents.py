@@ -350,18 +350,15 @@ def _resolve_free_head(
 # ---------------------------------------------------------------------------
 
 
-@router.post(
-    "/projects/{project_id}/documents",
-    response_model=DocumentRead,
-    status_code=status.HTTP_201_CREATED,
-)
 async def create_free_document(
+    session: AsyncSession,
+    user: User,
     project_id: UUID,
     payload: FreeDocumentCreate,
-    user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
-    settings: Settings = Depends(get_settings),
+    settings: Settings,
 ) -> DocumentRead:
+    """Free-tier container create. Called from the unified documents router's free
+    branch (routers/documents.py::create_document) — no longer a route itself."""
     # Create-gate: only org-less users (trial still open) may create free CONTENT;
     # only the project owner may add containers to it. Returns effective caps.
     limits = await assert_can_create_free_content(user)
@@ -404,15 +401,12 @@ async def create_free_document(
     return _document_to_read(document)
 
 
-@router.get(
-    "/projects/{project_id}/documents",
-    response_model=list[DocumentWithVersions],
-)
 async def list_free_project_documents(
+    session: AsyncSession,
     project_id: UUID,
-    user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
 ) -> list[DocumentWithVersions]:
+    """Free-tier container list (always with versions). Called from the unified
+    documents router's free branch."""
     # Participant-readable: RLS scopes visibility to owner + shared-project members.
     documents = list(
         (
@@ -453,16 +447,13 @@ async def list_free_project_documents(
     return [_document_to_with_versions(d, files_by_doc.get(d.id, [])) for d in documents]
 
 
-@router.get(
-    "/projects/{project_id}/documents/{document_id}",
-    response_model=DocumentWithVersions,
-)
 async def get_free_document(
+    session: AsyncSession,
     project_id: UUID,
     document_id: UUID,
-    user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
 ) -> DocumentWithVersions:
+    """Free-tier container detail (with versions). Called from the unified
+    documents router's free branch."""
     document = await _load_accessible_document_or_404(session, project_id, document_id)
     files = list(
         (
@@ -481,17 +472,15 @@ async def get_free_document(
     return _document_to_with_versions(document, files)
 
 
-@router.patch(
-    "/projects/{project_id}/documents/{document_id}",
-    response_model=DocumentRead,
-)
 async def update_free_document(
+    session: AsyncSession,
+    user: User,
     project_id: UUID,
     document_id: UUID,
     payload: FreeDocumentUpdate,
-    user: User = Depends(current_verified_user),
-    session: AsyncSession = Depends(get_free_session),
 ) -> DocumentRead:
+    """Free-tier container update (rename / discipline / status / level). Called
+    from the unified documents router's free branch."""
     document = await _load_owned_document_or_404(session, project_id, document_id, user.id)
     await assert_free_account_not_expired(user)
     data = payload.model_dump(exclude_unset=True)
@@ -530,16 +519,14 @@ async def update_free_document(
     return _document_to_read(document)
 
 
-@router.delete(
-    "/projects/{project_id}/documents/{document_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
 async def delete_free_document(
+    user: User,
     project_id: UUID,
     document_id: UUID,
-    user: User = Depends(current_verified_user),
-    storage: StorageBackend = Depends(get_storage),
+    storage: StorageBackend,
 ) -> None:
+    """Free-tier container delete (+ object cleanup). Opens its own short session.
+    Called from the unified documents router's free branch."""
     async with open_free_session(user.id) as session:
         document = await _load_owned_document_or_404(
             session, project_id, document_id, user.id

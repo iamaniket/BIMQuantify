@@ -93,8 +93,6 @@ from bimdossier_api.routers.free_attachments import router as free_attachments_r
 from bimdossier_api.routers.free_conversion import router as free_conversion_router
 from bimdossier_api.routers.free_documents import internal_router as free_internal_router
 from bimdossier_api.routers.free_documents import router as free_documents_router
-from bimdossier_api.routers.free_levels import router as free_levels_router
-from bimdossier_api.routers.free_notifications import router as free_notifications_router
 from bimdossier_api.routers.free_projects import router as free_projects_router
 from bimdossier_api.routers.health import router as health_router
 from bimdossier_api.routers.inspection import router as inspection_router
@@ -433,7 +431,15 @@ def create_app() -> FastAPI:
     app.include_router(me_profile_router)
     app.include_router(projects_router)
     app.include_router(documents_router)
+    # Tier-unified: the same documents router serves free container CRUD under the
+    # legacy /free alias (tier resolved from the JWT). The free file-upload flow +
+    # viewer bundles + free findings still live on free_documents_router for now.
+    app.include_router(documents_router, prefix="/free")
     app.include_router(levels_router)
+    # Tier-unified: the same levels router serves free callers under the legacy
+    # /free alias (the handler resolves the tier from the JWT, not the prefix).
+    # Replaces the deleted free_levels_router.
+    app.include_router(levels_router, prefix="/free")
     app.include_router(storeys_router)
     app.include_router(aligned_sheets_router)
     app.include_router(project_files_router)
@@ -443,7 +449,6 @@ def create_app() -> FastAPI:
     app.include_router(free_activity_router)
     app.include_router(free_documents_router)
     app.include_router(free_projects_router)
-    app.include_router(free_levels_router)
     app.include_router(free_aligned_sheets_router)
     app.include_router(free_attachments_router)
     app.include_router(free_internal_router)
@@ -472,7 +477,9 @@ def create_app() -> FastAPI:
     app.include_router(reports_router)
     app.include_router(activity_router)
     app.include_router(notifications_router)
-    app.include_router(free_notifications_router)
+    # Tier-unified: the same notifications router serves free callers under the
+    # legacy /free alias (tier resolved from the JWT). Replaces free_notifications.
+    app.include_router(notifications_router, prefix="/free")
     app.include_router(ws_notifications_router)
     return app
 

@@ -27,6 +27,7 @@ claim (e.g. fresh super-admin token), the dep returns 409
 
 from collections.abc import AsyncGenerator, AsyncIterator
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
@@ -71,9 +72,7 @@ async def resolve_platform_schema(session: AsyncSession) -> str:
     if _platform_schema is None:
         schema = (
             await session.execute(
-                select(Organization.schema_name).where(
-                    Organization.name == PLATFORM_ORG_NAME
-                )
+                select(Organization.schema_name).where(Organization.name == PLATFORM_ORG_NAME)
             )
         ).scalar_one_or_none()
         if schema is None:
@@ -250,6 +249,87 @@ async def get_free_session(
     """
     async with open_free_session(user.id) as session:
         yield session
+
+
+# ---------------------------------------------------------------------------
+# Unified scope resolver (free/paid bridge-model selector)
+# ---------------------------------------------------------------------------
+#
+# The free tier (pooled `public.free_*`, owner-OR-member RLS, org-less JWT) and
+# the paid tier (schema-per-tenant `org_<hex>`, `search_path` + GUCs from the JWT
+# `org` claim) are TWO distinct isolation mechanisms. The cardinal rule of the
+# bridge model is that the silo/pool branch lives in ONE place in the data-access
+# layer — never in endpoint or client code. `get_scoped_session` is that place.
+#
+# It ONLY *selects* between the two existing context managers (`open_free_session`
+# / `open_tenant_session`); it never abstracts or merges the sessions or the RLS
+# boundary. The schema-per-tenant vs pooled-RLS security seam stays intact.
+
+
+@dataclass(frozen=True)
+class ScopeContext:
+    """Tier-agnostic request scope — the verified user plus the active org (or
+    None for a free, org-less account).
+
+    Handlers depend on this to branch *cross-cutting* concerns (audit, notify,
+    permission resolution) on `is_free` without re-decoding the token, while the
+    DB session itself comes from `get_scoped_session`. `org_id` is read from the
+    JWT `org` claim only — never the path/query/body.
+    """
+
+    user: User
+    org_id: UUID | None
+
+    @property
+    def is_free(self) -> bool:
+        """True when the caller is in the org-less free (pooled) context."""
+        return self.org_id is None
+
+
+async def get_scope_context(
+    user: User = Depends(current_verified_user),
+    org_id: UUID | None = Depends(get_active_organization_id),
+) -> ScopeContext:
+    """Package the verified user + (optional) active org from the JWT claim.
+
+    Does NOT verify membership — that happens on the data path
+    (`get_scoped_session` / `require_active_organization`). Use this where a
+    handler needs the tier signal but opens its own session, or alongside
+    `get_scoped_session` to drive tier-blind cross-cutting logic.
+    """
+    return ScopeContext(user=user, org_id=org_id)
+
+
+async def get_scoped_session(
+    request: Request,
+    user: User = Depends(current_verified_user),
+    org_id: UUID | None = Depends(get_active_organization_id),
+    master_session: AsyncSession = Depends(get_async_session),
+) -> AsyncGenerator[AsyncSession, None]:
+    """THE single place tenancy is decided — yield the right session for the tier.
+
+    - JWT carries an `org` claim → verify membership + org status (same checks as
+      `require_active_organization`), stash the verified schema on
+      `request.state.active_schema`, and open the tenant schema session
+      (schema-per-tenant isolation).
+    - JWT is org-less (a free account) → open the pooled free session
+      (owner-OR-member RLS via the `app.current_user_id` GUC).
+
+    Endpoints depending on this become tier-blind at the URL/client layer. The
+    same hard rule as the underlying deps applies: handlers MUST NOT call
+    `session.commit()` — the wrapping `session.begin()` owns commit/rollback; an
+    explicit commit drops the role/search_path/GUCs and breaks isolation.
+    """
+    if org_id is None:
+        async with open_free_session(user.id) as session:
+            yield session
+    else:
+        # Membership + org-status gating identical to require_active_organization,
+        # so an org claim is always verified before any tenant query runs.
+        _, org = await _verify_membership(master_session, user.id, org_id)
+        request.state.active_schema = org.schema_name
+        async with open_tenant_session(org.schema_name, org_id, user.id) as session:
+            yield session
 
 
 # Backwards-compat shim: pre-refactor code imported `require_org_user` which

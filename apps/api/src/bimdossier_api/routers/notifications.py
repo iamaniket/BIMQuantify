@@ -1,3 +1,22 @@
+"""Notification feed — tier-unified (free/paid bridge).
+
+Every handler depends on ``get_scoped_session`` + ``get_scope_context`` and
+branches once on ``scope.is_free``:
+
+- **paid** (org JWT): the org-shared ``Notification`` + per-user
+  ``NotificationUserState`` tables; a row is visible if org-wide
+  (``recipient_user_id IS NULL``) or addressed to the caller.
+- **free** (org-less JWT): the pooled per-recipient ``FreeNotification`` +
+  ``FreeNotificationUserState`` tables (owner-keyed RLS); every row is targeted,
+  so the filter is ``recipient_user_id = me``. The response is mapped onto the
+  SAME ``NotificationOut`` shape (sentinel org, free ids, ``job_id`` null).
+
+The router is mounted at ``/notifications`` AND aliased at ``/free/notifications``
+in ``main.py`` — the tier comes from the JWT, never the URL prefix. (The live WS
+feed is still split — ``/ws/notifications`` vs ``/ws/free-notifications`` in
+``ws_notifications.py`` — and will be unified separately.)
+"""
+
 import logging
 from uuid import UUID
 
@@ -7,20 +26,24 @@ from sqlalchemy import ColumnElement, and_, case, exists, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bimdossier_api.auth.fastapi_users import current_verified_user
 from bimdossier_api.cache import get_redis_dep
+from bimdossier_api.jobs.priority import FREE_TIER_SENTINEL_ORG
+from bimdossier_api.models.free_notification import (
+    FreeNotification,
+    FreeNotificationUserState,
+)
 from bimdossier_api.models.notification import (
     Notification,
     NotificationUserState,
 )
-from bimdossier_api.models.user import User
 from bimdossier_api.pagination import encode_cursor, keyset_after
+from bimdossier_api.routers.free_access import require_free_tier_enabled
 from bimdossier_api.schemas.notification import (
     NotificationListResponse,
     NotificationOut,
     UnreadCountResponse,
 )
-from bimdossier_api.tenancy import get_tenant_session, require_active_organization
+from bimdossier_api.tenancy import ScopeContext, get_scope_context, get_scoped_session
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +54,11 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 # already arrive over the WS pub/sub channel, so a short TTL bounds the only
 # staleness window (a broadcast create the writer didn't invalidate).
 _UNREAD_COUNT_TTL_SECONDS = 20
+
+
+# ---------------------------------------------------------------------------
+# Paid (org-shared) helpers
+# ---------------------------------------------------------------------------
 
 
 def _unread_count_key(org_id: UUID, user_id: UUID) -> str:
@@ -73,9 +101,79 @@ def _dismissed_expr(user_id: UUID) -> ColumnElement[bool]:
 # or addressed to them. ANDed into every read so a targeted @mention ping never
 # surfaces in another member's feed or counts.
 def _recipient_visible_expr(user_id: UUID) -> ColumnElement[bool]:
-    return (Notification.recipient_user_id.is_(None)) | (
-        Notification.recipient_user_id == user_id
+    return (Notification.recipient_user_id.is_(None)) | (Notification.recipient_user_id == user_id)
+
+
+# ---------------------------------------------------------------------------
+# Free (pooled, per-recipient) helpers — mirror of the former free_notifications
+# ---------------------------------------------------------------------------
+
+
+def _free_unread_count_key(user_id: UUID) -> str:
+    return f"notif:free:unread:{user_id}"
+
+
+async def _free_invalidate_unread_count(redis: Redis, user_id: UUID) -> None:
+    key = _free_unread_count_key(user_id)
+    try:
+        await redis.delete(key)
+    except Exception:
+        logger.warning("free unread-count cache invalidation failed for %s", key, exc_info=True)
+
+
+def _free_to_out(notif: FreeNotification, *, is_read: bool) -> NotificationOut:
+    """Map a free row onto the shared paid ``NotificationOut`` (sentinel org, free
+    ids as project/file, no job) so the portal bell/Zod schema is unchanged."""
+    return NotificationOut(
+        id=notif.id,
+        organization_id=FREE_TIER_SENTINEL_ORG,
+        project_id=notif.free_project_id,
+        file_id=notif.free_file_id,
+        job_id=None,
+        event_type=notif.event_type,
+        title=notif.title,
+        body=notif.body,
+        is_read=is_read,
+        created_at=notif.created_at,
     )
+
+
+def _free_is_read_expr(user_id: UUID) -> ColumnElement[bool]:
+    return exists(
+        select(FreeNotificationUserState.notification_id).where(
+            FreeNotificationUserState.notification_id == FreeNotification.id,
+            FreeNotificationUserState.user_id == user_id,
+            FreeNotificationUserState.read_at.is_not(None),
+        )
+    )
+
+
+def _free_dismissed_expr(user_id: UUID) -> ColumnElement[bool]:
+    return exists(
+        select(FreeNotificationUserState.notification_id).where(
+            FreeNotificationUserState.notification_id == FreeNotification.id,
+            FreeNotificationUserState.user_id == user_id,
+            FreeNotificationUserState.dismissed_at.is_not(None),
+        )
+    )
+
+
+async def _free_load_or_404(session: AsyncSession, notification_id: UUID, user_id: UUID) -> None:
+    notif = (
+        await session.execute(
+            select(FreeNotification.id).where(
+                FreeNotification.id == notification_id,
+                FreeNotification.recipient_user_id == user_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if notif is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="NOTIFICATION_NOT_FOUND")
+
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
 
 
 @router.get("", response_model=NotificationListResponse)
@@ -87,10 +185,62 @@ async def list_notifications(
         description="Keyset cursor from a prior response's next_cursor. When set, "
         "pages by (created_at, id) and ignores offset — for 'load more' feeds.",
     ),
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
+    session: AsyncSession = Depends(get_scoped_session),
+    scope: ScopeContext = Depends(get_scope_context),
 ) -> NotificationListResponse:
+    user = scope.user
+    if scope.is_free:
+        require_free_tier_enabled()
+        # Distinct local names from the paid branch below (different model types →
+        # the type checker can't reuse `state`/`base_filters` across both).
+        fstate = FreeNotificationUserState
+        fjoin = and_(fstate.notification_id == FreeNotification.id, fstate.user_id == user.id)
+        ffilters = (
+            FreeNotification.recipient_user_id == user.id,
+            fstate.dismissed_at.is_(None),
+        )
+        counts_row = (
+            await session.execute(
+                select(
+                    func.count().label("total"),
+                    func.sum(case((fstate.read_at.is_(None), 1), else_=0)).label("unread"),
+                )
+                .select_from(FreeNotification)
+                .outerjoin(fstate, fjoin)
+                .where(*ffilters)
+            )
+        ).one()
+        is_read_col = case((fstate.read_at.is_not(None), True), else_=False).label("is_read")
+        page_stmt = (
+            select(FreeNotification, is_read_col)
+            .outerjoin(fstate, fjoin)
+            .where(*ffilters)
+            .order_by(FreeNotification.created_at.desc(), FreeNotification.id.desc())
+            .limit(limit)
+        )
+        if cursor is not None:
+            page_stmt = page_stmt.where(
+                keyset_after(FreeNotification.created_at, FreeNotification.id, cursor)
+            )
+        else:
+            page_stmt = page_stmt.offset(offset)
+        rows = (await session.execute(page_stmt)).all()
+        items = [_free_to_out(row.FreeNotification, is_read=row.is_read) for row in rows]
+        next_cursor: str | None = None
+        if len(rows) == limit and rows:
+            last = rows[-1].FreeNotification
+            next_cursor = encode_cursor(last.created_at, last.id)
+        return NotificationListResponse(
+            items=items,
+            total=int(counts_row.total or 0),
+            unread_count=int(counts_row.unread or 0),
+            limit=limit,
+            offset=offset,
+            next_cursor=next_cursor,
+        )
+
+    assert scope.org_id is not None
+    active_org_id = scope.org_id
     visible_expr = _recipient_visible_expr(user.id)
 
     # The per-user state row (read/dismiss) is LEFT-JOINed once — the composite
@@ -133,9 +283,7 @@ async def list_notifications(
         .limit(limit)
     )
     if cursor is not None:
-        page_stmt = page_stmt.where(
-            keyset_after(Notification.created_at, Notification.id, cursor)
-        )
+        page_stmt = page_stmt.where(keyset_after(Notification.created_at, Notification.id, cursor))
     else:
         page_stmt = page_stmt.offset(offset)
 
@@ -156,7 +304,7 @@ async def list_notifications(
         for row in rows
     ]
     # A full page implies there may be more — hand back a cursor at the last row.
-    next_cursor: str | None = None
+    next_cursor = None
     if len(rows) == limit and rows:
         last = rows[-1].Notification
         next_cursor = encode_cursor(last.created_at, last.id)
@@ -173,11 +321,38 @@ async def list_notifications(
 
 @router.get("/unread-count", response_model=UnreadCountResponse)
 async def unread_count(
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
+    session: AsyncSession = Depends(get_scoped_session),
+    scope: ScopeContext = Depends(get_scope_context),
     redis: Redis = Depends(get_redis_dep),
 ) -> UnreadCountResponse:
+    user = scope.user
+    if scope.is_free:
+        require_free_tier_enabled()
+        key = _free_unread_count_key(user.id)
+        try:
+            cached = await redis.get(key)
+            if cached is not None:
+                return UnreadCountResponse(count=int(cached))
+        except Exception:
+            logger.warning("free unread-count cache read failed for %s", key, exc_info=True)
+        stmt = (
+            select(func.count())
+            .select_from(FreeNotification)
+            .where(
+                FreeNotification.recipient_user_id == user.id,
+                ~_free_is_read_expr(user.id),
+                ~_free_dismissed_expr(user.id),
+            )
+        )
+        count = (await session.scalar(stmt)) or 0
+        try:
+            await redis.set(key, count, ex=_UNREAD_COUNT_TTL_SECONDS)
+        except Exception:
+            logger.warning("free unread-count cache write failed for %s", key, exc_info=True)
+        return UnreadCountResponse(count=count)
+
+    assert scope.org_id is not None
+    active_org_id = scope.org_id
     key = _unread_count_key(active_org_id, user.id)
     try:
         cached = await redis.get(key)
@@ -208,11 +383,29 @@ async def unread_count(
 @router.patch("/{notification_id}/read", status_code=status.HTTP_204_NO_CONTENT)
 async def mark_read(
     notification_id: UUID,
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
+    session: AsyncSession = Depends(get_scoped_session),
+    scope: ScopeContext = Depends(get_scope_context),
     redis: Redis = Depends(get_redis_dep),
 ) -> None:
+    user = scope.user
+    if scope.is_free:
+        require_free_tier_enabled()
+        await _free_load_or_404(session, notification_id, user.id)
+        stmt = (
+            pg_insert(FreeNotificationUserState)
+            .values(notification_id=notification_id, user_id=user.id, read_at=func.now())
+            .on_conflict_do_update(
+                index_elements=["notification_id", "user_id"],
+                set_={"read_at": func.now()},
+                where=FreeNotificationUserState.read_at.is_(None),
+            )
+        )
+        await session.execute(stmt)
+        await session.flush()
+        await _free_invalidate_unread_count(redis, user.id)
+        return
+
+    assert scope.org_id is not None
     notif = (
         await session.execute(
             select(Notification).where(
@@ -240,23 +433,37 @@ async def mark_read(
     )
     await session.execute(stmt)
     await session.flush()
-    await _invalidate_unread_count(redis, active_org_id, user.id)
+    await _invalidate_unread_count(redis, scope.org_id, user.id)
 
 
 @router.post("/{notification_id}/dismiss", status_code=status.HTTP_204_NO_CONTENT)
 async def dismiss(
     notification_id: UUID,
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
+    session: AsyncSession = Depends(get_scoped_session),
+    scope: ScopeContext = Depends(get_scope_context),
     redis: Redis = Depends(get_redis_dep),
 ) -> None:
-    """Dismiss a notification for the current user only.
+    """Dismiss a notification for the current user only (per-user state row;
+    the shared/source row is untouched, so teammates still see it)."""
+    user = scope.user
+    if scope.is_free:
+        require_free_tier_enabled()
+        await _free_load_or_404(session, notification_id, user.id)
+        stmt = (
+            pg_insert(FreeNotificationUserState)
+            .values(notification_id=notification_id, user_id=user.id, dismissed_at=func.now())
+            .on_conflict_do_update(
+                index_elements=["notification_id", "user_id"],
+                set_={"dismissed_at": func.now()},
+                where=FreeNotificationUserState.dismissed_at.is_(None),
+            )
+        )
+        await session.execute(stmt)
+        await session.flush()
+        await _free_invalidate_unread_count(redis, user.id)
+        return
 
-    Upserts the per-user state row's ``dismissed_at`` (idempotent) so the
-    notification disappears from this user's feed and counts. The org-shared
-    notification row is untouched — teammates still see it.
-    """
+    assert scope.org_id is not None
     notif = (
         await session.execute(
             select(Notification).where(
@@ -282,16 +489,52 @@ async def dismiss(
     )
     await session.execute(stmt)
     await session.flush()
-    await _invalidate_unread_count(redis, active_org_id, user.id)
+    await _invalidate_unread_count(redis, scope.org_id, user.id)
 
 
 @router.post("/mark-all-read", status_code=status.HTTP_204_NO_CONTENT)
 async def mark_all_read(
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
+    session: AsyncSession = Depends(get_scoped_session),
+    scope: ScopeContext = Depends(get_scope_context),
     redis: Redis = Depends(get_redis_dep),
 ) -> None:
+    user = scope.user
+    if scope.is_free:
+        require_free_tier_enabled()
+        unread_ids = list(
+            (
+                await session.execute(
+                    select(FreeNotification.id).where(
+                        FreeNotification.recipient_user_id == user.id,
+                        ~_free_is_read_expr(user.id),
+                        ~_free_dismissed_expr(user.id),
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if unread_ids:
+            stmt = (
+                pg_insert(FreeNotificationUserState)
+                .values(
+                    [
+                        {"notification_id": nid, "user_id": user.id, "read_at": func.now()}
+                        for nid in unread_ids
+                    ]
+                )
+                .on_conflict_do_update(
+                    index_elements=["notification_id", "user_id"],
+                    set_={"read_at": func.now()},
+                    where=FreeNotificationUserState.read_at.is_(None),
+                )
+            )
+            await session.execute(stmt)
+            await session.flush()
+            await _free_invalidate_unread_count(redis, user.id)
+        return
+
+    assert scope.org_id is not None
     unread_stmt = select(Notification.id).where(
         ~_is_read_expr(user.id),
         ~_dismissed_expr(user.id),
@@ -315,22 +558,53 @@ async def mark_all_read(
         )
         await session.execute(stmt)
         await session.flush()
-        await _invalidate_unread_count(redis, active_org_id, user.id)
+        await _invalidate_unread_count(redis, scope.org_id, user.id)
 
 
 @router.post("/clear", status_code=status.HTTP_204_NO_CONTENT)
 async def clear(
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
+    session: AsyncSession = Depends(get_scoped_session),
+    scope: ScopeContext = Depends(get_scope_context),
     redis: Redis = Depends(get_redis_dep),
 ) -> None:
-    """Clear (dismiss) the current user's entire feed.
+    """Clear (dismiss) the current user's entire feed — read and unread alike —
+    without affecting teammates."""
+    user = scope.user
+    if scope.is_free:
+        require_free_tier_enabled()
+        visible_ids = list(
+            (
+                await session.execute(
+                    select(FreeNotification.id).where(
+                        FreeNotification.recipient_user_id == user.id,
+                        ~_free_dismissed_expr(user.id),
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if visible_ids:
+            stmt = (
+                pg_insert(FreeNotificationUserState)
+                .values(
+                    [
+                        {"notification_id": nid, "user_id": user.id, "dismissed_at": func.now()}
+                        for nid in visible_ids
+                    ]
+                )
+                .on_conflict_do_update(
+                    index_elements=["notification_id", "user_id"],
+                    set_={"dismissed_at": func.now()},
+                    where=FreeNotificationUserState.dismissed_at.is_(None),
+                )
+            )
+            await session.execute(stmt)
+            await session.flush()
+            await _free_invalidate_unread_count(redis, user.id)
+        return
 
-    Bulk-upserts ``dismissed_at`` for every notification the user has not
-    already dismissed — read and unread alike — emptying their feed without
-    affecting teammates.
-    """
+    assert scope.org_id is not None
     visible_ids = list(
         (
             await session.execute(
@@ -360,7 +634,7 @@ async def clear(
         )
         await session.execute(stmt)
         await session.flush()
-        await _invalidate_unread_count(redis, active_org_id, user.id)
+        await _invalidate_unread_count(redis, scope.org_id, user.id)
 
 
 __all__ = ["router"]
