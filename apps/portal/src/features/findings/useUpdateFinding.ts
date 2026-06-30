@@ -4,7 +4,7 @@ import type { UseMutationResult } from '@tanstack/react-query';
 
 import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import { updateFinding } from '@/lib/api/findings';
-import { freeFindingToFinding, updateFreeFinding } from '@/lib/api/freeFindings';
+import { updateFreeFinding } from '@/lib/api/freeFindings';
 import type { Finding, FindingUpdateInput } from '@/lib/api/schemas';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
 
@@ -23,7 +23,8 @@ export function useUpdateFinding(projectId: string): UseMutationResult<Finding, 
   return useAuthMutation({
     mutationFn: async (accessToken, { findingId, input }) => {
       if (isFreeUser) {
-        const snag = await updateFreeFinding(accessToken, findingId, {
+        // The free update endpoint already returns the paid `Finding` shape.
+        return updateFreeFinding(accessToken, findingId, {
           ...(input.title !== undefined ? { title: input.title } : {}),
           ...(input.description !== undefined ? { note: input.description } : {}),
           ...(input.severity != null ? { severity: input.severity } : {}),
@@ -35,7 +36,6 @@ export function useUpdateFinding(projectId: string): UseMutationResult<Finding, 
             ? { deadline_date: input.deadline_date }
             : {}),
         });
-        return freeFindingToFinding(snag, projectId, new Date().toISOString());
       }
       return updateFinding(accessToken, projectId, findingId, input);
     },

@@ -920,11 +920,19 @@ def _role_enum(role: str | None) -> ProjectRole:
         return ProjectRole.viewer
 
 
-def _free_finding_to_finding(s: FreeFinding, project_id: UUID) -> FindingRead:
-    """Adapt a pooled free snag to the paid FindingRead shape so the kanban board
-    + finding cards render unchanged. Assignment (assignee + deadline) carries over;
-    the remaining paid-only fields (photos, template, resolution, bbl ref) are null
-    for the free tier."""
+def _free_finding_to_finding(
+    s: FreeFinding, project_id: UUID, *, include_photos: bool = False
+) -> FindingRead:
+    """Adapt a pooled free snag to the paid FindingRead shape so the kanban board,
+    finding cards AND the viewer inspector render free snags unchanged — the single
+    server-side serializer so the client needs no free→paid adapter.
+
+    `include_photos` controls whether photo / resolution-evidence ids are read off
+    `s.attachment_links` (the free-on-mobile evidence). It is `False` for the board
+    feed (which never selectinloads the links — reading them would MissingGreenlet)
+    and `True` for the per-document/per-snag endpoints (which do load them). The
+    remaining paid-only fields (template, resolution note, bbl ref) are null for the
+    free tier."""
     return FindingRead(
         id=s.id,
         project_id=project_id,
@@ -951,9 +959,9 @@ def _free_finding_to_finding(s: FreeFinding, project_id: UUID) -> FindingRead:
         anchor_z=s.anchor_z,
         anchor_page=s.anchor_page,
         anchor_page_id=None,
-        photo_ids=None,
+        photo_ids=s.photo_ids if include_photos else None,
         resolution_note=None,
-        resolution_evidence_ids=None,
+        resolution_evidence_ids=s.resolution_evidence_ids if include_photos else None,
         reference_attachment_ids=None,
         template_id=None,
         custom_values=None,

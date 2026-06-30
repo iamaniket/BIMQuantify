@@ -97,7 +97,9 @@ from bimdossier_api.routers.free_access import (
     require_free_write_role,
     resolve_free_document_role,
 )
+from bimdossier_api.routers.free_projects import _free_finding_to_finding
 from bimdossier_api.schemas.document import DocumentRead, DocumentWithVersions
+from bimdossier_api.schemas.finding import FindingRead
 from bimdossier_api.schemas.project_file import (
     InitiateUploadRequest,
     InitiateUploadResponse,
@@ -192,48 +194,6 @@ class FreeFindingUpdate(BaseModel):
     # never clears — link removal is a separate concern). Validated like create.
     photo_ids: list[UUID] | None = None
     resolution_evidence_ids: list[UUID] | None = None
-
-
-class FreeFindingRead(BaseModel):
-    id: UUID
-    free_document_id: UUID
-    linked_file_id: UUID | None
-    title: str
-    note: str | None
-    severity: str
-    status: str
-    linked_file_type: str
-    anchor_x: float | None
-    anchor_y: float | None
-    anchor_z: float | None
-    anchor_page: int | None
-    linked_element_global_id: str | None
-    assigned_to_user_id: UUID | None
-    deadline_date: date | None
-    photo_ids: list[UUID] | None = None
-    resolution_evidence_ids: list[UUID] | None = None
-
-    @classmethod
-    def of(cls, s: FreeFinding) -> "FreeFindingRead":
-        return cls(
-            id=s.id,
-            free_document_id=s.free_document_id,
-            linked_file_id=s.linked_file_id,
-            title=s.title,
-            note=s.note,
-            severity=s.severity,
-            status=s.status,
-            linked_file_type=s.linked_file_type,
-            anchor_x=s.anchor_x,
-            anchor_y=s.anchor_y,
-            anchor_z=s.anchor_z,
-            anchor_page=s.anchor_page,
-            linked_element_global_id=s.linked_element_global_id,
-            assigned_to_user_id=s.assigned_to_user_id,
-            deadline_date=s.deadline_date,
-            photo_ids=s.photo_ids,
-            resolution_evidence_ids=s.resolution_evidence_ids,
-        )
 
 
 class FreeCallbackRequest(BaseModel):
@@ -1204,7 +1164,7 @@ async def _attach_links_to_snag(
 
 @router.post(
     "/documents/{document_id}/findings",
-    response_model=FreeFindingRead,
+    response_model=FindingRead,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_free_finding(
@@ -1212,7 +1172,7 @@ async def create_free_finding(
     payload: FreeFindingCreate,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_free_session),
-) -> FreeFindingRead:
+) -> FindingRead:
     if payload.severity not in FREE_FINDING_SEVERITIES:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="VALIDATION_ERROR"
@@ -1251,16 +1211,16 @@ async def create_free_finding(
         await session.flush()
     # Eager-load the links so `photo_ids` reads them in-memory (no async lazy-load).
     await session.refresh(snag, attribute_names=["attachment_links"])
-    return FreeFindingRead.of(snag)
+    return _free_finding_to_finding(snag, document.free_project_id, include_photos=True)
 
 
-@router.get("/documents/{document_id}/findings", response_model=list[FreeFindingRead])
+@router.get("/documents/{document_id}/findings", response_model=list[FindingRead])
 async def list_free_findings(
     document_id: UUID,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_free_session),
-) -> list[FreeFindingRead]:
-    await _load_accessible_document_by_id_or_404(session, document_id)
+) -> list[FindingRead]:
+    document = await _load_accessible_document_by_id_or_404(session, document_id)
     rows = (
         await session.execute(
             select(FreeFinding)
@@ -1269,28 +1229,38 @@ async def list_free_findings(
             .order_by(FreeFinding.created_at.asc())
         )
     ).scalars().all()
-    return [FreeFindingRead.of(s) for s in rows]
+    return [
+        _free_finding_to_finding(s, document.free_project_id, include_photos=True)
+        for s in rows
+    ]
 
 
-@router.get("/findings/{finding_id}", response_model=FreeFindingRead)
+@router.get("/findings/{finding_id}", response_model=FindingRead)
 async def get_free_finding(
     finding_id: UUID,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_free_session),
-) -> FreeFindingRead:
+) -> FindingRead:
     """Single free snag (mobile `useFinding` + offline 422-conflict refetch). RLS
     scopes visibility to participants; 404 otherwise."""
     snag = await _load_accessible_snag_or_404(session, finding_id)
-    return FreeFindingRead.of(snag)
+    project_id = await session.scalar(
+        select(FreeDocument.free_project_id).where(FreeDocument.id == snag.free_document_id)
+    )
+    if project_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="FREE_DOCUMENT_NOT_FOUND"
+        )
+    return _free_finding_to_finding(snag, project_id, include_photos=True)
 
 
-@router.patch("/findings/{finding_id}", response_model=FreeFindingRead)
+@router.patch("/findings/{finding_id}", response_model=FindingRead)
 async def update_free_finding(
     finding_id: UUID,
     payload: FreeFindingUpdate,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_free_session),
-) -> FreeFindingRead:
+) -> FindingRead:
     snag = await _load_accessible_snag_or_404(session, finding_id)
     document = await _load_accessible_document_by_id_or_404(session, snag.free_document_id)
     require_free_write_role(await resolve_free_document_role(session, document, user.id))
@@ -1341,7 +1311,7 @@ async def update_free_finding(
     # collection to reflect them before reading photo_ids / resolution_evidence_ids.
     if links_changed:
         await session.refresh(snag, attribute_names=["attachment_links"])
-    return FreeFindingRead.of(snag)
+    return _free_finding_to_finding(snag, document.free_project_id, include_photos=True)
 
 
 @router.delete("/findings/{finding_id}", status_code=status.HTTP_204_NO_CONTENT)

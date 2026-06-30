@@ -4,7 +4,7 @@ import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query
 
 import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import { listFindings } from '@/lib/api/findings';
-import { freeFindingToFinding, listFreeFindings } from '@/lib/api/freeFindings';
+import { listFreeFindings } from '@/lib/api/freeFindings';
 import type { PaginatedResponse } from '@/lib/api/client';
 import type { Finding } from '@/lib/api/schemas';
 import { useAuthInfiniteQuery } from '@/lib/query/useAuthInfiniteQuery';
@@ -24,11 +24,11 @@ export function useElementFindings(
     queryFn: isFreeUser
       ? async (accessToken) => {
           if (globalId === null) throw new Error('Missing globalId');
-          const snags = await listFreeFindings(accessToken, modelId);
-          const nowIso = new Date().toISOString();
-          const data = snags
-            .map((s) => freeFindingToFinding(s, projectId, nowIso))
-            .filter((f) => f.linked_element_global_id === globalId);
+          // The free endpoint already emits the paid `Finding` shape; just filter
+          // by GlobalId client-side (free has no server element filter).
+          const data = (await listFreeFindings(accessToken, modelId)).filter(
+            (f) => f.linked_element_global_id === globalId,
+          );
           return { data, totalCount: data.length };
         }
       : (accessToken, offset, limit) => {

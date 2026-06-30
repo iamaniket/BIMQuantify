@@ -5,7 +5,7 @@ import type { UseMutationResult } from '@tanstack/react-query';
 import { useViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
 import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import { createFinding } from '@/lib/api/findings';
-import { createFreeFinding, freeFindingToFinding } from '@/lib/api/freeFindings';
+import { createFreeFinding } from '@/lib/api/freeFindings';
 import type { Finding, FindingCreateInput } from '@/lib/api/schemas';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
 
@@ -52,7 +52,8 @@ export function useCreateFinding(
         if (containerId == null || containerId === '') {
           throw new FreeFindingNoContainerError();
         }
-        const snag = await createFreeFinding(accessToken, containerId, {
+        // The free create endpoint already returns the paid `Finding` shape.
+        return createFreeFinding(accessToken, containerId, {
           title: input.title,
           note: input.description ?? null,
           severity: input.severity,
@@ -64,7 +65,6 @@ export function useCreateFinding(
           anchor_page: input.anchor_page ?? null,
           linked_element_global_id: input.linked_element_global_id ?? null,
         });
-        return freeFindingToFinding(snag, projectId, new Date().toISOString());
       }
       return createFinding(accessToken, projectId, input);
     },

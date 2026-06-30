@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 
 import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import { listFindings } from '@/lib/api/findings';
-import { freeFindingToFinding, listFreeFindings } from '@/lib/api/freeFindings';
+import { listFreeFindings } from '@/lib/api/freeFindings';
 import type { Finding } from '@/lib/api/schemas';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
@@ -51,9 +51,8 @@ export function useOrphanedElementItems(
     queryKey: ['projects', projectId, 'findings', 'model', modelId, isFreeUser] as const,
     queryFn: isFreeUser
       ? async (accessToken) => {
-          const snags = await listFreeFindings(accessToken, modelId);
-          const nowIso = new Date().toISOString();
-          const data = snags.map((s) => freeFindingToFinding(s, projectId, nowIso));
+          // Free endpoint already returns the paid `Finding` shape (no adapter).
+          const data = await listFreeFindings(accessToken, modelId);
           return { data, totalCount: data.length };
         }
       : (accessToken) => listFindings(accessToken, projectId, { linkedModelId: modelId }),

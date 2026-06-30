@@ -41,7 +41,6 @@ vi.mock('@/lib/api/freeProjects', () => ({
 const listFreeFindings = vi.fn();
 vi.mock('@/lib/api/freeFindings', () => ({
   listFreeFindings: (...args: unknown[]) => listFreeFindings(...args) as unknown,
-  freeFindingToFinding: (s: unknown) => s,
 }));
 
 function tok(access: string): TokenPair {

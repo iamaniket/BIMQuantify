@@ -468,7 +468,9 @@ async def test_snag_crud(
     assert created.status_code == 201, created.text
     snag_id = created.json()["id"]
     assert created.json()["status"] == "open"
-    assert created.json()["free_document_id"] == did
+    # Free snags now serialize as the paid FindingRead (linked_document_id ==
+    # the container) — the single server-side shape, no client adapter.
+    assert created.json()["linked_document_id"] == did
 
     listed = await client.get(f"/free/documents/{did}/findings", headers=_auth(token))
     assert listed.status_code == 200
@@ -518,7 +520,7 @@ async def test_snag_assignee_and_deadline(
         headers=_auth(token),
     )
     assert created.status_code == 201, created.text
-    assert created.json()["assigned_to_user_id"] == owner_id
+    assert created.json()["assignee_user_id"] == owner_id
     assert created.json()["deadline_date"] == "2026-12-31"
 
     # Assigning to a non-participant is rejected.
@@ -535,14 +537,14 @@ async def test_snag_assignee_and_deadline(
         f"/free/documents/{did}/findings", json={"title": "Plain"}, headers=_auth(token)
     )
     assert plain.status_code == 201
-    assert plain.json()["assigned_to_user_id"] is None
+    assert plain.json()["assignee_user_id"] is None
     patched = await client.patch(
         f"/free/findings/{plain.json()['id']}",
         json={"assigned_to_user_id": owner_id, "deadline_date": "2027-01-15"},
         headers=_auth(token),
     )
     assert patched.status_code == 200
-    assert patched.json()["assigned_to_user_id"] == owner_id
+    assert patched.json()["assignee_user_id"] == owner_id
     assert patched.json()["deadline_date"] == "2027-01-15"
 
     # PATCH assigning to a non-participant is still rejected.
@@ -588,7 +590,7 @@ async def test_snag_patch_clears_and_preserves_assignment(
     )
     assert only_title.status_code == 200, only_title.text
     assert only_title.json()["title"] == "Renamed"
-    assert only_title.json()["assigned_to_user_id"] == owner_id
+    assert only_title.json()["assignee_user_id"] == owner_id
     assert only_title.json()["deadline_date"] == "2026-12-31"
 
     # An explicit null clears both nullable columns.
@@ -598,7 +600,7 @@ async def test_snag_patch_clears_and_preserves_assignment(
         headers=_auth(token),
     )
     assert cleared.status_code == 200, cleared.text
-    assert cleared.json()["assigned_to_user_id"] is None
+    assert cleared.json()["assignee_user_id"] is None
     assert cleared.json()["deadline_date"] is None
 
     # A null on the NOT-NULL title column is ignored (value preserved).

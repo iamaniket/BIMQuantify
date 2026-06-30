@@ -6,7 +6,7 @@ import { useViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
 import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import { listFindings } from '@/lib/api/findings';
 import { listFreeProjectSnags } from '@/lib/api/freeProjects';
-import { freeFindingToFinding, listFreeFindings } from '@/lib/api/freeFindings';
+import { listFreeFindings } from '@/lib/api/freeFindings';
 import type { PaginatedResponse } from '@/lib/api/client';
 import type { Finding } from '@/lib/api/schemas';
 import { useAuthInfiniteQuery, totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
@@ -100,9 +100,8 @@ export function useFileFindings(
           if (freeContainerId === null || freeContainerId === '') {
             throw new Error('Missing container');
           }
-          const snags = await listFreeFindings(accessToken, freeContainerId);
-          const nowIso = new Date().toISOString();
-          const data = snags.map((s) => freeFindingToFinding(s, projectId, nowIso));
+          // The free endpoint already emits the paid `Finding` shape (no adapter).
+          const data = await listFreeFindings(accessToken, freeContainerId);
           return { data, totalCount: data.length };
         }
       : (accessToken, offset, limit) => {

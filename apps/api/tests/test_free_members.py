@@ -318,7 +318,7 @@ async def test_snag_assignment_to_member_and_board_feed(
         headers=_auth(bob),
     )
     assert reassign.status_code == 200, reassign.text
-    assert reassign.json()["assigned_to_user_id"] == owner_id
+    assert reassign.json()["assignee_user_id"] == owner_id
 
     # Assigning to a non-participant (Charlie) is a 422, from either writer.
     for writer in (owner, bob):
