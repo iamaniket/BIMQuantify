@@ -19,12 +19,14 @@ export function useDocumentFiles(
   // Paid-only: this is a per-row fallback (DocumentsTab passes prefetchedFiles
   // from the free-aware useDocumentsWithVersions). There is no free files-list
   // endpoint, so disabling it for free users avoids a doomed paid-endpoint hit.
-  const { isFreeUser } = useIsFreeUser();
+  // Gate on `ready` too: before /auth/me resolves, `isFreeUser` is false, so a
+  // bare `!isFreeUser` would briefly fire the paid endpoint for a free user.
+  const { isFreeUser, ready } = useIsFreeUser();
   return useAuthQuery({
     queryKey: [...documentFilesKey(projectId, documentId), status] as const,
     queryFn: (accessToken) =>
       listProjectFiles(accessToken, projectId, documentId, status),
-    enabled: !isFreeUser && projectId.length > 0 && documentId.length > 0,
+    enabled: ready && !isFreeUser && projectId.length > 0 && documentId.length > 0,
     refetchInterval: (query) => {
       // Stop polling once a poll errors (e.g. 401 + failed refresh). The query
       // settles to `error` but `state.data` keeps the last non-terminal snapshot,

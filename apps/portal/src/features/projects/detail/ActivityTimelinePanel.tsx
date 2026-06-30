@@ -22,10 +22,13 @@ const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
 // `since`) and slot the most recent 8 weeks client-side.
 const TIMELINE_PARAMS = { bucket: 'week' } as const;
 
-export function useProjectActivityTimeline(projectId: string) {
+export function useProjectActivityTimeline(projectId: string, free = false) {
   return useAuthQuery<ActivityTimeline>({
+    // A project id is globally unique to one tier, so the key needs no `free`
+    // bit — the fetch path branches on it (free derives the trend, paid reads
+    // the org audit feed). See `lib/api/scope.ts`.
     queryKey: [...projectActivityTimelineKey(projectId, TIMELINE_PARAMS)],
-    queryFn: (token) => listProjectActivityTimeline(token, projectId, TIMELINE_PARAMS),
+    queryFn: (token) => listProjectActivityTimeline(token, projectId, TIMELINE_PARAMS, free),
     enabled: projectId.length > 0,
   });
 }
@@ -161,15 +164,19 @@ export function ActivityTimelineView({
  * the activity-list filters. */
 export function ActivityTimelinePanel({
   projectId,
+  free = false,
   headerAction,
 }: {
   projectId: string;
+  /** Route the fetch to the free wedge's derived trend (`/free/...`) instead of
+   * the paid org audit feed. Defaults to the paid path. */
+  free?: boolean;
   /** Optional control rendered in the card header (e.g. a "View all" link). The
    * caller owns it so this module stays free of the next-intl navigation import
    * that breaks the pure-view unit test. */
   headerAction?: ReactNode;
 }): JSX.Element {
-  const { data, isLoading } = useProjectActivityTimeline(projectId);
+  const { data, isLoading } = useProjectActivityTimeline(projectId, free);
   return (
     <ActivityTimelineView timeline={data} isLoading={isLoading} headerAction={headerAction} />
   );

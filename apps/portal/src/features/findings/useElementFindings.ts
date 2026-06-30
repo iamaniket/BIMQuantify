@@ -16,7 +16,7 @@ export function useElementFindings(
   modelId: string,
   globalId: string | null,
 ): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Finding[]>>> {
-  const { isFreeUser } = useIsFreeUser();
+  const { isFreeUser, ready } = useIsFreeUser();
   return useAuthInfiniteQuery({
     queryKey: elementFindingsKey(projectId, modelId, globalId ?? ''),
     // Free-aware: free has no server element filter. `modelId` is the container
@@ -40,6 +40,7 @@ export function useElementFindings(
             offset,
           });
         },
-    enabled: globalId !== null,
+    // `ready` defers the fetch until /auth/me resolves the free/paid branch (409).
+    enabled: ready && globalId !== null,
   });
 }

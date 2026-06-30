@@ -97,6 +97,8 @@ export const FreeUserUsageSchema = z.object({
   // "Containers" ("Informatiecontainers" in NL).
   document_count: z.number().int(),
   document_cap: z.number().int(),
+  // Per-project invited-member cap (effective: override ?? default).
+  member_cap: z.number().int(),
   snag_count: z.number().int(),
   member_of_count: z.number().int(),
   last_activity_at: z.union([z.string(), z.null()]).optional(),
@@ -105,9 +107,63 @@ export const FreeUserUsageSchema = z.object({
 
 export type FreeUserUsage = z.infer<typeof FreeUserUsageSchema>;
 
+// Effective free-tier limits + trial state for one account, plus the raw
+// per-user overrides and env defaults the super-admin edit form needs.
+export const FreeUserLimitsSchema = z.object({
+  max_projects: z.number().int(),
+  max_members_per_project: z.number().int(),
+  max_documents: z.number().int(),
+  storage_max_bytes: z.number().int(),
+  account_max_age_days: z.number().int(),
+  expiry_exempt: z.boolean(),
+  account_expires_at: z.union([z.string(), z.null()]),
+  days_remaining: z.union([z.number().int(), z.null()]),
+  expired: z.boolean(),
+  override_max_projects: z.union([z.number().int(), z.null()]),
+  override_max_members_per_project: z.union([z.number().int(), z.null()]),
+  override_max_documents: z.union([z.number().int(), z.null()]),
+  override_storage_max_bytes: z.union([z.number().int(), z.null()]),
+  override_account_max_age_days: z.union([z.number().int(), z.null()]),
+  default_max_projects: z.number().int(),
+  default_max_members_per_project: z.number().int(),
+  default_max_documents: z.number().int(),
+  default_storage_max_bytes: z.number().int(),
+  default_account_max_age_days: z.number().int(),
+});
+
+export type FreeUserLimits = z.infer<typeof FreeUserLimitsSchema>;
+
+// Body for PATCH /admin/users/free/{id}/limits — full-replace. Each numeric
+// field: a positive int to override, or null to clear (fall back to the default).
+export type FreeUserLimitsUpdate = {
+  max_projects: number | null;
+  max_members_per_project: number | null;
+  max_documents: number | null;
+  storage_max_bytes: number | null;
+  account_max_age_days: number | null;
+  expiry_exempt: boolean;
+};
+
 export const FreeUserReadSchema = AdminUserReadSchema.extend({
   usage: FreeUserUsageSchema,
+  limits: FreeUserLimitsSchema,
 });
+
+// The caller's OWN free caps + trial countdown (GET /free/account/limits) —
+// drives the portal trial banner. No override/default internals (admin-only).
+export const FreeAccountLimitsSchema = z.object({
+  max_projects: z.number().int(),
+  max_members_per_project: z.number().int(),
+  max_documents: z.number().int(),
+  storage_max_bytes: z.number().int(),
+  account_max_age_days: z.number().int(),
+  account_expires_at: z.union([z.string(), z.null()]),
+  days_remaining: z.union([z.number().int(), z.null()]),
+  expired: z.boolean(),
+  expiry_exempt: z.boolean(),
+});
+
+export type FreeAccountLimits = z.infer<typeof FreeAccountLimitsSchema>;
 
 export type FreeUserRead = z.infer<typeof FreeUserReadSchema>;
 

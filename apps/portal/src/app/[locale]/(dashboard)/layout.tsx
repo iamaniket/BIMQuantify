@@ -6,6 +6,7 @@ import { useEffect, type JSX, type ReactNode } from 'react';
 import { AppHeaderProvider } from '@/components/shared/header/AppHeaderContext';
 import { AppHeaderRoute } from '@/features/navigation/AppHeaderRoute';
 import { FreeUserRouteGuard } from '@/features/auth/FreeUserRouteGuard';
+import { TrialBanner } from '@/features/free/TrialBanner';
 import { Sidebar } from '@/components/shared/sidebar/Sidebar';
 import { SidebarProvider } from '@/components/shared/sidebar/SidebarContext';
 import { useIsFreeUser } from '@/hooks/useIsFreeUser';
@@ -46,6 +47,7 @@ export default function DashboardLayout({ children }: Props): JSX.Element {
           <Sidebar />
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <AppHeaderRoute />
+            <TrialBanner />
             <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
           </div>
         </div>

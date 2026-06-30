@@ -25,7 +25,7 @@ from the paid enums (notably `extraction_status` uses the paid set —
 """
 
 from datetime import datetime
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from sqlalchemy import (
     BigInteger,
@@ -36,13 +36,13 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bimdossier_api.db import MasterBase
+from bimdossier_api.models._pooled import PooledOwnedMixin, TimestampMixin, check_in
 from bimdossier_api.models.project_file import ExtractionStatus, ProjectFileStatus
 
 # Value sets derived from the paid enums so free CHECK constraints stay in
@@ -52,22 +52,12 @@ FREE_FILE_STATUSES: tuple[str, ...] = tuple(s.value for s in ProjectFileStatus)
 FREE_FILE_EXTRACTION_STATUSES: tuple[str, ...] = tuple(s.value for s in ExtractionStatus)
 
 
-def _in_clause(column: str, values: tuple[str, ...]) -> str:
-    rendered = ", ".join(f"'{v}'" for v in values)
-    return f"{column} IN ({rendered})"
-
-
-class FreeProjectFile(MasterBase):
+class FreeProjectFile(PooledOwnedMixin, TimestampMixin, MasterBase):
     __tablename__ = "free_project_files"
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    # Denormalized owner — the RLS policy + the superuser extraction callback key
-    # on this column directly (no join). Stays = the project owner.
-    owner_user_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("public.users.id", ondelete="CASCADE"),
-        nullable=False,
-    )
+    # `owner_user_id` (from PooledOwnedMixin) is denormalized off the document so
+    # the RLS policy + the superuser extraction callback key on it directly; it
+    # stays = the project owner.
     free_document_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("public.free_documents.id", ondelete="CASCADE"),
@@ -136,15 +126,6 @@ class FreeProjectFile(MasterBase):
     # so no cross-schema FK). Non-null = already converted → re-import is a no-op.
     converted_to_file_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
     )
@@ -152,11 +133,11 @@ class FreeProjectFile(MasterBase):
     __table_args__ = (
         CheckConstraint("size_bytes >= 0", name="ck_free_project_files_size_nonneg"),
         CheckConstraint(
-            _in_clause("status", FREE_FILE_STATUSES),
+            check_in("status", FREE_FILE_STATUSES),
             name="ck_free_project_files_status",
         ),
         CheckConstraint(
-            _in_clause("extraction_status", FREE_FILE_EXTRACTION_STATUSES),
+            check_in("extraction_status", FREE_FILE_EXTRACTION_STATUSES),
             name="ck_free_project_files_extraction_status",
         ),
         # Versions: unique per document (mirrors paid ux_project_files_document_version).

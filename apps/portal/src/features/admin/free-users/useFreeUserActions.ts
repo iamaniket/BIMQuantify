@@ -8,8 +8,13 @@ import {
   deleteUser,
   resendActivation,
   sendPasswordReset,
+  updateFreeUserLimits,
 } from '@/lib/api/admin';
-import type { AdminUserRead } from '@/lib/api/schemas';
+import type {
+  AdminUserRead,
+  FreeUserLimitsUpdate,
+  FreeUserRead,
+} from '@/lib/api/schemas';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
 
 import { adminUsersKey } from '../users/queryKeys';
@@ -44,6 +49,26 @@ export function useDeleteFreeUser(): UseMutationResult<void, Error, UserVars> {
   return useAuthMutation({
     mutationFn: (accessToken, { userId }) => deleteUser(accessToken, userId),
     invalidateKeys: [adminFreeUsersKey, adminUsersKey],
+  });
+}
+
+/**
+ * Set a free user's per-user limit overrides + trial exemption. Invalidates the
+ * free list + this user's detail so the panel (and storage/cap chips) refresh.
+ */
+export function useUpdateFreeUserLimits(): UseMutationResult<
+  FreeUserRead,
+  Error,
+  { userId: string; limits: FreeUserLimitsUpdate }
+> {
+  return useAuthMutation({
+    mutationFn: (accessToken, { userId, limits }) =>
+      updateFreeUserLimits(accessToken, userId, limits),
+    invalidateKeys: ({ userId }) => [
+      adminFreeUsersKey,
+      adminUsersKey,
+      adminFreeUserDetailKey(userId),
+    ],
   });
 }
 

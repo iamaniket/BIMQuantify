@@ -16,26 +16,25 @@ carry over directly (both are stable across re-extraction). See
 `free_document.FreeDocument` for the pooling rationale.
 """
 
-from datetime import date, datetime
+from datetime import date
 from typing import TYPE_CHECKING
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from sqlalchemy import (
     CheckConstraint,
     Date,
-    DateTime,
     Float,
     ForeignKey,
     Index,
     Integer,
     String,
     Text,
-    func,
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bimdossier_api.db import MasterBase
+from bimdossier_api.models._pooled import PooledOwnedMixin, TimestampMixin, check_in
 
 if TYPE_CHECKING:
     from bimdossier_api.models.free_finding_attachment import FreeFindingAttachment
@@ -56,15 +55,9 @@ FREE_FINDING_STATUSES: tuple[str, ...] = (
 FREE_FINDING_NOTE_MAX = 4000
 
 
-def _in_clause(column: str, values: tuple[str, ...]) -> str:
-    rendered = ", ".join(f"'{v}'" for v in values)
-    return f"{column} IN ({rendered})"
-
-
-class FreeFinding(MasterBase):
+class FreeFinding(PooledOwnedMixin, TimestampMixin, MasterBase):
     __tablename__ = "free_findings"
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     # Version-independent identity = the container (mirrors Finding.linked_document_id).
     free_document_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
@@ -78,14 +71,9 @@ class FreeFinding(MasterBase):
         ForeignKey("public.free_project_files.id", ondelete="SET NULL"),
         nullable=True,
     )
-    # Denormalized so the RLS policy needs no join to free_documents. Stays = the
-    # project OWNER even when a member files the snag, so the owner-keyed quota /
-    # RLS branch and conversion (snag.owner_user_id → finding.created_by) hold.
-    owner_user_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("public.users.id", ondelete="CASCADE"),
-        nullable=False,
-    )
+    # `owner_user_id` (from PooledOwnedMixin) stays = the project OWNER even when a
+    # member files the snag, so the owner-keyed quota / RLS branch and conversion
+    # (snag.owner_user_id → finding.created_by) hold.
     # Attribution: who actually filed the snag (a member may differ from the
     # owner). NULL for owner-authored / pre-collaboration rows.
     created_by_user_id: Mapped[UUID | None] = mapped_column(
@@ -124,16 +112,6 @@ class FreeFinding(MasterBase):
     anchor_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
     linked_element_global_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
-
     # Photo / resolution-evidence / reference links (mirrors paid
     # Finding.attachment_links). selectin so a list/get query that eager-loads it
     # exposes photo_ids without a per-row lazy load; create/update build the links
@@ -159,10 +137,10 @@ class FreeFinding(MasterBase):
 
     __table_args__ = (
         CheckConstraint(
-            _in_clause("severity", FREE_FINDING_SEVERITIES), name="ck_free_findings_severity"
+            check_in("severity", FREE_FINDING_SEVERITIES), name="ck_free_findings_severity"
         ),
         CheckConstraint(
-            _in_clause("status", FREE_FINDING_STATUSES), name="ck_free_findings_status"
+            check_in("status", FREE_FINDING_STATUSES), name="ck_free_findings_status"
         ),
         CheckConstraint(
             f"note IS NULL OR char_length(note) <= {FREE_FINDING_NOTE_MAX}",

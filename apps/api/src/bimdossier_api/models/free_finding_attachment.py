@@ -12,10 +12,8 @@ back through the `free_findings` policy (see
 `_rls_sql.enable_free_attachment_rls_statements`).
 """
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from sqlalchemy import (
     CheckConstraint,
@@ -29,6 +27,7 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bimdossier_api.db import MasterBase
+from bimdossier_api.models._pooled import PooledOwnedMixin
 
 if TYPE_CHECKING:
     from bimdossier_api.models.free_finding import FreeFinding
@@ -43,10 +42,9 @@ FREE_FINDING_ATTACHMENT_KINDS: tuple[str, ...] = (
 )
 
 
-class FreeFindingAttachment(MasterBase):
+class FreeFindingAttachment(PooledOwnedMixin, MasterBase):
     __tablename__ = "free_finding_attachments"
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     free_finding_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("public.free_findings.id", ondelete="CASCADE"),
@@ -59,12 +57,8 @@ class FreeFindingAttachment(MasterBase):
         ForeignKey("public.free_attachments.id", ondelete="CASCADE"),
         nullable=False,
     )
-    # Denormalized for the owner-OR-member RLS policy (no recursive join).
-    owner_user_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("public.users.id", ondelete="CASCADE"),
-        nullable=False,
-    )
+    # `owner_user_id` (from PooledOwnedMixin) + `free_document_id` are denormalized
+    # off the parent finding for the owner-OR-member RLS policy (no recursive join).
     free_document_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("public.free_documents.id", ondelete="CASCADE"),
@@ -73,7 +67,7 @@ class FreeFindingAttachment(MasterBase):
     kind: Mapped[str] = mapped_column(String(24), nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
-    finding: Mapped[FreeFinding] = relationship(back_populates="attachment_links")
+    finding: Mapped["FreeFinding"] = relationship(back_populates="attachment_links")
 
     __table_args__ = (
         CheckConstraint(

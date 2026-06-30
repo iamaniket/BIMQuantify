@@ -14,7 +14,7 @@ derived from the paid `LevelSource`.
 """
 
 from datetime import datetime
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from sqlalchemy import (
     CheckConstraint,
@@ -24,13 +24,13 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
-    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bimdossier_api.db import MasterBase
+from bimdossier_api.models._pooled import PooledOwnedMixin, TimestampMixin
 from bimdossier_api.models.levels import LevelSource
 
 # Value set derived from the paid LevelSource — keeps the free CHECK and the paid
@@ -39,16 +39,9 @@ from bimdossier_api.models.levels import LevelSource
 FREE_LEVEL_SOURCES: tuple[str, ...] = (LevelSource.manual, LevelSource.ifc)
 
 
-class FreeLevel(MasterBase):
+class FreeLevel(PooledOwnedMixin, TimestampMixin, MasterBase):
     __tablename__ = "free_levels"
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    # Denormalized owner — the RLS policy keys on this column directly (no join).
-    owner_user_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("public.users.id", ondelete="CASCADE"),
-        nullable=False,
-    )
     free_project_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("public.free_projects.id", ondelete="CASCADE"),
@@ -62,15 +55,6 @@ class FreeLevel(MasterBase):
         String(16), nullable=False, default="manual", server_default="manual"
     )
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
     )

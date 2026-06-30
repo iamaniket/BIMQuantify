@@ -27,6 +27,13 @@
       "generic": "We konden de aanmelding niet voltooien. Probeer het zo opnieuw."
     }
   },
+  "freeTrial": {
+    "daysLeft": "Nog {days} dagen in je gratis proefperiode",
+    "endingBody": "Upgrade om te blijven aanmaken en bewerken zodra je proefperiode afloopt.",
+    "expiredTitle": "Je gratis proefperiode is afgelopen",
+    "expiredBody": "Je projecten zijn alleen-lezen. Upgrade om te blijven aanmaken en bewerken.",
+    "cta": "Toegang aanvragen"
+  },
   "freeViewer": {
     "eyebrow": "Gratis preview",
     "heading": "Bekijk uw IFC-model in de browser. Gratis.",
@@ -3466,7 +3473,21 @@
         "resetSent": "Wachtwoordherstel-e-mail verzonden.",
         "activationResent": "Activatie-e-mail opnieuw verzonden.",
         "deleteConfirm": "{email} permanent anonimiseren? Dit wist hun gegevens en schakelt inloggen uit. Dit kan niet ongedaan worden gemaakt.",
-        "deleted": "Account verwijderd."
+        "deleted": "Account verwijderd.",
+        "limitsTitle": "Limieten & proefperiode",
+        "projectsLabel": "Projecten",
+        "membersLabel": "Leden / project",
+        "containersLabel": "Containers",
+        "storageLabel": "Opslag (GB)",
+        "trialDaysLabel": "Proefperiode (dagen)",
+        "defaultHint": "standaard {value}",
+        "exemptLabel": "Vrijgesteld van proefperiode (permanent gratis account)",
+        "trialEnds": "Proefperiode eindigt {date}",
+        "trialDaysLeft": "nog {days} dagen",
+        "trialExpired": "Proefperiode verlopen",
+        "trialExempt": "Geen vervaldatum",
+        "saveLimits": "Limieten opslaan",
+        "limitsSaved": "Limieten bijgewerkt."
       }
     },
     "users": {

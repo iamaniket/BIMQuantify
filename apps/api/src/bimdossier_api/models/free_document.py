@@ -27,7 +27,7 @@ Differences from the paid `Document`:
 """
 
 from datetime import datetime
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from sqlalchemy import (
     CheckConstraint,
@@ -35,13 +35,13 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     String,
-    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bimdossier_api.db import MasterBase
+from bimdossier_api.models._pooled import PooledOwnedMixin, TimestampMixin, check_in
 from bimdossier_api.models.document import DocumentDiscipline, DocumentStatus
 from bimdossier_api.models.project_file import FileType
 
@@ -53,21 +53,9 @@ FREE_DOC_STATUSES: tuple[str, ...] = tuple(s.value for s in DocumentStatus)
 FREE_DOC_FILE_TYPES: tuple[str, ...] = (FileType.ifc.value, FileType.pdf.value)
 
 
-def _in_clause(column: str, values: tuple[str, ...]) -> str:
-    rendered = ", ".join(f"'{v}'" for v in values)
-    return f"{column} IN ({rendered})"
-
-
-class FreeDocument(MasterBase):
+class FreeDocument(PooledOwnedMixin, TimestampMixin, MasterBase):
     __tablename__ = "free_documents"
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    # Denormalized owner — the RLS policy keys on this column directly (no join).
-    owner_user_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("public.users.id", ondelete="CASCADE"),
-        nullable=False,
-    )
     # Every free container belongs to a free project (paid parity). CASCADE so
     # deleting a project removes its containers — mirrors paid
     # `Document.project_id` (ondelete CASCADE).
@@ -118,30 +106,21 @@ class FreeDocument(MasterBase):
         DateTime(timezone=True), nullable=True
     )
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
     )
 
     __table_args__ = (
         CheckConstraint(
-            _in_clause("discipline", FREE_DOC_DISCIPLINES),
+            check_in("discipline", FREE_DOC_DISCIPLINES),
             name="ck_free_documents_discipline",
         ),
         CheckConstraint(
-            _in_clause("status", FREE_DOC_STATUSES),
+            check_in("status", FREE_DOC_STATUSES),
             name="ck_free_documents_status",
         ),
         CheckConstraint(
-            f"primary_file_type IS NULL OR {_in_clause('primary_file_type', FREE_DOC_FILE_TYPES)}",
+            f"primary_file_type IS NULL OR {check_in('primary_file_type', FREE_DOC_FILE_TYPES)}",
             name="ck_free_documents_primary_file_type",
         ),
         # Unique container name per project (mirrors paid uq_documents_project_name).

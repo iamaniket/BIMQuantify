@@ -164,21 +164,23 @@ export default function ProjectDetailPage(): JSX.Element {
               country={project.country}
               findingsOnly={isFreeUser}
             />
-            {/* The activity timeline is the org audit feed — paid-only. */}
-            {!isFreeUser && (
-              <ActivityTimelinePanel
-                projectId={projectId}
-                headerAction={(
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/projects/${projectId}/activity`}>
-                      <Activity className="mr-1 h-3.5 w-3.5" />
-                      {tActivity('viewAll')}
-                      <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                    </Link>
-                  </Button>
-                )}
-              />
-            )}
+            {/* Activity trend. Paid reads the org audit feed; free derives the
+                same-shape trend from existing rows. The full "View all" activity
+                page is paid-only (a derived feed has no per-event list), so free
+                gets the card without the link. */}
+            <ActivityTimelinePanel
+              projectId={projectId}
+              free={isFreeUser}
+              headerAction={isFreeUser ? undefined : (
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href={`/projects/${projectId}/activity`}>
+                    <Activity className="mr-1 h-3.5 w-3.5" />
+                    {tActivity('viewAll')}
+                    <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              )}
+            />
           </div>
 
           <RightColumnTabs

@@ -10,13 +10,14 @@ import { useAuthQuery } from '@/lib/query/useAuthQuery';
 import { projectKey } from './queryKeys';
 
 /** Free-aware: a free user's project is a pooled `free_project` served from
- * `/free/projects/{id}` (same `Project` shape). */
+ * `/free/projects/{id}` (same `Project` shape). Gated on `ready` so a free user
+ * never hits the org-only endpoint before /auth/me resolves the tier (409). */
 export function useProject(id: string): UseQueryResult<Project> {
-  const { isFreeUser } = useIsFreeUser();
+  const { isFreeUser, ready } = useIsFreeUser();
   return useAuthQuery({
     queryKey: projectKey(id),
     queryFn: (accessToken) =>
       getProject(accessToken, id, isFreeUser),
-    enabled: id.length > 0,
+    enabled: ready && id.length > 0,
   });
 }

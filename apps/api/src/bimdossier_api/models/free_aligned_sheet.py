@@ -13,7 +13,7 @@ RLS + owner-OR-member through the project (see `_rls_sql`).
 
 from datetime import datetime
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from sqlalchemy import (
     CheckConstraint,
@@ -23,7 +23,6 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
-    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -31,20 +30,14 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bimdossier_api.db import MasterBase
+from bimdossier_api.models._pooled import PooledOwnedMixin, TimestampMixin
 
 TRANSFORM_TYPE_SIMILARITY = "similarity_2d"
 
 
-class FreeAlignedSheet(MasterBase):
+class FreeAlignedSheet(PooledOwnedMixin, TimestampMixin, MasterBase):
     __tablename__ = "free_aligned_sheets"
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    # Denormalized owner — the RLS policy keys on this column directly (no join).
-    owner_user_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("public.users.id", ondelete="CASCADE"),
-        nullable=False,
-    )
     # Carried for the owner-OR-member RLS policy (free_is_member(free_project_id)).
     free_project_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
@@ -96,15 +89,6 @@ class FreeAlignedSheet(MasterBase):
         nullable=True,
     )
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
     )

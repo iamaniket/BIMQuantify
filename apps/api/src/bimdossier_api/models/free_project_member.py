@@ -42,6 +42,7 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bimdossier_api.db import MasterBase
+from bimdossier_api.models._pooled import check_in
 from bimdossier_api.models.project_member import ProjectRole
 
 # Invited-member roles. The owner is NOT stored here (derived from
@@ -52,11 +53,6 @@ FREE_MEMBER_ROLES: tuple[str, ...] = (
     ProjectRole.editor.value,
     ProjectRole.viewer.value,
 )
-
-
-def _in_clause(column: str, values: tuple[str, ...]) -> str:
-    rendered = ", ".join(f"'{v}'" for v in values)
-    return f"{column} IN ({rendered})"
 
 
 class FreeProjectMember(MasterBase):
@@ -88,7 +84,7 @@ class FreeProjectMember(MasterBase):
 
     __table_args__ = (
         CheckConstraint(
-            _in_clause("role", FREE_MEMBER_ROLES), name="ck_free_project_members_role"
+            check_in("role", FREE_MEMBER_ROLES), name="ck_free_project_members_role"
         ),
         # Drives the "shared with me" list — find every project a user belongs to.
         Index("ix_free_project_members_user", "user_id"),

@@ -2,7 +2,6 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 import { completeAttachment, initiateAttachment } from '@/lib/api/attachments';
 import { ApiError } from '@/lib/api/client';
-import { completeFreeAttachment, initiateFreeAttachment } from '@/lib/api/freeAttachments';
 import { tokenManager } from '@/lib/api/tokenManager';
 
 import type { CapturedPhoto } from './capture';
@@ -27,9 +26,7 @@ async function uploadOnce(
       exif: photo.exif ?? null,
     },
   };
-  const init = isFree
-    ? await initiateFreeAttachment(token, projectId, body, photo.localId)
-    : await initiateAttachment(token, projectId, body, photo.localId);
+  const init = await initiateAttachment(token, projectId, body, photo.localId, isFree);
 
   // Stream the file bytes straight to MinIO (no auth header — the URL is
   // presigned). uploadAsync avoids loading the whole image into JS memory.
@@ -42,9 +39,7 @@ async function uploadOnce(
     throw new Error(`Photo upload failed (HTTP ${String(res.status)})`);
   }
 
-  const att = isFree
-    ? await completeFreeAttachment(token, projectId, init.attachment_id)
-    : await completeAttachment(token, projectId, init.attachment_id);
+  const att = await completeAttachment(token, projectId, init.attachment_id, isFree);
   return att.id;
 }
 

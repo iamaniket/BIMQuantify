@@ -1,5 +1,6 @@
 import type { SortQueryParams } from './admin';
 import { apiClient, type PaginatedResponse } from './client';
+import { projectScope } from './scope';
 import {
   ActivityTimelineSchema,
   ProjectActivityListSchema,
@@ -48,15 +49,18 @@ export async function listProjectActivityPage(
 }
 
 /** Activity-over-time trend — non-empty time buckets, ascending by start. No
- * total-count header, so a plain `get` (not `getWithMeta`). */
+ * total-count header, so a plain `get` (not `getWithMeta`). The free wedge serves
+ * an identical-shape trend derived from existing rows under `/free/...` (see
+ * `scope.ts`); the paid path reads the org audit feed. */
 export async function listProjectActivityTimeline(
   accessToken: string,
   projectId: string,
   params: ListProjectActivityTimelineParams = {},
+  free = false,
 ): Promise<ActivityTimeline> {
   const query = buildQuery(params);
   return apiClient.get<ActivityTimeline>(
-    `/projects/${projectId}/activity/timeline${query}`,
+    `${projectScope(projectId, free)}/activity/timeline${query}`,
     ActivityTimelineSchema,
     accessToken,
   );

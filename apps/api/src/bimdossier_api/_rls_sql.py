@@ -137,62 +137,6 @@ def enable_rls_statements() -> list[str]:
     return stmts
 
 
-# Pooled free-tier tables in `public`. Unlike the master tables above (keyed on
-# the org GUC), these are keyed on the OWNER directly — a free account is
-# org-less, so `get_free_session` sets only `app.current_user_id`.
-FREE_RLS_TABLES = (
-    "free_models",
-    "free_findings",
-)
-
-
-def enable_free_tier_rls_statements(
-    tables: tuple[str, ...] = FREE_RLS_TABLES,
-) -> list[str]:
-    """ENABLE + FORCE RLS on the pooled free-tier tables with an owner-keyed
-    policy. The policy is load-bearing: free reads/writes run as `bim_app` with
-    only `app.current_user_id` set, so this is what stops user A touching user
-    B's free rows. The free callback runs as the superuser (bypasses RLS), so it
-    must additionally validate keys via `assert_free_key_scoped`.
-
-    `tables` defaults to the original pair so the 0002 migration is unchanged;
-    a later migration (0003 `free_projects`) passes its own one-element tuple so
-    it does not try to policy a table that does not exist yet at 0002 time.
-
-    Idempotent (DROP POLICY IF EXISTS before CREATE), like enable_rls_statements.
-    """
-    stmts: list[str] = []
-    for table in tables:
-        stmts.append(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
-        stmts.append(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
-        stmts.append(f"DROP POLICY IF EXISTS {table}_owner_isolation ON {table};")
-        stmts.append(
-            f"""
-            CREATE POLICY {table}_owner_isolation ON {table}
-            USING (
-                owner_user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
-            )
-            WITH CHECK (
-                owner_user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
-            );
-            """
-        )
-    return stmts
-
-
-def disable_free_tier_rls_statements(
-    tables: tuple[str, ...] = FREE_RLS_TABLES,
-) -> list[str]:
-    """Reverse of `enable_free_tier_rls_statements` (migration downgrade /
-    test teardown)."""
-    stmts: list[str] = []
-    for table in tables:
-        stmts.append(f"DROP POLICY IF EXISTS {table}_owner_isolation ON {table};")
-        stmts.append(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY;")
-        stmts.append(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")
-    return stmts
-
-
 # ---------------------------------------------------------------------------
 # Free-tier collaboration: owner-OR-member RLS (migration 0004)
 #
@@ -409,15 +353,18 @@ def disable_free_member_rls_statements() -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def enable_free_level_rls_statements() -> list[str]:
-    """ENABLE + FORCE owner-OR-member RLS on `public.free_levels`. Idempotent.
-    Relies on `public.free_is_member` (created by the free-member RLS)."""
+def _project_owner_or_member_rls(table: str) -> list[str]:
+    """ENABLE + FORCE the project-scoped owner-OR-member RLS policy shared by the
+    pooled free tables that key membership on `free_project_id` (free_levels,
+    free_aligned_sheets): owner via the column, members via the `free_is_member`
+    SECURITY DEFINER helper; owner-only WITH CHECK (members read — the editor/viewer
+    write split is enforced in the router). Idempotent."""
     return [
-        "ALTER TABLE public.free_levels ENABLE ROW LEVEL SECURITY;",
-        "ALTER TABLE public.free_levels FORCE ROW LEVEL SECURITY;",
-        "DROP POLICY IF EXISTS free_levels_owner_isolation ON public.free_levels;",
+        f"ALTER TABLE public.{table} ENABLE ROW LEVEL SECURITY;",
+        f"ALTER TABLE public.{table} FORCE ROW LEVEL SECURITY;",
+        f"DROP POLICY IF EXISTS {table}_owner_isolation ON public.{table};",
         f"""
-        CREATE POLICY free_levels_owner_isolation ON public.free_levels
+        CREATE POLICY {table}_owner_isolation ON public.{table}
         USING (
             owner_user_id = {_FREE_UID}
             OR public.free_is_member(free_project_id, {_FREE_UID})
@@ -427,38 +374,34 @@ def enable_free_level_rls_statements() -> list[str]:
     ]
 
 
-def disable_free_level_rls_statements() -> list[str]:
+def _disable_owner_isolation_rls(table: str) -> list[str]:
+    """Reverse of `_project_owner_or_member_rls`: drop the `<table>_owner_isolation`
+    policy and the FORCE/ENABLE flags."""
     return [
-        "DROP POLICY IF EXISTS free_levels_owner_isolation ON public.free_levels;",
-        "ALTER TABLE public.free_levels NO FORCE ROW LEVEL SECURITY;",
-        "ALTER TABLE public.free_levels DISABLE ROW LEVEL SECURITY;",
+        f"DROP POLICY IF EXISTS {table}_owner_isolation ON public.{table};",
+        f"ALTER TABLE public.{table} NO FORCE ROW LEVEL SECURITY;",
+        f"ALTER TABLE public.{table} DISABLE ROW LEVEL SECURITY;",
     ]
+
+
+def enable_free_level_rls_statements() -> list[str]:
+    """ENABLE + FORCE owner-OR-member RLS on `public.free_levels`. Idempotent.
+    Relies on `public.free_is_member` (created by the free-member RLS)."""
+    return _project_owner_or_member_rls("free_levels")
+
+
+def disable_free_level_rls_statements() -> list[str]:
+    return _disable_owner_isolation_rls("free_levels")
 
 
 def enable_free_aligned_sheet_rls_statements() -> list[str]:
     """ENABLE + FORCE owner-OR-member RLS on `public.free_aligned_sheets`. Idempotent.
     Relies on `public.free_is_member` (created by the free-member RLS)."""
-    return [
-        "ALTER TABLE public.free_aligned_sheets ENABLE ROW LEVEL SECURITY;",
-        "ALTER TABLE public.free_aligned_sheets FORCE ROW LEVEL SECURITY;",
-        "DROP POLICY IF EXISTS free_aligned_sheets_owner_isolation ON public.free_aligned_sheets;",
-        f"""
-        CREATE POLICY free_aligned_sheets_owner_isolation ON public.free_aligned_sheets
-        USING (
-            owner_user_id = {_FREE_UID}
-            OR public.free_is_member(free_project_id, {_FREE_UID})
-        )
-        WITH CHECK (owner_user_id = {_FREE_UID});
-        """,
-    ]
+    return _project_owner_or_member_rls("free_aligned_sheets")
 
 
 def disable_free_aligned_sheet_rls_statements() -> list[str]:
-    return [
-        "DROP POLICY IF EXISTS free_aligned_sheets_owner_isolation ON public.free_aligned_sheets;",
-        "ALTER TABLE public.free_aligned_sheets NO FORCE ROW LEVEL SECURITY;",
-        "ALTER TABLE public.free_aligned_sheets DISABLE ROW LEVEL SECURITY;",
-    ]
+    return _disable_owner_isolation_rls("free_aligned_sheets")
 
 
 # ---------------------------------------------------------------------------

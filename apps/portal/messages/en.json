@@ -27,6 +27,13 @@
       "generic": "We couldn't complete signup. Please try again in a moment."
     }
   },
+  "freeTrial": {
+    "daysLeft": "{days} days left in your free trial",
+    "endingBody": "Upgrade to keep creating and editing once your trial ends.",
+    "expiredTitle": "Your free trial has ended",
+    "expiredBody": "Your projects are read-only. Upgrade to keep creating and editing.",
+    "cta": "Request access"
+  },
   "freeViewer": {
     "eyebrow": "Free preview",
     "heading": "View your IFC model in the browser. Free.",
@@ -3466,7 +3473,21 @@
         "resetSent": "Password reset email sent.",
         "activationResent": "Activation email resent.",
         "deleteConfirm": "Permanently anonymize {email}? This scrubs their data and disables sign-in. This cannot be undone.",
-        "deleted": "Account deleted."
+        "deleted": "Account deleted.",
+        "limitsTitle": "Limits & trial",
+        "projectsLabel": "Projects",
+        "membersLabel": "Members / project",
+        "containersLabel": "Containers",
+        "storageLabel": "Storage (GB)",
+        "trialDaysLabel": "Trial (days)",
+        "defaultHint": "default {value}",
+        "exemptLabel": "Exempt from trial (permanent free account)",
+        "trialEnds": "Trial ends {date}",
+        "trialDaysLeft": "{days} days left",
+        "trialExpired": "Trial expired",
+        "trialExempt": "No expiry",
+        "saveLimits": "Save limits",
+        "limitsSaved": "Limits updated."
       }
     },
     "users": {

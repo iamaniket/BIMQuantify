@@ -1,6 +1,4 @@
 import { listDocumentsWithVersions } from '@/lib/api/documents';
-import { listFreeDocumentsWithVersions } from '@/lib/api/freeDocuments';
-import { getFreeProject, listFreeProjects } from '@/lib/api/freeProjects';
 import { getProject, listProjects } from '@/lib/api/projects';
 import { useIsFree } from '@/lib/hooks/useIsFree';
 import { useOfflineItemQuery, useOfflineListQuery } from '@/lib/query/useOfflineQuery';
@@ -14,7 +12,7 @@ export function useProjects() {
     ['projects'],
     'project',
     'all',
-    (token) => (isFree ? listFreeProjects(token) : listProjects(token)),
+    (token) => listProjects(token, isFree),
   );
 }
 
@@ -27,7 +25,7 @@ export function useProject(projectId: string) {
     'project',
     'all',
     projectId,
-    (token) => (isFree ? getFreeProject(token, projectId) : getProject(token, projectId)),
+    (token) => getProject(token, projectId, isFree),
     { enabled: projectId.length > 0 },
   );
 }
@@ -38,10 +36,7 @@ export function useProjectDocuments(projectId: string) {
     ['projects', projectId, 'documents'],
     'document',
     projectId,
-    (token) =>
-      isFree
-        ? listFreeDocumentsWithVersions(token, projectId)
-        : listDocumentsWithVersions(token, projectId),
+    (token) => listDocumentsWithVersions(token, projectId, isFree),
     { enabled: projectId.length > 0 },
   );
 }

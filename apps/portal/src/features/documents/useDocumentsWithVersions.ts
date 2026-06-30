@@ -17,13 +17,14 @@ export function useDocumentsWithVersions(
   pollWhileExtracting = false,
 ): UseQueryResult<DocumentWithVersionsList> {
   // Free-aware: the free documents endpoint already returns the with-versions
-  // shape (one synthetic version per pooled model).
-  const { isFreeUser } = useIsFreeUser();
+  // shape (one synthetic version per pooled model). Gated on `ready` so a free
+  // user never hits the org-only endpoint before /auth/me resolves the tier (409).
+  const { isFreeUser, ready } = useIsFreeUser();
   return useAuthQuery({
     queryKey: documentsWithVersionsKey(projectId),
     queryFn: (accessToken) =>
       listDocumentsWithVersions(accessToken, projectId, isFreeUser),
-    enabled: projectId.length > 0,
+    enabled: ready && projectId.length > 0,
     refetchInterval: pollWhileExtracting
       ? (query) => {
           // Stop polling once a poll errors (e.g. 401 + failed refresh). The

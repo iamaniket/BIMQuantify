@@ -15,15 +15,16 @@ export function useAttachmentViewUrl(
   attachmentId: string | null,
 ): UseQueryResult<AttachmentDownloadResponse> {
   // Free findings carry free attachments (different download endpoint); branch so
-  // a free user can view photos logged on mobile.
-  const { isFreeUser } = useIsFreeContext();
+  // a free user can view photos logged on mobile. `ready` defers the fetch until
+  // /auth/me resolves so the free/paid branch isn't chosen prematurely (409 flash).
+  const { isFreeUser, ready } = useIsFreeContext();
   return useAuthQuery({
     queryKey: [...attachmentsKey(projectId), attachmentId, 'view-url', isFreeUser] as const,
     queryFn: (accessToken) => {
       const fetchUrl = isFreeUser ? getFreeAttachmentViewUrl : getAttachmentViewUrl;
       return fetchUrl(accessToken, projectId, attachmentId!);
     },
-    enabled: attachmentId !== null,
+    enabled: ready && attachmentId !== null,
     staleTime: 10 * 60 * 1000,
   });
 }

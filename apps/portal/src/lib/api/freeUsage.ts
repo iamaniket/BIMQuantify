@@ -1,5 +1,10 @@
 import { apiClient } from './client';
-import { FreeUserUsageSchema, type FreeUserUsage } from './schemas';
+import {
+  FreeAccountLimitsSchema,
+  FreeUserUsageSchema,
+  type FreeAccountLimits,
+  type FreeUserUsage,
+} from './schemas';
 
 /**
  * Self-serve free-tier usage — the calling user's own data footprint (storage,
@@ -14,6 +19,19 @@ export async function getFreeUsage(accessToken: string): Promise<FreeUserUsage> 
   return apiClient.get<FreeUserUsage>(
     '/free/account/usage',
     FreeUserUsageSchema,
+    accessToken,
+  );
+}
+
+/**
+ * The calling user's own effective free caps + trial countdown
+ * (`account_expires_at` / `days_remaining` / `expired`). Powers the trial banner.
+ * Backed by `GET /free/account/limits` (FREE_TIER gated).
+ */
+export async function getFreeLimits(accessToken: string): Promise<FreeAccountLimits> {
+  return apiClient.get<FreeAccountLimits>(
+    '/free/account/limits',
+    FreeAccountLimitsSchema,
     accessToken,
   );
 }

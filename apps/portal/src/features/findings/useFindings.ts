@@ -20,7 +20,7 @@ import { findingsKey, projectFindingsKey } from './queryKeys';
 export function useFindings(
   projectId: string,
 ): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Finding[]>>> {
-  const { isFreeUser } = useIsFreeUser();
+  const { isFreeUser, ready } = useIsFreeUser();
   return useAuthInfiniteQuery({
     queryKey: findingsKey(projectId),
     queryFn: isFreeUser
@@ -30,6 +30,9 @@ export function useFindings(
         }
       : (accessToken, offset, limit) =>
           listFindings(accessToken, projectId, { limit, offset }),
+    // Gated on `ready`: until /auth/me resolves, `isFreeUser` is false and a free
+    // user would hit the org-only paid `/projects/{id}/findings` endpoint → 409.
+    enabled: ready,
   });
 }
 
@@ -41,7 +44,7 @@ export function useProjectFindings(
   projectId: string,
   enabled = true,
 ): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Finding[]>>> {
-  const { isFreeUser } = useIsFreeUser();
+  const { isFreeUser, ready } = useIsFreeUser();
   return useAuthInfiniteQuery({
     queryKey: projectFindingsKey(projectId),
     queryFn: isFreeUser
@@ -54,7 +57,8 @@ export function useProjectFindings(
         }
       : (accessToken, offset, limit) =>
           listFindings(accessToken, projectId, { unlinked: true, limit, offset }),
-    enabled,
+    // `ready` defers the fetch until /auth/me resolves the free/paid branch (409).
+    enabled: ready && enabled,
   });
 }
 
@@ -66,7 +70,7 @@ export function useFileFindings(
   projectId: string,
   fileId: string | null,
 ): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Finding[]>>> {
-  const { isFreeUser } = useIsFreeUser();
+  const { isFreeUser, ready } = useIsFreeUser();
   // An empty string is NOT a valid file id. In multi-model mode
   // `scope.activeFileId` is `''` until the manifest resolves; `'' !== null` is
   // true, so without this guard the query fires with `linked_file_id=` and 422s.
@@ -85,7 +89,8 @@ export function useFileFindings(
           if (fileId === null || fileId === '') throw new Error('Missing fileId');
           return listFindings(accessToken, projectId, { linkedFileId: fileId, limit, offset });
         },
-    enabled: hasFile,
+    // `ready` defers the fetch until /auth/me resolves the free/paid branch (409).
+    enabled: ready && hasFile,
   });
 }
 

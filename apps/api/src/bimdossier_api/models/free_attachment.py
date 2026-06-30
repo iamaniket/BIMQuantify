@@ -21,7 +21,7 @@ complete). Objects live under the owner's free key prefix
 
 from datetime import datetime
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from sqlalchemy import (
     BigInteger,
@@ -31,7 +31,6 @@ from sqlalchemy import (
     Index,
     String,
     Text,
-    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -39,6 +38,7 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bimdossier_api.db import MasterBase
+from bimdossier_api.models._pooled import PooledOwnedMixin, TimestampMixin, check_in
 from bimdossier_api.models.project_file import AttachmentCategory, ProjectFileStatus
 
 # Value sets derived from the paid enums so the free CHECK constraints stay in
@@ -48,22 +48,12 @@ FREE_ATTACHMENT_CATEGORIES: tuple[str, ...] = tuple(c.value for c in AttachmentC
 FREE_ATTACHMENT_STATUSES: tuple[str, ...] = tuple(s.value for s in ProjectFileStatus)
 
 
-def _in_clause(column: str, values: tuple[str, ...]) -> str:
-    rendered = ", ".join(f"'{v}'" for v in values)
-    return f"{column} IN ({rendered})"
-
-
-class FreeAttachment(MasterBase):
+class FreeAttachment(PooledOwnedMixin, TimestampMixin, MasterBase):
     __tablename__ = "free_attachments"
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    # Denormalized owner — the RLS policy + the (future) superuser image-metadata
-    # callback key on this column directly (no join). Stays = the project owner.
-    owner_user_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("public.users.id", ondelete="CASCADE"),
-        nullable=False,
-    )
+    # `owner_user_id` (from PooledOwnedMixin) stays = the project owner even when an
+    # invited member uploads the photo; the RLS policy + the (future) superuser
+    # image-metadata callback key on it directly.
     # The project the evidence belongs to (RLS member resolution). NOT NULL —
     # every free attachment is uploaded within a project context.
     free_project_id: Mapped[UUID] = mapped_column(
@@ -99,15 +89,6 @@ class FreeAttachment(MasterBase):
     # Offline mobile outbox replay key (per-owner unique while live).
     idempotency_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
     )
@@ -115,11 +96,11 @@ class FreeAttachment(MasterBase):
     __table_args__ = (
         CheckConstraint("size_bytes >= 0", name="ck_free_attachments_size_nonneg"),
         CheckConstraint(
-            _in_clause("status", FREE_ATTACHMENT_STATUSES),
+            check_in("status", FREE_ATTACHMENT_STATUSES),
             name="ck_free_attachments_status",
         ),
         CheckConstraint(
-            _in_clause("attachment_category", FREE_ATTACHMENT_CATEGORIES),
+            check_in("attachment_category", FREE_ATTACHMENT_CATEGORIES),
             name="ck_free_attachments_category",
         ),
         # Offline-replay idempotency: one row per (owner, key) among live rows.

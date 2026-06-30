@@ -4,7 +4,7 @@ The free wedge keeps free users as POOLED rows in `public`, never their own
 `org_<hex>` tenant schema. A free "project" is therefore NOT a tenant
 `models.project.Project` (which lives in `org_<hex>.projects`); it is a pooled
 row here, isolated by owner-keyed RLS (`app.current_user_id` GUC set by
-`get_free_session`), exactly like `free_models`/`free_findings`.
+`get_free_session`), exactly like `free_documents`/`free_findings`.
 
 Columns deliberately mirror the paid `Project` (minus tenant-only concepts) so
 the row serializes to the SAME `Project` API shape — the portal renders free
@@ -17,24 +17,20 @@ lockstep without a Postgres enum (and without the per-schema enum tax — though
 pooled-in-`public` it would not fan out, the convention still applies).
 """
 
-from datetime import date, datetime
-from uuid import UUID, uuid4
+from datetime import date
 
 from sqlalchemy import (
     CheckConstraint,
     Date,
-    DateTime,
     Float,
-    ForeignKey,
     Index,
     String,
     Text,
-    func,
 )
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bimdossier_api.db import MasterBase
+from bimdossier_api.models._pooled import PooledOwnedMixin, TimestampMixin, check_in
 from bimdossier_api.models.project import (
     BuildingType,
     ProjectLifecycleState,
@@ -48,21 +44,8 @@ FREE_PROJECT_LIFECYCLE_STATES: tuple[str, ...] = tuple(s.value for s in ProjectL
 FREE_PROJECT_BUILDING_TYPES: tuple[str, ...] = tuple(b.value for b in BuildingType)
 
 
-def _in_clause(column: str, values: tuple[str, ...]) -> str:
-    rendered = ", ".join(f"'{v}'" for v in values)
-    return f"{column} IN ({rendered})"
-
-
-class FreeProject(MasterBase):
+class FreeProject(PooledOwnedMixin, TimestampMixin, MasterBase):
     __tablename__ = "free_projects"
-
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    # Denormalized owner — the RLS policy keys on this column directly (no join).
-    owner_user_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("public.users.id", ondelete="CASCADE"),
-        nullable=False,
-    )
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -96,24 +79,14 @@ class FreeProject(MasterBase):
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
-
     __table_args__ = (
         CheckConstraint(
-            _in_clause("lifecycle_state", FREE_PROJECT_LIFECYCLE_STATES),
+            check_in("lifecycle_state", FREE_PROJECT_LIFECYCLE_STATES),
             name="ck_free_projects_lifecycle_state",
         ),
-        CheckConstraint(_in_clause("phase", FREE_PROJECT_PHASES), name="ck_free_projects_phase"),
+        CheckConstraint(check_in("phase", FREE_PROJECT_PHASES), name="ck_free_projects_phase"),
         CheckConstraint(
-            f"building_type IS NULL OR {_in_clause('building_type', FREE_PROJECT_BUILDING_TYPES)}",
+            f"building_type IS NULL OR {check_in('building_type', FREE_PROJECT_BUILDING_TYPES)}",
             name="ck_free_projects_building_type",
         ),
         Index("ix_free_projects_owner", "owner_user_id"),

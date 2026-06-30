@@ -87,6 +87,7 @@ from bimdossier_api.routers.element_inspections import router as element_inspect
 from bimdossier_api.routers.finding import router as finding_router
 from bimdossier_api.routers.finding_comment import router as finding_comment_router
 from bimdossier_api.routers.free_account import router as free_account_router
+from bimdossier_api.routers.free_activity import router as free_activity_router
 from bimdossier_api.routers.free_aligned_sheets import router as free_aligned_sheets_router
 from bimdossier_api.routers.free_attachments import router as free_attachments_router
 from bimdossier_api.routers.free_conversion import router as free_conversion_router
@@ -439,6 +440,7 @@ def create_app() -> FastAPI:
     app.include_router(project_viewer_router)
     app.include_router(jobs_internal_router)
     app.include_router(free_account_router)
+    app.include_router(free_activity_router)
     app.include_router(free_documents_router)
     app.include_router(free_projects_router)
     app.include_router(free_levels_router)

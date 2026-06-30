@@ -7,6 +7,7 @@ import {
   AuditEntryListSchema,
   FreeUserDetailSchema,
   FreeUserListSchema,
+  FreeUserReadSchema,
   OrganizationCreateResponseSchema,
   OrganizationListSchema,
   OrganizationReadSchema,
@@ -16,6 +17,7 @@ import {
   type AdminUserRead,
   type AuditEntry,
   type FreeUserDetail,
+  type FreeUserLimitsUpdate,
   type FreeUserRead,
   type OrganizationCreateInput,
   type OrganizationCreateResponse,
@@ -283,6 +285,24 @@ export async function getFreeUserDetail(
   return apiClient.get<FreeUserDetail>(
     `/admin/users/free/${userId}`,
     FreeUserDetailSchema,
+    accessToken,
+  );
+}
+
+/**
+ * Set (full-replace) a free user's per-user limit overrides + trial exemption.
+ * Each numeric field: a positive int to override, or null to clear (fall back to
+ * the env default). Returns the refreshed free-user row. Super-admin only.
+ */
+export async function updateFreeUserLimits(
+  accessToken: string,
+  userId: string,
+  input: FreeUserLimitsUpdate,
+): Promise<FreeUserRead> {
+  return apiClient.patch<FreeUserRead>(
+    `/admin/users/free/${userId}/limits`,
+    input,
+    FreeUserReadSchema,
     accessToken,
   );
 }

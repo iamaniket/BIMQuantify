@@ -27,15 +27,11 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bimdossier_api.db import MasterBase
+from bimdossier_api.models._pooled import check_in
 
 # Value-identical to the paid NotificationEventType members the free path emits.
 # Only terminal extraction events apply to free today (no deadlines/mentions yet).
 FREE_NOTIFICATION_EVENT_TYPES: tuple[str, ...] = ("job_succeeded", "job_failed")
-
-
-def _in_clause(column: str, values: tuple[str, ...]) -> str:
-    rendered = ", ".join(f"'{v}'" for v in values)
-    return f"{column} IN ({rendered})"
 
 
 class FreeNotification(MasterBase):
@@ -77,7 +73,7 @@ class FreeNotification(MasterBase):
 
     __table_args__ = (
         CheckConstraint(
-            _in_clause("event_type", FREE_NOTIFICATION_EVENT_TYPES),
+            check_in("event_type", FREE_NOTIFICATION_EVENT_TYPES),
             name="ck_free_notifications_event_type",
         ),
         # Drives the list/count query (filter on recipient, order by created_at).

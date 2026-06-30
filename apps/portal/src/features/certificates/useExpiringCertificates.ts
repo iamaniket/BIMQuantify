@@ -33,7 +33,9 @@ export function useExpiringCertificates(
   // Certificates are org-only — a free user has none and `GET /projects/{id}/
   // certificates` is tenant-scoped (409s without an org). Skip the fetch entirely
   // for free users so this collapses to an empty summary with zero requests.
-  const { isFreeUser } = useIsFreeUser();
+  // Gate on `ready` too: before /auth/me resolves, `isFreeUser` is false, so a
+  // bare `!isFreeUser` would briefly fire the paid endpoint for a free user (409).
+  const { isFreeUser, ready } = useIsFreeUser();
 
   const activeProjects = useMemo(
     () => (isFreeUser ? [] : projects.filter((p) => p.lifecycle_state === 'active')),
@@ -53,7 +55,7 @@ export function useExpiringCertificates(
           expiringBefore: cutoff,
         });
       },
-      enabled: accessToken !== null && !isFreeUser,
+      enabled: accessToken !== null && ready && !isFreeUser,
       staleTime: 5 * 60 * 1000,
     })),
   });

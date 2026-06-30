@@ -1,7 +1,7 @@
 'use client';
 
 import { useLocale, useTranslations } from 'next-intl';
-import { useCallback, type JSX, type ReactNode } from 'react';
+import { useCallback, useState, type JSX, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -14,14 +14,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Input,
+  Label,
   Progress,
   Skeleton,
+  Switch,
 } from '@bimdossier/ui';
 
 import type { Locale } from '@bimdossier/i18n';
 
 import { getFreeUserDetail } from '@/lib/api/admin';
-import type { FreeUserRead } from '@/lib/api/schemas';
+import { getErrorMessage } from '@/lib/api/errorMessages';
+import type { FreeUserLimits, FreeUserRead } from '@/lib/api/schemas';
 import { formatDate } from '@/lib/formatting/dates';
 import { formatFileSize } from '@/lib/formatting/files';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
@@ -33,7 +37,10 @@ import {
   useResendActivation,
   useSendPasswordReset,
   useToggleActivateFreeUser,
+  useUpdateFreeUserLimits,
 } from './useFreeUserActions';
+
+const BYTES_PER_GB = 1024 ** 3;
 
 type Props = {
   user: FreeUserRead | null;
@@ -95,6 +102,168 @@ function StatItem({
       >
         {value}
       </span>
+    </div>
+  );
+}
+
+function LimitField({
+  label,
+  hint,
+  value,
+  onChange,
+  disabled = false,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}): JSX.Element {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <Label className="text-caption text-foreground-tertiary">{label}</Label>
+      <Input
+        type="number"
+        min={1}
+        inputMode="numeric"
+        value={value}
+        placeholder={hint}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
+function _nullableInt(raw: string): number | null {
+  const v = raw.trim();
+  if (v === '') return null;
+  const n = Number.parseInt(v, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Super-admin editor for one free account's per-user limit overrides + trial.
+ * Empty input = "use the global default" (clears the override). Storage is edited
+ * in GB and stored as bytes. The trial badge reflects the live (server) state.
+ */
+function LimitsSection({
+  userId,
+  limits,
+}: {
+  userId: string;
+  limits: FreeUserLimits;
+}): JSX.Element {
+  const t = useTranslations('admin.freeUsers.detail');
+  const locale = useLocale() as Locale;
+  const update = useUpdateFreeUserLimits();
+
+  const [projects, setProjects] = useState(limits.override_max_projects?.toString() ?? '');
+  const [members, setMembers] = useState(
+    limits.override_max_members_per_project?.toString() ?? '',
+  );
+  const [containers, setContainers] = useState(
+    limits.override_max_documents?.toString() ?? '',
+  );
+  const [storageGb, setStorageGb] = useState(
+    limits.override_storage_max_bytes !== null
+      ? String(limits.override_storage_max_bytes / BYTES_PER_GB)
+      : '',
+  );
+  const [trialDays, setTrialDays] = useState(
+    limits.override_account_max_age_days?.toString() ?? '',
+  );
+  const [exempt, setExempt] = useState(limits.expiry_exempt);
+
+  const handleSave = useCallback(() => {
+    const gb = storageGb.trim();
+    const storageBytes = gb === '' ? null : Math.round(Number.parseFloat(gb) * BYTES_PER_GB);
+    update.mutate(
+      {
+        userId,
+        limits: {
+          max_projects: _nullableInt(projects),
+          max_members_per_project: _nullableInt(members),
+          max_documents: _nullableInt(containers),
+          storage_max_bytes:
+            storageBytes !== null && Number.isFinite(storageBytes) ? storageBytes : null,
+          account_max_age_days: _nullableInt(trialDays),
+          expiry_exempt: exempt,
+        },
+      },
+      {
+        onSuccess: () => toast.success(t('limitsSaved')),
+        onError: (e) => toast.error(getErrorMessage(e)),
+      },
+    );
+  }, [update, userId, projects, members, containers, storageGb, trialDays, exempt, t]);
+
+  const gbDefault = limits.default_storage_max_bytes / BYTES_PER_GB;
+
+  return (
+    <div className="flex flex-col gap-2.5 rounded-lg border border-border p-3">
+      <div className="flex items-center justify-between gap-2">
+        <h4 className="text-caption font-semibold uppercase tracking-wide text-foreground-tertiary">
+          {t('limitsTitle')}
+        </h4>
+        {limits.expiry_exempt ? (
+          <Badge variant="info">{t('trialExempt')}</Badge>
+        ) : limits.expired ? (
+          <Badge variant="error">{t('trialExpired')}</Badge>
+        ) : (
+          <span className="text-caption tabular-nums text-foreground-tertiary">
+            {limits.account_expires_at != null
+              && t('trialEnds', { date: formatDate(limits.account_expires_at, locale) })}
+            {limits.days_remaining != null
+              && ` · ${t('trialDaysLeft', { days: limits.days_remaining })}`}
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+        <LimitField
+          label={t('projectsLabel')}
+          hint={t('defaultHint', { value: limits.default_max_projects })}
+          value={projects}
+          onChange={setProjects}
+        />
+        <LimitField
+          label={t('membersLabel')}
+          hint={t('defaultHint', { value: limits.default_max_members_per_project })}
+          value={members}
+          onChange={setMembers}
+        />
+        <LimitField
+          label={t('containersLabel')}
+          hint={t('defaultHint', { value: limits.default_max_documents })}
+          value={containers}
+          onChange={setContainers}
+        />
+        <LimitField
+          label={t('storageLabel')}
+          hint={t('defaultHint', { value: gbDefault })}
+          value={storageGb}
+          onChange={setStorageGb}
+        />
+        <LimitField
+          label={t('trialDaysLabel')}
+          hint={t('defaultHint', { value: limits.default_account_max_age_days })}
+          value={trialDays}
+          onChange={setTrialDays}
+          disabled={exempt}
+        />
+      </div>
+
+      <label className="flex items-center gap-2 text-body3 text-foreground-secondary">
+        <Switch checked={exempt} onChange={(e) => setExempt(e.target.checked)} />
+        {t('exemptLabel')}
+      </label>
+
+      <div className="flex justify-end">
+        <Button variant="primary" size="md" disabled={update.isPending} onClick={handleSave}>
+          {t('saveLimits')}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -209,6 +378,8 @@ export function FreeUserDetailPanel({ user, open, onOpenChange }: Props): JSX.El
                 <span>{t('sharedStat', { count: live.usage.member_of_count })}</span>
                 {detail.data !== undefined && <span>{t('filesStat', { count: totalFiles })}</span>}
               </div>
+
+              <LimitsSection userId={live.id} limits={live.limits} />
             </>
           )}
 

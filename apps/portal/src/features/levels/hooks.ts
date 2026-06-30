@@ -22,11 +22,12 @@ import { levelsKey } from './queryKeys';
 /** Free-aware: free projects now have their own pooled Levels (`/free/projects/
  * {id}/levels`, identical paid schema), so both tiers fetch the real list. */
 export function useProjectLevels(projectId: string): UseQueryResult<LevelList> {
-  const { isFreeUser } = useIsFreeUser();
+  const { isFreeUser, ready } = useIsFreeUser();
   return useAuthQuery({
     queryKey: levelsKey(projectId),
     queryFn: (accessToken) => listLevels(accessToken, projectId, isFreeUser),
-    enabled: projectId.length > 0,
+    // `ready` defers the fetch until /auth/me resolves the free/paid branch (409).
+    enabled: ready && projectId.length > 0,
   });
 }
 
