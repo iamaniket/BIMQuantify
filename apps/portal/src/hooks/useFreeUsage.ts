@@ -6,7 +6,7 @@ import { getFreeUsage } from '@/lib/api/freeUsage';
 import type { FreeUserUsage } from '@/lib/api/schemas';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
 
-import { useIsFreeUser } from './useIsFreeUser';
+import { useIsPooledContext } from './useIsPooledContext';
 
 /**
  * The current free (org-less) user's usage vs. caps. Gated on the free context:
@@ -14,10 +14,10 @@ import { useIsFreeUser } from './useIsFreeUser';
  * free workspace, so a paid user never hits the `/free/*` surface.
  */
 export function useFreeUsage(): UseQueryResult<FreeUserUsage> {
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthQuery<FreeUserUsage>({
     queryKey: ['free', 'usage'],
     queryFn: (token) => getFreeUsage(token),
-    enabled: ready && isFreeUser,
+    enabled: ready && isPooled,
   });
 }

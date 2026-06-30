@@ -3,7 +3,7 @@
  *
  * Free (org-less) and paid (org-scoped) endpoints return IDENTICAL schemas — the
  * backend emits the paid shape for free callers — so every mirrored fetcher takes
- * a single `free: boolean` (sourced from `useIsFree` / the cached `me`) and routes
+ * a single `free: boolean` (sourced from `useIsPooledContext` / the cached `me`) and routes
  * through these helpers instead of duplicating a whole `freeX.ts` module. This is
  * the one place the `/free` prefix is written.
  */

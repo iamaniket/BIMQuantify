@@ -13,7 +13,7 @@ import { ProjectList } from '@/features/projects/ProjectList';
 import { ProjectsHero } from '@/features/projects/ProjectsHero';
 import { ProjectPhaseFilter, type PhaseFilter } from '@/features/projects/ProjectPhaseFilter';
 import { useProjects } from '@/features/projects/useProjects';
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 
 /**
  * The projects dashboard — shared by paid and free (org-less) users. Its data
@@ -23,7 +23,7 @@ import { useIsFreeUser } from '@/hooks/useIsFreeUser';
  */
 export function PaidProjectsView(): JSX.Element {
   const t = useTranslations('projects.page');
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   const [search, setSearch] = useState('');
   const [phaseFilter, setPhaseFilter] = useState<PhaseFilter>('all');
   const projectsQuery = useProjects();
@@ -35,7 +35,7 @@ export function PaidProjectsView(): JSX.Element {
       hero={<ProjectsHero projects={projects} certWarning={certWarning} />}
     >
       <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-5">
-        {!isFreeUser && certWarning.total > 0 && (
+        {!isPooled && certWarning.total > 0 && (
           <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-warning bg-warning/10 px-4 py-3 xl:hidden">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
             <span className="text-body3 font-medium text-foreground">

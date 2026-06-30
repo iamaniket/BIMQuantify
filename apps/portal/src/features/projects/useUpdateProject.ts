@@ -2,7 +2,7 @@
 
 import type { UseMutationResult } from '@tanstack/react-query';
 
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { updateProject, uploadProjectThumbnail } from '@/lib/api/projects';
 import type { Project, ProjectUpdateInput } from '@/lib/api/schemas';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
@@ -17,12 +17,12 @@ export type UpdateProjectArgs = {
 };
 
 export function useUpdateProject(): UseMutationResult<Project, Error, UpdateProjectArgs> {
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   return useAuthMutation({
     mutationFn: async (accessToken, { id, input, thumbnailFile }) => {
       // Free projects support a cover-image upload (File). Apply metadata first,
       // then the thumbnail so the returned project carries the presigned URL.
-      if (isFreeUser) {
+      if (isPooled) {
         const updated = await updateProject(accessToken, id, input, true);
         if (thumbnailFile instanceof File) {
           return uploadProjectThumbnail(accessToken, id, thumbnailFile, true);

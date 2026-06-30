@@ -8,7 +8,7 @@ import type { TokenPair } from '@/lib/api/schemas';
 import { useAttachments, useFileAttachmentCount } from './useAttachments';
 
 // `useAttachments` reads `tokens` (via useAuthInfiniteQuery) AND `me` (via
-// useIsFreeUser) from useAuth. We drive both: `h.me === null` models the
+// useIsPooledContext) from useAuth. We drive both: `h.me === null` models the
 // pre-`/auth/me` window, `active_organization_id === null` models a free
 // (org-less) caller, a non-null id models a paid caller.
 const h = vi.hoisted(() => ({

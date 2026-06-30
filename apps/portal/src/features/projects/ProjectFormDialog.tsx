@@ -23,7 +23,7 @@ import {
 
 import { Wizard } from '@/components/shared/wizard/Wizard';
 
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { ApiError } from '@/lib/api/client';
 import type { Project, ProjectRole } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
@@ -111,7 +111,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
   const isReadOnly = project !== null && isProjectArchived(project);
   const router = useRouter();
   const { me, activeMembership } = useAuth();
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
 
   // The Team step is create-only (existing projects manage members on the access
   // page). Both paid and free creates get it — free invites up to 3 members by
@@ -437,7 +437,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
               onBack={handleBack}
               onSubmit={handleSubmit}
               isSubmitting={isSubmitting}
-              submitDisabled={mode === 'create' && !isFreeUser && pendingTeam.length < 1}
+              submitDisabled={mode === 'create' && !isPooled && pendingTeam.length < 1}
               submitLabel={submitLabel}
               submitPendingLabel={submitPendingLabel}
               cancelSlot={(
@@ -479,7 +479,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
                     onAdd={handleAddTeam}
                     onRemove={handleRemoveTeam}
                     onChangeRole={handleChangeTeamRole}
-                    freeMode={isFreeUser}
+                    freeMode={isPooled}
                   />
                 )}
               </div>

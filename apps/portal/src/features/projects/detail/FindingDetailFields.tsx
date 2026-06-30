@@ -9,7 +9,7 @@ import { Button, FormField, Input, Select, Textarea } from '@bimdossier/ui';
 import type { DocumentViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import { allowedMoveTargets } from '@/features/findings/board/kanbanTransitions';
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import type { ViewMode } from '@/components/shared/viewer/shared/ViewModeSwitcher';
 import { Field } from '@/components/shared/forms/Field';
 import type { Finding, FindingStatusValue, LinkedFileTypeValue } from '@/lib/api/schemas';
@@ -70,7 +70,7 @@ export function FindingDetailFields({
   const tStatus = useTranslations('findingsBoard.columns');
   // Photos + references are paid attachments; free snags can't hold them, so
   // hide both blocks in free context (and avoid the paid attachments 409).
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   const { form, fields, isPending, canEdit } = api;
   const fieldsDisabled = isPending || !canEdit;
   const statusFieldId = useId();
@@ -366,8 +366,8 @@ export function FindingDetailFields({
         {assigneeField}
         {deadlineField}
         {statusField}
-        {!isFreeUser && <div className="col-span-2">{photosBlock}</div>}
-        {!isFreeUser && <div className="col-span-2">{referencesBlock}</div>}
+        {!isPooled && <div className="col-span-2">{photosBlock}</div>}
+        {!isPooled && <div className="col-span-2">{referencesBlock}</div>}
         {pinBlock}
         {linkedElementBox}
         {promoteBox}
@@ -394,7 +394,7 @@ export function FindingDetailFields({
           {bblField}
         </div>
       </div>
-      {!isFreeUser && (
+      {!isPooled && (
         <div className="flex items-start gap-4">
           <div className="flex-1">{photosBlock}</div>
           <div className="flex-1">{referencesBlock}</div>

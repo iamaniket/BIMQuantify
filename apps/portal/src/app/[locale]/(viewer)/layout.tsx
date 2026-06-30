@@ -7,7 +7,7 @@ import { AppHeaderProvider } from '@/components/shared/header/AppHeaderContext';
 import { AppHeaderRoute } from '@/features/navigation/AppHeaderRoute';
 import { Sidebar } from '@/components/shared/sidebar/Sidebar';
 import { SidebarProvider } from '@/components/shared/sidebar/SidebarContext';
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { useNotificationSocket } from '@/hooks/useNotificationSocket';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -18,13 +18,13 @@ type Props = {
 export default function ViewerLayout({ children }: Props): JSX.Element {
   const router = useRouter();
   const { tokens, hasHydrated } = useAuth();
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   // Free (org-less) users now reach the unified viewer too — point them at their
   // per-user free notification channel (gated on /auth/me) so we never open the
   // org socket for them.
   useNotificationSocket(
     ready && tokens !== null ? tokens.access_token : null,
-    { free: isFreeUser },
+    { free: isPooled },
   );
 
   useEffect(() => {

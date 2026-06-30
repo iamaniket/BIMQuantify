@@ -2,7 +2,7 @@ import { useAuth } from '@/providers/AuthProvider';
 
 /**
  * Whether the signed-in user is a FREE-tier (org-less) user — mirrors the portal's
- * `useIsFreeContext` (`me.active_organization_id == null`). When true, the data
+ * `useIsPooledContext` (`me.active_organization_id == null`). When true, the data
  * hooks call the parallel `/free/*` endpoints instead of the org-scoped paid ones
  * (a free user has no `org` JWT claim, so the paid endpoints 409).
  *
@@ -12,7 +12,7 @@ import { useAuth } from '@/providers/AuthProvider';
  * paid user who hasn't picked an org yet is sent to `/select-org` first, so they
  * never reach a data screen with `active_organization_id === null`.
  */
-export function useIsFree(): boolean {
+export function useIsPooledContext(): boolean {
   const { me } = useAuth();
   return me !== null && me.active_organization_id === null;
 }

@@ -23,7 +23,7 @@ import { attachmentsKey } from '@/features/attachments/queryKeys';
 import { findingsKey } from '@/features/findings/queryKeys';
 import { certificatesKey } from '@/features/certificates/queryKeys';
 import { useAuth } from '@/providers/AuthProvider';
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { isWithinNetherlands, pdokAerialThumbnailUrl } from '@/features/jurisdictions/nl/mapThumbnail';
 import { useLocale, useTranslations } from 'next-intl';
 
@@ -69,7 +69,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
   const locale = useLocale() as Locale;
   const queryClient = useQueryClient();
   const { tokens } = useAuth();
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   const tPhases = useTranslations('projects.phases');
   const tCard = useTranslations('projects.card');
   const archived = isProjectArchived(project);
@@ -100,7 +100,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
     // Every endpoint warmed below is a paid `/projects/*` route; a free
     // (org-less) user 409s on all of them, so skip the prefetch entirely —
     // the free detail page warms its own `/free/*` caches on mount.
-    if (isFreeUser) return;
+    if (isPooled) return;
     const { access_token: accessToken } = tokens;
     const { id } = project;
     const swallow = (): undefined => undefined;
@@ -154,7 +154,7 @@ export function ProjectCard({ project, members = [] }: Props): JSX.Element {
         staleTime: 30_000,
       })
       .catch(swallow);
-  }, [tokens, queryClient, project, isFreeUser]);
+  }, [tokens, queryClient, project, isPooled]);
 
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const [aerialFailed, setAerialFailed] = useState(false);

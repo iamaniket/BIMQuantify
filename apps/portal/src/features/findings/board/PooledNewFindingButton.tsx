@@ -8,7 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { FormDialog } from '@/components/shared/FormDialog';
 import { useDocuments } from '@/features/documents/useDocuments';
 import { findingsKey } from '@/features/findings/queryKeys';
-import { createFreeFinding } from '@/lib/api/freeFindings';
+import { createPooledFinding } from '@/lib/api/pooledFindings';
 import type { ProjectMember } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -22,14 +22,14 @@ const SEVERITIES: Severity[] = ['low', 'medium', 'high'];
  * there's exactly one). Board-created snags are anchor-less — they appear on the
  * board immediately and gain a 3D pin only when placed in the viewer.
  */
-export function FreeNewFindingButton({
+export function PooledNewFindingButton({
   projectId,
   members,
 }: {
   projectId: string;
   members: ProjectMember[];
 }): JSX.Element {
-  const t = useTranslations('freeViewer');
+  const t = useTranslations('pooledViewer');
   const tForm = useTranslations('findings.form');
   const tSeverity = useTranslations('findings.severity');
   const { tokens } = useAuth();
@@ -65,7 +65,7 @@ export function FreeNewFindingButton({
     setBusy(true);
     void (async () => {
       try {
-        await createFreeFinding(accessToken, effectiveContainer, {
+        await createPooledFinding(accessToken, effectiveContainer, {
           title: title.trim(),
           note: note.trim() === '' ? null : note.trim(),
           severity,

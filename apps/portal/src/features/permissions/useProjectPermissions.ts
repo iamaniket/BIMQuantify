@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import type {
   PermissionAction,
@@ -38,17 +38,17 @@ export type ProjectPermissions = {
  * `can(resource, action)` plus the two named policy exceptions.
  */
 export function useProjectPermissions(projectId: string): ProjectPermissions {
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   const { me } = useAuth();
   const matrixQuery = usePermissionMatrix();
   const { role, isOrgAdmin, isSuperuser, isLoading } = useMyProjectRole(projectId);
   // Resolve the caller's free role from the members list (owner / editor /
   // viewer). Gated to free so paid surfaces don't take an extra members fetch.
-  const freeMembersQuery = useProjectMembers(projectId, { enabled: isFreeUser });
+  const freeMembersQuery = useProjectMembers(projectId, { enabled: isPooled });
   const myUserId = me?.user.id ?? null;
 
   return useMemo<ProjectPermissions>(() => {
-    if (isFreeUser) {
+    if (isPooled) {
       // Free projects now have owner + up to 3 editor/viewer members. Owner:
       // manages containers + members + snags. Editor: works snags incl. CREATE
       // (pinned in the 3D viewer or filed from the board; no model upload —
@@ -96,7 +96,7 @@ export function useProjectPermissions(projectId: string): ProjectPermissions {
     isOrgAdmin,
     isSuperuser,
     isLoading,
-    isFreeUser,
+    isPooled,
     freeMembersQuery.data,
     freeMembersQuery.isLoading,
     myUserId,

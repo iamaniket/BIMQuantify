@@ -7,7 +7,7 @@ import { useEffect, useState, type JSX } from 'react';
 import { AppDialog, Badge, Button, Tabs, TabsList, TabsTrigger } from '@bimdossier/ui';
 
 import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import type { Finding } from '@/lib/api/schemas';
 
 import { FindingCommentsTab } from './FindingCommentsTab';
@@ -36,7 +36,7 @@ export function FindingDetailModal({
   const tCommon = useTranslations('common');
   // Comments + history are org-backed (audit/comment APIs are tenant-scoped), so
   // the discussion strip is hidden for free users — they get the editable form only.
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   const [tab, setTab] = useState<DiscussionTab>('comments');
   const api = useFindingDetailForm(projectId, finding, {
     onSaved: () => { onOpenChange(false); },
@@ -124,7 +124,7 @@ export function FindingDetailModal({
       </div>
 
       {/* Discussion strip — Comments / History toggle below the form. Org-only. */}
-      {!isFreeUser && (
+      {!isPooled && (
         <>
           <div className="shrink-0 border-t border-border px-5">
             <Tabs value={tab} onValueChange={(v) => { setTab(v as DiscussionTab); }}>

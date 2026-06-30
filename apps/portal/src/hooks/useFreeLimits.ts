@@ -6,7 +6,7 @@ import { getFreeLimits } from '@/lib/api/freeUsage';
 import type { FreeAccountLimits } from '@/lib/api/schemas';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
 
-import { useIsFreeUser } from './useIsFreeUser';
+import { useIsPooledContext } from './useIsPooledContext';
 
 /**
  * The current free (org-less) user's effective caps + trial countdown. Gated on
@@ -15,10 +15,10 @@ import { useIsFreeUser } from './useIsFreeUser';
  * the {@link TrialBanner}.
  */
 export function useFreeLimits(): UseQueryResult<FreeAccountLimits> {
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthQuery<FreeAccountLimits>({
     queryKey: ['free', 'limits'],
     queryFn: (token) => getFreeLimits(token),
-    enabled: ready && isFreeUser,
+    enabled: ready && isPooled,
   });
 }

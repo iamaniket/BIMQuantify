@@ -2,7 +2,7 @@
 
 import type { UseQueryResult } from '@tanstack/react-query';
 
-import { useIsFreeContext } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { getAttachmentViewUrl } from '@/lib/api/attachments';
 import type { AttachmentDownloadResponse } from '@/lib/api/schemas';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
@@ -17,11 +17,11 @@ export function useAttachmentViewUrl(
   // download schema); pass the tier flag so one fetcher serves both. `ready`
   // defers the fetch until /auth/me resolves so the branch isn't chosen
   // prematurely (409 flash).
-  const { isFreeUser, ready } = useIsFreeContext();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthQuery({
-    queryKey: [...attachmentsKey(projectId), attachmentId, 'view-url', isFreeUser] as const,
+    queryKey: [...attachmentsKey(projectId), attachmentId, 'view-url', isPooled] as const,
     queryFn: (accessToken) =>
-      getAttachmentViewUrl(accessToken, projectId, attachmentId!, isFreeUser),
+      getAttachmentViewUrl(accessToken, projectId, attachmentId!, isPooled),
     enabled: ready && attachmentId !== null,
     staleTime: 10 * 60 * 1000,
   });

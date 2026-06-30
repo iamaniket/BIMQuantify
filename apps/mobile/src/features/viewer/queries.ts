@@ -5,7 +5,7 @@ import {
   toViewerBundle,
   type EmbedViewerBundle,
 } from '@/lib/api/viewerBundle';
-import { useIsFree } from '@/lib/hooks/useIsFree';
+import { useIsPooledContext } from '@/lib/hooks/useIsPooledContext';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
 
 /**
@@ -13,7 +13,7 @@ import { useAuthQuery } from '@/lib/query/useAuthQuery';
  * the WebView consumes. Resolves to null for a non-IFC file (no fragments).
  */
 export function useViewerBundle(projectId: string, documentId: string, fileId: string) {
-  const isFree = useIsFree();
+  const isFree = useIsPooledContext();
   return useAuthQuery<EmbedViewerBundle | null>(
     ['viewer', 'bundle', projectId, documentId, fileId],
     async (token) => {
@@ -32,7 +32,7 @@ export function useViewerBundle(projectId: string, documentId: string, fileId: s
  * untouched: the viewer screen sends a 2D-only `loadPdf` when this resolves.
  */
 export function usePdfPagesUrl(projectId: string, documentId: string, fileId: string) {
-  const isFree = useIsFree();
+  const isFree = useIsPooledContext();
   return useAuthQuery<string | null>(
     ['viewer', 'pdf-pages', projectId, documentId, fileId],
     async (token) => {

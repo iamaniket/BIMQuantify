@@ -2,7 +2,7 @@
 
 import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
 
-import { useIsFreeContext } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import {
   clearNotifications,
   dismissNotification,
@@ -27,45 +27,45 @@ const POLL_FALLBACK_MS = 30_000;
 // endpoint before /auth/me resolves.
 
 export function useNotifications(): UseQueryResult<NotificationListResponse> {
-  const { isFreeUser, ready } = useIsFreeContext();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthQuery({
     queryKey: notificationsKey,
-    queryFn: (accessToken) => listNotifications(accessToken, 20, 0, isFreeUser),
+    queryFn: (accessToken) => listNotifications(accessToken, 20, 0, isPooled),
     refetchInterval: POLL_FALLBACK_MS,
     enabled: ready,
   });
 }
 
 export function useUnreadCount(): UseQueryResult<UnreadCountResponse> {
-  const { isFreeUser, ready } = useIsFreeContext();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthQuery({
     queryKey: unreadCountKey,
-    queryFn: (accessToken) => getUnreadCount(accessToken, isFreeUser),
+    queryFn: (accessToken) => getUnreadCount(accessToken, isPooled),
     refetchInterval: POLL_FALLBACK_MS,
     enabled: ready,
   });
 }
 
 export function useMarkAllRead(): UseMutationResult<void, Error, void> {
-  const { isFreeUser } = useIsFreeContext();
+  const { isPooled } = useIsPooledContext();
   return useAuthMutation({
-    mutationFn: (accessToken) => markAllNotificationsRead(accessToken, isFreeUser),
+    mutationFn: (accessToken) => markAllNotificationsRead(accessToken, isPooled),
     invalidateKeys: [notificationsKey, unreadCountKey],
   });
 }
 
 export function useDismiss(): UseMutationResult<void, Error, string> {
-  const { isFreeUser } = useIsFreeContext();
+  const { isPooled } = useIsPooledContext();
   return useAuthMutation({
-    mutationFn: (accessToken, id) => dismissNotification(accessToken, id, isFreeUser),
+    mutationFn: (accessToken, id) => dismissNotification(accessToken, id, isPooled),
     invalidateKeys: [notificationsKey, unreadCountKey],
   });
 }
 
 export function useClearAll(): UseMutationResult<void, Error, void> {
-  const { isFreeUser } = useIsFreeContext();
+  const { isPooled } = useIsPooledContext();
   return useAuthMutation({
-    mutationFn: (accessToken) => clearNotifications(accessToken, isFreeUser),
+    mutationFn: (accessToken) => clearNotifications(accessToken, isPooled),
     invalidateKeys: [notificationsKey, unreadCountKey],
   });
 }

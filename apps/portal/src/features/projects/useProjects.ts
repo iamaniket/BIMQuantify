@@ -2,7 +2,7 @@
 
 import type { UseQueryResult } from '@tanstack/react-query';
 
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { listProjects } from '@/lib/api/projects';
 import type { ProjectList } from '@/lib/api/schemas';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
@@ -16,11 +16,11 @@ import { projectsKey } from './queryKeys';
  * we never fire the wrong endpoint before `/auth/me` tells us which tier this is.
  */
 export function useProjects(): UseQueryResult<ProjectList> {
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthQuery({
     queryKey: projectsKey,
     queryFn: (accessToken) =>
-      listProjects(accessToken, isFreeUser),
+      listProjects(accessToken, isPooled),
     enabled: ready,
   });
 }

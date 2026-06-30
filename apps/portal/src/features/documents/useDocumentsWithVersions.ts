@@ -2,7 +2,7 @@
 
 import type { UseQueryResult } from '@tanstack/react-query';
 
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { listDocumentsWithVersions } from '@/lib/api/documents';
 import type { DocumentWithVersionsList } from '@/lib/api/schemas';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
@@ -19,11 +19,11 @@ export function useDocumentsWithVersions(
   // Free-aware: the free documents endpoint already returns the with-versions
   // shape (one synthetic version per pooled model). Gated on `ready` so a free
   // user never hits the org-only endpoint before /auth/me resolves the tier (409).
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthQuery({
     queryKey: documentsWithVersionsKey(projectId),
     queryFn: (accessToken) =>
-      listDocumentsWithVersions(accessToken, projectId, isFreeUser),
+      listDocumentsWithVersions(accessToken, projectId, isPooled),
     enabled: ready && projectId.length > 0,
     refetchInterval: pollWhileExtracting
       ? (query) => {

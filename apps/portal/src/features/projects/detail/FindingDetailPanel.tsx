@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type JSX } from 'react';
 import { Badge, Button, IconButton, Tabs, TabsList, TabsTrigger } from '@bimdossier/ui';
 
 import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import type { Finding } from '@/lib/api/schemas';
 
 import { FindingCommentsTab } from './FindingCommentsTab';
@@ -37,7 +37,7 @@ export function FindingDetailPanel({ projectId, finding, onClose, onExpand }: Pr
   const t = useTranslations('findings.detail');
   const tStatus = useTranslations('findings.status');
   // Comments + history are org-backed — hidden for free users (edit tab only).
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   const [tab, setTab] = useState<FindingTab>('edit');
   const api = useFindingDetailForm(projectId, finding, {
     onSaved: onClose,
@@ -127,7 +127,7 @@ export function FindingDetailPanel({ projectId, finding, onClose, onExpand }: Pr
               <Pencil className="h-4 w-4" />
               {t('tabs.edit')}
             </TabsTrigger>
-            {!isFreeUser && (
+            {!isPooled && (
               <>
                 <TabsTrigger value="comments" className={TAB_TRIGGER_CLASS}>
                   <MessageSquare className="h-4 w-4" />

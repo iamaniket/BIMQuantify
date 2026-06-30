@@ -3,10 +3,10 @@
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query';
 
 import { useViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { listFindings } from '@/lib/api/findings';
-import { listFreeProjectSnags } from '@/lib/api/freeProjects';
-import { listFreeFindings } from '@/lib/api/freeFindings';
+import { listPooledProjectSnags } from '@/lib/api/pooledProjects';
+import { listPooledFindings } from '@/lib/api/pooledFindings';
 import type { PaginatedResponse } from '@/lib/api/client';
 import type { Finding } from '@/lib/api/schemas';
 import { useAuthInfiniteQuery, totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
@@ -21,17 +21,17 @@ import { findingsKey, projectFindingsKey } from './queryKeys';
 export function useFindings(
   projectId: string,
 ): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Finding[]>>> {
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthInfiniteQuery({
     queryKey: findingsKey(projectId),
-    queryFn: isFreeUser
+    queryFn: isPooled
       ? async (accessToken) => {
-          const data = await listFreeProjectSnags(accessToken, projectId);
+          const data = await listPooledProjectSnags(accessToken, projectId);
           return { data, totalCount: data.length };
         }
       : (accessToken, offset, limit) =>
           listFindings(accessToken, projectId, { limit, offset }),
-    // Gated on `ready`: until /auth/me resolves, `isFreeUser` is false and a free
+    // Gated on `ready`: until /auth/me resolves, `isPooled` is false and a free
     // user would hit the org-only paid `/projects/{id}/findings` endpoint → 409.
     enabled: ready,
   });
@@ -45,12 +45,12 @@ export function useProjectFindings(
   projectId: string,
   enabled = true,
 ): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Finding[]>>> {
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthInfiniteQuery({
     queryKey: projectFindingsKey(projectId),
-    queryFn: isFreeUser
+    queryFn: isPooled
       ? async (accessToken) => {
-          const all = await listFreeProjectSnags(accessToken, projectId);
+          const all = await listPooledProjectSnags(accessToken, projectId);
           const data = all.filter(
             (f) => f.linked_element_global_id == null && f.anchor_x == null,
           );
@@ -76,7 +76,7 @@ export function useFileFindings(
   projectId: string,
   fileId: string | null,
 ): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Finding[]>>> {
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   const target = useViewerTarget(projectId);
   // For free, the container id (free_document_id) is the open single-mode target's
   // modelId; fall back to fileId defensively (paid ignores this entirely).
@@ -93,15 +93,15 @@ export function useFileFindings(
       fileId ?? '',
       // Free findings cache by container, not file, so two files of the same
       // container share results; '' keeps the paid key shape unchanged.
-      isFreeUser ? `c:${freeContainerId ?? ''}` : '',
+      isPooled ? `c:${freeContainerId ?? ''}` : '',
     ] as const,
-    queryFn: isFreeUser
+    queryFn: isPooled
       ? async (accessToken) => {
           if (freeContainerId === null || freeContainerId === '') {
             throw new Error('Missing container');
           }
           // The free endpoint already emits the paid `Finding` shape (no adapter).
-          const data = await listFreeFindings(accessToken, freeContainerId);
+          const data = await listPooledFindings(accessToken, freeContainerId);
           return { data, totalCount: data.length };
         }
       : (accessToken, offset, limit) => {

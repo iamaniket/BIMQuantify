@@ -2,9 +2,9 @@
 
 import type { UseMutationResult } from '@tanstack/react-query';
 
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { updateFinding } from '@/lib/api/findings';
-import { updateFreeFinding } from '@/lib/api/freeFindings';
+import { updatePooledFinding } from '@/lib/api/pooledFindings';
 import type { Finding, FindingUpdateInput } from '@/lib/api/schemas';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
 
@@ -19,12 +19,12 @@ type Vars = { findingId: string; input: FindingUpdateInput };
  * refetches from the board feed) is unchanged.
  */
 export function useUpdateFinding(projectId: string): UseMutationResult<Finding, Error, Vars> {
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   return useAuthMutation({
     mutationFn: async (accessToken, { findingId, input }) => {
-      if (isFreeUser) {
+      if (isPooled) {
         // The free update endpoint already returns the paid `Finding` shape.
-        return updateFreeFinding(accessToken, findingId, {
+        return updatePooledFinding(accessToken, findingId, {
           ...(input.title !== undefined ? { title: input.title } : {}),
           ...(input.description !== undefined ? { note: input.description } : {}),
           ...(input.severity != null ? { severity: input.severity } : {}),

@@ -17,7 +17,7 @@ export type { ProjectInvitationResponse } from './schemas';
 // ops (list/update-role/remove). Adding a member differs by tier: paid invites an
 // existing org member by user_id (`addProjectMember`) or by email via
 // `/invitations` (`inviteToProject`); free invites by email straight to `/members`
-// (`inviteFreeProjectMember`, in freeProjects.ts) — both paid-only here.
+// (`invitePooledProjectMember`, in pooledProjects.ts) — both paid-only here.
 const membersBase = (projectId: string, free: boolean): string =>
   `${projectScope(projectId, free)}/members`;
 

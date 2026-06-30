@@ -2,7 +2,7 @@
 
 import type { UseQueryResult } from '@tanstack/react-query';
 
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { listOrgCertificates, getOrgCertificateStats } from '@/lib/api/orgCertificates';
 import type { OrgCertificateList, OrgCertificateStats, CertificateTypeValue } from '@/lib/api/schemas';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
@@ -17,7 +17,7 @@ export function useOrgCertificates(
   certificateType?: CertificateTypeValue,
   search?: string,
 ): UseQueryResult<OrgCertificateList> {
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthQuery({
     queryKey: [...orgCertificatesKey(), certificateType ?? 'all', search ?? ''] as const,
     queryFn: (accessToken) => {
@@ -26,16 +26,16 @@ export function useOrgCertificates(
       if (search !== undefined && search.length > 0) filters.search = search;
       return listOrgCertificates(accessToken, filters);
     },
-    enabled: ready && !isFreeUser,
+    enabled: ready && !isPooled,
   });
 }
 
 export function useOrgCertificateStats(): UseQueryResult<OrgCertificateStats> {
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthQuery({
     queryKey: orgCertificateStatsKey(),
     queryFn: (accessToken) => getOrgCertificateStats(accessToken),
-    enabled: ready && !isFreeUser,
+    enabled: ready && !isPooled,
     staleTime: 60_000,
   });
 }

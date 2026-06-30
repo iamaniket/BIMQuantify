@@ -49,7 +49,7 @@ import type { FreeUserUsage, InvitationRead } from '@/lib/api/schemas';
 import { formatDate } from '@/lib/formatting/dates';
 import { formatFileSize } from '@/lib/formatting/files';
 import { useFreeUsage } from '@/hooks/useFreeUsage';
-import { useIsFreeContext } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { useAuth } from '@/providers/AuthProvider';
 import { WelcomeDialog } from '@/features/onboarding/WelcomeDialog';
 
@@ -89,7 +89,7 @@ function AccountHero({
   orgName,
   roleLabel,
   invitationCount,
-  isFreeUser,
+  isPooled,
   usage,
 }: {
   userName: string;
@@ -98,7 +98,7 @@ function AccountHero({
   orgName: string;
   roleLabel: string;
   invitationCount: number;
-  isFreeUser: boolean;
+  isPooled: boolean;
   usage: FreeUserUsage | undefined;
 }): JSX.Element {
   const t = useTranslations('account.hero');
@@ -110,7 +110,7 @@ function AccountHero({
     {
       label: tPlan('planLabel'),
       value: tPlan('freePlanName'),
-      sub: tPlan('freeWorkspaceSub'),
+      sub: tPlan('pooledWorkspaceSub'),
     },
     {
       label: tPlan('storageLabel'),
@@ -158,7 +158,7 @@ function AccountHero({
         </span>
       }
       kpis={
-        isFreeUser
+        isPooled
           ? freeKpis
           : [
               {
@@ -296,7 +296,7 @@ function ProfilePane({
   memberStatus,
   seatLimit,
   seatCountUsed,
-  isFreeUser,
+  isPooled,
   usage,
   editingName,
   nameValue,
@@ -322,7 +322,7 @@ function ProfilePane({
   memberStatus: string | null;
   seatLimit: number | null;
   seatCountUsed: number;
-  isFreeUser: boolean;
+  isPooled: boolean;
   usage: FreeUserUsage | undefined;
   editingName: boolean;
   nameValue: string;
@@ -469,7 +469,7 @@ function ProfilePane({
 
       {/* Right column — account details / free usage + quick actions */}
       <div className="flex flex-col gap-5">
-        {isFreeUser ? (
+        {isPooled ? (
           <FreePlanCard usage={usage} isActive={isActive} isVerified={isVerified} />
         ) : (
         <Card>
@@ -659,7 +659,7 @@ export default function AccountPage(): JSX.Element {
   const tPanel = useTranslations('account.panel');
   const { tokens, me, activeMembership, refreshMe } = useAuth();
   const accessToken = tokens?.access_token ?? null;
-  const { isFreeUser } = useIsFreeContext();
+  const { isPooled } = useIsPooledContext();
   const { data: freeUsage } = useFreeUsage();
 
   const user = me?.user;
@@ -849,7 +849,7 @@ export default function AccountPage(): JSX.Element {
           orgName={orgName}
           roleLabel={roleLabel}
           invitationCount={me.pending_invitations_count}
-          isFreeUser={isFreeUser}
+          isPooled={isPooled}
           usage={freeUsage}
         />
       }
@@ -881,7 +881,7 @@ export default function AccountPage(): JSX.Element {
               memberStatus={activeMembership?.member_status ?? null}
               seatLimit={activeMembership?.seat_limit ?? null}
               seatCountUsed={activeMembership?.seat_count_used ?? 0}
-              isFreeUser={isFreeUser}
+              isPooled={isPooled}
               usage={freeUsage}
               editingName={editingName}
               nameValue={nameValue}

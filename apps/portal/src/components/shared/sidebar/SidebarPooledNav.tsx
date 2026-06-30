@@ -14,11 +14,11 @@ import { SidebarNavItem } from './SidebarNavItem';
 /**
  * Workspace nav for free (org-less) users — only "Projects", which for a free
  * user lists their uploaded free models (the `/projects` page branches on
- * `isFreeUser`). Deliberately does NOT call `useProjects()` — the org-scoped
+ * `isPooled`). Deliberately does NOT call `useProjects()` — the org-scoped
  * `GET /projects` 409s without an org — and omits Certificates / Templates /
  * Calendar. Sibling of `SidebarWorkspaceNav`.
  */
-export function SidebarFreeNav(): JSX.Element {
+export function SidebarPooledNav(): JSX.Element {
   const { collapsed } = useSidebar();
   const pathname = usePathname();
   const t = useTranslations('sidebar');

@@ -34,7 +34,7 @@
     "expiredBody": "Je projecten zijn alleen-lezen. Upgrade om te blijven aanmaken en bewerken.",
     "cta": "Toegang aanvragen"
   },
-  "freeViewer": {
+  "pooledViewer": {
     "eyebrow": "Gratis preview",
     "heading": "Bekijk uw IFC-model in de browser. Gratis.",
     "subtitle": "Upload een model, bekijk het in 3D en zet bevindingen er direct op vast. Geen desktopsoftware, geen installatie. We openen hem eerst voor de eerste gebruikers.",
@@ -139,7 +139,7 @@
       "label": "Wissel van organisatie",
       "empty": "Geen actieve organisatie",
       "adminBadge": "Beheerder",
-      "freeWorkspace": "Gratis werkruimte"
+      "pooledWorkspace": "Gratis werkruimte"
     }
   },
   "activate": {
@@ -526,7 +526,7 @@
       "title": "Abonnement & gebruik",
       "planLabel": "Abonnement",
       "freePlanName": "Gratis",
-      "freeWorkspaceSub": "Persoonlijke werkruimte",
+      "pooledWorkspaceSub": "Persoonlijke werkruimte",
       "storageLabel": "Opslag",
       "projectsLabel": "Projecten",
       "containersLabel": "Containers",
@@ -760,7 +760,7 @@
         "listHeading": "Toe te voegen mensen ({count})",
         "emptyState": "Nog niemand toegevoegd.",
         "minOneHint": "Voeg minstens één persoon toe om het project aan te maken.",
-        "freeInviteHint": "Nodig tot {max} mensen uit om samen te werken (optioneel — je kunt ze later toevoegen).",
+        "pooledInviteHint": "Nodig tot {max} mensen uit om samen te werken (optioneel — je kunt ze later toevoegen).",
         "inviteBadge": "Uitnodiging",
         "partialFailure": "Project aangemaakt, maar sommige mensen konden niet worden toegevoegd: {names}. Voeg ze toe via de toegangspagina van het project.",
         "errors": {

@@ -13,15 +13,15 @@ import { FindingsExportActions } from '@/features/findings/FindingsExportActions
 import { useUpdateFinding } from '@/features/findings/useUpdateFinding';
 import { LogFindingButton } from '@/features/findingTemplates/LogFindingButton';
 import { useProjectPermissions } from '@/features/permissions';
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { FindingDetailModal } from '@/features/projects/detail/FindingDetailModal';
 import { FindingDetailPanel } from '@/features/projects/detail/FindingDetailPanel';
 import type { Finding, FindingSeverityValue, FindingStatusValue } from '@/lib/api/schemas';
 import type { ProjectMember } from '@/lib/api/schemas';
 
 import { FindingKanbanCard } from './FindingKanbanCard';
-import { FreeFindingsExportButton } from './FreeFindingsExportButton';
-import { FreeNewFindingButton } from './FreeNewFindingButton';
+import { PooledFindingsExportButton } from './PooledFindingsExportButton';
+import { PooledNewFindingButton } from './PooledNewFindingButton';
 import { isValidTransition, transitionRejectionReason } from './kanbanTransitions';
 
 const STATUSES: FindingStatusValue[] = ['draft', 'open', 'in_progress', 'resolved', 'verified'];
@@ -53,7 +53,7 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
   // Free users get a simpler board toolbar: a CSV export + the free "New finding"
   // dialog. The paid-only surfaces (snag-report PDF, BCF, org templates via
   // LogFindingButton) stay hidden for them.
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
   // Re-derive the open finding from the live list: a Kanban drag (or any other
   // background mutation) refetches `findings`, and the detail panel/modal must
@@ -203,11 +203,11 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
               <option key={s} value={s}>{tSeverity(s)}</option>
             ))}
           </Select>
-          {isFreeUser ? (
+          {isPooled ? (
             <>
-              <FreeFindingsExportButton projectId={projectId} />
+              <PooledFindingsExportButton projectId={projectId} />
               {can('finding', 'create') && (
-                <FreeNewFindingButton projectId={projectId} members={members} />
+                <PooledNewFindingButton projectId={projectId} members={members} />
               )}
             </>
           ) : (

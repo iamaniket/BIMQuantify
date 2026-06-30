@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from '@/i18n/navigation';
 import { useEffect, type JSX } from 'react';
 
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 
 /**
  * Keeps a free (org-less) user inside the routes they can actually use. Free
@@ -45,17 +45,17 @@ function isFreeAllowed(pathname: string): boolean {
   );
 }
 
-export function FreeUserRouteGuard(): JSX.Element | null {
-  const { isFreeUser, ready } = useIsFreeUser();
+export function PooledUserRouteGuard(): JSX.Element | null {
+  const { isPooled, ready } = useIsPooledContext();
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
-    if (!ready || !isFreeUser) return;
+    if (!ready || !isPooled) return;
     if (!isFreeAllowed(pathname)) {
       router.replace('/projects');
     }
-  }, [ready, isFreeUser, pathname, router]);
+  }, [ready, isPooled, pathname, router]);
 
   return null;
 }

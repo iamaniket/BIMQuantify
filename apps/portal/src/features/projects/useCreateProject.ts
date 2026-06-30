@@ -2,10 +2,10 @@
 
 import type { UseMutationResult } from '@tanstack/react-query';
 
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
-import { inviteFreeProjectMember } from '@/lib/api/freeProjects';
+import { invitePooledProjectMember } from '@/lib/api/pooledProjects';
 import { addProjectMember, inviteToProject } from '@/lib/api/projectMembers';
 import { createProject, uploadProjectThumbnail } from '@/lib/api/projects';
 import type {
@@ -57,17 +57,17 @@ export function useCreateProject(): UseMutationResult<
   // projects support up to 3 invited members (by email) + a cover image, but no
   // existing-org-member adds, so `members` is ignored; `invites` + `thumbnailFile`
   // are applied best-effort after creation.
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   return useAuthMutation({
     mutationFn: async (accessToken, {
       thumbnailFile, members = [], invites = [], ...input
     }) => {
-      if (isFreeUser) {
+      if (isPooled) {
         let created = await createProject(accessToken, input, true);
         const failures: ProjectTeamFailure[] = [];
         const inviteResults = await Promise.allSettled(
           invites.map((inv) =>
-            inviteFreeProjectMember(accessToken, created.id, {
+            invitePooledProjectMember(accessToken, created.id, {
               email: inv.email,
               role: inv.role,
             }),

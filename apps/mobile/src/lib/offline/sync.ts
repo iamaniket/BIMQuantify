@@ -2,10 +2,10 @@ import { uploadPhoto } from '@/features/photos/upload';
 import { ApiError } from '@/lib/api/client';
 import { createFinding, getFinding, updateFinding } from '@/lib/api/findings';
 import {
-  createFreeFinding,
-  getFreeFinding,
-  updateFreeFinding,
-} from '@/lib/api/freeFindings';
+  createPooledFinding,
+  getPooledFinding,
+  updatePooledFinding,
+} from '@/lib/api/pooledFindings';
 import type { Finding, FindingCreateInput, FindingUpdateInput } from '@/lib/api/schemas/findings';
 import { tokenManager } from '@/lib/api/tokenManager';
 import { readCachedMe } from '@/lib/auth/cachedMe';
@@ -189,7 +189,7 @@ export class SyncEngine {
   ): Promise<Finding> {
     const doCreate = (t: string): Promise<Finding> =>
       isFree
-        ? createFreeFinding(t, projectId, input, idempotencyKey)
+        ? createPooledFinding(t, projectId, input, idempotencyKey)
         : createFinding(t, projectId, input, idempotencyKey);
     try {
       return await doCreate(token);
@@ -303,7 +303,7 @@ export class SyncEngine {
   ): Promise<Finding> {
     const doUpdate = (t: string): Promise<Finding> =>
       isFree
-        ? updateFreeFinding(t, projectId, findingId, input)
+        ? updatePooledFinding(t, projectId, findingId, input)
         : updateFinding(t, projectId, findingId, input);
     try {
       return await doUpdate(token);
@@ -326,7 +326,7 @@ export class SyncEngine {
   ): Promise<void> {
     try {
       const fresh = isFree
-        ? await getFreeFinding(token, projectId, findingId)
+        ? await getPooledFinding(token, projectId, findingId)
         : await getFinding(token, projectId, findingId);
       await putOne('finding', projectId, fresh);
     } catch {

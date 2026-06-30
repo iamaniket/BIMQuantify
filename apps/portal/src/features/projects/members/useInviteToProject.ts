@@ -2,8 +2,8 @@
 
 import type { UseMutationResult } from '@tanstack/react-query';
 
-import { useIsFreeContext } from '@/hooks/useIsFreeUser';
-import { inviteFreeProjectMember } from '@/lib/api/freeProjects';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
+import { invitePooledProjectMember } from '@/lib/api/pooledProjects';
 import { inviteToProject } from '@/lib/api/projectMembers';
 import type { ProjectInvitationInput, ProjectInvitationResponse } from '@/lib/api/projectMembers';
 import type { ProjectRole } from '@/lib/api/schemas';
@@ -24,11 +24,11 @@ export function useInviteToProject(): UseMutationResult<
   // Free-aware: in the free workspace, invites go to the pooled member endpoint
   // (by email, owner-only). The free endpoint returns a ProjectMember, which we
   // adapt to the paid ProjectInvitationResponse shape so consumers are unchanged.
-  const { isFreeUser } = useIsFreeContext();
+  const { isPooled } = useIsPooledContext();
   return useAuthMutation({
     mutationFn: async (accessToken, { projectId, input }) => {
-      if (isFreeUser) {
-        const member = await inviteFreeProjectMember(accessToken, projectId, {
+      if (isPooled) {
+        const member = await invitePooledProjectMember(accessToken, projectId, {
           email: input.email,
           role: (input.role as ProjectRole | undefined) ?? 'viewer',
         });

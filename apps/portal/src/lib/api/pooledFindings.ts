@@ -37,7 +37,7 @@ export type FreeFindingUpdateInput = {
   deadline_date?: string | null;
 };
 
-export async function listFreeFindings(
+export async function listPooledFindings(
   accessToken: string,
   documentId: string,
 ): Promise<Finding[]> {
@@ -48,7 +48,7 @@ export async function listFreeFindings(
   );
 }
 
-export async function createFreeFinding(
+export async function createPooledFinding(
   accessToken: string,
   documentId: string,
   input: FreeFindingCreateInput,
@@ -61,7 +61,7 @@ export async function createFreeFinding(
   );
 }
 
-export async function updateFreeFinding(
+export async function updatePooledFinding(
   accessToken: string,
   snagId: string,
   input: FreeFindingUpdateInput,
@@ -76,14 +76,14 @@ export async function updateFreeFinding(
 
 /** Download the free project's findings as CSV (mirrors `downloadFindingsCsv`).
  * The free export takes no filters — it returns every finding in the project. */
-export async function downloadFreeFindingsCsv(
+export async function downloadPooledFindingsCsv(
   accessToken: string,
   projectId: string,
 ): Promise<{ blob: Blob; filename: string | null }> {
   return apiClient.getBlob(`/pooled/projects/${projectId}/findings/export.csv`, accessToken);
 }
 
-export async function deleteFreeFinding(
+export async function deletePooledFinding(
   accessToken: string,
   snagId: string,
 ): Promise<void> {

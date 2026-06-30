@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { Button, Spinner } from '@bimdossier/ui';
 
 import { triggerBrowserDownload } from '@/lib/api/client';
-import { downloadFreeFindingsCsv } from '@/lib/api/freeFindings';
+import { downloadPooledFindingsCsv } from '@/lib/api/pooledFindings';
 import { useAuth } from '@/providers/AuthProvider';
 
 /**
@@ -17,7 +17,7 @@ import { useAuth } from '@/providers/AuthProvider';
  * minimal button instead — it reuses the same `findingsBoard.export.*` strings
  * and hits the org-less `/pooled/projects/{id}/findings/export.csv` endpoint.
  */
-export function FreeFindingsExportButton({ projectId }: { projectId: string }): JSX.Element {
+export function PooledFindingsExportButton({ projectId }: { projectId: string }): JSX.Element {
   const t = useTranslations('findingsBoard.export');
   const { tokens } = useAuth();
   const accessToken = tokens?.access_token;
@@ -27,7 +27,7 @@ export function FreeFindingsExportButton({ projectId }: { projectId: string }): 
     if (accessToken === undefined) return;
     setPending(true);
     try {
-      const { blob, filename } = await downloadFreeFindingsCsv(accessToken, projectId);
+      const { blob, filename } = await downloadPooledFindingsCsv(accessToken, projectId);
       triggerBrowserDownload(blob, filename ?? `findings-${projectId}.csv`);
     } catch {
       toast.error(t('csvError'));

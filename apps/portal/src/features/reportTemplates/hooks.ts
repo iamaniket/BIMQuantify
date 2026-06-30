@@ -17,7 +17,7 @@ import type {
   ReportTemplateList,
   ReportTemplateSchemaResponse,
 } from '@/lib/api/schemas/reportTemplates';
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { useAuthMutation, useAuthQuery } from '@/lib/query/useAuthQuery';
 
 import { reportTemplatesKey, reportTemplateSchemaKey } from './queryKeys';
@@ -27,11 +27,11 @@ import { reportTemplatesKey, reportTemplateSchemaKey } from './queryKeys';
 // caller 409s. Gate on free context in addition to the existing `reportType`
 // guard; `ready` avoids a 409 flash before `/auth/me` resolves the context.
 export function useReportTemplates(reportType: string): UseQueryResult<ReportTemplateList> {
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthQuery({
     queryKey: reportTemplatesKey(reportType),
     queryFn: (accessToken) => listReportTemplates(accessToken, reportType),
-    enabled: reportType.length > 0 && ready && !isFreeUser,
+    enabled: reportType.length > 0 && ready && !isPooled,
     staleTime: 60_000,
   });
 }
@@ -40,11 +40,11 @@ export function useReportTemplateSchema(
   reportType: string,
   locale: string,
 ): UseQueryResult<ReportTemplateSchemaResponse> {
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthQuery({
     queryKey: reportTemplateSchemaKey(reportType, locale),
     queryFn: (accessToken) => getReportTemplateSchema(accessToken, reportType, locale),
-    enabled: reportType.length > 0 && ready && !isFreeUser,
+    enabled: reportType.length > 0 && ready && !isPooled,
     staleTime: 5 * 60_000,
   });
 }

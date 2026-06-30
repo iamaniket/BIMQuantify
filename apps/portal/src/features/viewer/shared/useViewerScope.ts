@@ -8,7 +8,7 @@ import {
 import type { ViewerBundle } from '@bimdossier/viewer';
 
 import { federatedModelId } from '@/features/viewer/3d/federation/federatedModelId';
-import { useIsFreeContext } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { ApiError } from '@/lib/api/client';
 import { getProjectViewerBundle, getViewerBundle } from '@/lib/api/projectFiles';
 import type { ProjectViewerDocumentEntry, ViewerBundleResponse } from '@/lib/api/schemas';
@@ -150,7 +150,7 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
   // fetches the org-only endpoint before the tier is known. For free, the single
   // "modelId" is the free_document_id (container) and "fileId" the head file —
   // exactly what DocumentsTableRow sets as the viewer target.
-  const { isFreeUser, ready: freeReady } = useIsFreeContext();
+  const { isPooled, ready: freeReady } = useIsPooledContext();
 
   const isSingle = target.kind === 'single';
   const singleModelId = target.kind === 'single' ? target.modelId : '';
@@ -160,7 +160,7 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
     queryKey: viewerKeys.bundle(projectId, singleModelId, singleFileId),
     queryFn: () => {
       if (accessToken === null) throw new Error('Not authenticated');
-      return getViewerBundle(accessToken, projectId, singleModelId, singleFileId, isFreeUser);
+      return getViewerBundle(accessToken, projectId, singleModelId, singleFileId, isPooled);
     },
     enabled: ready && freeReady && isSingle && accessToken !== null,
     staleTime: 60_000,
@@ -170,7 +170,7 @@ export function useViewerScope(projectId: string, ready: boolean): ViewerScope {
     queryKey: viewerKeys.projectBundle(projectId),
     queryFn: () => {
       if (accessToken === null) throw new Error('Not authenticated');
-      return getProjectViewerBundle(accessToken, projectId, isFreeUser);
+      return getProjectViewerBundle(accessToken, projectId, isPooled);
     },
     // Drawings mode (persona A) renders its own by-Level browser — no IFC manifest.
     enabled:

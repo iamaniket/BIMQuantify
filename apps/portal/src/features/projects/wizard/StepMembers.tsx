@@ -326,7 +326,7 @@ export function StepMembers({
 
         {freeMode ? (
           <p className="text-caption text-foreground-tertiary">
-            {t('freeInviteHint', { max: FREE_MAX_INVITES })}
+            {t('pooledInviteHint', { max: FREE_MAX_INVITES })}
           </p>
         ) : (
           entries.length === 0 && (

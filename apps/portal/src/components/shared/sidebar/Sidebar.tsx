@@ -6,13 +6,13 @@ import type { JSX } from 'react';
 import { X } from '@bimdossier/ui/icons';
 import { TooltipProvider } from '@bimdossier/ui';
 
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { DossierLogo } from '@/components/shared/charts/DossierLogo';
 import { SidebarWorkspaceNav } from '@/features/projects/SidebarWorkspaceNav';
 
 import { SidebarCollapseToggle } from './SidebarCollapseToggle';
-import { SidebarFreeNav } from './SidebarFreeNav';
+import { SidebarPooledNav } from './SidebarPooledNav';
 import { SidebarNav } from './SidebarNav';
 import { SidebarTenantCard } from './SidebarTenantCard';
 import { SidebarUserChip } from './SidebarUserChip';
@@ -46,11 +46,11 @@ export function Sidebar(): JSX.Element {
   const { collapsed, forceCollapsed, hydrated, transitionsReady, mobileOpen, setMobileOpen } = useSidebar();
   const t = useTranslations('common');
   const isMobile = useIsMobile();
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   // Org-less free users get a trimmed "Projects"-only workspace nav (no
   // Certificates/Templates/Calendar, no `useProjects` 409). Defer until
   // /auth/me resolves so we never flash the org-scoped nav.
-  const workspaceNav = !ready ? null : isFreeUser ? <SidebarFreeNav /> : <SidebarWorkspaceNav />;
+  const workspaceNav = !ready ? null : isPooled ? <SidebarPooledNav /> : <SidebarWorkspaceNav />;
 
   if (isMobile) {
     return (

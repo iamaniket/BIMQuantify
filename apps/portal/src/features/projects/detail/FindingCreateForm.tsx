@@ -13,7 +13,7 @@ import type { DocumentViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 import { Field } from '@/components/shared/forms/Field';
 import { renderFieldInput } from '@/features/findingTemplates/fieldTypes';
 import { useCreateFinding } from '@/features/findings/useCreateFinding';
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { registerField } from '@/hooks/registerField';
 import type { FindingTemplate, LinkedFileTypeValue } from '@/lib/api/schemas';
 
@@ -99,7 +99,7 @@ export function FindingCreateForm({
 }: Props): JSX.Element {
   const t = useTranslations('findings.form');
   const tSeverity = useTranslations('findings.severity');
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   const mutation = useCreateFinding(projectId);
   const [photoIds, setPhotoIds] = useState<string[]>([]);
   const [referenceAttachmentIds, setReferenceAttachmentIds] = useState<string[]>([]);
@@ -124,8 +124,8 @@ export function FindingCreateForm({
   const showBbl = builtins['bbl_article_ref']?.visible !== false;
   // Photos + references are paid attachments; free snags can't hold them (the
   // free create payload has no such fields), so hide both in free context.
-  const showPhotos = builtins['photos']?.visible !== false && !isFreeUser;
-  const showReferences = builtins['references']?.visible !== false && !isFreeUser;
+  const showPhotos = builtins['photos']?.visible !== false && !isPooled;
+  const showReferences = builtins['references']?.visible !== false && !isPooled;
   const customFields = template?.fields ?? [];
 
   const onSubmit: SubmitHandler<FormValues> = (values) => {

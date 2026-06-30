@@ -17,7 +17,7 @@ import type {
   AlignedSheetUpdateInput,
   CalibrateAlignedSheetInput,
 } from '@/lib/api/schemas';
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { useAuthMutation, useAuthQuery } from '@/lib/query/useAuthQuery';
 
 import { alignedSheetsKey } from './queryKeys';
@@ -30,7 +30,7 @@ export function useAlignedSheets(
   projectId: string,
   filters: AlignedSheetFilters = {},
 ): UseQueryResult<AlignedSheetList> {
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthQuery({
     // Filter values are part of the cache key so each scope caches separately.
     queryKey: [
@@ -39,7 +39,7 @@ export function useAlignedSheets(
       filters.levelId ?? null,
       filters.pdfModelId ?? null,
     ] as const,
-    queryFn: (accessToken) => listAlignedSheets(accessToken, projectId, filters, isFreeUser),
+    queryFn: (accessToken) => listAlignedSheets(accessToken, projectId, filters, isPooled),
     // `ready` defers the fetch until /auth/me resolves the free/paid branch (409).
     enabled: ready && projectId.length > 0,
   });
@@ -52,10 +52,10 @@ export function useCreateAlignedSheet(): UseMutationResult<
   Error,
   CreateInput
 > {
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   return useAuthMutation({
     mutationFn: (accessToken, { projectId, input }) =>
-      createAlignedSheet(accessToken, projectId, input, isFreeUser),
+      createAlignedSheet(accessToken, projectId, input, isPooled),
     invalidateKeys: ({ projectId }) => [alignedSheetsKey(projectId)],
   });
 }
@@ -71,10 +71,10 @@ export function useUpdateAlignedSheet(): UseMutationResult<
   Error,
   UpdateInput
 > {
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   return useAuthMutation({
     mutationFn: (accessToken, { projectId, sheetId, input }) =>
-      updateAlignedSheet(accessToken, projectId, sheetId, input, isFreeUser),
+      updateAlignedSheet(accessToken, projectId, sheetId, input, isPooled),
     invalidateKeys: ({ projectId }) => [alignedSheetsKey(projectId)],
   });
 }
@@ -90,10 +90,10 @@ export function useCalibrateAlignedSheet(): UseMutationResult<
   Error,
   CalibrateInput
 > {
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   return useAuthMutation({
     mutationFn: (accessToken, { projectId, sheetId, input }) =>
-      calibrateAlignedSheet(accessToken, projectId, sheetId, input, isFreeUser),
+      calibrateAlignedSheet(accessToken, projectId, sheetId, input, isPooled),
     invalidateKeys: ({ projectId }) => [alignedSheetsKey(projectId)],
   });
 }
@@ -105,10 +105,10 @@ export function useDeleteAlignedSheet(): UseMutationResult<
   Error,
   DeleteInput
 > {
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   return useAuthMutation({
     mutationFn: (accessToken, { projectId, sheetId }) =>
-      deleteAlignedSheet(accessToken, projectId, sheetId, isFreeUser),
+      deleteAlignedSheet(accessToken, projectId, sheetId, isPooled),
     invalidateKeys: ({ projectId }) => [alignedSheetsKey(projectId)],
   });
 }

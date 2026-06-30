@@ -2,7 +2,7 @@
 
 import type { UseQueryResult } from '@tanstack/react-query';
 
-import { useIsFreeContext } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { listProjectMembers } from '@/lib/api/projectMembers';
 import type { ProjectMemberList } from '@/lib/api/schemas';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
@@ -19,11 +19,11 @@ export function useProjectMembers(
   projectId: string,
   opts?: { enabled?: boolean },
 ): UseQueryResult<ProjectMemberList> {
-  const { isFreeUser, ready } = useIsFreeContext();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthQuery({
     queryKey: projectMembersKey(projectId),
     queryFn: (accessToken) =>
-      listProjectMembers(accessToken, projectId, isFreeUser),
+      listProjectMembers(accessToken, projectId, isPooled),
     enabled: ready && (opts?.enabled ?? true),
   });
 }

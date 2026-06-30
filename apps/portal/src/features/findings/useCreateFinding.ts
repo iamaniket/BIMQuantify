@@ -3,9 +3,9 @@
 import type { UseMutationResult } from '@tanstack/react-query';
 
 import { useViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { createFinding } from '@/lib/api/findings';
-import { createFreeFinding } from '@/lib/api/freeFindings';
+import { createPooledFinding } from '@/lib/api/pooledFindings';
 import type { Finding, FindingCreateInput } from '@/lib/api/schemas';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
 
@@ -33,7 +33,7 @@ export class FreeFindingNoContainerError extends Error {
 export function useCreateFinding(
   projectId: string,
 ): UseMutationResult<Finding, Error, FindingCreateInput> {
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   // Free snags MUST hang off a container (free_document_id). A pinned 3D finding
   // carries it as `linked_document_id`; an unpinned / PDF-page / project-level
   // create does not, so fall back to the open viewer container (the single-mode
@@ -44,7 +44,7 @@ export function useCreateFinding(
     target.kind === 'single' && target.modelId !== '' ? target.modelId : null;
   return useAuthMutation({
     mutationFn: async (accessToken, input) => {
-      if (isFreeUser) {
+      if (isPooled) {
         const containerId =
           input.linked_document_id != null && input.linked_document_id !== ''
             ? input.linked_document_id
@@ -53,7 +53,7 @@ export function useCreateFinding(
           throw new FreeFindingNoContainerError();
         }
         // The free create endpoint already returns the paid `Finding` shape.
-        return createFreeFinding(accessToken, containerId, {
+        return createPooledFinding(accessToken, containerId, {
           title: input.title,
           note: input.description ?? null,
           severity: input.severity,

@@ -15,7 +15,7 @@ import { useTranslations } from 'next-intl';
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
 import { useDocuments } from '@/features/documents/useDocuments';
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { useProjectOverview } from '@/features/projects/useProjectOverview';
 import { projectDeadlinesKey, projectKey, projectMembersKey } from '@/features/projects/queryKeys';
 import { PageShell } from '@/components/shared/layout/PageShell';
@@ -41,7 +41,7 @@ export default function ProjectDetailPage(): JSX.Element {
   // panels all read from this single query (see `useProjectOverview`). The only
   // remaining cold-load request is the documents list (head versions), which
   // the aggregate intentionally does not carry.
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   const overviewQuery = useProjectOverview(projectId);
   const documentsQuery = useDocuments(projectId);
   const [editOpen, setEditOpen] = useState(false);
@@ -117,7 +117,7 @@ export default function ProjectDetailPage(): JSX.Element {
       </Button>
       {/* Settings + Project Access are org-scoped (team / org settings) — hidden
           for free projects, which are single-owner. */}
-      {!isFreeUser && (
+      {!isPooled && (
         <>
           <Button
             variant="border"
@@ -148,7 +148,7 @@ export default function ProjectDetailPage(): JSX.Element {
             attachmentCount={overview.stats.attachments_count}
             dossierPct={overview.completeness.dossier.pct}
             action={heroAction}
-            isFree={isFreeUser}
+            isFree={isPooled}
           />
         }
       >
@@ -162,7 +162,7 @@ export default function ProjectDetailPage(): JSX.Element {
             <ProjectChartsPanel
               completeness={overview.completeness}
               country={project.country}
-              findingsOnly={isFreeUser}
+              findingsOnly={isPooled}
             />
             {/* Activity trend. Paid reads the org audit feed; free derives the
                 same-shape trend from existing rows. The full "View all" activity
@@ -170,8 +170,8 @@ export default function ProjectDetailPage(): JSX.Element {
                 gets the card without the link. */}
             <ActivityTimelinePanel
               projectId={projectId}
-              free={isFreeUser}
-              headerAction={isFreeUser ? undefined : (
+              free={isPooled}
+              headerAction={isPooled ? undefined : (
                 <Button variant="ghost" size="sm" asChild>
                   <Link href={`/projects/${projectId}/activity`}>
                     <Activity className="mr-1 h-3.5 w-3.5" />
@@ -189,7 +189,7 @@ export default function ProjectDetailPage(): JSX.Element {
             documents={documents}
             deadlinesTotal={overview.deadlines.total}
             dossier={overview.completeness.dossier}
-            isFree={isFreeUser}
+            isFree={isPooled}
           />
         </div>
       </PageShell>

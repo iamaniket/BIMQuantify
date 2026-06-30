@@ -17,7 +17,7 @@ import {
 // --- API calls -------------------------------------------------------------
 
 /** Board feed — the API server-adapts free snags to the paid FindingRead shape. */
-export async function listFreeProjectFindings(
+export async function listPooledProjectFindings(
   token: string,
   projectId: string,
 ): Promise<FindingList> {
@@ -28,7 +28,7 @@ export async function listFreeProjectFindings(
   );
 }
 
-export async function getFreeFinding(
+export async function getPooledFinding(
   token: string,
   projectId: string,
   findingId: string,
@@ -37,7 +37,7 @@ export async function getFreeFinding(
   return apiClient.get<Finding>(`/pooled/findings/${findingId}`, FindingSchema, token);
 }
 
-export async function createFreeFinding(
+export async function createPooledFinding(
   token: string,
   projectId: string,
   input: FindingCreateInput,
@@ -70,7 +70,7 @@ export async function createFreeFinding(
   );
 }
 
-export async function updateFreeFinding(
+export async function updatePooledFinding(
   token: string,
   projectId: string,
   findingId: string,

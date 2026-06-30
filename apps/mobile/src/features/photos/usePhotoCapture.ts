@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-import { useIsFree } from '@/lib/hooks/useIsFree';
+import { useIsPooledContext } from '@/lib/hooks/useIsPooledContext';
 import { getNetworkStatus } from '@/lib/offline/networkStatus';
 import { enqueue } from '@/lib/offline/outbox';
 import { useAuth } from '@/providers/AuthProvider';
@@ -36,7 +36,7 @@ export type PhotoCapture = {
  */
 export function usePhotoCapture(projectId: string): PhotoCapture {
   const { tokens } = useAuth();
-  const isFree = useIsFree();
+  const isFree = useIsPooledContext();
   const offline = useOffline();
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
 

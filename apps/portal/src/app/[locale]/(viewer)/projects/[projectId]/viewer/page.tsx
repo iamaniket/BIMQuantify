@@ -77,7 +77,7 @@ import { useSpaceVisibility } from '@/features/viewer/3d/spaces';
 import { usePerformanceCulling } from '@/features/viewer/3d/performanceCulling';
 import { useDisplayMode } from '@/features/viewer/3d/displayMode';
 import { useViewerMode } from '@/features/viewer/3d/useViewerMode';
-import { useIsFreeContext } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 import type { Finding } from '@/lib/api/schemas';
@@ -471,7 +471,7 @@ export default function ViewerPage(): JSX.Element {
   // edit the project's documents — free + paid alike (free now has PDF upload +
   // pooled aligned sheets). For free, `can('document','update')` resolves to
   // owner-only, exactly matching the owner-gated free aligned-sheet endpoints.
-  const { isFreeUser: isFree } = useIsFreeContext();
+  const { isPooled: isFree } = useIsPooledContext();
   const perms = useProjectPermissions(projectId);
   const canCalibrate = isIfc && !perms.isLoading && perms.can('document', 'update');
 

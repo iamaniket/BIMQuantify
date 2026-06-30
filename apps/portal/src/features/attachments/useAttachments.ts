@@ -2,7 +2,7 @@
 
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query';
 
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { listAttachments } from '@/lib/api/attachments';
 import type { PaginatedResponse } from '@/lib/api/client';
 import type { Attachment, AttachmentCategoryValue, AttachmentList } from '@/lib/api/schemas';
@@ -23,12 +23,12 @@ export function useAttachments(
   projectId: string,
   category?: AttachmentCategoryValue,
 ): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Attachment[]>>> {
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthInfiniteQuery({
     queryKey: [...attachmentsKey(projectId), category ?? 'all'] as const,
     queryFn: (accessToken, offset, limit) =>
       listAttachments(accessToken, projectId, category !== undefined ? { category, limit, offset } : { limit, offset }),
-    enabled: ready && !isFreeUser,
+    enabled: ready && !isPooled,
   });
 }
 
@@ -36,14 +36,14 @@ export function useUnslottedDocuments(
   projectId: string,
   enabled = true,
 ): { data: AttachmentList | undefined; isLoading: boolean } {
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   const query = useAuthQuery({
     queryKey: [...attachmentsKey(projectId), 'unslotted', 'office'] as const,
     queryFn: async (accessToken) => {
       const resp = await listAttachments(accessToken, projectId, { unslotted: true, category: 'office' });
       return resp.data;
     },
-    enabled: enabled && ready && !isFreeUser,
+    enabled: enabled && ready && !isPooled,
     staleTime: 15_000,
   });
   return { data: query.data, isLoading: query.isLoading };
@@ -53,14 +53,14 @@ export function useFileAttachmentCount(
   projectId: string,
   fileId: string | null,
 ): number {
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   const query = useAuthInfiniteQuery({
     queryKey: [...attachmentsKey(projectId), 'file', fileId ?? ''] as const,
     queryFn: (accessToken, offset, limit) => {
       if (fileId === null) throw new Error('Missing fileId');
       return listAttachments(accessToken, projectId, { linkedFileId: fileId, limit, offset });
     },
-    enabled: fileId !== null && ready && !isFreeUser,
+    enabled: fileId !== null && ready && !isPooled,
   });
   return totalFromPages(query.data);
 }

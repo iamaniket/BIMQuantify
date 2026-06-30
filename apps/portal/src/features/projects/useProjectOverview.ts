@@ -2,7 +2,7 @@
 
 import type { UseQueryResult } from '@tanstack/react-query';
 
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { getProjectOverview } from '@/lib/api/projects';
 import type { ProjectOverview } from '@/lib/api/schemas';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
@@ -27,11 +27,11 @@ export function useProjectOverview<TSelect = ProjectOverview>(
   // Free-aware: a free user's detail page reads the `/free/*` overview (same
   // ProjectOverview shape, org-only blocks zeroed). Gated on `ready` so we never
   // hit the org endpoint for a free user before `/auth/me` resolves.
-  const { isFreeUser, ready } = useIsFreeUser();
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthQuery<ProjectOverview, TSelect>({
     queryKey: projectOverviewKey(projectId),
     queryFn: (accessToken) =>
-      getProjectOverview(accessToken, projectId, isFreeUser),
+      getProjectOverview(accessToken, projectId, isPooled),
     enabled: projectId.length > 0 && ready,
     // `exactOptionalPropertyTypes` forbids passing `select: undefined`, so only
     // include the key when a selector was actually supplied.

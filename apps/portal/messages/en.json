@@ -34,7 +34,7 @@
     "expiredBody": "Your projects are read-only. Upgrade to keep creating and editing.",
     "cta": "Request access"
   },
-  "freeViewer": {
+  "pooledViewer": {
     "eyebrow": "Free preview",
     "heading": "View your IFC model in the browser. Free.",
     "subtitle": "Upload a model, open it in 3D, and pin snags right on it. No desktop software, no setup. We're opening it to early users first.",
@@ -139,7 +139,7 @@
       "label": "Switch organization",
       "empty": "No active organization",
       "adminBadge": "Admin",
-      "freeWorkspace": "Free workspace"
+      "pooledWorkspace": "Free workspace"
     }
   },
   "activate": {
@@ -526,7 +526,7 @@
       "title": "Plan & usage",
       "planLabel": "Plan",
       "freePlanName": "Free",
-      "freeWorkspaceSub": "Personal workspace",
+      "pooledWorkspaceSub": "Personal workspace",
       "storageLabel": "Storage",
       "projectsLabel": "Projects",
       "containersLabel": "Containers",
@@ -760,7 +760,7 @@
         "listHeading": "People to add ({count})",
         "emptyState": "No one added yet.",
         "minOneHint": "Add at least one person to create the project.",
-        "freeInviteHint": "Invite up to {max} people to collaborate (optional — you can add them later).",
+        "pooledInviteHint": "Invite up to {max} people to collaborate (optional — you can add them later).",
         "inviteBadge": "Invite",
         "partialFailure": "Project created, but some people couldn't be added: {names}. Add them from the project's access page.",
         "errors": {

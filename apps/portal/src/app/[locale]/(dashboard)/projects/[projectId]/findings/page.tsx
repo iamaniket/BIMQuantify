@@ -30,7 +30,7 @@ import { FindingsSettingsTab } from '@/features/findings/tabs/FindingsSettingsTa
 import { useFindings } from '@/features/findings/useFindings';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
 import { useProject } from '@/features/projects/useProject';
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { ApiError } from '@/lib/api/client';
 import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 
@@ -41,7 +41,7 @@ export default function FindingsBoardPage(): JSX.Element {
   const { projectId } = params;
 
   const [tab, setTab] = useState('board');
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
 
   const projectQuery = useProject(projectId);
   const findingsQuery = useFindings(projectId);
@@ -140,7 +140,7 @@ export default function FindingsBoardPage(): JSX.Element {
         // Calendar / Locations / Photos / Settings pull in org-only data
         // (deadlines, attachments, smart-view settings). The free board keeps the
         // two tabs that read only the in-memory findings list: Board + Overview.
-        ...(isFreeUser
+        ...(isPooled
           ? []
           : [
               { value: 'calendar', label: t('tabs.calendar'), icon: <CalendarDays className="h-4 w-4" /> },

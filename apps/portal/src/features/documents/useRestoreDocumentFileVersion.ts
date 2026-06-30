@@ -2,7 +2,7 @@
 
 import type { UseMutationResult } from '@tanstack/react-query';
 
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { restoreModelFileVersion } from '@/lib/api/projectFiles';
 import type { Document } from '@/lib/api/schemas';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
@@ -21,10 +21,10 @@ type RestoreInput = {
  * timeline re-marks the current version and the view/compliance pills retarget.
  */
 export function useRestoreDocumentFileVersion(): UseMutationResult<Document, Error, RestoreInput> {
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   return useAuthMutation({
     mutationFn: (accessToken, { projectId, documentId, fileId }) =>
-      restoreModelFileVersion(accessToken, projectId, documentId, fileId, isFreeUser),
+      restoreModelFileVersion(accessToken, projectId, documentId, fileId, isPooled),
     invalidateKeys: ({ projectId, documentId }) => [
       documentFilesKey(projectId, documentId),
       documentKey(projectId, documentId),

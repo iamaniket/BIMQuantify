@@ -4,13 +4,13 @@ import { useAuth } from '@/providers/AuthProvider';
 
 /**
  * The acting principal's PLAN — the ENTITLEMENT / TIER axis, deliberately
- * distinct from {@link useIsFreeContext} (the ISOLATION axis = which data plane a
+ * distinct from {@link useIsPooledContext} (the ISOLATION axis = which data plane a
  * request resolves to). The server resolves it (`/auth/me.plan`): `'free'` when
  * org-less, else the active org's plan.
  *
  * Read this for TIER-based UI gating (upgrade prompts, feature availability),
  * NOT for choosing an endpoint/data plane — that stays driven by
- * `useIsFreeContext`/the JWT. The server re-checks entitlement on every gated
+ * `useIsPooledContext`/the JWT. The server re-checks entitlement on every gated
  * action, so this value is presentation-only and must never be trusted as
  * authorization.
  *

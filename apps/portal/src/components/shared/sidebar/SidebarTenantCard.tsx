@@ -53,7 +53,7 @@ export function SidebarTenantCard(): JSX.Element | null {
   if (isFreeContext && memberships.length === 0) return null;
   if (!isFreeContext && activeMembership === null) return null;
 
-  const freeLabel = tOrgSwitcher('freeWorkspace');
+  const freeLabel = tOrgSwitcher('pooledWorkspace');
   const name = isFreeContext ? freeLabel : activeMembership!.organization_name;
   const acronym = initials(name);
   const ariaLabel = isFreeContext

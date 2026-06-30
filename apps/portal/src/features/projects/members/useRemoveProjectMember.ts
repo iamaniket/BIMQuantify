@@ -2,7 +2,7 @@
 
 import type { UseMutationResult } from '@tanstack/react-query';
 
-import { useIsFreeContext } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { removeProjectMember } from '@/lib/api/projectMembers';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
 
@@ -18,10 +18,10 @@ export function useRemoveProjectMember(): UseMutationResult<
   Error,
   RemoveProjectMemberArgs
 > {
-  const { isFreeUser } = useIsFreeContext();
+  const { isPooled } = useIsPooledContext();
   return useAuthMutation({
     mutationFn: (accessToken, { projectId, userId }) =>
-      removeProjectMember(accessToken, projectId, userId, isFreeUser),
+      removeProjectMember(accessToken, projectId, userId, isPooled),
     invalidateKeys: (variables) => [projectMembersKey(variables.projectId)],
   });
 }

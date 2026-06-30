@@ -15,10 +15,10 @@ import { useFindings, useFileFindings } from './useFindings';
 
 // Regression for the viewer 409 ("Error getting findings for free user in
 // viewer"). These hooks read `tokens` (via useAuthInfiniteQuery) AND `me` (via
-// useIsFreeUser) from useAuth, then branch the free vs paid endpoint on
+// useIsPooledContext) from useAuth, then branch the free vs paid endpoint on
 // `me.active_organization_id`. `h.me === null` models the pre-`/auth/me` window
 // (ready=false) — the window where, before the `ready` gate, the hook fired the
-// org-only paid endpoint with isFreeUser=false and 409'd for a free user.
+// org-only paid endpoint with isPooled=false and 409'd for a free user.
 const h = vi.hoisted(() => ({
   tokens: null as TokenPair | null,
   me: null as { active_organization_id: string | null } | null,
@@ -33,14 +33,14 @@ vi.mock('@/lib/api/findings', () => ({
   listFindings: (...args: unknown[]) => listFindings(...args) as unknown,
 }));
 
-const listFreeProjectSnags = vi.fn();
-vi.mock('@/lib/api/freeProjects', () => ({
-  listFreeProjectSnags: (...args: unknown[]) => listFreeProjectSnags(...args) as unknown,
+const listPooledProjectSnags = vi.fn();
+vi.mock('@/lib/api/pooledProjects', () => ({
+  listPooledProjectSnags: (...args: unknown[]) => listPooledProjectSnags(...args) as unknown,
 }));
 
-const listFreeFindings = vi.fn();
-vi.mock('@/lib/api/freeFindings', () => ({
-  listFreeFindings: (...args: unknown[]) => listFreeFindings(...args) as unknown,
+const listPooledFindings = vi.fn();
+vi.mock('@/lib/api/pooledFindings', () => ({
+  listPooledFindings: (...args: unknown[]) => listPooledFindings(...args) as unknown,
 }));
 
 function tok(access: string): TokenPair {
@@ -59,10 +59,10 @@ beforeEach(() => {
   h.me = null;
   listFindings.mockReset();
   listFindings.mockResolvedValue({ data: [], totalCount: 0 });
-  listFreeProjectSnags.mockReset();
-  listFreeProjectSnags.mockResolvedValue([]);
-  listFreeFindings.mockReset();
-  listFreeFindings.mockResolvedValue([]);
+  listPooledProjectSnags.mockReset();
+  listPooledProjectSnags.mockResolvedValue([]);
+  listPooledFindings.mockReset();
+  listPooledFindings.mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -78,15 +78,15 @@ describe('useFindings free-context gating', () => {
     renderHook(() => useFindings('p1'), { wrapper: makeWrapper() });
     await Promise.resolve();
     // The regression: before the `ready` gate the paid endpoint fired here with
-    // isFreeUser=false → 409 NO_ACTIVE_ORGANIZATION for a free user.
+    // isPooled=false → 409 NO_ACTIVE_ORGANIZATION for a free user.
     expect(listFindings).not.toHaveBeenCalled();
-    expect(listFreeProjectSnags).not.toHaveBeenCalled();
+    expect(listPooledProjectSnags).not.toHaveBeenCalled();
   });
 
   it('calls the FREE board feed for a free (org-less) user, never the paid endpoint', async () => {
     h.me = { active_organization_id: null };
     renderHook(() => useFindings('p1'), { wrapper: makeWrapper() });
-    await waitFor(() => { expect(listFreeProjectSnags).toHaveBeenCalledTimes(1); });
+    await waitFor(() => { expect(listPooledProjectSnags).toHaveBeenCalledTimes(1); });
     expect(listFindings).not.toHaveBeenCalled();
   });
 
@@ -94,7 +94,7 @@ describe('useFindings free-context gating', () => {
     h.me = { active_organization_id: 'org1' };
     renderHook(() => useFindings('p1'), { wrapper: makeWrapper() });
     await waitFor(() => { expect(listFindings).toHaveBeenCalledTimes(1); });
-    expect(listFreeProjectSnags).not.toHaveBeenCalled();
+    expect(listPooledProjectSnags).not.toHaveBeenCalled();
   });
 });
 
@@ -104,7 +104,7 @@ describe('useFileFindings free-context gating', () => {
     renderHook(() => useFileFindings('p1', 'file1'), { wrapper: makeWrapper() });
     await Promise.resolve();
     expect(listFindings).not.toHaveBeenCalled();
-    expect(listFreeFindings).not.toHaveBeenCalled();
+    expect(listPooledFindings).not.toHaveBeenCalled();
   });
 
   it('calls the paid endpoint with linked_file_id for an org (paid) user', async () => {
@@ -119,7 +119,7 @@ describe('useFileFindings free-context gating', () => {
   it('lists the container snags for a free user, never the paid endpoint', async () => {
     h.me = { active_organization_id: null };
     renderHook(() => useFileFindings('p1', 'file1'), { wrapper: makeWrapper() });
-    await waitFor(() => { expect(listFreeFindings).toHaveBeenCalledTimes(1); });
+    await waitFor(() => { expect(listPooledFindings).toHaveBeenCalledTimes(1); });
     expect(listFindings).not.toHaveBeenCalled();
   });
 
@@ -130,7 +130,7 @@ describe('useFileFindings free-context gating', () => {
     h.me = { active_organization_id: null };
     setViewerTarget('p1', { kind: 'single', modelId: 'container1', fileId: 'file1' });
     renderHook(() => useFileFindings('p1', 'file1'), { wrapper: makeWrapper() });
-    await waitFor(() => { expect(listFreeFindings).toHaveBeenCalledTimes(1); });
-    expect(listFreeFindings).toHaveBeenCalledWith('A', 'container1');
+    await waitFor(() => { expect(listPooledFindings).toHaveBeenCalledTimes(1); });
+    expect(listPooledFindings).toHaveBeenCalledWith('A', 'container1');
   });
 });

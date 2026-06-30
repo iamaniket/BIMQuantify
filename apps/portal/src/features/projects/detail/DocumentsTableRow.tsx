@@ -34,7 +34,7 @@ import { useUploadDocumentFile } from '@/features/documents/useUploadDocumentFil
 import { UploadProgressItem, type UploadState } from '@/features/documents/UploadProgressItem';
 import { viewerKeys } from '@/features/viewer/shared/queryKeys';
 import { setViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
-import { useIsFreeUser } from '@/hooks/useIsFreeUser';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { getViewerBundle } from '@/lib/api/projectFiles';
 import { disciplineChipColors } from '@/lib/formatting/disciplineColors';
 import { formatFileSize } from '@/lib/formatting/files';
@@ -150,9 +150,9 @@ export function DocumentsTableRow({
     document.head_file_id != null ? files.find((f) => f.id === document.head_file_id) : undefined
   ) ?? (files.length > 0 ? files[0] : undefined);
   const isViewable = latestFile !== undefined && isFileViewable(latestFile);
-  const { isFreeUser } = useIsFreeUser();
+  const { isPooled } = useIsPooledContext();
   // BBL compliance is a paid-only capability (free has no compliance endpoint).
-  const canCheckBbl = !isFreeUser
+  const canCheckBbl = !isPooled
     && latestFile?.file_type === 'ifc'
     && latestFile.extraction_status === 'succeeded';
   // A container locks to its first file's type (ifc or pdf). A fresh free
@@ -174,7 +174,7 @@ export function DocumentsTableRow({
   }, [projectId, document.id, latestFile]);
 
   const startUpload = useCallback((file: File): void => {
-    if (!isAllowedFile(file, lockedFileType, isFreeUser)) {
+    if (!isAllowedFile(file, lockedFileType, isPooled)) {
       const id = crypto.randomUUID();
       setPending((prev) => [
         ...prev,
@@ -232,7 +232,7 @@ export function DocumentsTableRow({
         },
       },
     );
-  }, [projectId, document.id, uploadMutation, lockedFileType, isFreeUser, tFiles]);
+  }, [projectId, document.id, uploadMutation, lockedFileType, isPooled, tFiles]);
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const chosen = event.target.files;
@@ -272,12 +272,12 @@ export function DocumentsTableRow({
         queryKey: viewerKeys.bundle(projectId, document.id, fileId),
         // Match the free-aware fetch useViewerScope will run, so the prefetch
         // actually warms the cache (the paid endpoint 404s for a free container).
-        queryFn: () => getViewerBundle(accessToken, projectId, document.id, fileId, isFreeUser),
+        queryFn: () => getViewerBundle(accessToken, projectId, document.id, fileId, isPooled),
         staleTime: 60_000,
       })
       .catch(() => undefined);
     import('@bimdossier/viewer').catch(() => undefined);
-  }, [isViewable, latestFile, tokens, queryClient, projectId, document.id, isFreeUser]);
+  }, [isViewable, latestFile, tokens, queryClient, projectId, document.id, isPooled]);
 
   // Hover quick-actions (collapsed) and the expanded action bar share this set.
   const viewPill = (size: 'sm' | 'md'): JSX.Element | null => (
@@ -417,7 +417,7 @@ export function DocumentsTableRow({
         <input
           ref={inputRef}
           type="file"
-          accept={acceptedExtensions(lockedFileType, isFreeUser).join(',')}
+          accept={acceptedExtensions(lockedFileType, isPooled).join(',')}
           multiple
           className="hidden"
           onChange={handleInputChange}
@@ -430,7 +430,7 @@ export function DocumentsTableRow({
               {viewPill('md')}
               {uploadPill('md')}
               {checkBblPill('md')}
-              {canEdit && !isFreeUser && (
+              {canEdit && !isPooled && (
                 <DisciplineAssignSelect
                   projectId={projectId}
                   documentId={document.id}
@@ -458,7 +458,7 @@ export function DocumentsTableRow({
 
           {files.length === 0 && (
             <FileDropZone
-              accept={acceptedExtensions(lockedFileType, isFreeUser).join(',')}
+              accept={acceptedExtensions(lockedFileType, isPooled).join(',')}
               multiple
               onFiles={(chosen) => { Array.from(chosen).forEach(startUpload); }}
               hint={
