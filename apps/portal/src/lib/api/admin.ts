@@ -25,8 +25,9 @@ import {
   type OrganizationUpdateInput,
 } from './schemas';
 
-export type AdminUserList = AdminUserRead[];
-export type AuditEntryList = AuditEntry[];
+// Internal return-type aliases (not exported — no external consumer).
+type AdminUserList = AdminUserRead[];
+type AuditEntryList = AuditEntry[];
 
 // ----------------------------------------------------------------------------
 // Organizations

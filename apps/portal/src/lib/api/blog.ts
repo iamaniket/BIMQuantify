@@ -33,18 +33,6 @@ function buildQuery(
   return parts.length === 0 ? '' : `?${parts.join('&')}`;
 }
 
-export async function listBlogPosts(
-  accessToken: string,
-  params: ListBlogPostsParams = {},
-): Promise<BlogPostRead[]> {
-  const query = buildQuery(params);
-  return apiClient.get<BlogPostRead[]>(
-    `/admin/blog/posts${query}`,
-    BlogPostListSchema,
-    accessToken,
-  );
-}
-
 /** Paginated variant — returns the page items plus the total (X-Total-Count). */
 export async function listBlogPostsPage(
   accessToken: string,

@@ -62,13 +62,6 @@ export const JurisdictionSchema = z.object({
 });
 
 export type Jurisdiction = z.infer<typeof JurisdictionSchema>;
-export type JurisdictionRiskTemplate = z.infer<typeof RiskTemplateSchema>;
-export type JurisdictionBorgingsmomentTemplate = z.infer<
-  typeof BorgingsmomentTemplateSchema
->;
-export type JurisdictionChecklistItemTemplate = z.infer<
-  typeof ChecklistItemTemplateSchema
->;
 export type JurisdictionDossierRequirement = z.infer<
   typeof DossierRequirementTemplateSchema
 >;
