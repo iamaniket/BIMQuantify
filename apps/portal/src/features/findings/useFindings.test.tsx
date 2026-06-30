@@ -6,6 +6,10 @@ import {
 import { type ReactNode } from 'react';
 
 import type { TokenPair } from '@/lib/api/schemas';
+import {
+  setViewerTarget,
+  useViewerSelectionStore,
+} from '@/features/viewer/shared/viewerSelectionStore';
 
 import { useFindings, useFileFindings } from './useFindings';
 
@@ -64,6 +68,9 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks();
+  // Reset the viewer selection store so a single-mode target set in one test
+  // doesn't leak the container id into the next.
+  useViewerSelectionStore.setState({ byProject: {} });
 });
 
 describe('useFindings free-context gating', () => {
@@ -115,5 +122,16 @@ describe('useFileFindings free-context gating', () => {
     renderHook(() => useFileFindings('p1', 'file1'), { wrapper: makeWrapper() });
     await waitFor(() => { expect(listFreeFindings).toHaveBeenCalledTimes(1); });
     expect(listFindings).not.toHaveBeenCalled();
+  });
+
+  it('lists by the CONTAINER id (free_document_id), not the file id', async () => {
+    // Regression for the free-viewer marker 404: free snags are container-scoped
+    // (`/free/documents/{container}/findings`), so the hook must resolve the open
+    // single-mode container (modelId), NOT pass the file id into the document slot.
+    h.me = { active_organization_id: null };
+    setViewerTarget('p1', { kind: 'single', modelId: 'container1', fileId: 'file1' });
+    renderHook(() => useFileFindings('p1', 'file1'), { wrapper: makeWrapper() });
+    await waitFor(() => { expect(listFreeFindings).toHaveBeenCalledTimes(1); });
+    expect(listFreeFindings).toHaveBeenCalledWith('A', 'container1');
   });
 });

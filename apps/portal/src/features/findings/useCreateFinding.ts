@@ -2,6 +2,7 @@
 
 import type { UseMutationResult } from '@tanstack/react-query';
 
+import { useViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
 import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import { createFinding } from '@/lib/api/findings';
 import { createFreeFinding, freeFindingToFinding } from '@/lib/api/freeFindings';
@@ -33,10 +34,21 @@ export function useCreateFinding(
   projectId: string,
 ): UseMutationResult<Finding, Error, FindingCreateInput> {
   const { isFreeUser } = useIsFreeUser();
+  // Free snags MUST hang off a container (free_document_id). A pinned 3D finding
+  // carries it as `linked_document_id`; an unpinned / PDF-page / project-level
+  // create does not, so fall back to the open viewer container (the single-mode
+  // selection target's modelId). Without this, PDF and unpinned creates threw
+  // FreeFindingNoContainerError and never posted.
+  const target = useViewerTarget(projectId);
+  const fallbackContainerId =
+    target.kind === 'single' && target.modelId !== '' ? target.modelId : null;
   return useAuthMutation({
     mutationFn: async (accessToken, input) => {
       if (isFreeUser) {
-        const containerId = input.linked_document_id;
+        const containerId =
+          input.linked_document_id != null && input.linked_document_id !== ''
+            ? input.linked_document_id
+            : fallbackContainerId;
         if (containerId == null || containerId === '') {
           throw new FreeFindingNoContainerError();
         }

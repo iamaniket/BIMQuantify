@@ -2,6 +2,7 @@
 
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query';
 
+import { useViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
 import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import { listFindings } from '@/lib/api/findings';
 import { listFreeProjectSnags } from '@/lib/api/freeProjects';
@@ -64,23 +65,42 @@ export function useProjectFindings(
 
 /** File-scoped findings — those linked to a given file (e.g. a PDF document).
  * Shown in the viewer inspector when a PDF is open (no element to anchor to).
- * Free-aware: free snags key on the CONTAINER (free_document_id), so the free
- * viewer passes the container id here and we list that container's snags. */
+ * Free-aware: free snags are CONTAINER-scoped (the pooled endpoint is
+ * `/free/documents/{containerId}/findings`), NOT file-scoped. In the free viewer
+ * the container is the single-mode selection target's `modelId` (the `fileId`
+ * arg is the head file — used for 3D marker scene ids, not the findings query),
+ * so we resolve it from the same selection store the viewer scope reads. Without
+ * this the request would hit `/free/documents/{fileId}/findings` → 404 and the
+ * free viewer's markers never render. */
 export function useFileFindings(
   projectId: string,
   fileId: string | null,
 ): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Finding[]>>> {
   const { isFreeUser, ready } = useIsFreeUser();
+  const target = useViewerTarget(projectId);
+  // For free, the container id (free_document_id) is the open single-mode target's
+  // modelId; fall back to fileId defensively (paid ignores this entirely).
+  const freeContainerId =
+    target.kind === 'single' && target.modelId !== '' ? target.modelId : fileId;
   // An empty string is NOT a valid file id. In multi-model mode
   // `scope.activeFileId` is `''` until the manifest resolves; `'' !== null` is
   // true, so without this guard the query fires with `linked_file_id=` and 422s.
   const hasFile = fileId !== null && fileId !== '';
   return useAuthInfiniteQuery({
-    queryKey: [...findingsKey(projectId), 'file', fileId ?? ''] as const,
+    queryKey: [
+      ...findingsKey(projectId),
+      'file',
+      fileId ?? '',
+      // Free findings cache by container, not file, so two files of the same
+      // container share results; '' keeps the paid key shape unchanged.
+      isFreeUser ? `c:${freeContainerId ?? ''}` : '',
+    ] as const,
     queryFn: isFreeUser
       ? async (accessToken) => {
-          if (fileId === null || fileId === '') throw new Error('Missing fileId');
-          const snags = await listFreeFindings(accessToken, fileId);
+          if (freeContainerId === null || freeContainerId === '') {
+            throw new Error('Missing container');
+          }
+          const snags = await listFreeFindings(accessToken, freeContainerId);
           const nowIso = new Date().toISOString();
           const data = snags.map((s) => freeFindingToFinding(s, projectId, nowIso));
           return { data, totalCount: data.length };
