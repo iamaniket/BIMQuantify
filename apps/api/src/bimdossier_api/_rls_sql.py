@@ -146,8 +146,8 @@ def enable_rls_statements() -> list[str]:
 # broaden visibility to "owner OR project member".
 #
 # The membership lookup MUST NOT be inlined as a plain sub-SELECT, because a
-# policy on `free_projects` that reads `free_project_members` (whose own policy
-# reads `free_projects`) is a cross-table RLS recursion. The three SECURITY
+# policy on `pooled_projects` that reads `pooled_project_members` (whose own policy
+# reads `pooled_projects`) is a cross-table RLS recursion. The three SECURITY
 # DEFINER helpers below run as the function owner (the migration's superuser),
 # bypassing RLS entirely, which breaks every cycle. They are the load-bearing
 # boundary — keep them SECURITY DEFINER and keep `search_path` pinned.
@@ -155,21 +155,21 @@ def enable_rls_statements() -> list[str]:
 
 # The pooled free tables that carry the member-aware policy. Order matters for
 # enable (functions first) but not for the table loop. `free_models` was replaced
-# by the `free_documents` → `free_project_files` mirror of the paid Document →
+# by the `pooled_documents` → `pooled_project_files` mirror of the paid Document →
 # ProjectFile stack (migration 0005).
-FREE_MEMBER_RLS_TABLES = (
-    "free_projects",
-    "free_documents",
-    "free_project_files",
-    "free_findings",
-    "free_project_members",
+POOLED_MEMBER_RLS_TABLES = (
+    "pooled_projects",
+    "pooled_documents",
+    "pooled_project_files",
+    "pooled_findings",
+    "pooled_project_members",
 )
 
 # The `_uid` GUC expression, repeated in every policy.
-_FREE_UID = "NULLIF(current_setting('app.current_user_id', true), '')::uuid"
+_POOLED_UID = "NULLIF(current_setting('app.current_user_id', true), '')::uuid"
 
 
-def free_member_function_statements() -> list[str]:
+def pooled_member_function_statements() -> list[str]:
     """The three SECURITY DEFINER helpers the member-aware policies key on.
 
     `search_path` is pinned to `public, pg_temp` and every table is schema-
@@ -180,10 +180,10 @@ def free_member_function_statements() -> list[str]:
     """
     return [
         # Is `p_user` an invited member of `p_project_id`? Reads ONLY
-        # free_project_members (RLS-bypassed) so free_projects/free_documents
+        # pooled_project_members (RLS-bypassed) so pooled_projects/pooled_documents
         # policies can call it without recursing through this table's policy.
         """
-        CREATE OR REPLACE FUNCTION public.free_is_member(p_project_id uuid, p_user uuid)
+        CREATE OR REPLACE FUNCTION public.pooled_is_member(p_project_id uuid, p_user uuid)
         RETURNS boolean
         LANGUAGE sql
         STABLE
@@ -191,16 +191,16 @@ def free_member_function_statements() -> list[str]:
         SET search_path = public, pg_temp
         AS $$
             SELECT EXISTS (
-                SELECT 1 FROM public.free_project_members m
-                WHERE m.free_project_id = p_project_id AND m.user_id = p_user
+                SELECT 1 FROM public.pooled_project_members m
+                WHERE m.pooled_project_id = p_project_id AND m.user_id = p_user
             );
         $$;
         """,
-        # Does `p_user` own `p_project_id`? Reads ONLY free_projects so the
-        # free_project_members policy can call it without recursing through the
-        # free_projects policy.
+        # Does `p_user` own `p_project_id`? Reads ONLY pooled_projects so the
+        # pooled_project_members policy can call it without recursing through the
+        # pooled_projects policy.
         """
-        CREATE OR REPLACE FUNCTION public.free_is_project_owner(p_project_id uuid, p_user uuid)
+        CREATE OR REPLACE FUNCTION public.pooled_is_project_owner(p_project_id uuid, p_user uuid)
         RETURNS boolean
         LANGUAGE sql
         STABLE
@@ -208,38 +208,38 @@ def free_member_function_statements() -> list[str]:
         SET search_path = public, pg_temp
         AS $$
             SELECT EXISTS (
-                SELECT 1 FROM public.free_projects p
+                SELECT 1 FROM public.pooled_projects p
                 WHERE p.id = p_project_id AND p.owner_user_id = p_user
             );
         $$;
         """,
-        # The project a document (container) belongs to. Reads ONLY free_documents
-        # so the free_project_files / free_findings policies can resolve a row's
-        # project without recursing through the free_documents policy.
+        # The project a document (container) belongs to. Reads ONLY pooled_documents
+        # so the pooled_project_files / pooled_findings policies can resolve a row's
+        # project without recursing through the pooled_documents policy.
         """
-        CREATE OR REPLACE FUNCTION public.free_document_project(p_document_id uuid)
+        CREATE OR REPLACE FUNCTION public.pooled_document_project(p_document_id uuid)
         RETURNS uuid
         LANGUAGE sql
         STABLE
         SECURITY DEFINER
         SET search_path = public, pg_temp
         AS $$
-            SELECT free_project_id FROM public.free_documents WHERE id = p_document_id;
+            SELECT pooled_project_id FROM public.pooled_documents WHERE id = p_document_id;
         $$;
         """,
     ]
 
 
-def drop_free_member_function_statements() -> list[str]:
-    """Reverse of `free_member_function_statements`."""
+def drop_pooled_member_function_statements() -> list[str]:
+    """Reverse of `pooled_member_function_statements`."""
     return [
-        "DROP FUNCTION IF EXISTS public.free_is_member(uuid, uuid);",
-        "DROP FUNCTION IF EXISTS public.free_is_project_owner(uuid, uuid);",
-        "DROP FUNCTION IF EXISTS public.free_document_project(uuid);",
+        "DROP FUNCTION IF EXISTS public.pooled_is_member(uuid, uuid);",
+        "DROP FUNCTION IF EXISTS public.pooled_is_project_owner(uuid, uuid);",
+        "DROP FUNCTION IF EXISTS public.pooled_document_project(uuid);",
     ]
 
 
-def enable_free_member_rls_statements() -> list[str]:
+def enable_pooled_member_rls_statements() -> list[str]:
     """ENABLE + FORCE owner-OR-member RLS on all four pooled free tables.
 
     Replaces the simple owner-keyed policies installed by 0002/0003 (same policy
@@ -248,106 +248,106 @@ def enable_free_member_rls_statements() -> list[str]:
     per-table policies. Idempotent.
 
     WITH CHECK is deliberately tighter than USING:
-      * free_projects / free_documents / free_project_files — only the owner may
+      * pooled_projects / pooled_documents / pooled_project_files — only the owner may
         INSERT/UPDATE the row (a member's editor/viewer write permission is
         enforced in the router, not RLS), so WITH CHECK is owner-only even though
         USING is owner-OR-member for reads.
-      * free_findings — an editor member may file a snag, so WITH CHECK matches
+      * pooled_findings — an editor member may file a snag, so WITH CHECK matches
         USING (owner-OR-member). The editor/viewer distinction is enforced in
         the router, not here (RLS = isolation, router = permissions).
     """
-    stmts: list[str] = list(free_member_function_statements())
+    stmts: list[str] = list(pooled_member_function_statements())
 
-    for table in FREE_MEMBER_RLS_TABLES:
+    for table in POOLED_MEMBER_RLS_TABLES:
         stmts.append(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
         stmts.append(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
         stmts.append(f"DROP POLICY IF EXISTS {table}_owner_isolation ON {table};")
 
-    # free_projects: owner via column, members via the membership table.
+    # pooled_projects: owner via column, members via the membership table.
     stmts.append(
         f"""
-        CREATE POLICY free_projects_owner_isolation ON public.free_projects
+        CREATE POLICY pooled_projects_owner_isolation ON public.pooled_projects
         USING (
-            owner_user_id = {_FREE_UID}
-            OR public.free_is_member(id, {_FREE_UID})
+            owner_user_id = {_POOLED_UID}
+            OR public.pooled_is_member(id, {_POOLED_UID})
         )
-        WITH CHECK (owner_user_id = {_FREE_UID});
+        WITH CHECK (owner_user_id = {_POOLED_UID});
         """
     )
-    # free_documents: owner via column, members via the container's project
-    # (free_project_id is NOT NULL — every container belongs to a project).
+    # pooled_documents: owner via column, members via the container's project
+    # (pooled_project_id is NOT NULL — every container belongs to a project).
     stmts.append(
         f"""
-        CREATE POLICY free_documents_owner_isolation ON public.free_documents
+        CREATE POLICY pooled_documents_owner_isolation ON public.pooled_documents
         USING (
-            owner_user_id = {_FREE_UID}
-            OR public.free_is_member(free_project_id, {_FREE_UID})
+            owner_user_id = {_POOLED_UID}
+            OR public.pooled_is_member(pooled_project_id, {_POOLED_UID})
         )
-        WITH CHECK (owner_user_id = {_FREE_UID});
+        WITH CHECK (owner_user_id = {_POOLED_UID});
         """
     )
-    # free_project_files: owner via column, members via the parent document's
+    # pooled_project_files: owner via column, members via the parent document's
     # project (resolved by the SECURITY DEFINER helper to avoid cross-table
-    # recursion into the free_documents policy).
+    # recursion into the pooled_documents policy).
     stmts.append(
         f"""
-        CREATE POLICY free_project_files_owner_isolation ON public.free_project_files
+        CREATE POLICY pooled_project_files_owner_isolation ON public.pooled_project_files
         USING (
-            owner_user_id = {_FREE_UID}
-            OR public.free_is_member(public.free_document_project(free_document_id), {_FREE_UID})
+            owner_user_id = {_POOLED_UID}
+            OR public.pooled_is_member(public.pooled_document_project(pooled_document_id), {_POOLED_UID})
         )
-        WITH CHECK (owner_user_id = {_FREE_UID});
+        WITH CHECK (owner_user_id = {_POOLED_UID});
         """
     )
-    # free_findings: owner via column, members via the parent document's project.
+    # pooled_findings: owner via column, members via the parent document's project.
     stmts.append(
         f"""
-        CREATE POLICY free_findings_owner_isolation ON public.free_findings
+        CREATE POLICY pooled_findings_owner_isolation ON public.pooled_findings
         USING (
-            owner_user_id = {_FREE_UID}
-            OR public.free_is_member(public.free_document_project(free_document_id), {_FREE_UID})
+            owner_user_id = {_POOLED_UID}
+            OR public.pooled_is_member(public.pooled_document_project(pooled_document_id), {_POOLED_UID})
         )
         WITH CHECK (
-            owner_user_id = {_FREE_UID}
-            OR public.free_is_member(public.free_document_project(free_document_id), {_FREE_UID})
+            owner_user_id = {_POOLED_UID}
+            OR public.pooled_is_member(public.pooled_document_project(pooled_document_id), {_POOLED_UID})
         );
         """
     )
-    # free_project_members: visible to the member themselves and to the project
+    # pooled_project_members: visible to the member themselves and to the project
     # owner. WITH CHECK is owner-only (only the owner manages membership).
     stmts.append(
         f"""
-        CREATE POLICY free_project_members_owner_isolation ON public.free_project_members
+        CREATE POLICY pooled_project_members_owner_isolation ON public.pooled_project_members
         USING (
-            user_id = {_FREE_UID}
-            OR public.free_is_project_owner(free_project_id, {_FREE_UID})
+            user_id = {_POOLED_UID}
+            OR public.pooled_is_project_owner(pooled_project_id, {_POOLED_UID})
         )
         WITH CHECK (
-            public.free_is_project_owner(free_project_id, {_FREE_UID})
+            public.pooled_is_project_owner(pooled_project_id, {_POOLED_UID})
         );
         """
     )
     return stmts
 
 
-def disable_free_member_rls_statements() -> list[str]:
-    """Reverse of `enable_free_member_rls_statements` (0004 downgrade / test
+def disable_pooled_member_rls_statements() -> list[str]:
+    """Reverse of `enable_pooled_member_rls_statements` (0004 downgrade / test
     teardown). Drops the policies, the FORCE/ENABLE flags, and the helpers."""
     stmts: list[str] = []
-    for table in FREE_MEMBER_RLS_TABLES:
+    for table in POOLED_MEMBER_RLS_TABLES:
         stmts.append(f"DROP POLICY IF EXISTS {table}_owner_isolation ON {table};")
         stmts.append(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY;")
         stmts.append(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")
-    stmts.extend(drop_free_member_function_statements())
+    stmts.extend(drop_pooled_member_function_statements())
     return stmts
 
 
 # ---------------------------------------------------------------------------
 # Free-tier levels + aligned sheets: owner-OR-member RLS (migrations 0010/0011)
 #
-# `public.free_levels` (a project's building levels) and `public.free_aligned_sheets`
+# `public.pooled_levels` (a project's building levels) and `public.pooled_aligned_sheets`
 # (PDF↔IFC calibration) are project-scoped, so isolation is owner-OR-member through
-# the project — reusing the `free_is_member` SECURITY DEFINER helper created by the
+# the project — reusing the `pooled_is_member` SECURITY DEFINER helper created by the
 # free-member RLS (migration 0004). Owner-only writes (members read); the
 # editor/viewer distinction is enforced in the router, not RLS.
 # ---------------------------------------------------------------------------
@@ -355,8 +355,8 @@ def disable_free_member_rls_statements() -> list[str]:
 
 def _project_owner_or_member_rls(table: str) -> list[str]:
     """ENABLE + FORCE the project-scoped owner-OR-member RLS policy shared by the
-    pooled free tables that key membership on `free_project_id` (free_levels,
-    free_aligned_sheets): owner via the column, members via the `free_is_member`
+    pooled free tables that key membership on `pooled_project_id` (pooled_levels,
+    pooled_aligned_sheets): owner via the column, members via the `pooled_is_member`
     SECURITY DEFINER helper; owner-only WITH CHECK (members read — the editor/viewer
     write split is enforced in the router). Idempotent."""
     return [
@@ -366,10 +366,10 @@ def _project_owner_or_member_rls(table: str) -> list[str]:
         f"""
         CREATE POLICY {table}_owner_isolation ON public.{table}
         USING (
-            owner_user_id = {_FREE_UID}
-            OR public.free_is_member(free_project_id, {_FREE_UID})
+            owner_user_id = {_POOLED_UID}
+            OR public.pooled_is_member(pooled_project_id, {_POOLED_UID})
         )
-        WITH CHECK (owner_user_id = {_FREE_UID});
+        WITH CHECK (owner_user_id = {_POOLED_UID});
         """,
     ]
 
@@ -384,72 +384,72 @@ def _disable_owner_isolation_rls(table: str) -> list[str]:
     ]
 
 
-def enable_free_level_rls_statements() -> list[str]:
-    """ENABLE + FORCE owner-OR-member RLS on `public.free_levels`. Idempotent.
-    Relies on `public.free_is_member` (created by the free-member RLS)."""
-    return _project_owner_or_member_rls("free_levels")
+def enable_pooled_level_rls_statements() -> list[str]:
+    """ENABLE + FORCE owner-OR-member RLS on `public.pooled_levels`. Idempotent.
+    Relies on `public.pooled_is_member` (created by the free-member RLS)."""
+    return _project_owner_or_member_rls("pooled_levels")
 
 
-def disable_free_level_rls_statements() -> list[str]:
-    return _disable_owner_isolation_rls("free_levels")
+def disable_pooled_level_rls_statements() -> list[str]:
+    return _disable_owner_isolation_rls("pooled_levels")
 
 
-def enable_free_aligned_sheet_rls_statements() -> list[str]:
-    """ENABLE + FORCE owner-OR-member RLS on `public.free_aligned_sheets`. Idempotent.
-    Relies on `public.free_is_member` (created by the free-member RLS)."""
-    return _project_owner_or_member_rls("free_aligned_sheets")
+def enable_pooled_aligned_sheet_rls_statements() -> list[str]:
+    """ENABLE + FORCE owner-OR-member RLS on `public.pooled_aligned_sheets`. Idempotent.
+    Relies on `public.pooled_is_member` (created by the free-member RLS)."""
+    return _project_owner_or_member_rls("pooled_aligned_sheets")
 
 
-def disable_free_aligned_sheet_rls_statements() -> list[str]:
-    return _disable_owner_isolation_rls("free_aligned_sheets")
+def disable_pooled_aligned_sheet_rls_statements() -> list[str]:
+    return _disable_owner_isolation_rls("pooled_aligned_sheets")
 
 
 # ---------------------------------------------------------------------------
 # Free-tier notifications: per-recipient RLS (migration 0008)
 #
-# `public.free_notifications` (+ `free_notification_user_state`) back the free
+# `public.pooled_notifications` (+ `pooled_notification_user_state`) back the free
 # bell. Rows are PER-RECIPIENT, so isolation is a direct equality on the user GUC
 # — no membership join (unlike the owner-OR-member free tables above). Reads run as
 # `bim_app` via `get_free_session` with only `app.current_user_id` set; the
 # emission path runs as the superuser (RLS-bypassing) to fan out to other users.
 # ---------------------------------------------------------------------------
 
-FREE_NOTIFICATION_RLS_TABLES = (
-    "free_notifications",
-    "free_notification_user_state",
+POOLED_NOTIFICATION_RLS_TABLES = (
+    "pooled_notifications",
+    "pooled_notification_user_state",
 )
 # (table, recipient-key column) — both scope to a single user.
-_FREE_NOTIFICATION_POLICY_KEYS = (
-    ("free_notifications", "recipient_user_id"),
-    ("free_notification_user_state", "user_id"),
+_POOLED_NOTIFICATION_POLICY_KEYS = (
+    ("pooled_notifications", "recipient_user_id"),
+    ("pooled_notification_user_state", "user_id"),
 )
 
 
-def enable_free_notification_rls_statements() -> list[str]:
+def enable_pooled_notification_rls_statements() -> list[str]:
     """ENABLE + FORCE RLS on the pooled free-notification tables with a
     user-scoped policy (`<key> = app.current_user_id`). Load-bearing: it stops
     user A reading/dismissing user B's free notifications. Idempotent (DROP POLICY
     IF EXISTS before CREATE)."""
     stmts: list[str] = []
-    for table, key in _FREE_NOTIFICATION_POLICY_KEYS:
+    for table, key in _POOLED_NOTIFICATION_POLICY_KEYS:
         stmts.append(f"ALTER TABLE public.{table} ENABLE ROW LEVEL SECURITY;")
         stmts.append(f"ALTER TABLE public.{table} FORCE ROW LEVEL SECURITY;")
         stmts.append(f"DROP POLICY IF EXISTS {table}_recipient_isolation ON public.{table};")
         stmts.append(
             f"""
             CREATE POLICY {table}_recipient_isolation ON public.{table}
-            USING ({key} = {_FREE_UID})
-            WITH CHECK ({key} = {_FREE_UID});
+            USING ({key} = {_POOLED_UID})
+            WITH CHECK ({key} = {_POOLED_UID});
             """
         )
     return stmts
 
 
-def disable_free_notification_rls_statements() -> list[str]:
-    """Reverse of `enable_free_notification_rls_statements` (0008 downgrade / test
+def disable_pooled_notification_rls_statements() -> list[str]:
+    """Reverse of `enable_pooled_notification_rls_statements` (0008 downgrade / test
     teardown)."""
     stmts: list[str] = []
-    for table in FREE_NOTIFICATION_RLS_TABLES:
+    for table in POOLED_NOTIFICATION_RLS_TABLES:
         stmts.append(f"DROP POLICY IF EXISTS {table}_recipient_isolation ON public.{table};")
         stmts.append(f"ALTER TABLE public.{table} NO FORCE ROW LEVEL SECURITY;")
         stmts.append(f"ALTER TABLE public.{table} DISABLE ROW LEVEL SECURITY;")
@@ -459,68 +459,68 @@ def disable_free_notification_rls_statements() -> list[str]:
 # ---------------------------------------------------------------------------
 # Free-tier attachments: owner-OR-member RLS (migration 0013)
 #
-# `public.free_attachments` (photo/file evidence) is project-scoped, and
-# `public.free_finding_attachments` (snag→attachment links) is finding-scoped.
+# `public.pooled_attachments` (photo/file evidence) is project-scoped, and
+# `public.pooled_finding_attachments` (snag→attachment links) is finding-scoped.
 # Both carry owner-OR-member isolation through the project — owner via the
-# denormalized `owner_user_id`, members via the `free_is_member` SECURITY DEFINER
+# denormalized `owner_user_id`, members via the `pooled_is_member` SECURITY DEFINER
 # helper (created by the free-member RLS, migration 0004). Members may upload
 # evidence + link it to a snag they file, so WITH CHECK matches USING (the
 # editor/viewer write split is enforced in the router, not RLS).
 # ---------------------------------------------------------------------------
 
 
-def enable_free_attachment_rls_statements() -> list[str]:
+def enable_pooled_attachment_rls_statements() -> list[str]:
     """ENABLE + FORCE owner-OR-member RLS on the free attachment tables. Idempotent.
-    Relies on `public.free_is_member` / `public.free_document_project` (free-member RLS)."""
+    Relies on `public.pooled_is_member` / `public.pooled_document_project` (free-member RLS)."""
     return [
-        "ALTER TABLE public.free_attachments ENABLE ROW LEVEL SECURITY;",
-        "ALTER TABLE public.free_attachments FORCE ROW LEVEL SECURITY;",
-        "DROP POLICY IF EXISTS free_attachments_owner_isolation ON public.free_attachments;",
+        "ALTER TABLE public.pooled_attachments ENABLE ROW LEVEL SECURITY;",
+        "ALTER TABLE public.pooled_attachments FORCE ROW LEVEL SECURITY;",
+        "DROP POLICY IF EXISTS pooled_attachments_owner_isolation ON public.pooled_attachments;",
         f"""
-        CREATE POLICY free_attachments_owner_isolation ON public.free_attachments
+        CREATE POLICY pooled_attachments_owner_isolation ON public.pooled_attachments
         USING (
-            owner_user_id = {_FREE_UID}
-            OR public.free_is_member(free_project_id, {_FREE_UID})
+            owner_user_id = {_POOLED_UID}
+            OR public.pooled_is_member(pooled_project_id, {_POOLED_UID})
         )
         WITH CHECK (
-            owner_user_id = {_FREE_UID}
-            OR public.free_is_member(free_project_id, {_FREE_UID})
+            owner_user_id = {_POOLED_UID}
+            OR public.pooled_is_member(pooled_project_id, {_POOLED_UID})
         );
         """,
-        "ALTER TABLE public.free_finding_attachments ENABLE ROW LEVEL SECURITY;",
-        "ALTER TABLE public.free_finding_attachments FORCE ROW LEVEL SECURITY;",
-        "DROP POLICY IF EXISTS free_finding_attachments_owner_isolation "
-        "ON public.free_finding_attachments;",
+        "ALTER TABLE public.pooled_finding_attachments ENABLE ROW LEVEL SECURITY;",
+        "ALTER TABLE public.pooled_finding_attachments FORCE ROW LEVEL SECURITY;",
+        "DROP POLICY IF EXISTS pooled_finding_attachments_owner_isolation "
+        "ON public.pooled_finding_attachments;",
         f"""
-        CREATE POLICY free_finding_attachments_owner_isolation
-        ON public.free_finding_attachments
+        CREATE POLICY pooled_finding_attachments_owner_isolation
+        ON public.pooled_finding_attachments
         USING (
-            owner_user_id = {_FREE_UID}
-            OR public.free_is_member(
-                public.free_document_project(free_document_id), {_FREE_UID}
+            owner_user_id = {_POOLED_UID}
+            OR public.pooled_is_member(
+                public.pooled_document_project(pooled_document_id), {_POOLED_UID}
             )
         )
         WITH CHECK (
-            owner_user_id = {_FREE_UID}
-            OR public.free_is_member(
-                public.free_document_project(free_document_id), {_FREE_UID}
+            owner_user_id = {_POOLED_UID}
+            OR public.pooled_is_member(
+                public.pooled_document_project(pooled_document_id), {_POOLED_UID}
             )
         );
         """,
     ]
 
 
-def disable_free_attachment_rls_statements() -> list[str]:
-    """Reverse of `enable_free_attachment_rls_statements` (0013 downgrade / test
+def disable_pooled_attachment_rls_statements() -> list[str]:
+    """Reverse of `enable_pooled_attachment_rls_statements` (0013 downgrade / test
     teardown)."""
     return [
-        "DROP POLICY IF EXISTS free_finding_attachments_owner_isolation "
-        "ON public.free_finding_attachments;",
-        "ALTER TABLE public.free_finding_attachments NO FORCE ROW LEVEL SECURITY;",
-        "ALTER TABLE public.free_finding_attachments DISABLE ROW LEVEL SECURITY;",
-        "DROP POLICY IF EXISTS free_attachments_owner_isolation ON public.free_attachments;",
-        "ALTER TABLE public.free_attachments NO FORCE ROW LEVEL SECURITY;",
-        "ALTER TABLE public.free_attachments DISABLE ROW LEVEL SECURITY;",
+        "DROP POLICY IF EXISTS pooled_finding_attachments_owner_isolation "
+        "ON public.pooled_finding_attachments;",
+        "ALTER TABLE public.pooled_finding_attachments NO FORCE ROW LEVEL SECURITY;",
+        "ALTER TABLE public.pooled_finding_attachments DISABLE ROW LEVEL SECURITY;",
+        "DROP POLICY IF EXISTS pooled_attachments_owner_isolation ON public.pooled_attachments;",
+        "ALTER TABLE public.pooled_attachments NO FORCE ROW LEVEL SECURITY;",
+        "ALTER TABLE public.pooled_attachments DISABLE ROW LEVEL SECURITY;",
     ]
 
 
@@ -530,21 +530,21 @@ def disable_free_attachment_rls_statements() -> list[str]:
 # create_app_role_statements() only grants the master identity tables
 # (APP_GRANT_TABLES), and its ALTER DEFAULT PRIVILEGES does not reach tables that
 # create_all already made before it ran.
-FREE_DML_TABLES = (
-    *FREE_MEMBER_RLS_TABLES,
-    "free_levels",
-    "free_aligned_sheets",
-    *FREE_NOTIFICATION_RLS_TABLES,
-    "free_attachments",
-    "free_finding_attachments",
+POOLED_DML_TABLES = (
+    *POOLED_MEMBER_RLS_TABLES,
+    "pooled_levels",
+    "pooled_aligned_sheets",
+    *POOLED_NOTIFICATION_RLS_TABLES,
+    "pooled_attachments",
+    "pooled_finding_attachments",
 )
 
 
-def grant_free_tables_to_app_role() -> list[str]:
+def grant_pooled_tables_to_app_role() -> list[str]:
     """GRANT DML on every pooled free-tier table to the app role + sequence usage.
 
     Must run AFTER the free tables exist (create_all). Idempotent."""
-    tables = ", ".join(f"public.{t}" for t in FREE_DML_TABLES)
+    tables = ", ".join(f"public.{t}" for t in POOLED_DML_TABLES)
     return [
         f"GRANT SELECT, INSERT, UPDATE, DELETE ON {tables} TO {APP_ROLE};",
         f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {APP_ROLE};",

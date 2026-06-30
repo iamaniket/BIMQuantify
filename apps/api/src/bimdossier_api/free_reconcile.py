@@ -1,7 +1,7 @@
 """Reconciliation backstop for stuck free-tier extractions.
 
 `JobReconcileSweeper` walks per-org tenant schemas and only sees tenant `Job`
-rows — free extractions have no `Job` row and live in `public.free_project_files`,
+rows — free extractions have no `Job` row and live in `public.pooled_project_files`,
 so they need their own sweep. If the worker dies between the `running` and
 terminal free callback (or the terminal POST is lost), a free file sits in
 `queued`/`running` forever and the free viewer spins.
@@ -13,7 +13,7 @@ query only matches non-terminal rows. Runs as the superuser (RLS-bypassing,
 cross-user) — the deliberate pattern for a background job with no request-scoped
 user context, mirroring `jobs/reconcile.py`.
 
-The idle reaper keys on the CONTAINER (`free_documents.last_viewed_at`, stamped
+The idle reaper keys on the CONTAINER (`pooled_documents.last_viewed_at`, stamped
 by the viewer-bundle GET): an untouched container past the TTL is deleted (its
 files + snags cascade) along with its object prefix.
 """
@@ -29,8 +29,8 @@ from sqlalchemy import delete as sql_delete
 
 from bimdossier_api.background.periodic import PeriodicSweeper
 from bimdossier_api.db import get_session_maker
-from bimdossier_api.models.free_document import FreeDocument
-from bimdossier_api.models.free_project_file import FreeProjectFile
+from bimdossier_api.models.free_document import PooledDocument
+from bimdossier_api.models.free_project_file import PooledProjectFile
 from bimdossier_api.storage import get_storage
 
 if TYPE_CHECKING:
@@ -60,10 +60,10 @@ async def sweep_stuck_free_extractions(stuck_timeout_minutes: int) -> int:
         stuck = list(
             (
                 await session.execute(
-                    select(FreeProjectFile)
+                    select(PooledProjectFile)
                     .where(
-                        FreeProjectFile.extraction_status.in_(_STUCK_STATES),
-                        FreeProjectFile.updated_at < cutoff,
+                        PooledProjectFile.extraction_status.in_(_STUCK_STATES),
+                        PooledProjectFile.updated_at < cutoff,
                     )
                     .with_for_update(skip_locked=True)
                 )
@@ -103,7 +103,7 @@ async def sweep_idle_free_containers(
     """Delete free containers with no viewer activity for ``ttl_days`` + their S3
     objects. Idle = ``last_viewed_at`` older than the cutoff, or never viewed and
     created before it. Storage cleanup is best-effort (logged on failure); the DB
-    row delete cascades free_project_files + free_findings. ``storage`` is injectable
+    row delete cascades pooled_project_files + pooled_findings. ``storage`` is injectable
     for tests.
 
     Returns the number of containers reaped.
@@ -116,12 +116,12 @@ async def sweep_idle_free_containers(
     async with session_maker() as session:
         rows = (
             await session.execute(
-                select(FreeDocument.id, FreeDocument.owner_user_id).where(
+                select(PooledDocument.id, PooledDocument.owner_user_id).where(
                     or_(
-                        FreeDocument.last_viewed_at < cutoff,
+                        PooledDocument.last_viewed_at < cutoff,
                         and_(
-                            FreeDocument.last_viewed_at.is_(None),
-                            FreeDocument.created_at < cutoff,
+                            PooledDocument.last_viewed_at.is_(None),
+                            PooledDocument.created_at < cutoff,
                         ),
                     )
                 )
@@ -139,7 +139,7 @@ async def sweep_idle_free_containers(
             )
         async with session_maker() as session, session.begin():
             await session.execute(
-                sql_delete(FreeDocument).where(FreeDocument.id == document_id)
+                sql_delete(PooledDocument).where(PooledDocument.id == document_id)
             )
         reaped += 1
 

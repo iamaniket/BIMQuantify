@@ -5,7 +5,7 @@ manifest on the CANONICAL `/projects/...` paths (what the viewer actually
 fetches); the legacy `/free/...` routes still serve the same logic during
 migration; paid is unchanged.
 
-The free file-upload flow itself still lives on free_documents.router (a
+The free file-upload flow itself still lives on pooled_documents.router (a
 separate, more intricate slice) — here we just seed a succeeded model through it
 and assert the unified READ paths.
 """

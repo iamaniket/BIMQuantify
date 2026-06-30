@@ -298,18 +298,18 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
         # Free-tier data (GDPR): anonymize does NOT hard-delete the user row, so
         # the `ON DELETE CASCADE` from public.users never fires and the user's
         # pooled free projects/containers/files/findings + their S3 objects would
-        # leak. Delete them explicitly. Deleting the owned free_projects cascades
-        # free_documents → free_project_files → free_findings (FK CASCADE); also drop
+        # leak. Delete them explicitly. Deleting the owned pooled_projects cascades
+        # pooled_documents → pooled_project_files → pooled_findings (FK CASCADE); also drop
         # the user's memberships in others' free projects. Object cleanup is
         # best-effort (the idle reaper is the backstop for any leftover prefix).
-        from bimdossier_api.models.free_project import FreeProject
-        from bimdossier_api.models.free_project_member import FreeProjectMember
+        from bimdossier_api.models.free_project import PooledProject
+        from bimdossier_api.models.free_project_member import PooledProjectMember
 
         await session.execute(
-            sql_delete(FreeProject).where(FreeProject.owner_user_id == user.id)
+            sql_delete(PooledProject).where(PooledProject.owner_user_id == user.id)
         )
         await session.execute(
-            sql_delete(FreeProjectMember).where(FreeProjectMember.user_id == user.id)
+            sql_delete(PooledProjectMember).where(PooledProjectMember.user_id == user.id)
         )
         try:
             from bimdossier_api.storage import get_storage

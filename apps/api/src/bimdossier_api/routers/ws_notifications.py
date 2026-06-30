@@ -301,7 +301,7 @@ async def authenticate_ws_free_token(
 
 
 @router.websocket("/ws/free-notifications")
-async def ws_free_notifications(ws: WebSocket, token: str | None = Query(default=None)) -> None:
+async def ws_pooled_notifications(ws: WebSocket, token: str | None = Query(default=None)) -> None:
     """Free-tier notification stream — per-user channel, no org.
 
     Mirrors ``ws_notifications`` but authenticates via ``authenticate_ws_free_token``

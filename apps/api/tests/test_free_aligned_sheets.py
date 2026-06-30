@@ -1,4 +1,4 @@
-"""Tests for free-tier PDF↔IFC calibration (pooled public.free_aligned_sheets).
+"""Tests for free-tier PDF↔IFC calibration (pooled public.pooled_aligned_sheets).
 
 A free user pins a PDF drawing page to a level's 3D slice, calibrates it with two
 control points (the shared solve_similarity), and the sheet goes stale when a newer
@@ -9,7 +9,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.conftest import FakeStorage
-from tests.test_free_levels import _create_level
+from tests.test_pooled_levels import _create_level
 from tests.test_free_pdf import _PDF_BYTES, _pdf_callback_succeeded
 from tests.test_free_viewer import (
     _auth,
@@ -126,7 +126,7 @@ async def test_free_aligned_sheet_create_calibrate_and_drift(
     assert listed.json()[0]["is_stale"] is True
 
 
-async def test_free_aligned_sheets_rls_isolation(
+async def test_pooled_aligned_sheets_rls_isolation(
     free_tier_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:

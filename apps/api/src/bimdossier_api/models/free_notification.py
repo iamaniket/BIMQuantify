@@ -1,4 +1,4 @@
-"""Pooled free-tier notifications — `public.free_notifications` (+ user-state).
+"""Pooled free-tier notifications — `public.pooled_notifications` (+ user-state).
 
 Mirrors the paid `Notification` / `NotificationUserState` (models/notification.py)
 on the pooled side so the free bell reuses the SAME UI + Zod schema. Two deliberate
@@ -31,11 +31,11 @@ from bimdossier_api.models._pooled import check_in
 
 # Value-identical to the paid NotificationEventType members the free path emits.
 # Only terminal extraction events apply to free today (no deadlines/mentions yet).
-FREE_NOTIFICATION_EVENT_TYPES: tuple[str, ...] = ("job_succeeded", "job_failed")
+POOLED_NOTIFICATION_EVENT_TYPES: tuple[str, ...] = ("job_succeeded", "job_failed")
 
 
-class FreeNotification(MasterBase):
-    __tablename__ = "free_notifications"
+class PooledNotification(MasterBase):
+    __tablename__ = "pooled_notifications"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     # The RLS key — one row per recipient (owner + each invited member). NOT NULL,
@@ -45,19 +45,19 @@ class FreeNotification(MasterBase):
         ForeignKey("public.users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    free_project_id: Mapped[UUID | None] = mapped_column(
+    pooled_project_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("public.free_projects.id", ondelete="SET NULL"),
+        ForeignKey("public.pooled_projects.id", ondelete="SET NULL"),
         nullable=True,
     )
-    free_document_id: Mapped[UUID | None] = mapped_column(
+    pooled_document_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("public.free_documents.id", ondelete="SET NULL"),
+        ForeignKey("public.pooled_documents.id", ondelete="SET NULL"),
         nullable=True,
     )
-    free_file_id: Mapped[UUID | None] = mapped_column(
+    pooled_file_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("public.free_project_files.id", ondelete="SET NULL"),
+        ForeignKey("public.pooled_project_files.id", ondelete="SET NULL"),
         nullable=True,
     )
     # Free jobs route via FREE_TIER_SENTINEL_ORG and live in no `public.jobs` table,
@@ -73,21 +73,21 @@ class FreeNotification(MasterBase):
 
     __table_args__ = (
         CheckConstraint(
-            check_in("event_type", FREE_NOTIFICATION_EVENT_TYPES),
-            name="ck_free_notifications_event_type",
+            check_in("event_type", POOLED_NOTIFICATION_EVENT_TYPES),
+            name="ck_pooled_notifications_event_type",
         ),
         # Drives the list/count query (filter on recipient, order by created_at).
         Index(
-            "ix_free_notifications_recipient_created",
+            "ix_pooled_notifications_recipient_created",
             "recipient_user_id",
             "created_at",
         ),
-        Index("ix_free_notifications_free_file_id", "free_file_id"),
+        Index("ix_pooled_notifications_pooled_file_id", "pooled_file_id"),
         {"schema": "public"},
     )
 
 
-class FreeNotificationUserState(MasterBase):
+class PooledNotificationUserState(MasterBase):
     """Per-user read/dismiss state over a free notification (mirrors paid).
 
     Free rows are already per-recipient, so `user_id` here always equals the
@@ -96,11 +96,11 @@ class FreeNotificationUserState(MasterBase):
     nullable, same upsert semantics).
     """
 
-    __tablename__ = "free_notification_user_state"
+    __tablename__ = "pooled_notification_user_state"
 
     notification_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("public.free_notifications.id", ondelete="CASCADE"),
+        ForeignKey("public.pooled_notifications.id", ondelete="CASCADE"),
         primary_key=True,
     )
     user_id: Mapped[UUID] = mapped_column(

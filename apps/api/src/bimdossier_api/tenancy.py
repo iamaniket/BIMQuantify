@@ -218,7 +218,7 @@ async def open_free_session(user_id: UUID) -> AsyncIterator[AsyncSession]:
     schema and no `app.current_org_id`. We set:
       1. `SET LOCAL ROLE bim_app`          — drop to the non-bypass role so the
                                              owner-keyed RLS on free_models /
-                                             free_findings actually enforces.
+                                             pooled_findings actually enforces.
       2. `SET LOCAL search_path = public`  — free tables live in `public`.
       3. `app.current_user_id` GUC         — the only key the free RLS policy
                                              reads (no org GUC).

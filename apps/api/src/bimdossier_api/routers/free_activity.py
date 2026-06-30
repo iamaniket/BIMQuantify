@@ -6,12 +6,12 @@ paid feed (`routers/activity.py`, backed by `audit_log`), there is no event stor
 to read. Instead we SYNTHESIZE the activity-over-time trend from the timestamps
 that already live on the pooled free tables:
 
-  * `free_documents.created_at`            → create / document
-  * `free_project_files.created_at`        → upload / project_file
-  * `free_project_files.extraction_finished_at` (terminal) → scan / project_file
-  * `free_findings.created_at`             → create / finding
-  * `free_findings.updated_at` (> created) → change / finding
-  * `free_project_members.created_at`      → change / project_member
+  * `pooled_documents.created_at`            → create / document
+  * `pooled_project_files.created_at`        → upload / project_file
+  * `pooled_project_files.extraction_finished_at` (terminal) → scan / project_file
+  * `pooled_findings.created_at`             → create / finding
+  * `pooled_findings.updated_at` (> created) → change / finding
+  * `pooled_project_members.created_at`      → change / project_member
 
 The category/resource vocabulary is identical to the paid feed, so the portal's
 `ActivityTimelinePanel` card + `ActivityTrendTooltip` render free rows unchanged
@@ -35,10 +35,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api.auth.fastapi_users import current_verified_user
-from bimdossier_api.models.free_document import FreeDocument
-from bimdossier_api.models.free_finding import FreeFinding
-from bimdossier_api.models.free_project_file import FreeProjectFile
-from bimdossier_api.models.free_project_member import FreeProjectMember
+from bimdossier_api.models.free_document import PooledDocument
+from bimdossier_api.models.free_finding import PooledFinding
+from bimdossier_api.models.free_project_file import PooledProjectFile
+from bimdossier_api.models.free_project_member import PooledProjectMember
 from bimdossier_api.models.project_file import ExtractionStatus
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.free_access import require_free_tier_enabled, resolve_free_role
@@ -89,7 +89,7 @@ async def compute_free_activity_timeline(
     # Files / findings reach the project through their parent container; resolve
     # the project's document ids once and key off it (RLS-scoped subquery).
     doc_ids = (
-        select(FreeDocument.id).where(FreeDocument.free_project_id == project_id).scalar_subquery()
+        select(PooledDocument.id).where(PooledDocument.pooled_project_id == project_id).scalar_subquery()
     )
 
     buckets: dict[datetime, _BucketAcc] = {}
@@ -110,41 +110,41 @@ async def compute_free_activity_timeline(
             acc.by_resource[resource] += row.n
 
     await _fold(
-        FreeDocument.created_at,
-        FreeDocument.free_project_id == project_id,
+        PooledDocument.created_at,
+        PooledDocument.pooled_project_id == project_id,
         category="create",
         resource="document",
     )
     await _fold(
-        FreeProjectFile.created_at,
-        FreeProjectFile.free_document_id.in_(doc_ids),
+        PooledProjectFile.created_at,
+        PooledProjectFile.pooled_document_id.in_(doc_ids),
         category="upload",
         resource="project_file",
     )
     await _fold(
-        FreeProjectFile.extraction_finished_at,
-        FreeProjectFile.free_document_id.in_(doc_ids),
-        FreeProjectFile.extraction_finished_at.is_not(None),
-        FreeProjectFile.extraction_status.in_(_SCAN_STATUSES),
+        PooledProjectFile.extraction_finished_at,
+        PooledProjectFile.pooled_document_id.in_(doc_ids),
+        PooledProjectFile.extraction_finished_at.is_not(None),
+        PooledProjectFile.extraction_status.in_(_SCAN_STATUSES),
         category="scan",
         resource="project_file",
     )
     await _fold(
-        FreeFinding.created_at,
-        FreeFinding.free_document_id.in_(doc_ids),
+        PooledFinding.created_at,
+        PooledFinding.pooled_document_id.in_(doc_ids),
         category="create",
         resource="finding",
     )
     await _fold(
-        FreeFinding.updated_at,
-        FreeFinding.free_document_id.in_(doc_ids),
-        FreeFinding.updated_at > FreeFinding.created_at,
+        PooledFinding.updated_at,
+        PooledFinding.pooled_document_id.in_(doc_ids),
+        PooledFinding.updated_at > PooledFinding.created_at,
         category="change",
         resource="finding",
     )
     await _fold(
-        FreeProjectMember.created_at,
-        FreeProjectMember.free_project_id == project_id,
+        PooledProjectMember.created_at,
+        PooledProjectMember.pooled_project_id == project_id,
         category="change",
         resource="project_member",
     )

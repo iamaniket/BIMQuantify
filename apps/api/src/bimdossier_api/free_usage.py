@@ -7,11 +7,11 @@ user's data footprint (storage / projects / containers / snags) against the
 quotas in `config.py`.
 
 The computation is OWNER-keyed (the free quota model) and mirrors the
-authoritative quota filters in `routers/free_documents.py` exactly: storage =
+authoritative quota filters in `routers/pooled_documents.py` exactly: storage =
 SUM of active (`deleted_at IS NULL`) file + attachment bytes per owner; container count =
-active `free_documents` per owner. It runs ONE grouped query per metric (each
+active `pooled_documents` per owner. It runs ONE grouped query per metric (each
 index-backed) so a multi-id request can't fan out cartesian-style across
-`free_documents`, `free_project_files`, and `free_findings`.
+`pooled_documents`, `pooled_project_files`, and `pooled_findings`.
 """
 
 from __future__ import annotations
@@ -20,12 +20,12 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
 
-from bimdossier_api.models.free_attachment import FreeAttachment
-from bimdossier_api.models.free_document import FreeDocument
-from bimdossier_api.models.free_finding import FreeFinding
-from bimdossier_api.models.free_project import FreeProject
-from bimdossier_api.models.free_project_file import FreeProjectFile
-from bimdossier_api.models.free_project_member import FreeProjectMember
+from bimdossier_api.models.free_attachment import PooledAttachment
+from bimdossier_api.models.free_document import PooledDocument
+from bimdossier_api.models.free_finding import PooledFinding
+from bimdossier_api.models.free_project import PooledProject
+from bimdossier_api.models.free_project_file import PooledProjectFile
+from bimdossier_api.models.free_project_member import PooledProjectMember
 from bimdossier_api.schemas.admin import FreeUserUsage
 
 if TYPE_CHECKING:
@@ -53,7 +53,7 @@ async def compute_free_usage(
     """Per-user free-tier usage for the given ids, computed with one grouped
     query per metric (no cross-relation fan-out). Returns a `FreeUserUsage` for
     every requested id (zeros for users with no free content). Mirrors the
-    quota filters in `free_documents.py` (active rows only).
+    quota filters in `pooled_documents.py` (active rows only).
 
     Caps default to the global env settings; pass `limits_by_user`
     (`free_limits.resolve_free_limits_batch`) to surface a user's EFFECTIVE caps
@@ -80,15 +80,15 @@ async def compute_free_usage(
     for uid, total, last_edit in (
         await session.execute(
             select(
-                FreeProjectFile.owner_user_id,
-                func.coalesce(func.sum(FreeProjectFile.size_bytes), 0),
-                func.max(FreeProjectFile.updated_at),
+                PooledProjectFile.owner_user_id,
+                func.coalesce(func.sum(PooledProjectFile.size_bytes), 0),
+                func.max(PooledProjectFile.updated_at),
             )
             .where(
-                FreeProjectFile.owner_user_id.in_(user_ids),
-                FreeProjectFile.deleted_at.is_(None),
+                PooledProjectFile.owner_user_id.in_(user_ids),
+                PooledProjectFile.deleted_at.is_(None),
             )
-            .group_by(FreeProjectFile.owner_user_id)
+            .group_by(PooledProjectFile.owner_user_id)
         )
     ).all():
         storage[uid] = int(total or 0)
@@ -99,32 +99,32 @@ async def compute_free_usage(
     for uid, total in (
         await session.execute(
             select(
-                FreeAttachment.owner_user_id,
-                func.coalesce(func.sum(FreeAttachment.size_bytes), 0),
+                PooledAttachment.owner_user_id,
+                func.coalesce(func.sum(PooledAttachment.size_bytes), 0),
             )
             .where(
-                FreeAttachment.owner_user_id.in_(user_ids),
-                FreeAttachment.deleted_at.is_(None),
+                PooledAttachment.owner_user_id.in_(user_ids),
+                PooledAttachment.deleted_at.is_(None),
             )
-            .group_by(FreeAttachment.owner_user_id)
+            .group_by(PooledAttachment.owner_user_id)
         )
     ).all():
         storage[uid] = storage.get(uid, 0) + int(total or 0)
 
-    # Containers = active free_documents per owner + last view + last edit.
+    # Containers = active pooled_documents per owner + last view + last edit.
     for uid, count, last_viewed, last_edit in (
         await session.execute(
             select(
-                FreeDocument.owner_user_id,
-                func.count(FreeDocument.id),
-                func.max(FreeDocument.last_viewed_at),
-                func.max(FreeDocument.updated_at),
+                PooledDocument.owner_user_id,
+                func.count(PooledDocument.id),
+                func.max(PooledDocument.last_viewed_at),
+                func.max(PooledDocument.updated_at),
             )
             .where(
-                FreeDocument.owner_user_id.in_(user_ids),
-                FreeDocument.deleted_at.is_(None),
+                PooledDocument.owner_user_id.in_(user_ids),
+                PooledDocument.deleted_at.is_(None),
             )
-            .group_by(FreeDocument.owner_user_id)
+            .group_by(PooledDocument.owner_user_id)
         )
     ).all():
         documents[uid] = count
@@ -134,13 +134,13 @@ async def compute_free_usage(
     for uid, count, first_created, last_edit in (
         await session.execute(
             select(
-                FreeProject.owner_user_id,
-                func.count(FreeProject.id),
-                func.min(FreeProject.created_at),
-                func.max(FreeProject.updated_at),
+                PooledProject.owner_user_id,
+                func.count(PooledProject.id),
+                func.min(PooledProject.created_at),
+                func.max(PooledProject.updated_at),
             )
-            .where(FreeProject.owner_user_id.in_(user_ids))
-            .group_by(FreeProject.owner_user_id)
+            .where(PooledProject.owner_user_id.in_(user_ids))
+            .group_by(PooledProject.owner_user_id)
         )
     ).all():
         projects[uid] = count
@@ -150,12 +150,12 @@ async def compute_free_usage(
     for uid, count, last_edit in (
         await session.execute(
             select(
-                FreeFinding.owner_user_id,
-                func.count(FreeFinding.id),
-                func.max(FreeFinding.updated_at),
+                PooledFinding.owner_user_id,
+                func.count(PooledFinding.id),
+                func.max(PooledFinding.updated_at),
             )
-            .where(FreeFinding.owner_user_id.in_(user_ids))
-            .group_by(FreeFinding.owner_user_id)
+            .where(PooledFinding.owner_user_id.in_(user_ids))
+            .group_by(PooledFinding.owner_user_id)
         )
     ).all():
         snags[uid] = count
@@ -163,9 +163,9 @@ async def compute_free_usage(
 
     for uid, count in (
         await session.execute(
-            select(FreeProjectMember.user_id, func.count())
-            .where(FreeProjectMember.user_id.in_(user_ids))
-            .group_by(FreeProjectMember.user_id)
+            select(PooledProjectMember.user_id, func.count())
+            .where(PooledProjectMember.user_id.in_(user_ids))
+            .group_by(PooledProjectMember.user_id)
         )
     ).all():
         member_of[uid] = count

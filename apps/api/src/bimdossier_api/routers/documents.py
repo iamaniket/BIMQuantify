@@ -41,7 +41,7 @@ from bimdossier_api.models.project_file import (
     ProjectFile,
     ProjectFileStatus,
 )
-from bimdossier_api.routers import free_documents
+from bimdossier_api.routers import pooled_documents
 from bimdossier_api.routers.free_access import require_free_tier_enabled
 from bimdossier_api.routers.project_files._shared import resolve_head_file_id
 from bimdossier_api.schemas.document import (
@@ -98,11 +98,11 @@ async def create_document(
 ) -> Document | DocumentRead:
     if scope.is_free:
         require_free_tier_enabled()
-        return await free_documents.create_free_document(
+        return await pooled_documents.create_free_document(
             session=session,
             user=scope.user,
             project_id=project_id,
-            payload=free_documents.FreeDocumentCreate(**payload.model_dump()),
+            payload=pooled_documents.PooledDocumentCreate(**payload.model_dump()),
             settings=settings,
         )
 
@@ -164,7 +164,7 @@ async def list_documents(
         require_free_tier_enabled()
         # Free always returns the with-versions shape (the free client never asks
         # for the light list); status/discipline/paging filters are paid-only.
-        docs = await free_documents.list_free_project_documents(session, project_id)
+        docs = await pooled_documents.list_free_project_documents(session, project_id)
         response.headers["X-Total-Count"] = str(len(docs))
         return [d.model_dump() for d in docs]
 
@@ -223,7 +223,7 @@ async def get_document(
 ) -> dict[str, object]:
     if scope.is_free:
         require_free_tier_enabled()
-        doc = await free_documents.get_free_document(session, project_id, document_id)
+        doc = await pooled_documents.get_free_document(session, project_id, document_id)
         return doc.model_dump()
 
     user = scope.user
@@ -274,12 +274,12 @@ async def update_document(
 ) -> Document | DocumentRead:
     if scope.is_free:
         require_free_tier_enabled()
-        return await free_documents.update_free_document(
+        return await pooled_documents.update_free_document(
             session=session,
             user=scope.user,
             project_id=project_id,
             document_id=document_id,
-            payload=free_documents.FreeDocumentUpdate(**payload.model_dump(exclude_unset=True)),
+            payload=pooled_documents.PooledDocumentUpdate(**payload.model_dump(exclude_unset=True)),
         )
 
     user = scope.user
@@ -411,7 +411,7 @@ async def delete_document(
 ) -> Response:
     if scope.is_free:
         require_free_tier_enabled()
-        await free_documents.delete_free_document(
+        await pooled_documents.delete_free_document(
             user=scope.user,
             project_id=project_id,
             document_id=document_id,

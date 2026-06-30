@@ -95,7 +95,7 @@ async def test_free_level_crud_and_drawing_assignment(
     assert doc.json()["level_id"] is None
 
 
-async def test_free_levels_rls_isolation(
+async def test_pooled_levels_rls_isolation(
     free_tier_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:

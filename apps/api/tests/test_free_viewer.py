@@ -8,7 +8,7 @@ restore (F7), the global extraction cap, the reapers, GDPR purge, and — the
 critical security gate — RLS isolation between two free users running as bim_app.
 
 Shared helpers here (`_create_project`, `_create_document`, `_initiate_file`,
-`_complete_file`, `_upload`) are imported by test_free_projects.py and
+`_complete_file`, `_upload`) are imported by test_pooled_projects.py and
 test_free_conversion.py.
 """
 
@@ -22,8 +22,8 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from bimdossier_api.config import get_settings
-from bimdossier_api.models.free_document import FreeDocument
-from bimdossier_api.models.free_project_file import FreeProjectFile
+from bimdossier_api.models.free_document import PooledDocument
+from bimdossier_api.models.free_project_file import PooledProjectFile
 from bimdossier_api.models.user import User
 from tests.conftest import FakeStorage, make_test_user
 
@@ -496,7 +496,7 @@ async def test_snag_assignee_and_deadline(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     """A snag can be assigned to a project participant (here the owner) + carry a
-    deadline; both round-trip through FreeFindingRead. Assigning to a non-participant
+    deadline; both round-trip through PooledFindingRead. Assigning to a non-participant
     is a 422 ASSIGNEE_NOT_A_PROJECT_MEMBER."""
     client, _ = free_tier_storage_client
     token = await _free_token(client, session_maker, "free-assign@example.com")
@@ -696,7 +696,7 @@ async def test_free_stuck_extraction_reaper(
     async with session_maker() as s:
         await s.execute(
             text(
-                "UPDATE free_project_files SET extraction_status='running', "
+                "UPDATE pooled_project_files SET extraction_status='running', "
                 "updated_at = now() - interval '2 hours' WHERE id = :id"
             ),
             {"id": UUID(file_id)},
@@ -729,7 +729,7 @@ async def test_idle_free_container_reaper(
     async with session_maker() as s:
         await s.execute(
             text(
-                "UPDATE free_documents SET last_viewed_at = now() - interval '40 days' "
+                "UPDATE pooled_documents SET last_viewed_at = now() - interval '40 days' "
                 "WHERE id = :id"
             ),
             {"id": UUID(did)},
@@ -745,8 +745,8 @@ async def test_idle_free_container_reaper(
     async with session_maker() as s:
         files = await s.scalar(
             select(func.count())
-            .select_from(FreeProjectFile)
-            .where(FreeProjectFile.free_document_id == UUID(did))
+            .select_from(PooledProjectFile)
+            .where(PooledProjectFile.pooled_document_id == UUID(did))
         )
     assert files == 0
 
@@ -783,8 +783,8 @@ async def test_free_data_purged_on_user_deletion(
     async with session_maker() as s:
         remaining = await s.scalar(
             select(func.count())
-            .select_from(FreeDocument)
-            .where(FreeDocument.id == UUID(did))
+            .select_from(PooledDocument)
+            .where(PooledDocument.id == UUID(did))
         )
     assert remaining == 0
 

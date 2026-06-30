@@ -12,7 +12,7 @@ read; owner/editor can mutate.
 ``get_scoped_session`` + ``get_scope_context`` and branches ONCE on
 ``scope.is_free``: an org JWT runs the schema-per-tenant ``Level`` path (with the
 project-membership permission matrix + audit); an org-less (free) JWT runs the
-pooled ``FreeLevel`` path (owner-OR-member RLS, owner-only writes, no audit).
+pooled ``PooledLevel`` path (owner-OR-member RLS, owner-only writes, no audit).
 Both return the identical ``LevelRead`` shape. The same router is mounted at
 ``/projects/{id}/levels`` AND aliased at ``/free/projects/{id}/levels`` in
 ``main.py`` so the client never picks the isolation surface (the tier comes from
@@ -34,14 +34,14 @@ from bimdossier_api.access import (
     require_project_writable,
 )
 from bimdossier_api.auth.permissions import Action, Resource, require_permission
-from bimdossier_api.models.free_level import FreeLevel
+from bimdossier_api.models.free_level import PooledLevel
 from bimdossier_api.models.levels import Level, LevelSource
 from bimdossier_api.pagination import set_total_count
 from bimdossier_api.routers.free_access import (
     assert_free_account_not_expired,
     require_free_tier_enabled,
 )
-from bimdossier_api.routers.free_projects import (
+from bimdossier_api.routers.pooled_projects import (
     _load_accessible_free_project_or_404,
     _load_free_project_or_404,
 )
@@ -72,16 +72,16 @@ async def _load_level_or_404(session: AsyncSession, project_id: UUID, level_id: 
 
 
 # ---------------------------------------------------------------------------
-# Free (pooled) helpers — mirror of the former routers/free_levels.py
+# Free (pooled) helpers — mirror of the former routers/pooled_levels.py
 # ---------------------------------------------------------------------------
 
 
-def _free_to_read(level: FreeLevel) -> LevelRead:
-    """Adapt a pooled FreeLevel to the paid LevelRead shape (rename
-    ``free_project_id`` → ``project_id``)."""
+def _free_to_read(level: PooledLevel) -> LevelRead:
+    """Adapt a pooled PooledLevel to the paid LevelRead shape (rename
+    ``pooled_project_id`` → ``project_id``)."""
     return LevelRead(
         id=level.id,
-        project_id=level.free_project_id,
+        project_id=level.pooled_project_id,
         name=level.name,
         elevation_m=level.elevation_m,
         ordering=level.ordering,
@@ -93,13 +93,13 @@ def _free_to_read(level: FreeLevel) -> LevelRead:
 
 async def _load_free_level_or_404(
     session: AsyncSession, project_id: UUID, level_id: UUID
-) -> FreeLevel:
+) -> PooledLevel:
     level = (
         await session.execute(
-            select(FreeLevel).where(
-                FreeLevel.id == level_id,
-                FreeLevel.free_project_id == project_id,
-                FreeLevel.deleted_at.is_(None),
+            select(PooledLevel).where(
+                PooledLevel.id == level_id,
+                PooledLevel.pooled_project_id == project_id,
+                PooledLevel.deleted_at.is_(None),
             )
         )
     ).scalar_one_or_none()
@@ -127,9 +127,9 @@ async def create_level(
             session, project_id, scope.user.id
         )  # owner-only
         await assert_free_account_not_expired(scope.user)
-        free_level = FreeLevel(
+        free_level = PooledLevel(
             owner_user_id=free_project.owner_user_id,
-            free_project_id=free_project.id,
+            pooled_project_id=free_project.id,
             name=payload.name,
             elevation_m=payload.elevation_m,
             ordering=payload.ordering,
@@ -194,15 +194,15 @@ async def list_levels(
         rows = list(
             (
                 await session.execute(
-                    select(FreeLevel)
+                    select(PooledLevel)
                     .where(
-                        FreeLevel.free_project_id == project_id,
-                        FreeLevel.deleted_at.is_(None),
+                        PooledLevel.pooled_project_id == project_id,
+                        PooledLevel.deleted_at.is_(None),
                     )
                     .order_by(
-                        FreeLevel.ordering.asc(),
-                        FreeLevel.elevation_m.asc(),
-                        FreeLevel.name.asc(),
+                        PooledLevel.ordering.asc(),
+                        PooledLevel.elevation_m.asc(),
+                        PooledLevel.name.asc(),
                     )
                 )
             )
@@ -299,7 +299,7 @@ async def delete_level(
         require_free_tier_enabled()
         await _load_free_project_or_404(session, project_id, scope.user.id)  # owner-only
         free_level = await _load_free_level_or_404(session, project_id, level_id)
-        # Hard delete (mirrors paid): free_documents.level_id is SET NULL, so
+        # Hard delete (mirrors paid): pooled_documents.level_id is SET NULL, so
         # assigned drawings revert to Unassigned.
         await session.delete(free_level)
         await session.flush()

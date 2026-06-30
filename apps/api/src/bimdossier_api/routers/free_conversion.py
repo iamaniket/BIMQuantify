@@ -5,7 +5,7 @@ container they built. We copy the HEAD version's raw IFC into the project's
 storage namespace, create a `Document` + `ProjectFile`, run the NORMAL tenant
 extraction (the free fragments are NOT reused — re-extraction at the paid
 threshold of 1 guarantees first-class storeys/geometry), map the free snags to
-real `findings`, and stamp the head `free_project_files.converted_to_file_id` so
+real `findings`, and stamp the head `pooled_project_files.converted_to_file_id` so
 a re-import is a no-op. Only the head version is copied — re-extraction makes
 copying older versions pointless.
 
@@ -39,9 +39,9 @@ from bimdossier_api.config import Settings, get_settings
 from bimdossier_api.jobs import DispatchJobError, dispatch_job
 from bimdossier_api.models.document import Document, DocumentDiscipline, DocumentStatus
 from bimdossier_api.models.finding import Finding, FindingSeverity, FindingStatus
-from bimdossier_api.models.free_document import FreeDocument
-from bimdossier_api.models.free_finding import FreeFinding
-from bimdossier_api.models.free_project_file import FreeProjectFile
+from bimdossier_api.models.free_document import PooledDocument
+from bimdossier_api.models.free_finding import PooledFinding
+from bimdossier_api.models.free_project_file import PooledProjectFile
 from bimdossier_api.models.job import Job, JobStatus, JobType
 from bimdossier_api.models.project_file import (
     ExtractionStatus,
@@ -61,8 +61,8 @@ router = APIRouter(tags=["free-conversion"])
 
 
 class ImportFreeModelRequest(BaseModel):
-    # The free container (FreeDocument) to import; its HEAD version is copied.
-    free_document_id: UUID
+    # The free container (PooledDocument) to import; its HEAD version is copied.
+    pooled_document_id: UUID
 
 
 class ImportFreeModelResponse(BaseModel):
@@ -72,7 +72,7 @@ class ImportFreeModelResponse(BaseModel):
 
 
 def _map_free_finding_to_finding(
-    snag: FreeFinding,
+    snag: PooledFinding,
     *,
     project_id: UUID,
     document_id: UUID,
@@ -153,10 +153,10 @@ async def import_free_model(
         # ready + extraction-succeeded version.
         document = (
             await session.execute(
-                select(FreeDocument).where(
-                    FreeDocument.id == payload.free_document_id,
-                    FreeDocument.owner_user_id == user.id,
-                    FreeDocument.deleted_at.is_(None),
+                select(PooledDocument).where(
+                    PooledDocument.id == payload.pooled_document_id,
+                    PooledDocument.owner_user_id == user.id,
+                    PooledDocument.deleted_at.is_(None),
                 )
             )
         ).scalar_one_or_none()
@@ -167,14 +167,14 @@ async def import_free_model(
         candidates = list(
             (
                 await session.execute(
-                    select(FreeProjectFile)
+                    select(PooledProjectFile)
                     .where(
-                        FreeProjectFile.free_document_id == document.id,
-                        FreeProjectFile.status == "ready",
-                        FreeProjectFile.extraction_status == "succeeded",
-                        FreeProjectFile.deleted_at.is_(None),
+                        PooledProjectFile.pooled_document_id == document.id,
+                        PooledProjectFile.status == "ready",
+                        PooledProjectFile.extraction_status == "succeeded",
+                        PooledProjectFile.deleted_at.is_(None),
                     )
-                    .order_by(FreeProjectFile.version_number.desc())
+                    .order_by(PooledProjectFile.version_number.desc())
                 )
             )
             .scalars()
@@ -190,7 +190,7 @@ async def import_free_model(
 
         # Lock the head file for the whole txn — serializes concurrent imports and
         # makes the converted_to_file_id idempotency check race-free.
-        free = await session.get(FreeProjectFile, head_id, with_for_update=True)
+        free = await session.get(PooledProjectFile, head_id, with_for_update=True)
         if free is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="FREE_DOCUMENT_NOT_FOUND"
@@ -265,7 +265,7 @@ async def import_free_model(
         # Map snags → findings (v1). RLS scopes the snag read to the owner.
         snags = (
             await session.execute(
-                select(FreeFinding).where(FreeFinding.free_document_id == document.id)
+                select(PooledFinding).where(PooledFinding.pooled_document_id == document.id)
             )
         ).scalars().all()
         for snag in snags:

@@ -6,8 +6,8 @@ branches once on ``scope.is_free``:
 - **paid** (org JWT): the org-shared ``Notification`` + per-user
   ``NotificationUserState`` tables; a row is visible if org-wide
   (``recipient_user_id IS NULL``) or addressed to the caller.
-- **free** (org-less JWT): the pooled per-recipient ``FreeNotification`` +
-  ``FreeNotificationUserState`` tables (owner-keyed RLS); every row is targeted,
+- **free** (org-less JWT): the pooled per-recipient ``PooledNotification`` +
+  ``PooledNotificationUserState`` tables (owner-keyed RLS); every row is targeted,
   so the filter is ``recipient_user_id = me``. The response is mapped onto the
   SAME ``NotificationOut`` shape (sentinel org, free ids, ``job_id`` null).
 
@@ -29,8 +29,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimdossier_api.cache import get_redis_dep
 from bimdossier_api.jobs.priority import FREE_TIER_SENTINEL_ORG
 from bimdossier_api.models.free_notification import (
-    FreeNotification,
-    FreeNotificationUserState,
+    PooledNotification,
+    PooledNotificationUserState,
 )
 from bimdossier_api.models.notification import (
     Notification,
@@ -105,7 +105,7 @@ def _recipient_visible_expr(user_id: UUID) -> ColumnElement[bool]:
 
 
 # ---------------------------------------------------------------------------
-# Free (pooled, per-recipient) helpers — mirror of the former free_notifications
+# Free (pooled, per-recipient) helpers — mirror of the former pooled_notifications
 # ---------------------------------------------------------------------------
 
 
@@ -121,14 +121,14 @@ async def _free_invalidate_unread_count(redis: Redis, user_id: UUID) -> None:
         logger.warning("free unread-count cache invalidation failed for %s", key, exc_info=True)
 
 
-def _free_to_out(notif: FreeNotification, *, is_read: bool) -> NotificationOut:
+def _free_to_out(notif: PooledNotification, *, is_read: bool) -> NotificationOut:
     """Map a free row onto the shared paid ``NotificationOut`` (sentinel org, free
     ids as project/file, no job) so the portal bell/Zod schema is unchanged."""
     return NotificationOut(
         id=notif.id,
         organization_id=FREE_TIER_SENTINEL_ORG,
-        project_id=notif.free_project_id,
-        file_id=notif.free_file_id,
+        project_id=notif.pooled_project_id,
+        file_id=notif.pooled_file_id,
         job_id=None,
         event_type=notif.event_type,
         title=notif.title,
@@ -140,20 +140,20 @@ def _free_to_out(notif: FreeNotification, *, is_read: bool) -> NotificationOut:
 
 def _free_is_read_expr(user_id: UUID) -> ColumnElement[bool]:
     return exists(
-        select(FreeNotificationUserState.notification_id).where(
-            FreeNotificationUserState.notification_id == FreeNotification.id,
-            FreeNotificationUserState.user_id == user_id,
-            FreeNotificationUserState.read_at.is_not(None),
+        select(PooledNotificationUserState.notification_id).where(
+            PooledNotificationUserState.notification_id == PooledNotification.id,
+            PooledNotificationUserState.user_id == user_id,
+            PooledNotificationUserState.read_at.is_not(None),
         )
     )
 
 
 def _free_dismissed_expr(user_id: UUID) -> ColumnElement[bool]:
     return exists(
-        select(FreeNotificationUserState.notification_id).where(
-            FreeNotificationUserState.notification_id == FreeNotification.id,
-            FreeNotificationUserState.user_id == user_id,
-            FreeNotificationUserState.dismissed_at.is_not(None),
+        select(PooledNotificationUserState.notification_id).where(
+            PooledNotificationUserState.notification_id == PooledNotification.id,
+            PooledNotificationUserState.user_id == user_id,
+            PooledNotificationUserState.dismissed_at.is_not(None),
         )
     )
 
@@ -161,9 +161,9 @@ def _free_dismissed_expr(user_id: UUID) -> ColumnElement[bool]:
 async def _free_load_or_404(session: AsyncSession, notification_id: UUID, user_id: UUID) -> None:
     notif = (
         await session.execute(
-            select(FreeNotification.id).where(
-                FreeNotification.id == notification_id,
-                FreeNotification.recipient_user_id == user_id,
+            select(PooledNotification.id).where(
+                PooledNotification.id == notification_id,
+                PooledNotification.recipient_user_id == user_id,
             )
         )
     ).scalar_one_or_none()
@@ -193,10 +193,10 @@ async def list_notifications(
         require_free_tier_enabled()
         # Distinct local names from the paid branch below (different model types →
         # the type checker can't reuse `state`/`base_filters` across both).
-        fstate = FreeNotificationUserState
-        fjoin = and_(fstate.notification_id == FreeNotification.id, fstate.user_id == user.id)
+        fstate = PooledNotificationUserState
+        fjoin = and_(fstate.notification_id == PooledNotification.id, fstate.user_id == user.id)
         ffilters = (
-            FreeNotification.recipient_user_id == user.id,
+            PooledNotification.recipient_user_id == user.id,
             fstate.dismissed_at.is_(None),
         )
         counts_row = (
@@ -205,30 +205,30 @@ async def list_notifications(
                     func.count().label("total"),
                     func.sum(case((fstate.read_at.is_(None), 1), else_=0)).label("unread"),
                 )
-                .select_from(FreeNotification)
+                .select_from(PooledNotification)
                 .outerjoin(fstate, fjoin)
                 .where(*ffilters)
             )
         ).one()
         is_read_col = case((fstate.read_at.is_not(None), True), else_=False).label("is_read")
         page_stmt = (
-            select(FreeNotification, is_read_col)
+            select(PooledNotification, is_read_col)
             .outerjoin(fstate, fjoin)
             .where(*ffilters)
-            .order_by(FreeNotification.created_at.desc(), FreeNotification.id.desc())
+            .order_by(PooledNotification.created_at.desc(), PooledNotification.id.desc())
             .limit(limit)
         )
         if cursor is not None:
             page_stmt = page_stmt.where(
-                keyset_after(FreeNotification.created_at, FreeNotification.id, cursor)
+                keyset_after(PooledNotification.created_at, PooledNotification.id, cursor)
             )
         else:
             page_stmt = page_stmt.offset(offset)
         rows = (await session.execute(page_stmt)).all()
-        items = [_free_to_out(row.FreeNotification, is_read=row.is_read) for row in rows]
+        items = [_free_to_out(row.PooledNotification, is_read=row.is_read) for row in rows]
         next_cursor: str | None = None
         if len(rows) == limit and rows:
-            last = rows[-1].FreeNotification
+            last = rows[-1].PooledNotification
             next_cursor = encode_cursor(last.created_at, last.id)
         return NotificationListResponse(
             items=items,
@@ -337,9 +337,9 @@ async def unread_count(
             logger.warning("free unread-count cache read failed for %s", key, exc_info=True)
         stmt = (
             select(func.count())
-            .select_from(FreeNotification)
+            .select_from(PooledNotification)
             .where(
-                FreeNotification.recipient_user_id == user.id,
+                PooledNotification.recipient_user_id == user.id,
                 ~_free_is_read_expr(user.id),
                 ~_free_dismissed_expr(user.id),
             )
@@ -392,12 +392,12 @@ async def mark_read(
         require_free_tier_enabled()
         await _free_load_or_404(session, notification_id, user.id)
         stmt = (
-            pg_insert(FreeNotificationUserState)
+            pg_insert(PooledNotificationUserState)
             .values(notification_id=notification_id, user_id=user.id, read_at=func.now())
             .on_conflict_do_update(
                 index_elements=["notification_id", "user_id"],
                 set_={"read_at": func.now()},
-                where=FreeNotificationUserState.read_at.is_(None),
+                where=PooledNotificationUserState.read_at.is_(None),
             )
         )
         await session.execute(stmt)
@@ -450,12 +450,12 @@ async def dismiss(
         require_free_tier_enabled()
         await _free_load_or_404(session, notification_id, user.id)
         stmt = (
-            pg_insert(FreeNotificationUserState)
+            pg_insert(PooledNotificationUserState)
             .values(notification_id=notification_id, user_id=user.id, dismissed_at=func.now())
             .on_conflict_do_update(
                 index_elements=["notification_id", "user_id"],
                 set_={"dismissed_at": func.now()},
-                where=FreeNotificationUserState.dismissed_at.is_(None),
+                where=PooledNotificationUserState.dismissed_at.is_(None),
             )
         )
         await session.execute(stmt)
@@ -504,8 +504,8 @@ async def mark_all_read(
         unread_ids = list(
             (
                 await session.execute(
-                    select(FreeNotification.id).where(
-                        FreeNotification.recipient_user_id == user.id,
+                    select(PooledNotification.id).where(
+                        PooledNotification.recipient_user_id == user.id,
                         ~_free_is_read_expr(user.id),
                         ~_free_dismissed_expr(user.id),
                     )
@@ -516,7 +516,7 @@ async def mark_all_read(
         )
         if unread_ids:
             stmt = (
-                pg_insert(FreeNotificationUserState)
+                pg_insert(PooledNotificationUserState)
                 .values(
                     [
                         {"notification_id": nid, "user_id": user.id, "read_at": func.now()}
@@ -526,7 +526,7 @@ async def mark_all_read(
                 .on_conflict_do_update(
                     index_elements=["notification_id", "user_id"],
                     set_={"read_at": func.now()},
-                    where=FreeNotificationUserState.read_at.is_(None),
+                    where=PooledNotificationUserState.read_at.is_(None),
                 )
             )
             await session.execute(stmt)
@@ -575,8 +575,8 @@ async def clear(
         visible_ids = list(
             (
                 await session.execute(
-                    select(FreeNotification.id).where(
-                        FreeNotification.recipient_user_id == user.id,
+                    select(PooledNotification.id).where(
+                        PooledNotification.recipient_user_id == user.id,
                         ~_free_dismissed_expr(user.id),
                     )
                 )
@@ -586,7 +586,7 @@ async def clear(
         )
         if visible_ids:
             stmt = (
-                pg_insert(FreeNotificationUserState)
+                pg_insert(PooledNotificationUserState)
                 .values(
                     [
                         {"notification_id": nid, "user_id": user.id, "dismissed_at": func.now()}
@@ -596,7 +596,7 @@ async def clear(
                 .on_conflict_do_update(
                     index_elements=["notification_id", "user_id"],
                     set_={"dismissed_at": func.now()},
-                    where=FreeNotificationUserState.dismissed_at.is_(None),
+                    where=PooledNotificationUserState.dismissed_at.is_(None),
                 )
             )
             await session.execute(stmt)

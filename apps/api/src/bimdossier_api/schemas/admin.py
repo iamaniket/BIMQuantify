@@ -117,7 +117,7 @@ class FreeUserUsage(BaseModel):
     containers and snags count against them as the project owner; members never
     own content. `member_of_count` is the inverse — projects shared TO this user.
     Caps come from settings so the UI never hardcodes the quota thresholds.
-    Mirrors the authoritative quota in `routers/free_documents.py`: storage sums
+    Mirrors the authoritative quota in `routers/pooled_documents.py`: storage sums
     active (`deleted_at IS NULL`) file bytes; `document_count` counts active
     containers against `free_max_documents_per_user`.
     """
@@ -221,7 +221,7 @@ class FreeUserProjectRow(BaseModel):
 
 
 class FreeUserDocumentRow(BaseModel):
-    """One free container (free_documents) with its version/byte rollup."""
+    """One free container (pooled_documents) with its version/byte rollup."""
 
     id: UUID
     name: str
@@ -230,7 +230,7 @@ class FreeUserDocumentRow(BaseModel):
     file_count: int
     size_bytes: int
     last_viewed_at: datetime | None = None
-    free_project_id: UUID | None = None
+    pooled_project_id: UUID | None = None
 
 
 class FreeUserSnagRow(BaseModel):
@@ -246,7 +246,7 @@ class FreeUserSnagRow(BaseModel):
 class FreeUserSharedRow(BaseModel):
     """A project shared TO the user (they are a member, not the owner)."""
 
-    free_project_id: UUID
+    pooled_project_id: UUID
     name: str
     owner_email: EmailStr
     role: str

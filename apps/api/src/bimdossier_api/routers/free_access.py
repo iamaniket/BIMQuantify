@@ -2,9 +2,9 @@
 
 The free tier has two planes:
 
-  * **Data plane** (`free_projects` / `free_models` / `free_findings`) — served via
+  * **Data plane** (`pooled_projects` / `free_models` / `pooled_findings`) — served via
     `get_free_session` (ROLE bim_app, only `app.current_user_id` set). Owner-OR-
-    member RLS (see `_rls_sql.enable_free_member_rls_statements`) does the
+    member RLS (see `_rls_sql.enable_pooled_member_rls_statements`) does the
     isolation. The role helpers below run INSIDE that session and rely on RLS to
     scope what they can see.
 
@@ -15,7 +15,7 @@ The free tier has two planes:
     SUPERUSER session (RLS-bypassing) with ownership validated by hand — the same
     pattern the org-invite flow and `_claim_free_extraction_slot` already use.
 
-Both routers (`free_projects`, `free_viewer`) import from here.
+Both routers (`pooled_projects`, `free_viewer`) import from here.
 
 **HARD RULE — superuser free probes MUST carry an owner predicate.** Any query
 that runs on a SUPERUSER session over a pooled `free_*` table (i.e. NOT through
@@ -38,11 +38,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimdossier_api.config import get_settings
 from bimdossier_api.db import get_session_maker
 from bimdossier_api.free_limits import FreeLimits, resolve_free_limits
-from bimdossier_api.models.free_attachment import FreeAttachment
-from bimdossier_api.models.free_document import FreeDocument
-from bimdossier_api.models.free_project import FreeProject
-from bimdossier_api.models.free_project_file import FreeProjectFile
-from bimdossier_api.models.free_project_member import FreeProjectMember
+from bimdossier_api.models.free_attachment import PooledAttachment
+from bimdossier_api.models.free_document import PooledDocument
+from bimdossier_api.models.free_project import PooledProject
+from bimdossier_api.models.free_project_file import PooledProjectFile
+from bimdossier_api.models.free_project_member import PooledProjectMember
 from bimdossier_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
@@ -52,12 +52,12 @@ from bimdossier_api.models.user import User
 
 # The INVITED-member cap (owner not counted) is configurable — see
 # Settings.free_max_members_per_project (alias FREE_MAX_MEMBERS_PER_PROJECT),
-# read at the invite site in routers/free_projects.py.
+# read at the invite site in routers/pooled_projects.py.
 
 # Roles that may write (file/edit/delete snags). Viewer is read-only; the owner
 # can do everything. Model upload + member management are owner-only and checked
 # separately. Mirrors the paid permission split (RLS = isolation, app = perms).
-_FREE_WRITE_ROLES = (ProjectRole.owner.value, ProjectRole.editor.value)
+_POOLED_WRITE_ROLES = (ProjectRole.owner.value, ProjectRole.editor.value)
 
 
 def require_free_tier_enabled() -> None:
@@ -88,8 +88,8 @@ async def assert_free_project_owned(
     create a container or upload a model)."""
     exists = (
         await session.execute(
-            select(FreeProject.id).where(
-                FreeProject.id == project_id, FreeProject.owner_user_id == user_id
+            select(PooledProject.id).where(
+                PooledProject.id == project_id, PooledProject.owner_user_id == user_id
             )
         )
     ).scalar_one_or_none()
@@ -128,13 +128,13 @@ async def user_has_free_participation(
     session also works (owner-OR-member RLS).
     """
     owns = await session.scalar(
-        select(FreeProject.id).where(FreeProject.owner_user_id == user_id).limit(1)
+        select(PooledProject.id).where(PooledProject.owner_user_id == user_id).limit(1)
     )
     if owns is not None:
         return True
     member = await session.scalar(
-        select(FreeProjectMember.free_project_id)
-        .where(FreeProjectMember.user_id == user_id)
+        select(PooledProjectMember.pooled_project_id)
+        .where(PooledProjectMember.user_id == user_id)
         .limit(1)
     )
     return member is not None
@@ -199,36 +199,36 @@ async def resolve_free_role(
     project is not visible (not a participant) or does not exist.
     """
     owner_id = await session.scalar(
-        select(FreeProject.owner_user_id).where(FreeProject.id == project_id)
+        select(PooledProject.owner_user_id).where(PooledProject.id == project_id)
     )
     if owner_id is None:
         return None
     if owner_id == user_id:
         return "owner"
     role = await session.scalar(
-        select(FreeProjectMember.role).where(
-            FreeProjectMember.free_project_id == project_id,
-            FreeProjectMember.user_id == user_id,
+        select(PooledProjectMember.role).where(
+            PooledProjectMember.pooled_project_id == project_id,
+            PooledProjectMember.user_id == user_id,
         )
     )
     return role
 
 
 async def resolve_free_document_role(
-    session: AsyncSession, document: FreeDocument, user_id: UUID
+    session: AsyncSession, document: PooledDocument, user_id: UUID
 ) -> str | None:
     """The caller's role on the project a document (container) belongs to.
 
-    Every free container belongs to a project (free_project_id NOT NULL), so —
+    Every free container belongs to a project (pooled_project_id NOT NULL), so —
     unlike the old ungrouped-model case — there is always a project to resolve."""
     if document.owner_user_id == user_id:
         return "owner"
-    return await resolve_free_role(session, document.free_project_id, user_id)
+    return await resolve_free_role(session, document.pooled_project_id, user_id)
 
 
 def require_free_write_role(role: str | None) -> None:
     """403 FREE_FORBIDDEN unless the caller may write (owner or editor)."""
-    if role not in _FREE_WRITE_ROLES:
+    if role not in _POOLED_WRITE_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="FREE_FORBIDDEN"
         )
@@ -238,7 +238,7 @@ async def assert_assignee_is_participant(
     project_id: UUID, assignee_user_id: UUID
 ) -> None:
     """422 ASSIGNEE_NOT_A_PROJECT_MEMBER unless `assignee_user_id` participates in
-    the project — i.e. is the OWNER or has a `free_project_members` row.
+    the project — i.e. is the OWNER or has a `pooled_project_members` row.
 
     Runs on its own SUPERUSER session (RLS-bypassing): the request's free
     (bim_app) session only lets the caller see their OWN membership row, so it
@@ -247,14 +247,14 @@ async def assert_assignee_is_participant(
     """
     async with get_session_maker()() as session, session.begin():
         owner_id = await session.scalar(
-            select(FreeProject.owner_user_id).where(FreeProject.id == project_id)
+            select(PooledProject.owner_user_id).where(PooledProject.id == project_id)
         )
         if owner_id == assignee_user_id:
             return
         member = await session.scalar(
-            select(FreeProjectMember.user_id).where(
-                FreeProjectMember.free_project_id == project_id,
-                FreeProjectMember.user_id == assignee_user_id,
+            select(PooledProjectMember.user_id).where(
+                PooledProjectMember.pooled_project_id == project_id,
+                PooledProjectMember.user_id == assignee_user_id,
             )
         )
     if member is None:
@@ -269,8 +269,8 @@ async def count_free_members(session: AsyncSession, project_id: UUID) -> int:
     return (
         await session.scalar(
             select(func.count())
-            .select_from(FreeProjectMember)
-            .where(FreeProjectMember.free_project_id == project_id)
+            .select_from(PooledProjectMember)
+            .where(PooledProjectMember.pooled_project_id == project_id)
         )
     ) or 0
 
@@ -284,17 +284,17 @@ async def free_owner_used_bytes(session: AsyncSession, owner_id: UUID) -> int:
     projects the caller doesn't share."""
     file_bytes = (
         await session.scalar(
-            select(func.coalesce(func.sum(FreeProjectFile.size_bytes), 0)).where(
-                FreeProjectFile.owner_user_id == owner_id,
-                FreeProjectFile.deleted_at.is_(None),
+            select(func.coalesce(func.sum(PooledProjectFile.size_bytes), 0)).where(
+                PooledProjectFile.owner_user_id == owner_id,
+                PooledProjectFile.deleted_at.is_(None),
             )
         )
     ) or 0
     attachment_bytes = (
         await session.scalar(
-            select(func.coalesce(func.sum(FreeAttachment.size_bytes), 0)).where(
-                FreeAttachment.owner_user_id == owner_id,
-                FreeAttachment.deleted_at.is_(None),
+            select(func.coalesce(func.sum(PooledAttachment.size_bytes), 0)).where(
+                PooledAttachment.owner_user_id == owner_id,
+                PooledAttachment.deleted_at.is_(None),
             )
         )
     ) or 0

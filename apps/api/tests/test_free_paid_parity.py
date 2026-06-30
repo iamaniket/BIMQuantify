@@ -27,19 +27,19 @@ from enum import Enum
 import pytest
 
 from bimdossier_api.models import (
-    FREE_DOC_DISCIPLINES,
-    FREE_DOC_FILE_TYPES,
-    FREE_DOC_STATUSES,
-    FREE_FILE_EXTRACTION_STATUSES,
-    FREE_FILE_STATUSES,
-    FREE_FINDING_SEVERITIES,
-    FREE_FINDING_STATUSES,
-    FREE_LEVEL_SOURCES,
-    FREE_MEMBER_ROLES,
-    FREE_NOTIFICATION_EVENT_TYPES,
-    FREE_PROJECT_BUILDING_TYPES,
-    FREE_PROJECT_LIFECYCLE_STATES,
-    FREE_PROJECT_PHASES,
+    POOLED_DOC_DISCIPLINES,
+    POOLED_DOC_FILE_TYPES,
+    POOLED_DOC_STATUSES,
+    POOLED_FILE_EXTRACTION_STATUSES,
+    POOLED_FILE_STATUSES,
+    POOLED_FINDING_SEVERITIES,
+    POOLED_FINDING_STATUSES,
+    POOLED_LEVEL_SOURCES,
+    POOLED_MEMBER_ROLES,
+    POOLED_NOTIFICATION_EVENT_TYPES,
+    POOLED_PROJECT_BUILDING_TYPES,
+    POOLED_PROJECT_LIFECYCLE_STATES,
+    POOLED_PROJECT_PHASES,
     DocumentDiscipline,
     DocumentStatus,
     ExtractionStatus,
@@ -75,23 +75,23 @@ def _vals(items: Iterable[object] | type) -> set[str]:
 
 # (label, free constant, paid enum) — the free set must EQUAL the paid enum's values.
 EXACT_PAIRS = [
-    ("project.phase", FREE_PROJECT_PHASES, ProjectPhase),
-    ("project.lifecycle_state", FREE_PROJECT_LIFECYCLE_STATES, ProjectLifecycleState),
-    ("project.building_type", FREE_PROJECT_BUILDING_TYPES, BuildingType),
-    ("finding.severity", FREE_FINDING_SEVERITIES, FindingSeverity),
-    ("finding.status", FREE_FINDING_STATUSES, FindingStatus),
-    ("document.discipline", FREE_DOC_DISCIPLINES, DocumentDiscipline),
-    ("document.status", FREE_DOC_STATUSES, DocumentStatus),
-    ("project_file.status", FREE_FILE_STATUSES, ProjectFileStatus),
-    ("project_file.extraction_status", FREE_FILE_EXTRACTION_STATUSES, ExtractionStatus),
+    ("project.phase", POOLED_PROJECT_PHASES, ProjectPhase),
+    ("project.lifecycle_state", POOLED_PROJECT_LIFECYCLE_STATES, ProjectLifecycleState),
+    ("project.building_type", POOLED_PROJECT_BUILDING_TYPES, BuildingType),
+    ("finding.severity", POOLED_FINDING_SEVERITIES, FindingSeverity),
+    ("finding.status", POOLED_FINDING_STATUSES, FindingStatus),
+    ("document.discipline", POOLED_DOC_DISCIPLINES, DocumentDiscipline),
+    ("document.status", POOLED_DOC_STATUSES, DocumentStatus),
+    ("project_file.status", POOLED_FILE_STATUSES, ProjectFileStatus),
+    ("project_file.extraction_status", POOLED_FILE_EXTRACTION_STATUSES, ExtractionStatus),
 ]
 
 # (label, free constant, paid enum) — free is an intentional NARROWER subset.
 SUBSET_PAIRS = [
-    ("document.primary_file_type", FREE_DOC_FILE_TYPES, FileType),
-    ("project_member.role", FREE_MEMBER_ROLES, ProjectRole),
-    ("notification.event_type", FREE_NOTIFICATION_EVENT_TYPES, NotificationEventType),
-    ("level.source", FREE_LEVEL_SOURCES, LevelSource),
+    ("document.primary_file_type", POOLED_DOC_FILE_TYPES, FileType),
+    ("project_member.role", POOLED_MEMBER_ROLES, ProjectRole),
+    ("notification.event_type", POOLED_NOTIFICATION_EVENT_TYPES, NotificationEventType),
+    ("level.source", POOLED_LEVEL_SOURCES, LevelSource),
 ]
 
 

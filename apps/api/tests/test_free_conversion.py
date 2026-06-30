@@ -15,10 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from bimdossier_api.models.document import Document
 from bimdossier_api.models.finding import Finding
-from bimdossier_api.models.free_document import FreeDocument
-from bimdossier_api.models.free_finding import FreeFinding
-from bimdossier_api.models.free_project import FreeProject
-from bimdossier_api.models.free_project_file import FreeProjectFile
+from bimdossier_api.models.free_document import PooledDocument
+from bimdossier_api.models.free_finding import PooledFinding
+from bimdossier_api.models.free_project import PooledProject
+from bimdossier_api.models.free_project_file import PooledProjectFile
 from bimdossier_api.tenancy import schema_name_for
 from tests.conftest import FakeStorage, _create_project
 
@@ -47,13 +47,13 @@ async def _seed_free_container(
     async with session_maker() as s:
         # Flush in FK order (project → document → file) — the document↔file
         # use_alter cycle otherwise confuses the unit-of-work insert ordering.
-        s.add(FreeProject(id=project_id, owner_user_id=UUID(owner_id), name="Free P"))
+        s.add(PooledProject(id=project_id, owner_user_id=UUID(owner_id), name="Free P"))
         await s.flush()
         s.add(
-            FreeDocument(
+            PooledDocument(
                 id=document_id,
                 owner_user_id=UUID(owner_id),
-                free_project_id=project_id,
+                pooled_project_id=project_id,
                 name="MyHouse",
                 discipline="other",
                 status="active",
@@ -62,10 +62,10 @@ async def _seed_free_container(
         )
         await s.flush()
         s.add(
-            FreeProjectFile(
+            PooledProjectFile(
                 id=file_id,
                 owner_user_id=UUID(owner_id),
-                free_document_id=document_id,
+                pooled_document_id=document_id,
                 version_number=1,
                 storage_key=storage_key,
                 original_filename="MyHouse.ifc",
@@ -76,14 +76,14 @@ async def _seed_free_container(
             )
         )
         # Flush the file before the finding so its linked_file_id FK resolves: the
-        # free_documents↔free_project_files use_alter cycle defeats the UOW insert
-        # sort, which then falls back to alphabetical table order (free_findings
-        # would otherwise insert before free_project_files).
+        # pooled_documents↔pooled_project_files use_alter cycle defeats the UOW insert
+        # sort, which then falls back to alphabetical table order (pooled_findings
+        # would otherwise insert before pooled_project_files).
         await s.flush()
         if with_snag:
             s.add(
-                FreeFinding(
-                    free_document_id=document_id,
+                PooledFinding(
+                    pooled_document_id=document_id,
                     linked_file_id=file_id,
                     owner_user_id=UUID(owner_id),
                     title="Cracked beam",
@@ -130,7 +130,7 @@ async def test_import_free_container_copies_and_maps_snags(
 
     resp = await client.post(
         f"/projects/{project['id']}/import-free-model",
-        json={"free_document_id": str(document_id)},
+        json={"pooled_document_id": str(document_id)},
         headers=_auth(token),
     )
     assert resp.status_code == 200, resp.text
@@ -155,7 +155,7 @@ async def test_import_free_container_copies_and_maps_snags(
 
     # The head free file is marked converted.
     async with session_maker() as s:
-        free = await s.get(FreeProjectFile, file_id)
+        free = await s.get(PooledProjectFile, file_id)
         assert free is not None
         assert free.converted_to_file_id == UUID(body["file_id"])
 
@@ -174,14 +174,14 @@ async def test_import_free_container_is_idempotent(
 
     first = await client.post(
         f"/projects/{project['id']}/import-free-model",
-        json={"free_document_id": str(document_id)},
+        json={"pooled_document_id": str(document_id)},
         headers=_auth(token),
     )
     assert first.status_code == 200, first.text
 
     second = await client.post(
         f"/projects/{project['id']}/import-free-model",
-        json={"free_document_id": str(document_id)},
+        json={"pooled_document_id": str(document_id)},
         headers=_auth(token),
     )
     assert second.status_code == 200, second.text
@@ -217,7 +217,7 @@ async def test_import_other_users_free_container_404(
 
     resp = await client.post(
         f"/projects/{project['id']}/import-free-model",
-        json={"free_document_id": str(document_id)},
+        json={"pooled_document_id": str(document_id)},
         headers=_auth(token),
     )
     assert resp.status_code == 404
@@ -240,7 +240,7 @@ async def test_import_maps_snag_status_one_to_one(
 
     resp = await client.post(
         f"/projects/{project['id']}/import-free-model",
-        json={"free_document_id": str(document_id)},
+        json={"pooled_document_id": str(document_id)},
         headers=_auth(token),
     )
     assert resp.status_code == 200, resp.text
@@ -276,7 +276,7 @@ async def test_import_carries_assignee_and_deadline(
 
     resp = await client.post(
         f"/projects/{project['id']}/import-free-model",
-        json={"free_document_id": str(document_id)},
+        json={"pooled_document_id": str(document_id)},
         headers=_auth(token),
     )
     assert resp.status_code == 200, resp.text

@@ -166,12 +166,12 @@ async def get_viewer_bundle(
 ) -> ViewerBundleResponse:
     if scope.is_free:
         require_free_tier_enabled()
-        # Local import avoids any import-order cycle (free_documents deferred-imports
+        # Local import avoids any import-order cycle (pooled_documents deferred-imports
         # project_files.access). The free helper reads the pooled free_* tables; the
         # legacy /free/.../files/{id}/viewer-bundle route serves the same logic.
-        from bimdossier_api.routers import free_documents
+        from bimdossier_api.routers import pooled_documents
 
-        return await free_documents.free_file_viewer_bundle(
+        return await pooled_documents.free_file_viewer_bundle(
             project_id=project_id,
             document_id=document_id,
             file_id=file_id,

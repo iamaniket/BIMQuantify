@@ -9,16 +9,16 @@ Like the rest of `/admin/*`, everything here runs on the SUPERUSER session
 (`get_async_session`, RLS-bypassing): the listing aggregates across *all* free
 users, so it cannot use a `bim_app` free session (which RLS-scopes to one user).
 
-The free tier mirrors the paid Document → ProjectFile stack: a `FreeDocument`
-(container) holds versioned `FreeProjectFile` rows. Usage mirrors the
-authoritative quota in `routers/free_documents.py` exactly — storage = SUM of
+The free tier mirrors the paid Document → ProjectFile stack: a `PooledDocument`
+(container) holds versioned `PooledProjectFile` rows. Usage mirrors the
+authoritative quota in `routers/pooled_documents.py` exactly — storage = SUM of
 active (`deleted_at IS NULL`) file bytes per owner; container count = active
-`free_documents` per owner (capped by `free_max_documents_per_user`).
+`pooled_documents` per owner (capped by `free_max_documents_per_user`).
 
 The list query is deliberately TWO-STEP to avoid cartesian fan-out: page the
 org-less users first, then aggregate only that page's ids with one grouped
 query per metric (each index-backed). A single multi-join `SUM`/`COUNT` over
-`free_documents` x `free_project_files` x `free_findings` would multiply the totals.
+`pooled_documents` x `pooled_project_files` x `pooled_findings` would multiply the totals.
 
 Suspend/reactivate, delete (anonymize), impersonate, and account-recovery reuse
 existing endpoints (`/admin/users/{id}/(de)activate`, `DELETE /users/{id}`,
@@ -46,11 +46,11 @@ from bimdossier_api.free_limits import (
     resolve_free_limits_batch,
 )
 from bimdossier_api.free_usage import compute_free_usage
-from bimdossier_api.models.free_document import FreeDocument
-from bimdossier_api.models.free_finding import FreeFinding
-from bimdossier_api.models.free_project import FreeProject
-from bimdossier_api.models.free_project_file import FreeProjectFile
-from bimdossier_api.models.free_project_member import FreeProjectMember
+from bimdossier_api.models.free_document import PooledDocument
+from bimdossier_api.models.free_finding import PooledFinding
+from bimdossier_api.models.free_project import PooledProject
+from bimdossier_api.models.free_project_file import PooledProjectFile
+from bimdossier_api.models.free_project_member import PooledProjectMember
 from bimdossier_api.models.free_user_limits import FreeUserLimits
 from bimdossier_api.models.organization_member import (
     OrganizationMember,
@@ -220,9 +220,9 @@ async def get_free_user_detail(
     owned = list(
         (
             await session.execute(
-                select(FreeProject)
-                .where(FreeProject.owner_user_id == user_id)
-                .order_by(FreeProject.created_at.desc())
+                select(PooledProject)
+                .where(PooledProject.owner_user_id == user_id)
+                .order_by(PooledProject.created_at.desc())
             )
         ).scalars()
     )
@@ -235,41 +235,41 @@ async def get_free_user_detail(
     if proj_ids:
         for pid, count in (
             await session.execute(
-                select(FreeDocument.free_project_id, func.count(FreeDocument.id))
+                select(PooledDocument.pooled_project_id, func.count(PooledDocument.id))
                 .where(
-                    FreeDocument.owner_user_id == user_id,
-                    FreeDocument.free_project_id.in_(proj_ids),
-                    FreeDocument.deleted_at.is_(None),
+                    PooledDocument.owner_user_id == user_id,
+                    PooledDocument.pooled_project_id.in_(proj_ids),
+                    PooledDocument.deleted_at.is_(None),
                 )
-                .group_by(FreeDocument.free_project_id)
+                .group_by(PooledDocument.pooled_project_id)
             )
         ).all():
             doc_count_by_project[pid] = count
         for pid, count in (
             await session.execute(
-                select(FreeDocument.free_project_id, func.count(FreeFinding.id))
-                .join(FreeFinding, FreeFinding.free_document_id == FreeDocument.id)
+                select(PooledDocument.pooled_project_id, func.count(PooledFinding.id))
+                .join(PooledFinding, PooledFinding.pooled_document_id == PooledDocument.id)
                 .where(
-                    FreeFinding.owner_user_id == user_id,
-                    FreeDocument.free_project_id.in_(proj_ids),
+                    PooledFinding.owner_user_id == user_id,
+                    PooledDocument.pooled_project_id.in_(proj_ids),
                 )
-                .group_by(FreeDocument.free_project_id)
+                .group_by(PooledDocument.pooled_project_id)
             )
         ).all():
             snag_count_by_project[pid] = count
         for pid, storage in (
             await session.execute(
                 select(
-                    FreeDocument.free_project_id,
-                    func.coalesce(func.sum(FreeProjectFile.size_bytes), 0),
+                    PooledDocument.pooled_project_id,
+                    func.coalesce(func.sum(PooledProjectFile.size_bytes), 0),
                 )
-                .join(FreeProjectFile, FreeProjectFile.free_document_id == FreeDocument.id)
+                .join(PooledProjectFile, PooledProjectFile.pooled_document_id == PooledDocument.id)
                 .where(
-                    FreeProjectFile.owner_user_id == user_id,
-                    FreeProjectFile.deleted_at.is_(None),
-                    FreeDocument.free_project_id.in_(proj_ids),
+                    PooledProjectFile.owner_user_id == user_id,
+                    PooledProjectFile.deleted_at.is_(None),
+                    PooledDocument.pooled_project_id.in_(proj_ids),
                 )
-                .group_by(FreeDocument.free_project_id)
+                .group_by(PooledDocument.pooled_project_id)
             )
         ).all():
             storage_by_project[pid] = int(storage or 0)
@@ -290,12 +290,12 @@ async def get_free_user_detail(
     documents = list(
         (
             await session.execute(
-                select(FreeDocument)
+                select(PooledDocument)
                 .where(
-                    FreeDocument.owner_user_id == user_id,
-                    FreeDocument.deleted_at.is_(None),
+                    PooledDocument.owner_user_id == user_id,
+                    PooledDocument.deleted_at.is_(None),
                 )
-                .order_by(FreeDocument.created_at.desc())
+                .order_by(PooledDocument.created_at.desc())
             )
         ).scalars()
     )
@@ -305,15 +305,15 @@ async def get_free_user_detail(
         for did, count, storage in (
             await session.execute(
                 select(
-                    FreeProjectFile.free_document_id,
-                    func.count(FreeProjectFile.id),
-                    func.coalesce(func.sum(FreeProjectFile.size_bytes), 0),
+                    PooledProjectFile.pooled_document_id,
+                    func.count(PooledProjectFile.id),
+                    func.coalesce(func.sum(PooledProjectFile.size_bytes), 0),
                 )
                 .where(
-                    FreeProjectFile.free_document_id.in_(doc_ids),
-                    FreeProjectFile.deleted_at.is_(None),
+                    PooledProjectFile.pooled_document_id.in_(doc_ids),
+                    PooledProjectFile.deleted_at.is_(None),
                 )
-                .group_by(FreeProjectFile.free_document_id)
+                .group_by(PooledProjectFile.pooled_document_id)
             )
         ).all():
             file_rollup[did] = (count, int(storage or 0))
@@ -327,7 +327,7 @@ async def get_free_user_detail(
             file_count=file_rollup.get(d.id, (0, 0))[0],
             size_bytes=file_rollup.get(d.id, (0, 0))[1],
             last_viewed_at=d.last_viewed_at,
-            free_project_id=d.free_project_id,
+            pooled_project_id=d.pooled_project_id,
         )
         for d in documents
     ]
@@ -335,9 +335,9 @@ async def get_free_user_detail(
     snags = list(
         (
             await session.execute(
-                select(FreeFinding)
-                .where(FreeFinding.owner_user_id == user_id)
-                .order_by(FreeFinding.created_at.desc())
+                select(PooledFinding)
+                .where(PooledFinding.owner_user_id == user_id)
+                .order_by(PooledFinding.created_at.desc())
                 .limit(_DETAIL_SNAG_LIMIT)
             )
         ).scalars()
@@ -345,15 +345,15 @@ async def get_free_user_detail(
     shared = (
         await session.execute(
             select(
-                FreeProject.id,
-                FreeProject.name,
+                PooledProject.id,
+                PooledProject.name,
                 User.email,
-                FreeProjectMember.role,
+                PooledProjectMember.role,
             )
-            .join(FreeProjectMember, FreeProjectMember.free_project_id == FreeProject.id)
-            .join(User, User.id == FreeProject.owner_user_id)
-            .where(FreeProjectMember.user_id == user_id)
-            .order_by(FreeProject.created_at.desc())
+            .join(PooledProjectMember, PooledProjectMember.pooled_project_id == PooledProject.id)
+            .join(User, User.id == PooledProject.owner_user_id)
+            .where(PooledProjectMember.user_id == user_id)
+            .order_by(PooledProject.created_at.desc())
         )
     ).all()
 
@@ -364,7 +364,7 @@ async def get_free_user_detail(
         snags=[FreeUserSnagRow.model_validate(s, from_attributes=True) for s in snags],
         shared_projects=[
             FreeUserSharedRow(
-                free_project_id=pid, name=name, owner_email=email, role=role
+                pooled_project_id=pid, name=name, owner_email=email, role=role
             )
             for pid, name, email, role in shared
         ],

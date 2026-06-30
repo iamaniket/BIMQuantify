@@ -1,4 +1,4 @@
-"""Pooled free-tier aligned sheets — `public.free_aligned_sheets`.
+"""Pooled free-tier aligned sheets — `public.pooled_aligned_sheets`.
 
 The pooled analog of `models.aligned_sheets.AlignedSheet`: a PDF↔IFC calibration
 that pins a free PDF drawing page to a free building level's 3D slice via a solved
@@ -35,30 +35,30 @@ from bimdossier_api.models._pooled import PooledOwnedMixin, TimestampMixin
 TRANSFORM_TYPE_SIMILARITY = "similarity_2d"
 
 
-class FreeAlignedSheet(PooledOwnedMixin, TimestampMixin, MasterBase):
-    __tablename__ = "free_aligned_sheets"
+class PooledAlignedSheet(PooledOwnedMixin, TimestampMixin, MasterBase):
+    __tablename__ = "pooled_aligned_sheets"
 
-    # Carried for the owner-OR-member RLS policy (free_is_member(free_project_id)).
-    free_project_id: Mapped[UUID] = mapped_column(
+    # Carried for the owner-OR-member RLS policy (pooled_is_member(pooled_project_id)).
+    pooled_project_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("public.free_projects.id", ondelete="CASCADE"),
+        ForeignKey("public.pooled_projects.id", ondelete="CASCADE"),
         nullable=False,
     )
     # The 3D (IFC) container supplying world coords.
-    free_document_id: Mapped[UUID] = mapped_column(
+    pooled_document_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("public.free_documents.id", ondelete="CASCADE"),
+        ForeignKey("public.pooled_documents.id", ondelete="CASCADE"),
         nullable=False,
     )
-    free_level_id: Mapped[UUID] = mapped_column(
+    pooled_level_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("public.free_levels.id", ondelete="CASCADE"),
+        ForeignKey("public.pooled_levels.id", ondelete="CASCADE"),
         nullable=False,
     )
     # The PDF container whose page is aligned.
-    free_pdf_document_id: Mapped[UUID] = mapped_column(
+    pooled_pdf_document_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("public.free_documents.id", ondelete="CASCADE"),
+        ForeignKey("public.pooled_documents.id", ondelete="CASCADE"),
         nullable=False,
     )
     # 1-indexed PDF page (free has no pdf_pages table — referenced by number).
@@ -66,7 +66,7 @@ class FreeAlignedSheet(PooledOwnedMixin, TimestampMixin, MasterBase):
     # The exact PDF version the control points were picked on (drift detection).
     calibrated_pdf_file_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("public.free_project_files.id", ondelete="SET NULL"),
+        ForeignKey("public.pooled_project_files.id", ondelete="SET NULL"),
         nullable=True,
     )
 
@@ -100,19 +100,19 @@ class FreeAlignedSheet(PooledOwnedMixin, TimestampMixin, MasterBase):
     __table_args__ = (
         CheckConstraint(
             "transform_type IN ('similarity_2d')",
-            name="ck_free_aligned_sheets_transform_type",
+            name="ck_pooled_aligned_sheets_transform_type",
         ),
-        CheckConstraint("page_number >= 1", name="ck_free_aligned_sheets_page_number"),
+        CheckConstraint("page_number >= 1", name="ck_pooled_aligned_sheets_page_number"),
         # One active sheet per (level, page) — partial so soft-deleted rows are exempt.
         Index(
-            "uq_free_aligned_sheets_level_page",
-            "free_level_id",
+            "uq_pooled_aligned_sheets_level_page",
+            "pooled_level_id",
             "page_number",
             unique=True,
             postgresql_where=text("deleted_at IS NULL"),
         ),
-        Index("ix_free_aligned_sheets_owner", "owner_user_id"),
-        Index("ix_free_aligned_sheets_project", "free_project_id"),
-        Index("ix_free_aligned_sheets_level", "free_level_id"),
+        Index("ix_pooled_aligned_sheets_owner", "owner_user_id"),
+        Index("ix_pooled_aligned_sheets_project", "pooled_project_id"),
+        Index("ix_pooled_aligned_sheets_level", "pooled_level_id"),
         {"schema": "public"},
     )

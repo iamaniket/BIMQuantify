@@ -42,7 +42,7 @@ async def _upload_attachment(
     idempotency_key: str | None = None,
 ) -> dict:
     """initiate → stage bytes (matching declared size) → complete. Returns the
-    completed FreeAttachmentRead."""
+    completed PooledAttachmentRead."""
     headers = _auth(token)
     if idempotency_key is not None:
         headers = {**headers, "Idempotency-Key": idempotency_key}
@@ -91,7 +91,7 @@ async def test_free_attachment_upload_and_download(
     att = await _upload_attachment(client, fake, token, pid)
     assert att["status"] == "ready"
     assert att["attachment_category"] == "image"
-    assert att["free_project_id"] == pid
+    assert att["pooled_project_id"] == pid
     # Key is scoped to the owner's free prefix.
     assert att["storage_key"].startswith("free/")
     assert "/attachments/" in att["storage_key"]
@@ -103,7 +103,7 @@ async def test_free_attachment_upload_and_download(
     assert dl.json()["download_url"]
 
 
-async def test_free_attachment_idempotent_replay_returns_same_row(
+async def test_pooled_attachment_idempotent_replay_returns_same_row(
     free_tier_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:

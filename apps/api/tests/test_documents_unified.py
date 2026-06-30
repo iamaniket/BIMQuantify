@@ -3,7 +3,7 @@
 A free user does container (Document) CRUD on the CANONICAL
 `/projects/{id}/documents` path; the legacy `/free/projects/{id}/documents`
 alias still works (the file-upload flow + viewer bundles + free findings remain
-on free_documents.router for now); paid is unchanged.
+on pooled_documents.router for now); paid is unchanged.
 """
 
 from __future__ import annotations
@@ -67,7 +67,7 @@ async def test_free_document_crud_via_unified_path(
     assert (await client.get(f"/projects/{pid}/documents", headers=_auth(token))).json() == []
 
 
-async def test_free_documents_alias_still_works(
+async def test_pooled_documents_alias_still_works(
     free_tier_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:

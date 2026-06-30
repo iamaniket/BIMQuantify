@@ -27,15 +27,15 @@ import pytest
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import ProgrammingError
 
-from bimdossier_api.models.free_finding import FreeFinding
-from bimdossier_api.models.free_project import FreeProject
-from bimdossier_api.models.free_project_file import FreeProjectFile
+from bimdossier_api.models.free_finding import PooledFinding
+from bimdossier_api.models.free_project import PooledProject
+from bimdossier_api.models.free_project_file import PooledProjectFile
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.free_access import (
     free_owner_used_bytes,
     user_has_org_membership,
 )
-from bimdossier_api.routers.free_documents import FreeFindingCreate
+from bimdossier_api.routers.pooled_documents import PooledFindingCreate
 from bimdossier_api.tenancy import (
     get_scoped_session,
     open_free_session,
@@ -116,8 +116,8 @@ async def test_free_session_cannot_read_other_free_users_pooled_rows(
 
     # C's pooled session sees none of B's rows — RLS keys on app.current_user_id=C.
     async with open_free_session(c_id) as s:
-        n_proj = await s.scalar(select(func.count()).select_from(FreeProject))
-        n_find = await s.scalar(select(func.count()).select_from(FreeFinding))
+        n_proj = await s.scalar(select(func.count()).select_from(PooledProject))
+        n_find = await s.scalar(select(func.count()).select_from(PooledFinding))
     assert n_proj == 0
     assert n_find == 0
 
@@ -148,8 +148,8 @@ async def test_org_token_cannot_read_pooled_free_rows(
     # Tenant session for org user A: free_* resolves to public via fallback, but
     # RLS (keyed on app.current_user_id=A) yields zero of B's rows.
     async with open_tenant_session(schema, org_id, a_id) as s:
-        n_proj = await s.scalar(select(func.count()).select_from(FreeProject))
-        n_find = await s.scalar(select(func.count()).select_from(FreeFinding))
+        n_proj = await s.scalar(select(func.count()).select_from(PooledProject))
+        n_find = await s.scalar(select(func.count()).select_from(PooledFinding))
     assert n_proj == 0
     assert n_find == 0
 
@@ -160,7 +160,7 @@ async def test_org_token_cannot_read_pooled_free_rows(
 
 # Control-plane free tables that intentionally carry NO RLS (no bim_app grant;
 # read only on a superuser session). A new pooled DATA table must NOT land here.
-_FREE_RLS_EXCEPTIONS = {"free_user_limits"}
+_POOLED_RLS_EXCEPTIONS = {"free_user_limits"}
 
 
 async def test_every_pooled_free_table_has_rls_forced_and_policied(
@@ -178,7 +178,7 @@ async def test_every_pooled_free_table_has_rls_forced_and_policied(
                     "   WHERE p.schemaname = 'public' AND p.tablename = c.relname) AS npol "
                     "FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
                     "WHERE n.nspname = 'public' AND c.relkind = 'r' "
-                    "  AND c.relname LIKE 'free\\_%' ESCAPE '\\' "
+                    "  AND c.relname LIKE 'pooled\\_%' ESCAPE '\\' "
                     "ORDER BY c.relname"
                 )
             )
@@ -187,16 +187,16 @@ async def test_every_pooled_free_table_has_rls_forced_and_policied(
     found = {r[0] for r in rows}
     # Sanity: the core pooled tables actually exist in the test schema.
     assert {
-        "free_projects",
-        "free_findings",
-        "free_documents",
-        "free_project_files",
+        "pooled_projects",
+        "pooled_findings",
+        "pooled_documents",
+        "pooled_project_files",
     } <= found, f"core free tables missing from schema: {found}"
 
     offenders = [
         (relname, bool(rls), bool(force), npol)
         for relname, rls, force, npol in rows
-        if relname not in _FREE_RLS_EXCEPTIONS and not (rls and force and npol > 0)
+        if relname not in _POOLED_RLS_EXCEPTIONS and not (rls and force and npol > 0)
     ]
     assert not offenders, (
         "pooled free tables missing RLS ENABLE/FORCE/policy "
@@ -231,9 +231,9 @@ async def test_free_owner_used_bytes_probe_is_owner_scoped(
     # here we only need owner-keyed bytes for the probe).
     async with session_maker() as s, s.begin():
         s.add(
-            FreeProjectFile(
+            PooledProjectFile(
                 owner_user_id=a_id,
-                free_document_id=UUID(did),
+                pooled_document_id=UUID(did),
                 version_number=1,
                 storage_key=f"free/{a_id}/{did}/{uuid4()}/source.ifc",
                 original_filename="m.ifc",
@@ -265,8 +265,8 @@ async def test_free_finding_owner_is_server_derived_not_client_supplied(
     """The create contract exposes no owner/author field, and the router pins
     `owner_user_id` to the project owner (the RLS + quota key) — so a member filing
     a snag can never mis-key its quota attribution to themselves."""
-    assert "owner_user_id" not in FreeFindingCreate.model_fields
-    assert "created_by_user_id" not in FreeFindingCreate.model_fields
+    assert "owner_user_id" not in PooledFindingCreate.model_fields
+    assert "created_by_user_id" not in PooledFindingCreate.model_fields
 
     fclient, _ = free_tier_storage_client
     token_a = await _free_token(fclient, session_maker, "h5-a@example.com")
@@ -281,8 +281,8 @@ async def test_free_finding_owner_is_server_derived_not_client_supplied(
     assert resp.status_code == 201, resp.text
     async with open_free_session(a_id) as s:
         owner = await s.scalar(
-            select(FreeFinding.owner_user_id).where(
-                FreeFinding.id == UUID(resp.json()["id"])
+            select(PooledFinding.owner_user_id).where(
+                PooledFinding.id == UUID(resp.json()["id"])
             )
         )
     assert owner == a_id
@@ -319,7 +319,7 @@ def test_security_definer_helpers_pin_search_path() -> None:
     import bimdossier_api._rls_sql as rls
 
     # The generated SQL is the real guard — the only place definer functions are made.
-    for stmt in rls.free_member_function_statements():
+    for stmt in rls.pooled_member_function_statements():
         if "SECURITY DEFINER" in stmt:
             assert "SET search_path = public, pg_temp" in stmt, stmt
     # Source backstop: every SQL `SECURITY DEFINER` line (keyword on its own line,

@@ -1,7 +1,7 @@
 """Free-tier Document → ProjectFile API surface (the "free wedge", v2).
 
-Pooled, org-less endpoints over `public.free_documents` / `public.free_project_files`
-/ `public.free_findings` — the exact mirror of the paid `Document` (Container) →
+Pooled, org-less endpoints over `public.pooled_documents` / `public.pooled_project_files`
+/ `public.pooled_findings` — the exact mirror of the paid `Document` (Container) →
 `ProjectFile` (versioned model file) stack, so the portal renders free containers
 through the identical paid components and the free→paid conversion is a near 1:1
 row copy. IFC-only.
@@ -65,18 +65,18 @@ from bimdossier_api.jobs import (
     require_worker_secret,
 )
 from bimdossier_api.models.document import DocumentDiscipline, DocumentStatus
-from bimdossier_api.models.free_attachment import FreeAttachment
-from bimdossier_api.models.free_document import FreeDocument
+from bimdossier_api.models.free_attachment import PooledAttachment
+from bimdossier_api.models.free_document import PooledDocument
 from bimdossier_api.models.free_finding import (
-    FREE_FINDING_NOTE_MAX,
-    FREE_FINDING_SEVERITIES,
-    FREE_FINDING_STATUSES,
-    FreeFinding,
+    POOLED_FINDING_NOTE_MAX,
+    POOLED_FINDING_SEVERITIES,
+    POOLED_FINDING_STATUSES,
+    PooledFinding,
 )
-from bimdossier_api.models.free_finding_attachment import FreeFindingAttachment
-from bimdossier_api.models.free_level import FreeLevel
-from bimdossier_api.models.free_project_file import FreeProjectFile
-from bimdossier_api.models.free_project_member import FreeProjectMember
+from bimdossier_api.models.free_finding_attachment import PooledFindingAttachment
+from bimdossier_api.models.free_level import PooledLevel
+from bimdossier_api.models.free_project_file import PooledProjectFile
+from bimdossier_api.models.free_project_member import PooledProjectMember
 from bimdossier_api.models.job import Job, JobStatus, JobType
 from bimdossier_api.models.project_file import (
     ExtractionStatus,
@@ -97,7 +97,7 @@ from bimdossier_api.routers.free_access import (
     require_free_write_role,
     resolve_free_document_role,
 )
-from bimdossier_api.routers.free_projects import _free_finding_to_finding
+from bimdossier_api.routers.pooled_projects import _free_finding_to_finding
 from bimdossier_api.schemas.document import DocumentRead, DocumentWithVersions
 from bimdossier_api.schemas.finding import FindingRead
 from bimdossier_api.schemas.project_file import (
@@ -140,7 +140,7 @@ internal_router = APIRouter(prefix="/internal/jobs", tags=["internal"])
 # ---------------------------------------------------------------------------
 
 
-class FreeDocumentCreate(BaseModel):
+class PooledDocumentCreate(BaseModel):
     """Create a free container. Mirrors paid DocumentCreate (the project comes
     from the path). Discipline defaults to "other"; status to "active"."""
 
@@ -149,18 +149,18 @@ class FreeDocumentCreate(BaseModel):
     status: DocumentStatus = DocumentStatus.active
 
 
-class FreeDocumentUpdate(BaseModel):
+class PooledDocumentUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     discipline: DocumentDiscipline | None = None
     status: DocumentStatus | None = None
     # Assign a PDF drawing to a building level. Omitted = unchanged; explicit null
-    # = Unassigned. Validated against the project's free_levels in the handler.
+    # = Unassigned. Validated against the project's pooled_levels in the handler.
     level_id: UUID | None = Field(default=None)
 
 
-class FreeFindingCreate(BaseModel):
+class PooledFindingCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
-    note: str | None = Field(default=None, max_length=FREE_FINDING_NOTE_MAX)
+    note: str | None = Field(default=None, max_length=POOLED_FINDING_NOTE_MAX)
     severity: str = Field(default="medium")
     linked_file_type: str = Field(default="ifc", max_length=8)
     linked_file_id: UUID | None = None
@@ -173,15 +173,15 @@ class FreeFindingCreate(BaseModel):
     # handler. deadline_date is a plain calendar date (mirrors paid Finding).
     assigned_to_user_id: UUID | None = None
     deadline_date: date | None = None
-    # Photo evidence: ids of free_attachments (uploaded via /free/projects/{id}/
+    # Photo evidence: ids of pooled_attachments (uploaded via /free/projects/{id}/
     # attachments) to link as `kind='photo'`. Validated against the document's
     # project in the handler.
     photo_ids: list[UUID] | None = None
 
 
-class FreeFindingUpdate(BaseModel):
+class PooledFindingUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
-    note: str | None = Field(default=None, max_length=FREE_FINDING_NOTE_MAX)
+    note: str | None = Field(default=None, max_length=POOLED_FINDING_NOTE_MAX)
     severity: str | None = None
     status: str | None = None
     # An OMITTED field is left unchanged; an explicit null CLEARS the column
@@ -196,9 +196,9 @@ class FreeFindingUpdate(BaseModel):
     resolution_evidence_ids: list[UUID] | None = None
 
 
-class FreeCallbackRequest(BaseModel):
+class PooledCallbackRequest(BaseModel):
     # Mirrors the processor's CallbackPayload: it echoes `file_id` (= the
-    # free_project_files row id we dispatched with) + the artifact keys it
+    # pooled_project_files row id we dispatched with) + the artifact keys it
     # uploaded. IFC sends fragments/metadata/outline/properties/floor_plans;
     # PDF (pdf_extraction) sends metadata + geometry + page_count. Extra processor
     # fields (organization_id, job_id, …) are ignored.
@@ -211,16 +211,16 @@ class FreeCallbackRequest(BaseModel):
     floor_plans_key: str | None = None
     # PDF metadata extraction sends geometry + page_count. The rasterized
     # page-image manifest (pdf_pages_key) arrives on a SEPARATE callback
-    # (FreePagesCallbackRequest) — extraction and rasterization are sibling jobs.
+    # (PooledPagesCallbackRequest) — extraction and rasterization are sibling jobs.
     geometry_key: str | None = None
     page_count: int | None = None
     extractor_version: str | None = None
     error: str | None = None
 
 
-class FreePagesCallbackRequest(BaseModel):
+class PooledPagesCallbackRequest(BaseModel):
     # Mirrors the processor's PagesCallbackPayload for the `pdf_pages_rasterization`
-    # sibling job. Echoes `file_id` (= the free_project_files row id) + the
+    # sibling job. Echoes `file_id` (= the pooled_project_files row id) + the
     # page-image manifest key. Extra fields (organization_id, job_id, …) ignored.
     file_id: UUID
     status: str  # running | succeeded | failed
@@ -238,11 +238,11 @@ def _coerce_ifc_schema(value: str | None) -> IfcSchema | None:
     return IfcSchema(value) if value in _IFC_SCHEMA_VALUES else None
 
 
-def _file_to_read(f: FreeProjectFile, project_id: UUID) -> ProjectFileRead:
+def _file_to_read(f: PooledProjectFile, project_id: UUID) -> ProjectFileRead:
     return ProjectFileRead(
         id=f.id,
         role=ProjectFileRole.model_source,
-        document_id=f.free_document_id,
+        document_id=f.pooled_document_id,
         project_id=project_id,
         version_number=f.version_number,
         uploaded_by_user_id=f.uploaded_by_user_id or f.owner_user_id,
@@ -273,10 +273,10 @@ def _file_to_read(f: FreeProjectFile, project_id: UUID) -> ProjectFileRead:
     )
 
 
-def _document_to_read(d: FreeDocument) -> DocumentRead:
+def _document_to_read(d: PooledDocument) -> DocumentRead:
     return DocumentRead(
         id=d.id,
-        project_id=d.free_project_id,
+        project_id=d.pooled_project_id,
         name=d.name,
         discipline=DocumentDiscipline(d.discipline),
         status=DocumentStatus(d.status),
@@ -289,17 +289,17 @@ def _document_to_read(d: FreeDocument) -> DocumentRead:
 
 
 def _document_to_with_versions(
-    d: FreeDocument, files: list[FreeProjectFile]
+    d: PooledDocument, files: list[PooledProjectFile]
 ) -> DocumentWithVersions:
     base = _document_to_read(d)
     return DocumentWithVersions(
         **base.model_dump(),
-        versions=[_file_to_read(f, d.free_project_id) for f in files],
+        versions=[_file_to_read(f, d.pooled_project_id) for f in files],
     )
 
 
 def _resolve_free_head(
-    document: FreeDocument, candidates_desc: list[FreeProjectFile]
+    document: PooledDocument, candidates_desc: list[PooledProjectFile]
 ) -> UUID | None:
     """Free analog of resolve_head_file_id: the document's head_file_id when set
     and still among the candidates (version-desc), else the newest candidate."""
@@ -319,7 +319,7 @@ async def create_free_document(
     session: AsyncSession,
     user: User,
     project_id: UUID,
-    payload: FreeDocumentCreate,
+    payload: PooledDocumentCreate,
     settings: Settings,
 ) -> DocumentRead:
     """Free-tier container create. Called from the unified documents router's free
@@ -337,10 +337,10 @@ async def create_free_document(
     existing = (
         await session.scalar(
             select(func.count())
-            .select_from(FreeDocument)
+            .select_from(PooledDocument)
             .where(
-                FreeDocument.owner_user_id == user.id,
-                FreeDocument.deleted_at.is_(None),
+                PooledDocument.owner_user_id == user.id,
+                PooledDocument.deleted_at.is_(None),
             )
         )
     ) or 0
@@ -349,9 +349,9 @@ async def create_free_document(
             status_code=status.HTTP_403_FORBIDDEN, detail="FREE_MODEL_CAP_REACHED"
         )
 
-    document = FreeDocument(
+    document = PooledDocument(
         owner_user_id=user.id,
-        free_project_id=project_id,
+        pooled_project_id=project_id,
         name=payload.name,
         discipline=payload.discipline.value,
         status=payload.status.value,
@@ -376,12 +376,12 @@ async def list_free_project_documents(
     documents = list(
         (
             await session.execute(
-                select(FreeDocument)
+                select(PooledDocument)
                 .where(
-                    FreeDocument.free_project_id == project_id,
-                    FreeDocument.deleted_at.is_(None),
+                    PooledDocument.pooled_project_id == project_id,
+                    PooledDocument.deleted_at.is_(None),
                 )
-                .order_by(FreeDocument.created_at)
+                .order_by(PooledDocument.created_at)
             )
         )
         .scalars()
@@ -392,23 +392,23 @@ async def list_free_project_documents(
     files = list(
         (
             await session.execute(
-                select(FreeProjectFile)
+                select(PooledProjectFile)
                 .where(
-                    FreeProjectFile.free_document_id.in_([d.id for d in documents]),
-                    FreeProjectFile.deleted_at.is_(None),
+                    PooledProjectFile.pooled_document_id.in_([d.id for d in documents]),
+                    PooledProjectFile.deleted_at.is_(None),
                 )
                 .order_by(
-                    FreeProjectFile.free_document_id,
-                    FreeProjectFile.version_number.desc(),
+                    PooledProjectFile.pooled_document_id,
+                    PooledProjectFile.version_number.desc(),
                 )
             )
         )
         .scalars()
         .all()
     )
-    files_by_doc: dict[UUID, list[FreeProjectFile]] = {}
+    files_by_doc: dict[UUID, list[PooledProjectFile]] = {}
     for f in files:
-        files_by_doc.setdefault(f.free_document_id, []).append(f)
+        files_by_doc.setdefault(f.pooled_document_id, []).append(f)
     return [_document_to_with_versions(d, files_by_doc.get(d.id, [])) for d in documents]
 
 
@@ -423,12 +423,12 @@ async def get_free_document(
     files = list(
         (
             await session.execute(
-                select(FreeProjectFile)
+                select(PooledProjectFile)
                 .where(
-                    FreeProjectFile.free_document_id == document_id,
-                    FreeProjectFile.deleted_at.is_(None),
+                    PooledProjectFile.pooled_document_id == document_id,
+                    PooledProjectFile.deleted_at.is_(None),
                 )
-                .order_by(FreeProjectFile.version_number.desc())
+                .order_by(PooledProjectFile.version_number.desc())
             )
         )
         .scalars()
@@ -442,7 +442,7 @@ async def update_free_document(
     user: User,
     project_id: UUID,
     document_id: UUID,
-    payload: FreeDocumentUpdate,
+    payload: PooledDocumentUpdate,
 ) -> DocumentRead:
     """Free-tier container update (rename / discipline / status / level). Called
     from the unified documents router's free branch."""
@@ -461,10 +461,10 @@ async def update_free_document(
         new_level_id = data["level_id"]
         if new_level_id is not None:
             exists = await session.scalar(
-                select(FreeLevel.id).where(
-                    FreeLevel.id == new_level_id,
-                    FreeLevel.free_project_id == project_id,
-                    FreeLevel.deleted_at.is_(None),
+                select(PooledLevel.id).where(
+                    PooledLevel.id == new_level_id,
+                    PooledLevel.pooled_project_id == project_id,
+                    PooledLevel.deleted_at.is_(None),
                 )
             )
             if exists is None:
@@ -497,7 +497,7 @@ async def delete_free_document(
             session, project_id, document_id, user.id
         )
         prefix = f"{free_key_prefix(user.id)}{document_id}/"
-        await session.delete(document)  # cascades free_project_files + free_findings
+        await session.delete(document)  # cascades pooled_project_files + pooled_findings
     # Storage cleanup after the rows are gone (best-effort; reaper backstops).
     await storage.delete_prefix(prefix)
 
@@ -518,7 +518,7 @@ def _build_free_extraction_job(
 ) -> Job:
     """Build the detached extraction Job dispatched for a completed free file.
 
-    `file_id` is echoed back as the callback identifier (= the free_project_files
+    `file_id` is echoed back as the callback identifier (= the pooled_project_files
     row id); the processor derives artifact keys from `storage_key`. Both job types
     route their callback to the free path. PDF runs ONLY `pdf_extraction` (no
     rasterization — the desktop viewer renders from file_url + geometry); IFC runs
@@ -633,12 +633,12 @@ async def initiate_free_file_upload(
     # Per-document content-hash dedup (pending + ready rows participate).
     existing = (
         await session.execute(
-            select(FreeProjectFile)
+            select(PooledProjectFile)
             .where(
-                FreeProjectFile.free_document_id == document.id,
-                FreeProjectFile.content_sha256 == payload.content_sha256,
-                FreeProjectFile.status.in_(("pending", "ready")),
-                FreeProjectFile.deleted_at.is_(None),
+                PooledProjectFile.pooled_document_id == document.id,
+                PooledProjectFile.content_sha256 == payload.content_sha256,
+                PooledProjectFile.status.in_(("pending", "ready")),
+                PooledProjectFile.deleted_at.is_(None),
             )
             .limit(1)
         )
@@ -660,15 +660,15 @@ async def initiate_free_file_upload(
     storage_key = f"{free_key_prefix(user.id)}{document.id}/{file_id}/source{ext}"
     max_version = (
         await session.scalar(
-            select(func.coalesce(func.max(FreeProjectFile.version_number), 0)).where(
-                FreeProjectFile.free_document_id == document.id
+            select(func.coalesce(func.max(PooledProjectFile.version_number), 0)).where(
+                PooledProjectFile.pooled_document_id == document.id
             )
         )
     ) or 0
-    row = FreeProjectFile(
+    row = PooledProjectFile(
         id=file_id,
         owner_user_id=user.id,
-        free_document_id=document.id,
+        pooled_document_id=document.id,
         uploaded_by_user_id=user.id,
         version_number=int(max_version) + 1,
         storage_key=storage_key,
@@ -772,18 +772,18 @@ async def complete_free_file_upload(
         # Phase C — flip to ready, lock the document type, reclaim the head.
         async with open_free_session(user.id) as session:
             await session.execute(
-                update(FreeProjectFile)
+                update(PooledProjectFile)
                 .where(
-                    FreeProjectFile.id == file_id,
-                    FreeProjectFile.owner_user_id == user.id,
+                    PooledProjectFile.id == file_id,
+                    PooledProjectFile.owner_user_id == user.id,
                 )
                 .values(status="ready", ifc_schema=ifc_schema)
             )
             await session.execute(
-                update(FreeDocument)
+                update(PooledDocument)
                 .where(
-                    FreeDocument.id == document_id,
-                    FreeDocument.owner_user_id == user.id,
+                    PooledDocument.id == document_id,
+                    PooledDocument.owner_user_id == user.id,
                 )
                 # Lock type on first file (ifc or pdf); a newly-completed version
                 # reclaims the head (clear any restore pointer).
@@ -916,13 +916,13 @@ async def restore_free_version(
     ready_versions = list(
         (
             await session.execute(
-                select(FreeProjectFile)
+                select(PooledProjectFile)
                 .where(
-                    FreeProjectFile.free_document_id == document.id,
-                    FreeProjectFile.status == "ready",
-                    FreeProjectFile.deleted_at.is_(None),
+                    PooledProjectFile.pooled_document_id == document.id,
+                    PooledProjectFile.status == "ready",
+                    PooledProjectFile.deleted_at.is_(None),
                 )
-                .order_by(FreeProjectFile.version_number.desc())
+                .order_by(PooledProjectFile.version_number.desc())
             )
         )
         .scalars()
@@ -946,7 +946,7 @@ async def restore_free_version(
 
 
 async def _presign_free_bundle(
-    f: FreeProjectFile, storage: StorageBackend
+    f: PooledProjectFile, storage: StorageBackend
 ) -> ViewerBundleResponse:
     async def _get(key: str | None, name: str) -> str | None:
         if key is None:
@@ -1026,12 +1026,12 @@ async def free_project_viewer_bundle(
     documents = list(
         (
             await session.execute(
-                select(FreeDocument)
+                select(PooledDocument)
                 .where(
-                    FreeDocument.free_project_id == project_id,
-                    FreeDocument.deleted_at.is_(None),
+                    PooledDocument.pooled_project_id == project_id,
+                    PooledDocument.deleted_at.is_(None),
                 )
-                .order_by(FreeDocument.created_at)
+                .order_by(PooledDocument.created_at)
             )
         )
         .scalars()
@@ -1043,26 +1043,26 @@ async def free_project_viewer_bundle(
     rows = list(
         (
             await session.execute(
-                select(FreeProjectFile)
+                select(PooledProjectFile)
                 .where(
-                    FreeProjectFile.free_document_id.in_(list(doc_by_id.keys())),
-                    FreeProjectFile.extraction_status == "succeeded",
-                    FreeProjectFile.fragments_storage_key.is_not(None),
-                    FreeProjectFile.deleted_at.is_(None),
+                    PooledProjectFile.pooled_document_id.in_(list(doc_by_id.keys())),
+                    PooledProjectFile.extraction_status == "succeeded",
+                    PooledProjectFile.fragments_storage_key.is_not(None),
+                    PooledProjectFile.deleted_at.is_(None),
                 )
                 .order_by(
-                    FreeProjectFile.free_document_id,
-                    FreeProjectFile.version_number.desc(),
+                    PooledProjectFile.pooled_document_id,
+                    PooledProjectFile.version_number.desc(),
                 )
             )
         )
         .scalars()
         .all()
     )
-    rows_by_doc: dict[UUID, list[FreeProjectFile]] = {}
+    rows_by_doc: dict[UUID, list[PooledProjectFile]] = {}
     for r in rows:
-        rows_by_doc.setdefault(r.free_document_id, []).append(r)
-    chosen: list[tuple[FreeDocument, FreeProjectFile]] = []
+        rows_by_doc.setdefault(r.pooled_document_id, []).append(r)
+    chosen: list[tuple[PooledDocument, PooledProjectFile]] = []
     for d in documents:
         group = rows_by_doc.get(d.id, [])
         head_id = _resolve_free_head(d, group)
@@ -1097,14 +1097,14 @@ async def free_project_viewer_bundle(
 
 async def _attach_links_to_snag(
     session: AsyncSession,
-    snag: FreeFinding,
-    document: FreeDocument,
+    snag: PooledFinding,
+    document: PooledDocument,
     attachment_ids: list[UUID],
     kind: str,
 ) -> None:
-    """Insert `free_finding_attachments` link rows of `kind` for `attachment_ids`.
+    """Insert `pooled_finding_attachments` link rows of `kind` for `attachment_ids`.
 
-    Each id must be a live `free_attachments` row in the document's project
+    Each id must be a live `pooled_attachments` row in the document's project
     (RLS-scoped — the free session only sees the caller's accessible attachments),
     else 422 FREE_ATTACHMENT_NOT_FOUND. Already-linked ids are skipped (the
     (finding, attachment, kind) uniqueness). Inserts rows directly (not via the
@@ -1116,10 +1116,10 @@ async def _attach_links_to_snag(
     found = set(
         (
             await session.execute(
-                select(FreeAttachment.id).where(
-                    FreeAttachment.id.in_(attachment_ids),
-                    FreeAttachment.free_project_id == document.free_project_id,
-                    FreeAttachment.deleted_at.is_(None),
+                select(PooledAttachment.id).where(
+                    PooledAttachment.id.in_(attachment_ids),
+                    PooledAttachment.pooled_project_id == document.pooled_project_id,
+                    PooledAttachment.deleted_at.is_(None),
                 )
             )
         )
@@ -1135,9 +1135,9 @@ async def _attach_links_to_snag(
     existing = set(
         (
             await session.execute(
-                select(FreeFindingAttachment.free_attachment_id).where(
-                    FreeFindingAttachment.free_finding_id == snag.id,
-                    FreeFindingAttachment.kind == kind,
+                select(PooledFindingAttachment.pooled_attachment_id).where(
+                    PooledFindingAttachment.pooled_finding_id == snag.id,
+                    PooledFindingAttachment.kind == kind,
                 )
             )
         )
@@ -1149,11 +1149,11 @@ async def _attach_links_to_snag(
         if att_id in existing:
             continue
         session.add(
-            FreeFindingAttachment(
-                free_finding_id=snag.id,
-                free_attachment_id=att_id,
+            PooledFindingAttachment(
+                pooled_finding_id=snag.id,
+                pooled_attachment_id=att_id,
                 owner_user_id=snag.owner_user_id,
-                free_document_id=document.id,
+                pooled_document_id=document.id,
                 kind=kind,
                 position=pos,
             )
@@ -1169,11 +1169,11 @@ async def _attach_links_to_snag(
 )
 async def create_free_finding(
     document_id: UUID,
-    payload: FreeFindingCreate,
+    payload: PooledFindingCreate,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_free_session),
 ) -> FindingRead:
-    if payload.severity not in FREE_FINDING_SEVERITIES:
+    if payload.severity not in POOLED_FINDING_SEVERITIES:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="VALIDATION_ERROR"
         )
@@ -1182,10 +1182,10 @@ async def create_free_finding(
     await assert_free_account_not_expired(user)
     if payload.assigned_to_user_id is not None:
         await assert_assignee_is_participant(
-            document.free_project_id, payload.assigned_to_user_id
+            document.pooled_project_id, payload.assigned_to_user_id
         )
-    snag = FreeFinding(
-        free_document_id=document_id,
+    snag = PooledFinding(
+        pooled_document_id=document_id,
         linked_file_id=payload.linked_file_id,
         # owner_user_id stays = the project owner (the RLS/quota key) even when a
         # member files the snag; created_by_user_id records the real author.
@@ -1211,11 +1211,11 @@ async def create_free_finding(
         await session.flush()
     # Eager-load the links so `photo_ids` reads them in-memory (no async lazy-load).
     await session.refresh(snag, attribute_names=["attachment_links"])
-    return _free_finding_to_finding(snag, document.free_project_id, include_photos=True)
+    return _free_finding_to_finding(snag, document.pooled_project_id, include_photos=True)
 
 
 @router.get("/documents/{document_id}/findings", response_model=list[FindingRead])
-async def list_free_findings(
+async def list_pooled_findings(
     document_id: UUID,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_free_session),
@@ -1223,14 +1223,14 @@ async def list_free_findings(
     document = await _load_accessible_document_by_id_or_404(session, document_id)
     rows = (
         await session.execute(
-            select(FreeFinding)
-            .where(FreeFinding.free_document_id == document_id)
-            .options(selectinload(FreeFinding.attachment_links))
-            .order_by(FreeFinding.created_at.asc())
+            select(PooledFinding)
+            .where(PooledFinding.pooled_document_id == document_id)
+            .options(selectinload(PooledFinding.attachment_links))
+            .order_by(PooledFinding.created_at.asc())
         )
     ).scalars().all()
     return [
-        _free_finding_to_finding(s, document.free_project_id, include_photos=True)
+        _free_finding_to_finding(s, document.pooled_project_id, include_photos=True)
         for s in rows
     ]
 
@@ -1245,7 +1245,7 @@ async def get_free_finding(
     scopes visibility to participants; 404 otherwise."""
     snag = await _load_accessible_snag_or_404(session, finding_id)
     project_id = await session.scalar(
-        select(FreeDocument.free_project_id).where(FreeDocument.id == snag.free_document_id)
+        select(PooledDocument.pooled_project_id).where(PooledDocument.id == snag.pooled_document_id)
     )
     if project_id is None:
         raise HTTPException(
@@ -1257,12 +1257,12 @@ async def get_free_finding(
 @router.patch("/findings/{finding_id}", response_model=FindingRead)
 async def update_free_finding(
     finding_id: UUID,
-    payload: FreeFindingUpdate,
+    payload: PooledFindingUpdate,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_free_session),
 ) -> FindingRead:
     snag = await _load_accessible_snag_or_404(session, finding_id)
-    document = await _load_accessible_document_by_id_or_404(session, snag.free_document_id)
+    document = await _load_accessible_document_by_id_or_404(session, snag.pooled_document_id)
     require_free_write_role(await resolve_free_document_role(session, document, user.id))
     await assert_free_account_not_expired(user)
 
@@ -1277,11 +1277,11 @@ async def update_free_finding(
 
     # Validate the String+CHECK enum columns by hand (paid uses real enums). A
     # present-but-null severity/status is ignored below — those are NOT NULL.
-    if updates.get("severity") is not None and updates["severity"] not in FREE_FINDING_SEVERITIES:
+    if updates.get("severity") is not None and updates["severity"] not in POOLED_FINDING_SEVERITIES:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="VALIDATION_ERROR"
         )
-    if updates.get("status") is not None and updates["status"] not in FREE_FINDING_STATUSES:
+    if updates.get("status") is not None and updates["status"] not in POOLED_FINDING_STATUSES:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="VALIDATION_ERROR"
         )
@@ -1289,7 +1289,7 @@ async def update_free_finding(
     # 500); an explicit null clears the assignment with no check.
     if updates.get("assigned_to_user_id") is not None:
         await assert_assignee_is_participant(
-            document.free_project_id, updates["assigned_to_user_id"]
+            document.pooled_project_id, updates["assigned_to_user_id"]
         )
 
     # title/severity/status are NOT NULL — guard against a stray explicit null;
@@ -1308,14 +1308,14 @@ async def update_free_finding(
         )
     await session.flush()
     # `updated_at` is onupdate-expired by the flush; the paid FindingRead shape
-    # reads it (the old FreeFindingRead did not), so refresh it before serializing
+    # reads it (the old PooledFindingRead did not), so refresh it before serializing
     # or the read lazy-loads → MissingGreenlet. Reload attachment_links too when new
     # link rows were inserted, so photo_ids / resolution_evidence_ids reflect them.
     refresh_attrs = ["updated_at"]
     if links_changed:
         refresh_attrs.append("attachment_links")
     await session.refresh(snag, attribute_names=refresh_attrs)
-    return _free_finding_to_finding(snag, document.free_project_id, include_photos=True)
+    return _free_finding_to_finding(snag, document.pooled_project_id, include_photos=True)
 
 
 @router.delete("/findings/{finding_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -1325,7 +1325,7 @@ async def delete_free_finding(
     session: AsyncSession = Depends(get_free_session),
 ) -> None:
     snag = await _load_accessible_snag_or_404(session, finding_id)
-    document = await _load_accessible_document_by_id_or_404(session, snag.free_document_id)
+    document = await _load_accessible_document_by_id_or_404(session, snag.pooled_document_id)
     require_free_write_role(await resolve_free_document_role(session, document, user.id))
     await session.delete(snag)
 
@@ -1337,7 +1337,7 @@ async def delete_free_finding(
 
 @internal_router.post("/free-callback", status_code=status.HTTP_200_OK)
 async def free_extraction_callback(
-    payload: FreeCallbackRequest,
+    payload: PooledCallbackRequest,
     _: None = Depends(require_worker_secret),
 ) -> dict[str, bool]:
     # Notification inputs captured inside the txn, emitted POST-commit (best-effort,
@@ -1347,7 +1347,7 @@ async def free_extraction_callback(
     async with get_session_maker()() as session, session.begin():
         # Superuser session bypasses RLS — operate cross-user by id, so every
         # artifact key MUST be validated against the OWNER's prefix below.
-        row = await session.get(FreeProjectFile, payload.file_id, with_for_update=True)
+        row = await session.get(PooledProjectFile, payload.file_id, with_for_update=True)
         if row is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="FREE_FILE_NOT_FOUND"
@@ -1367,7 +1367,7 @@ async def free_extraction_callback(
             # free/<owner>/<document>/<file>/, reconstructed here from trusted row
             # columns. The owner check stays as the cross-user boundary; the
             # file-prefix check adds the cross-file boundary within the owner.
-            file_prefix = f"{free_key_prefix(owner)}{row.free_document_id}/{row.id}/"
+            file_prefix = f"{free_key_prefix(owner)}{row.pooled_document_id}/{row.id}/"
             for key in (
                 payload.fragments_key,
                 payload.metadata_key,
@@ -1404,15 +1404,15 @@ async def free_extraction_callback(
         # the model's project) so the post-commit emit can notify each recipient.
         if payload.status in ("succeeded", "failed"):
             project_id = await session.scalar(
-                select(FreeDocument.free_project_id).where(
-                    FreeDocument.id == row.free_document_id
+                select(PooledDocument.pooled_project_id).where(
+                    PooledDocument.id == row.pooled_document_id
                 )
             )
             member_ids = (
                 (
                     await session.execute(
-                        select(FreeProjectMember.user_id).where(
-                            FreeProjectMember.free_project_id == project_id
+                        select(PooledProjectMember.user_id).where(
+                            PooledProjectMember.pooled_project_id == project_id
                         )
                     )
                 )
@@ -1427,7 +1427,7 @@ async def free_extraction_callback(
                 ),
                 "recipients": list({owner, *member_ids}),
                 "file_id": row.id,
-                "document_id": row.free_document_id,
+                "document_id": row.pooled_document_id,
                 "project_id": project_id,
                 "filename": row.original_filename,
                 "error": payload.error if payload.status == "failed" else None,
@@ -1440,7 +1440,7 @@ async def free_extraction_callback(
 
 @internal_router.post("/free-pages-callback", status_code=status.HTTP_200_OK)
 async def free_pages_rasterization_callback(
-    payload: FreePagesCallbackRequest,
+    payload: PooledPagesCallbackRequest,
     _: None = Depends(require_worker_secret),
 ) -> dict[str, bool]:
     """Worker → API callback for the free `pdf_pages_rasterization` sibling job.
@@ -1454,13 +1454,13 @@ async def free_pages_rasterization_callback(
     if payload.status != "succeeded" or payload.pdf_pages_key is None:
         return {"ok": True}
     async with get_session_maker()() as session, session.begin():
-        row = await session.get(FreeProjectFile, payload.file_id, with_for_update=True)
+        row = await session.get(PooledProjectFile, payload.file_id, with_for_update=True)
         if row is None:
             return {"ok": True}  # file gone — nothing to stamp
         assert_free_key_scoped(payload.pdf_pages_key, row.owner_user_id)
         assert_key_scoped(
             payload.pdf_pages_key,
-            f"{free_key_prefix(row.owner_user_id)}{row.free_document_id}/{row.id}/",
+            f"{free_key_prefix(row.owner_user_id)}{row.pooled_document_id}/{row.id}/",
             detail="INVALID_FREE_STORAGE_KEY",
         )
         row.pdf_pages_storage_key = payload.pdf_pages_key
@@ -1476,16 +1476,16 @@ async def free_pages_rasterization_callback(
 
 async def _load_owned_document_or_404(
     session: AsyncSession, project_id: UUID, document_id: UUID, user_id: UUID
-) -> FreeDocument:
+) -> PooledDocument:
     """OWNER-only container load (mutation paths). Explicit owner filter is
     belt-and-suspenders over RLS so a member can never reach a mutation path."""
     document = (
         await session.execute(
-            select(FreeDocument).where(
-                FreeDocument.id == document_id,
-                FreeDocument.free_project_id == project_id,
-                FreeDocument.owner_user_id == user_id,
-                FreeDocument.deleted_at.is_(None),
+            select(PooledDocument).where(
+                PooledDocument.id == document_id,
+                PooledDocument.pooled_project_id == project_id,
+                PooledDocument.owner_user_id == user_id,
+                PooledDocument.deleted_at.is_(None),
             )
         )
     ).scalar_one_or_none()
@@ -1498,15 +1498,15 @@ async def _load_owned_document_or_404(
 
 async def _load_accessible_document_or_404(
     session: AsyncSession, project_id: UUID, document_id: UUID
-) -> FreeDocument:
+) -> PooledDocument:
     """PARTICIPANT container load (read paths) — owner OR shared-project member,
     scoped by RLS (no owner filter)."""
     document = (
         await session.execute(
-            select(FreeDocument).where(
-                FreeDocument.id == document_id,
-                FreeDocument.free_project_id == project_id,
-                FreeDocument.deleted_at.is_(None),
+            select(PooledDocument).where(
+                PooledDocument.id == document_id,
+                PooledDocument.pooled_project_id == project_id,
+                PooledDocument.deleted_at.is_(None),
             )
         )
     ).scalar_one_or_none()
@@ -1519,12 +1519,12 @@ async def _load_accessible_document_or_404(
 
 async def _load_accessible_document_by_id_or_404(
     session: AsyncSession, document_id: UUID
-) -> FreeDocument:
+) -> PooledDocument:
     """PARTICIPANT container load by id alone (snag paths carry no project id)."""
     document = (
         await session.execute(
-            select(FreeDocument).where(
-                FreeDocument.id == document_id, FreeDocument.deleted_at.is_(None)
+            select(PooledDocument).where(
+                PooledDocument.id == document_id, PooledDocument.deleted_at.is_(None)
             )
         )
     ).scalar_one_or_none()
@@ -1537,14 +1537,14 @@ async def _load_accessible_document_by_id_or_404(
 
 async def _load_owned_file_or_404(
     session: AsyncSession, document_id: UUID, file_id: UUID, user_id: UUID
-) -> FreeProjectFile:
+) -> PooledProjectFile:
     row = (
         await session.execute(
-            select(FreeProjectFile).where(
-                FreeProjectFile.id == file_id,
-                FreeProjectFile.free_document_id == document_id,
-                FreeProjectFile.owner_user_id == user_id,
-                FreeProjectFile.deleted_at.is_(None),
+            select(PooledProjectFile).where(
+                PooledProjectFile.id == file_id,
+                PooledProjectFile.pooled_document_id == document_id,
+                PooledProjectFile.owner_user_id == user_id,
+                PooledProjectFile.deleted_at.is_(None),
             )
         )
     ).scalar_one_or_none()
@@ -1555,13 +1555,13 @@ async def _load_owned_file_or_404(
 
 async def _load_accessible_file_or_404(
     session: AsyncSession, document_id: UUID, file_id: UUID
-) -> FreeProjectFile:
+) -> PooledProjectFile:
     row = (
         await session.execute(
-            select(FreeProjectFile).where(
-                FreeProjectFile.id == file_id,
-                FreeProjectFile.free_document_id == document_id,
-                FreeProjectFile.deleted_at.is_(None),
+            select(PooledProjectFile).where(
+                PooledProjectFile.id == file_id,
+                PooledProjectFile.pooled_document_id == document_id,
+                PooledProjectFile.deleted_at.is_(None),
             )
         )
     ).scalar_one_or_none()
@@ -1572,12 +1572,12 @@ async def _load_accessible_file_or_404(
 
 async def _load_accessible_snag_or_404(
     session: AsyncSession, snag_id: UUID
-) -> FreeFinding:
+) -> PooledFinding:
     snag = (
         await session.execute(
-            select(FreeFinding)
-            .where(FreeFinding.id == snag_id)
-            .options(selectinload(FreeFinding.attachment_links))
+            select(PooledFinding)
+            .where(PooledFinding.id == snag_id)
+            .options(selectinload(PooledFinding.attachment_links))
         )
     ).scalar_one_or_none()
     if snag is None:
@@ -1593,16 +1593,16 @@ async def _reload_file(
     async with open_free_session(user_id) as session:
         document = await _load_accessible_document_by_id_or_404(session, document_id)
         row = await _load_owned_file_or_404(session, document_id, file_id, user_id)
-        return _file_to_read(row, document.free_project_id)
+        return _file_to_read(row, document.pooled_project_id)
 
 
 async def _set_file_rejected(user_id: UUID, file_id: UUID, reason: str) -> None:
     async with open_free_session(user_id) as session:
         await session.execute(
-            update(FreeProjectFile)
+            update(PooledProjectFile)
             .where(
-                FreeProjectFile.id == file_id,
-                FreeProjectFile.owner_user_id == user_id,
+                PooledProjectFile.id == file_id,
+                PooledProjectFile.owner_user_id == user_id,
             )
             .values(status="rejected", rejection_reason=reason)
         )
@@ -1615,10 +1615,10 @@ async def _set_extraction_failed(file_id: UUID, user_id: UUID, error: str) -> No
     # arbitrary user's row to failed.
     async with get_session_maker()() as session, session.begin():
         await session.execute(
-            update(FreeProjectFile)
+            update(PooledProjectFile)
             .where(
-                FreeProjectFile.id == file_id,
-                FreeProjectFile.owner_user_id == user_id,
+                PooledProjectFile.id == file_id,
+                PooledProjectFile.owner_user_id == user_id,
             )
             .values(extraction_status="failed", extraction_error=error)
         )
@@ -1639,8 +1639,8 @@ async def _claim_free_extraction_slot(
         global_active = (
             await session.scalar(
                 select(func.count())
-                .select_from(FreeProjectFile)
-                .where(FreeProjectFile.extraction_status.in_(_ACTIVE_EXTRACTION))
+                .select_from(PooledProjectFile)
+                .where(PooledProjectFile.extraction_status.in_(_ACTIVE_EXTRACTION))
             )
         ) or 0
         if global_active >= settings.free_extraction_concurrency_global:
@@ -1648,20 +1648,20 @@ async def _claim_free_extraction_slot(
         user_active = (
             await session.scalar(
                 select(func.count())
-                .select_from(FreeProjectFile)
+                .select_from(PooledProjectFile)
                 .where(
-                    FreeProjectFile.owner_user_id == user_id,
-                    FreeProjectFile.extraction_status.in_(_ACTIVE_EXTRACTION),
+                    PooledProjectFile.owner_user_id == user_id,
+                    PooledProjectFile.extraction_status.in_(_ACTIVE_EXTRACTION),
                 )
             )
         ) or 0
         if user_active >= settings.free_extraction_concurrency_per_user:
             return False
         await session.execute(
-            update(FreeProjectFile)
+            update(PooledProjectFile)
             .where(
-                FreeProjectFile.id == file_id,
-                FreeProjectFile.owner_user_id == user_id,
+                PooledProjectFile.id == file_id,
+                PooledProjectFile.owner_user_id == user_id,
             )
             .values(extraction_status="queued")
         )

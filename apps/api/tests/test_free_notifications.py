@@ -1,4 +1,4 @@
-"""Tests for the free-tier notification stack (pooled `public.free_notifications`).
+"""Tests for the free-tier notification stack (pooled `public.pooled_notifications`).
 
 Covers: emission on terminal extraction states (succeeded/failed), no emission on
 `running`, fan-out to owner + invited members, per-recipient RLS isolation, the read

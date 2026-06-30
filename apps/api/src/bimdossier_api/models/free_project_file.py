@@ -1,10 +1,10 @@
-"""Pooled free-tier files — `public.free_project_files`.
+"""Pooled free-tier files — `public.pooled_project_files`.
 
 The pooled analog of `models.project_file.ProjectFile` (the `model_source` facet
-only — free is IFC-only and single-role). A `FreeProjectFile` is one version of a
-`FreeDocument` container (see `free_document.FreeDocument`); the document holds
-many versions anchored by `(free_document_id, version_number)`, with the F7 head
-pinned by `free_documents.head_file_id`.
+only — free is IFC-only and single-role). A `PooledProjectFile` is one version of a
+`PooledDocument` container (see `free_document.PooledDocument`); the document holds
+many versions anchored by `(pooled_document_id, version_number)`, with the F7 head
+pinned by `pooled_documents.head_file_id`.
 
 Pooled-in-`public`, isolation by owner-keyed RLS on `owner_user_id` plus
 owner-OR-member visibility resolved through the parent document's project (see
@@ -48,19 +48,19 @@ from bimdossier_api.models.project_file import ExtractionStatus, ProjectFileStat
 # Value sets derived from the paid enums so free CHECK constraints stay in
 # lockstep and the values are identity with paid (so the paid ProjectFileRead /
 # Zod schemas validate free rows unchanged).
-FREE_FILE_STATUSES: tuple[str, ...] = tuple(s.value for s in ProjectFileStatus)
-FREE_FILE_EXTRACTION_STATUSES: tuple[str, ...] = tuple(s.value for s in ExtractionStatus)
+POOLED_FILE_STATUSES: tuple[str, ...] = tuple(s.value for s in ProjectFileStatus)
+POOLED_FILE_EXTRACTION_STATUSES: tuple[str, ...] = tuple(s.value for s in ExtractionStatus)
 
 
-class FreeProjectFile(PooledOwnedMixin, TimestampMixin, MasterBase):
-    __tablename__ = "free_project_files"
+class PooledProjectFile(PooledOwnedMixin, TimestampMixin, MasterBase):
+    __tablename__ = "pooled_project_files"
 
     # `owner_user_id` (from PooledOwnedMixin) is denormalized off the document so
     # the RLS policy + the superuser extraction callback key on it directly; it
     # stays = the project owner.
-    free_document_id: Mapped[UUID] = mapped_column(
+    pooled_document_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("public.free_documents.id", ondelete="CASCADE"),
+        ForeignKey("public.pooled_documents.id", ondelete="CASCADE"),
         nullable=False,
     )
     # Who uploaded this version (owner or an invited editor). NULL only defensively.
@@ -74,7 +74,7 @@ class FreeProjectFile(PooledOwnedMixin, TimestampMixin, MasterBase):
         Integer, nullable=False, default=1, server_default="1"
     )
 
-    # `free/<owner_user_id>/<free_document_id>/<file_id>.ifc`; artifacts alongside.
+    # `free/<owner_user_id>/<pooled_document_id>/<file_id>.ifc`; artifacts alongside.
     # NON-unique (free divergence from paid FileBackedMixin.storage_key).
     storage_key: Mapped[str] = mapped_column(Text, nullable=False)
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -131,28 +131,28 @@ class FreeProjectFile(PooledOwnedMixin, TimestampMixin, MasterBase):
     )
 
     __table_args__ = (
-        CheckConstraint("size_bytes >= 0", name="ck_free_project_files_size_nonneg"),
+        CheckConstraint("size_bytes >= 0", name="ck_pooled_project_files_size_nonneg"),
         CheckConstraint(
-            check_in("status", FREE_FILE_STATUSES),
-            name="ck_free_project_files_status",
+            check_in("status", POOLED_FILE_STATUSES),
+            name="ck_pooled_project_files_status",
         ),
         CheckConstraint(
-            check_in("extraction_status", FREE_FILE_EXTRACTION_STATUSES),
-            name="ck_free_project_files_extraction_status",
+            check_in("extraction_status", POOLED_FILE_EXTRACTION_STATUSES),
+            name="ck_pooled_project_files_extraction_status",
         ),
         # Versions: unique per document (mirrors paid ux_project_files_document_version).
         Index(
-            "ux_free_project_files_document_version",
-            "free_document_id",
+            "ux_pooled_project_files_document_version",
+            "pooled_document_id",
             "version_number",
             unique=True,
         ),
         # Content dedup per (owner, document), active rows only. `deleted_at IS NULL`
         # is required so a soft-deleted row doesn't block re-upload of the same bytes.
         Index(
-            "uq_free_project_files_doc_content_sha256",
+            "uq_pooled_project_files_doc_content_sha256",
             "owner_user_id",
-            "free_document_id",
+            "pooled_document_id",
             "content_sha256",
             unique=True,
             postgresql_where=text(
@@ -160,8 +160,8 @@ class FreeProjectFile(PooledOwnedMixin, TimestampMixin, MasterBase):
                 "AND deleted_at IS NULL"
             ),
         ),
-        Index("ix_free_project_files_owner", "owner_user_id"),
-        Index("ix_free_project_files_document", "free_document_id"),
-        Index("ix_free_project_files_extraction_status", "extraction_status"),
+        Index("ix_pooled_project_files_owner", "owner_user_id"),
+        Index("ix_pooled_project_files_document", "pooled_document_id"),
+        Index("ix_pooled_project_files_extraction_status", "extraction_status"),
         {"schema": "public"},
     )

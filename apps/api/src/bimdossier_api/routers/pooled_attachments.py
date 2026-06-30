@@ -1,18 +1,18 @@
 """Free-tier attachments (photo evidence on free snags).
 
 The pooled analog of `routers.attachments` — a two-phase presigned upload
-(initiate → browser/app PUT → complete) over `public.free_attachments`. Used by
+(initiate → browser/app PUT → complete) over `public.pooled_attachments`. Used by
 the mobile snagging app so a free inspector can attach photos to a finding, and by
 the offline outbox (idempotency-key replay).
 
 Isolation: `get_free_session` (ROLE bim_app, only `app.current_user_id`) +
-owner-OR-member RLS on `free_attachments`. Objects live under the project owner's
+owner-OR-member RLS on `pooled_attachments`. Objects live under the project owner's
 free key prefix (`free/<owner>/attachments/...`) in the default bucket (same as
 free models), so they inherit the free CORS config. Members (owner or editor) may
 upload evidence for a snag they file; viewers are read-only — gated by
 `require_free_write_role` (the editor/viewer split RLS doesn't express).
 
-The finding→photo link is created by `routers.free_documents` (the snag create /
+The finding→photo link is created by `routers.pooled_documents` (the snag create /
 update accepts `photo_ids` / `resolution_evidence_ids`), not here — the offline
 flow uploads the photo before the snag exists.
 """
@@ -33,8 +33,8 @@ from bimdossier_api.config import Settings, get_settings
 from bimdossier_api.db import get_session_maker
 from bimdossier_api.free_limits import resolve_free_limits
 from bimdossier_api.idempotency import idempotency_key_header, is_idempotency_conflict
-from bimdossier_api.models.free_attachment import FreeAttachment
-from bimdossier_api.models.free_project import FreeProject
+from bimdossier_api.models.free_attachment import PooledAttachment
+from bimdossier_api.models.free_project import PooledProject
 from bimdossier_api.models.project_file import ATTACHMENT_ALLOWED_EXTENSIONS
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.free_access import (
@@ -45,10 +45,10 @@ from bimdossier_api.routers.free_access import (
     resolve_free_role,
 )
 from bimdossier_api.schemas.free_attachment import (
-    FreeAttachmentDownloadResponse,
-    FreeAttachmentInitiateRequest,
-    FreeAttachmentInitiateResponse,
-    FreeAttachmentRead,
+    PooledAttachmentDownloadResponse,
+    PooledAttachmentInitiateRequest,
+    PooledAttachmentInitiateResponse,
+    PooledAttachmentRead,
 )
 from bimdossier_api.storage import StorageBackend, get_storage, upload_service
 from bimdossier_api.storage.scoping import free_key_prefix
@@ -71,7 +71,7 @@ async def _project_owner_for_write(session: AsyncSession, project_id: UUID, user
     an invited editor is the one uploading.
     """
     owner_id = await session.scalar(
-        select(FreeProject.owner_user_id).where(FreeProject.id == project_id)
+        select(PooledProject.owner_user_id).where(PooledProject.id == project_id)
     )
     if owner_id is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FREE_PROJECT_NOT_FOUND")
@@ -83,14 +83,14 @@ async def _project_owner_for_write(session: AsyncSession, project_id: UUID, user
 
 async def _load_attachment_or_404(
     session: AsyncSession, project_id: UUID, attachment_id: UUID
-) -> FreeAttachment:
+) -> PooledAttachment:
     """Participant-readable attachment load (RLS scopes visibility)."""
     att = (
         await session.execute(
-            select(FreeAttachment).where(
-                FreeAttachment.id == attachment_id,
-                FreeAttachment.free_project_id == project_id,
-                FreeAttachment.deleted_at.is_(None),
+            select(PooledAttachment).where(
+                PooledAttachment.id == attachment_id,
+                PooledAttachment.pooled_project_id == project_id,
+                PooledAttachment.deleted_at.is_(None),
             )
         )
     ).scalar_one_or_none()
@@ -103,19 +103,19 @@ async def _load_attachment_or_404(
 
 @router.post(
     "/initiate",
-    response_model=FreeAttachmentInitiateResponse,
+    response_model=PooledAttachmentInitiateResponse,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(FREE_UPLOAD_INITIATE_LIMITER)],
 )
 async def initiate_free_attachment_upload(
     project_id: UUID,
-    payload: FreeAttachmentInitiateRequest,
+    payload: PooledAttachmentInitiateRequest,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_free_session),
     storage: StorageBackend = Depends(get_storage),
     settings: Settings = Depends(get_settings),
     idempotency_key: str | None = Depends(idempotency_key_header),
-) -> FreeAttachmentInitiateResponse:
+) -> PooledAttachmentInitiateResponse:
     owner_id = await _project_owner_for_write(session, project_id, user)
 
     ext = upload_service.parse_extension(payload.filename)
@@ -129,10 +129,10 @@ async def initiate_free_attachment_upload(
     if idempotency_key is not None:
         prior = (
             await session.execute(
-                select(FreeAttachment).where(
-                    FreeAttachment.owner_user_id == owner_id,
-                    FreeAttachment.idempotency_key == idempotency_key,
-                    FreeAttachment.deleted_at.is_(None),
+                select(PooledAttachment).where(
+                    PooledAttachment.owner_user_id == owner_id,
+                    PooledAttachment.idempotency_key == idempotency_key,
+                    PooledAttachment.deleted_at.is_(None),
                 )
             )
         ).scalar_one_or_none()
@@ -142,7 +142,7 @@ async def initiate_free_attachment_upload(
                 prior.content_type or "application/octet-stream",
                 prior.size_bytes,
             )
-            return FreeAttachmentInitiateResponse(
+            return PooledAttachmentInitiateResponse(
                 attachment_id=prior.id,
                 upload_url=fresh_url,
                 storage_key=prior.storage_key,
@@ -181,10 +181,10 @@ async def initiate_free_attachment_upload(
         if payload.capture_metadata is not None
         else None
     )
-    att = FreeAttachment(
+    att = PooledAttachment(
         id=attachment_id,
         owner_user_id=owner_id,
-        free_project_id=project_id,
+        pooled_project_id=project_id,
         uploaded_by_user_id=user.id,
         storage_key=storage_key,
         original_filename=payload.filename,
@@ -210,7 +210,7 @@ async def initiate_free_attachment_upload(
     upload_url = await storage.presigned_put_url(
         storage_key, payload.content_type, payload.size_bytes
     )
-    return FreeAttachmentInitiateResponse(
+    return PooledAttachmentInitiateResponse(
         attachment_id=att.id,
         upload_url=upload_url,
         storage_key=storage_key,
@@ -218,13 +218,13 @@ async def initiate_free_attachment_upload(
     )
 
 
-@router.post("/{attachment_id}/complete", response_model=FreeAttachmentRead)
+@router.post("/{attachment_id}/complete", response_model=PooledAttachmentRead)
 async def complete_free_attachment_upload(
     project_id: UUID,
     attachment_id: UUID,
     user: User = Depends(current_verified_user),
     storage: StorageBackend = Depends(get_storage),
-) -> FreeAttachmentRead:
+) -> PooledAttachmentRead:
     """Finalize a two-phase free attachment upload: HEAD-verify then flip ready.
 
     The S3 HEAD runs with NO DB connection held (phase B), the same multi-phase
@@ -258,10 +258,10 @@ async def complete_free_attachment_upload(
         # Refresh so the onupdate-expired `updated_at` is re-fetched in the async
         # context (avoids a lazy-load MissingGreenlet during model_validate).
         await session.refresh(att)
-        return FreeAttachmentRead.model_validate(att)
+        return PooledAttachmentRead.model_validate(att)
 
 
-@router.get("/{attachment_id}/download", response_model=FreeAttachmentDownloadResponse)
+@router.get("/{attachment_id}/download", response_model=PooledAttachmentDownloadResponse)
 async def download_free_attachment(
     project_id: UUID,
     attachment_id: UUID,
@@ -269,7 +269,7 @@ async def download_free_attachment(
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_free_session),
     storage: StorageBackend = Depends(get_storage),
-) -> FreeAttachmentDownloadResponse:
+) -> PooledAttachmentDownloadResponse:
     att = await _load_attachment_or_404(session, project_id, attachment_id)
     if att.status != "ready":
         raise HTTPException(
@@ -278,4 +278,4 @@ async def download_free_attachment(
     url = await storage.presigned_get_url(
         att.storage_key, att.original_filename, disposition=disposition
     )
-    return FreeAttachmentDownloadResponse(download_url=url, expires_in=storage.presign_ttl)
+    return PooledAttachmentDownloadResponse(download_url=url, expires_in=storage.presign_ttl)

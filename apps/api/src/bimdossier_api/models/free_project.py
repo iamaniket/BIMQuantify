@@ -1,10 +1,10 @@
-"""Pooled free-tier projects — `public.free_projects`.
+"""Pooled free-tier projects — `public.pooled_projects`.
 
 The free wedge keeps free users as POOLED rows in `public`, never their own
 `org_<hex>` tenant schema. A free "project" is therefore NOT a tenant
 `models.project.Project` (which lives in `org_<hex>.projects`); it is a pooled
 row here, isolated by owner-keyed RLS (`app.current_user_id` GUC set by
-`get_free_session`), exactly like `free_documents`/`free_findings`.
+`get_free_session`), exactly like `pooled_documents`/`pooled_findings`.
 
 Columns deliberately mirror the paid `Project` (minus tenant-only concepts) so
 the row serializes to the SAME `Project` API shape — the portal renders free
@@ -39,13 +39,13 @@ from bimdossier_api.models.project import (
 
 # Value sets derived from the paid enums — keeps the free CHECK constraints and
 # the paid enum definitions in lockstep (no duplicated literals).
-FREE_PROJECT_PHASES: tuple[str, ...] = tuple(p.value for p in ProjectPhase)
-FREE_PROJECT_LIFECYCLE_STATES: tuple[str, ...] = tuple(s.value for s in ProjectLifecycleState)
-FREE_PROJECT_BUILDING_TYPES: tuple[str, ...] = tuple(b.value for b in BuildingType)
+POOLED_PROJECT_PHASES: tuple[str, ...] = tuple(p.value for p in ProjectPhase)
+POOLED_PROJECT_LIFECYCLE_STATES: tuple[str, ...] = tuple(s.value for s in ProjectLifecycleState)
+POOLED_PROJECT_BUILDING_TYPES: tuple[str, ...] = tuple(b.value for b in BuildingType)
 
 
-class FreeProject(PooledOwnedMixin, TimestampMixin, MasterBase):
-    __tablename__ = "free_projects"
+class PooledProject(PooledOwnedMixin, TimestampMixin, MasterBase):
+    __tablename__ = "pooled_projects"
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -81,15 +81,15 @@ class FreeProject(PooledOwnedMixin, TimestampMixin, MasterBase):
 
     __table_args__ = (
         CheckConstraint(
-            check_in("lifecycle_state", FREE_PROJECT_LIFECYCLE_STATES),
-            name="ck_free_projects_lifecycle_state",
+            check_in("lifecycle_state", POOLED_PROJECT_LIFECYCLE_STATES),
+            name="ck_pooled_projects_lifecycle_state",
         ),
-        CheckConstraint(check_in("phase", FREE_PROJECT_PHASES), name="ck_free_projects_phase"),
+        CheckConstraint(check_in("phase", POOLED_PROJECT_PHASES), name="ck_pooled_projects_phase"),
         CheckConstraint(
-            f"building_type IS NULL OR {check_in('building_type', FREE_PROJECT_BUILDING_TYPES)}",
-            name="ck_free_projects_building_type",
+            f"building_type IS NULL OR {check_in('building_type', POOLED_PROJECT_BUILDING_TYPES)}",
+            name="ck_pooled_projects_building_type",
         ),
-        Index("ix_free_projects_owner", "owner_user_id"),
-        Index("ix_free_projects_owner_lifecycle", "owner_user_id", "lifecycle_state"),
+        Index("ix_pooled_projects_owner", "owner_user_id"),
+        Index("ix_pooled_projects_owner_lifecycle", "owner_user_id", "lifecycle_state"),
         {"schema": "public"},
     )

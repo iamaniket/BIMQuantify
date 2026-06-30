@@ -483,7 +483,7 @@ def _csv_row_dict(
     resolution_note: str,
 ) -> dict[str, str]:
     """Pure row builder over plain strings (no ORM dependency) so both the paid
-    `Finding` path and the free `FreeFinding` export can share one column set."""
+    `Finding` path and the free `PooledFinding` export can share one column set."""
     return {
         "id": id,
         "title": title,

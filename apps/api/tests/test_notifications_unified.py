@@ -3,14 +3,14 @@
 A free user reads/marks/dismisses notifications on the CANONICAL `/notifications`
 path (no `/free` prefix); the legacy `/free/notifications` alias still works; the
 paid behaviour is unchanged (covered by test_notifications.py). The free branch
-maps the pooled per-recipient `FreeNotification` onto the same `NotificationOut`.
+maps the pooled per-recipient `PooledNotification` onto the same `NotificationOut`.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.test_free_notifications import _seed_succeeded_model
+from tests.test_pooled_notifications import _seed_succeeded_model
 from tests.test_free_viewer import _auth, _free_token
 
 if TYPE_CHECKING:
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from tests.conftest import FakeStorage
 
 
-async def test_free_notifications_read_flow_via_unified_path(
+async def test_pooled_notifications_read_flow_via_unified_path(
     free_tier_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
@@ -59,7 +59,7 @@ async def test_free_notifications_read_flow_via_unified_path(
     assert after.json()["total"] == 0
 
 
-async def test_free_notifications_alias_still_works(
+async def test_pooled_notifications_alias_still_works(
     free_tier_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:

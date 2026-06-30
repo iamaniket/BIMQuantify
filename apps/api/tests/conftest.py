@@ -82,17 +82,17 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
     from bimdossier_api._rls_sql import (
         audit_log_append_only_statements,
         create_app_role_statements,
-        disable_free_aligned_sheet_rls_statements,
-        disable_free_attachment_rls_statements,
-        disable_free_level_rls_statements,
-        disable_free_member_rls_statements,
-        disable_free_notification_rls_statements,
+        disable_pooled_aligned_sheet_rls_statements,
+        disable_pooled_attachment_rls_statements,
+        disable_pooled_level_rls_statements,
+        disable_pooled_member_rls_statements,
+        disable_pooled_notification_rls_statements,
         disable_rls_statements,
-        enable_free_aligned_sheet_rls_statements,
-        enable_free_attachment_rls_statements,
-        enable_free_level_rls_statements,
-        enable_free_member_rls_statements,
-        enable_free_notification_rls_statements,
+        enable_pooled_aligned_sheet_rls_statements,
+        enable_pooled_attachment_rls_statements,
+        enable_pooled_level_rls_statements,
+        enable_pooled_member_rls_statements,
+        enable_pooled_notification_rls_statements,
         enable_rls_statements,
     )
     from bimdossier_api.db import Base
@@ -136,11 +136,11 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         # the schema from metadata. `create_all` is DDL-only — RLS policies are
         # applied separately below to mirror what the migration does.
         for stmt in (
-            *disable_free_attachment_rls_statements(),
-            *disable_free_aligned_sheet_rls_statements(),
-            *disable_free_level_rls_statements(),
-            *disable_free_notification_rls_statements(),
-            *disable_free_member_rls_statements(),
+            *disable_pooled_attachment_rls_statements(),
+            *disable_pooled_aligned_sheet_rls_statements(),
+            *disable_pooled_level_rls_statements(),
+            *disable_pooled_notification_rls_statements(),
+            *disable_pooled_member_rls_statements(),
             *disable_rls_statements(),
         ):
             await conn.exec_driver_sql(
@@ -211,7 +211,7 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         for stmt in audit_log_append_only_statements("public"):
             await conn.exec_driver_sql(stmt)
         # `free_user_limits` is control-plane: production never grants it to bim_app
-        # (it is absent from grant_free_tables_to_app_role's FREE_DML_TABLES). The
+        # (it is absent from grant_pooled_tables_to_app_role's POOLED_DML_TABLES). The
         # blanket "GRANT ... ON ALL TABLES" above over-grants it here, masking that
         # boundary — REVOKE it so the bim_app-denied isolation test (and migration
         # 0002's explicit REVOKE) reflect the real production grant set.
@@ -220,20 +220,20 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
             await conn.exec_driver_sql(stmt)
         # Pooled free-tier tables get owner-OR-member RLS (mirrors migration 0004)
         # so the free RLS-isolation tests exercise the real boundary as bim_app.
-        for stmt in enable_free_member_rls_statements():
+        for stmt in enable_pooled_member_rls_statements():
             await conn.exec_driver_sql(stmt)
         # Pooled free-notification tables get per-recipient RLS (migration 0008)
         # so the free-notification isolation tests exercise the real boundary.
-        for stmt in enable_free_notification_rls_statements():
+        for stmt in enable_pooled_notification_rls_statements():
             await conn.exec_driver_sql(stmt)
         # Pooled free-levels get owner-OR-member RLS (migration 0010).
-        for stmt in enable_free_level_rls_statements():
+        for stmt in enable_pooled_level_rls_statements():
             await conn.exec_driver_sql(stmt)
         # Pooled free-aligned-sheets get owner-OR-member RLS (migration 0011).
-        for stmt in enable_free_aligned_sheet_rls_statements():
+        for stmt in enable_pooled_aligned_sheet_rls_statements():
             await conn.exec_driver_sql(stmt)
         # Pooled free-attachments get owner-OR-member RLS (migration 0013).
-        for stmt in enable_free_attachment_rls_statements():
+        for stmt in enable_pooled_attachment_rls_statements():
             await conn.exec_driver_sql(stmt)
 
     yield eng
@@ -245,11 +245,11 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         for (schema,) in rows.fetchall():
             await conn.exec_driver_sql(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
         for stmt in (
-            *disable_free_attachment_rls_statements(),
-            *disable_free_aligned_sheet_rls_statements(),
-            *disable_free_level_rls_statements(),
-            *disable_free_notification_rls_statements(),
-            *disable_free_member_rls_statements(),
+            *disable_pooled_attachment_rls_statements(),
+            *disable_pooled_aligned_sheet_rls_statements(),
+            *disable_pooled_level_rls_statements(),
+            *disable_pooled_notification_rls_statements(),
+            *disable_pooled_member_rls_statements(),
             *disable_rls_statements(),
         ):
             await conn.exec_driver_sql(
@@ -357,9 +357,9 @@ async def _clean_tables(
                     text(
                         "TRUNCATE TABLE checklist_item_results, checklist_items, "
                         "borgingsmomenten, borgingsplans, deadlines, "
-                        "capture_links, blog_posts, free_finding_attachments, "
-                        "free_attachments, free_findings, free_project_files, "
-                        "free_documents, free_project_members, free_projects, "
+                        "capture_links, blog_posts, pooled_finding_attachments, "
+                        "pooled_attachments, pooled_findings, pooled_project_files, "
+                        "pooled_documents, pooled_project_members, pooled_projects, "
                         "risks, access_requests, reports, jobs, project_files, documents, "
                         "project_members, projects, notification_user_state, "
                         "notifications, audit_log, certificates, org_certificates, "

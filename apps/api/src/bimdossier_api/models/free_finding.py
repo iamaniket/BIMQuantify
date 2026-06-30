@@ -1,19 +1,19 @@
-"""Pooled free-tier snags — `public.free_findings`.
+"""Pooled free-tier snags — `public.pooled_findings`.
 
 A minimal snag on a free document (container): title/note/severity/status plus an
 anchor (world-space `anchor_x/y/z` for IFC, or `anchor_page` for a paged file) and
 the IFC `linked_element_global_id`. `owner_user_id` is denormalized off the parent
 document so the RLS policy keys on this row directly without a join to
-`free_documents` (see `_rls_sql.enable_free_member_rls_statements`).
+`pooled_documents` (see `_rls_sql.enable_pooled_member_rls_statements`).
 
-The snag anchors to the version-independent `free_document_id` (mirrors paid
+The snag anchors to the version-independent `pooled_document_id` (mirrors paid
 `Finding.linked_document_id`); `linked_file_id` optionally pins the version it was
 filed against (mirrors paid `Finding.linked_file_id`).
 
 At conversion these map to real `findings`: severity/status translate to the
 `FindingSeverity`/`FindingStatus` enums, and the world-space anchor + GlobalId
 carry over directly (both are stable across re-extraction). See
-`free_document.FreeDocument` for the pooling rationale.
+`free_document.PooledDocument` for the pooling rationale.
 """
 
 from datetime import date
@@ -37,38 +37,38 @@ from bimdossier_api.db import MasterBase
 from bimdossier_api.models._pooled import PooledOwnedMixin, TimestampMixin, check_in
 
 if TYPE_CHECKING:
-    from bimdossier_api.models.free_finding_attachment import FreeFindingAttachment
+    from bimdossier_api.models.free_finding_attachment import PooledFindingAttachment
 
 # Neutral severity/status codes — kept value-compatible with FindingSeverity so
 # conversion is a direct map. Imported by the router/schemas to keep CHECK and
 # API validation aligned.
-FREE_FINDING_SEVERITIES: tuple[str, ...] = ("low", "medium", "high")
+POOLED_FINDING_SEVERITIES: tuple[str, ...] = ("low", "medium", "high")
 # Value-identical to FindingStatus (models.finding) so the board UI is reused
 # unchanged and conversion maps 1:1.
-FREE_FINDING_STATUSES: tuple[str, ...] = (
+POOLED_FINDING_STATUSES: tuple[str, ...] = (
     "draft",
     "open",
     "in_progress",
     "resolved",
     "verified",
 )
-FREE_FINDING_NOTE_MAX = 4000
+POOLED_FINDING_NOTE_MAX = 4000
 
 
-class FreeFinding(PooledOwnedMixin, TimestampMixin, MasterBase):
-    __tablename__ = "free_findings"
+class PooledFinding(PooledOwnedMixin, TimestampMixin, MasterBase):
+    __tablename__ = "pooled_findings"
 
     # Version-independent identity = the container (mirrors Finding.linked_document_id).
-    free_document_id: Mapped[UUID] = mapped_column(
+    pooled_document_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("public.free_documents.id", ondelete="CASCADE"),
+        ForeignKey("public.pooled_documents.id", ondelete="CASCADE"),
         nullable=False,
     )
     # The specific version the snag was filed against (mirrors Finding.linked_file_id).
     # SET NULL so deleting a version doesn't destroy its snags. NULL = unpinned.
     linked_file_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("public.free_project_files.id", ondelete="SET NULL"),
+        ForeignKey("public.pooled_project_files.id", ondelete="SET NULL"),
         nullable=True,
     )
     # `owner_user_id` (from PooledOwnedMixin) stays = the project OWNER even when a
@@ -116,15 +116,15 @@ class FreeFinding(PooledOwnedMixin, TimestampMixin, MasterBase):
     # Finding.attachment_links). selectin so a list/get query that eager-loads it
     # exposes photo_ids without a per-row lazy load; create/update build the links
     # through this collection so the in-memory read needs no DB round-trip.
-    attachment_links: Mapped[list["FreeFindingAttachment"]] = relationship(
+    attachment_links: Mapped[list["PooledFindingAttachment"]] = relationship(
         back_populates="finding",
         cascade="all, delete-orphan",
-        order_by="FreeFindingAttachment.position",
+        order_by="PooledFindingAttachment.position",
         lazy="selectin",
     )
 
     def _ids_for_kind(self, kind: str) -> list[UUID] | None:
-        ids = [link.free_attachment_id for link in self.attachment_links if link.kind == kind]
+        ids = [link.pooled_attachment_id for link in self.attachment_links if link.kind == kind]
         return ids or None
 
     @property
@@ -137,18 +137,18 @@ class FreeFinding(PooledOwnedMixin, TimestampMixin, MasterBase):
 
     __table_args__ = (
         CheckConstraint(
-            check_in("severity", FREE_FINDING_SEVERITIES), name="ck_free_findings_severity"
+            check_in("severity", POOLED_FINDING_SEVERITIES), name="ck_pooled_findings_severity"
         ),
         CheckConstraint(
-            check_in("status", FREE_FINDING_STATUSES), name="ck_free_findings_status"
+            check_in("status", POOLED_FINDING_STATUSES), name="ck_pooled_findings_status"
         ),
         CheckConstraint(
-            f"note IS NULL OR char_length(note) <= {FREE_FINDING_NOTE_MAX}",
-            name="ck_free_findings_note_len",
+            f"note IS NULL OR char_length(note) <= {POOLED_FINDING_NOTE_MAX}",
+            name="ck_pooled_findings_note_len",
         ),
-        Index("ix_free_findings_document", "free_document_id"),
-        Index("ix_free_findings_file", "linked_file_id"),
-        Index("ix_free_findings_owner", "owner_user_id"),
-        Index("ix_free_findings_assignee", "assigned_to_user_id"),
+        Index("ix_pooled_findings_document", "pooled_document_id"),
+        Index("ix_pooled_findings_file", "linked_file_id"),
+        Index("ix_pooled_findings_owner", "owner_user_id"),
+        Index("ix_pooled_findings_assignee", "assigned_to_user_id"),
         {"schema": "public"},
     )

@@ -1,7 +1,7 @@
-"""Tests for the free-tier project surface (pooled `public.free_projects`).
+"""Tests for the free-tier project surface (pooled `public.pooled_projects`).
 
 Covers: free project CRUD (paid ProjectRead shape), the containers endpoint
-(real free_documents + free_project_files as DocumentWithVersions), the board
+(real pooled_documents + pooled_project_files as DocumentWithVersions), the board
 feed (free snags adapted to FindingRead), the overview BFF (findings-only
 completeness, org blocks zeroed), the widened 5-value snag status set, and — the
 security gate — RLS isolation between two free users.
@@ -282,7 +282,7 @@ async def test_snag_status_accepts_paid_values(
     assert bad.status_code == 422
 
 
-async def test_rls_isolation_free_projects(
+async def test_rls_isolation_pooled_projects(
     free_tier_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:

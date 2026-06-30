@@ -88,12 +88,12 @@ from bimdossier_api.routers.finding import router as finding_router
 from bimdossier_api.routers.finding_comment import router as finding_comment_router
 from bimdossier_api.routers.free_account import router as free_account_router
 from bimdossier_api.routers.free_activity import router as free_activity_router
-from bimdossier_api.routers.free_aligned_sheets import router as free_aligned_sheets_router
-from bimdossier_api.routers.free_attachments import router as free_attachments_router
+from bimdossier_api.routers.pooled_aligned_sheets import router as pooled_aligned_sheets_router
+from bimdossier_api.routers.pooled_attachments import router as pooled_attachments_router
 from bimdossier_api.routers.free_conversion import router as free_conversion_router
-from bimdossier_api.routers.free_documents import internal_router as free_internal_router
-from bimdossier_api.routers.free_documents import router as free_documents_router
-from bimdossier_api.routers.free_projects import router as free_projects_router
+from bimdossier_api.routers.pooled_documents import internal_router as free_internal_router
+from bimdossier_api.routers.pooled_documents import router as pooled_documents_router
+from bimdossier_api.routers.pooled_projects import router as pooled_projects_router
 from bimdossier_api.routers.health import router as health_router
 from bimdossier_api.routers.inspection import router as inspection_router
 from bimdossier_api.routers.jobs import router as jobs_router
@@ -251,7 +251,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     free_reconcile_sweeper.start()
     free_idle_sweeper = IdleFreeContainerSweeper(
         settings.free_idle_sweep_interval_minutes,
-        settings.free_document_idle_ttl_days,
+        settings.pooled_document_idle_ttl_days,
     )
     free_idle_sweeper.start()
     # Data-lifecycle reapers (L11): abandoned pending uploads + expired/revoked
@@ -433,12 +433,12 @@ def create_app() -> FastAPI:
     app.include_router(documents_router)
     # Tier-unified: the same documents router serves free container CRUD under the
     # legacy /free alias (tier resolved from the JWT). The free file-upload flow +
-    # viewer bundles + free findings still live on free_documents_router for now.
+    # viewer bundles + free findings still live on pooled_documents_router for now.
     app.include_router(documents_router, prefix="/free")
     app.include_router(levels_router)
     # Tier-unified: the same levels router serves free callers under the legacy
     # /free alias (the handler resolves the tier from the JWT, not the prefix).
-    # Replaces the deleted free_levels_router.
+    # Replaces the deleted pooled_levels_router.
     app.include_router(levels_router, prefix="/free")
     app.include_router(storeys_router)
     app.include_router(aligned_sheets_router)
@@ -447,10 +447,10 @@ def create_app() -> FastAPI:
     app.include_router(jobs_internal_router)
     app.include_router(free_account_router)
     app.include_router(free_activity_router)
-    app.include_router(free_documents_router)
-    app.include_router(free_projects_router)
-    app.include_router(free_aligned_sheets_router)
-    app.include_router(free_attachments_router)
+    app.include_router(pooled_documents_router)
+    app.include_router(pooled_projects_router)
+    app.include_router(pooled_aligned_sheets_router)
+    app.include_router(pooled_attachments_router)
     app.include_router(free_internal_router)
     app.include_router(free_conversion_router)
     app.include_router(compliance_router)
@@ -478,7 +478,7 @@ def create_app() -> FastAPI:
     app.include_router(activity_router)
     app.include_router(notifications_router)
     # Tier-unified: the same notifications router serves free callers under the
-    # legacy /free alias (tier resolved from the JWT). Replaces free_notifications.
+    # legacy /free alias (tier resolved from the JWT). Replaces pooled_notifications.
     app.include_router(notifications_router, prefix="/free")
     app.include_router(ws_notifications_router)
     return app

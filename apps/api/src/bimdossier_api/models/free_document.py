@@ -1,18 +1,18 @@
-"""Pooled free-tier documents — `public.free_documents`.
+"""Pooled free-tier documents — `public.pooled_documents`.
 
 The free wedge mirrors the paid **Document ("Container") → ProjectFile** stack so
 the portal renders free models through the identical paid components and the
-free→paid conversion is a near 1:1 row copy. A `FreeDocument` is the pooled
+free→paid conversion is a near 1:1 row copy. A `PooledDocument` is the pooled
 analog of `models.document.Document`: a named container that holds one or more
-versioned `FreeProjectFile` rows (see `free_project_file.FreeProjectFile`).
+versioned `PooledProjectFile` rows (see `free_project_file.PooledProjectFile`).
 
 Pooled-in-`public`, never a tenant `org_<hex>` schema — isolation is owner-keyed
 RLS on `owner_user_id` (the `app.current_user_id` GUC set by `get_free_session`)
 plus owner-OR-member visibility through the project (see
-`_rls_sql.enable_free_member_rls_statements`). IFC-only.
+`_rls_sql.enable_pooled_member_rls_statements`). IFC-only.
 
 Differences from the paid `Document`:
-- Pooled columns `owner_user_id` (RLS key) + `free_project_id` instead of a
+- Pooled columns `owner_user_id` (RLS key) + `pooled_project_id` instead of a
   tenant `project_id`. Every free container belongs to a free project (NOT NULL,
   CASCADE) — exact paid parity, no ungrouped state.
 - Enum-valued columns are `String` + `CHECK` (the "likely-to-grow → String+CHECK"
@@ -22,7 +22,7 @@ Differences from the paid `Document`:
 - `last_viewed_at` lives here (the container is the unit the viewer opens and the
   idle reaper sweeps).
 - `head_file_id` is the F7 current-version pointer — a plain column with NO ORM
-  relationship and `use_alter=True` to break the free_documents↔free_project_files
+  relationship and `use_alter=True` to break the pooled_documents↔pooled_project_files
   mutual-FK cycle (same cycle-breaker as `document.Document.head_file_id`).
 """
 
@@ -48,20 +48,20 @@ from bimdossier_api.models.project_file import FileType
 # Value sets derived from the paid enums — keeps the free CHECK constraints and
 # the paid enum definitions in lockstep (no duplicated literals). `primary_file_type`
 # is IFC + PDF for the free tier (3D models and 2D drawings; viewer parity).
-FREE_DOC_DISCIPLINES: tuple[str, ...] = tuple(d.value for d in DocumentDiscipline)
-FREE_DOC_STATUSES: tuple[str, ...] = tuple(s.value for s in DocumentStatus)
-FREE_DOC_FILE_TYPES: tuple[str, ...] = (FileType.ifc.value, FileType.pdf.value)
+POOLED_DOC_DISCIPLINES: tuple[str, ...] = tuple(d.value for d in DocumentDiscipline)
+POOLED_DOC_STATUSES: tuple[str, ...] = tuple(s.value for s in DocumentStatus)
+POOLED_DOC_FILE_TYPES: tuple[str, ...] = (FileType.ifc.value, FileType.pdf.value)
 
 
-class FreeDocument(PooledOwnedMixin, TimestampMixin, MasterBase):
-    __tablename__ = "free_documents"
+class PooledDocument(PooledOwnedMixin, TimestampMixin, MasterBase):
+    __tablename__ = "pooled_documents"
 
     # Every free container belongs to a free project (paid parity). CASCADE so
     # deleting a project removes its containers — mirrors paid
     # `Document.project_id` (ondelete CASCADE).
-    free_project_id: Mapped[UUID] = mapped_column(
+    pooled_project_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("public.free_projects.id", ondelete="CASCADE"),
+        ForeignKey("public.pooled_projects.id", ondelete="CASCADE"),
         nullable=False,
     )
 
@@ -80,22 +80,22 @@ class FreeDocument(PooledOwnedMixin, TimestampMixin, MasterBase):
     # its drawings to Unassigned. IFC containers leave this NULL.
     level_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("public.free_levels.id", ondelete="SET NULL"),
+        ForeignKey("public.pooled_levels.id", ondelete="SET NULL"),
         nullable=True,
     )
 
     # F7 current-revision pointer. NULL = head is derived as the highest
     # version_number. Plain column, NO ORM relationship; `use_alter` emits the FK
     # as a separate ALTER so create_all / drop_all can order the two tables in the
-    # free_documents↔free_project_files cycle. Resolution reuses the paid
+    # pooled_documents↔pooled_project_files cycle. Resolution reuses the paid
     # `routers/project_files/_shared.resolve_head_file_id`.
     head_file_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey(
-            "public.free_project_files.id",
+            "public.pooled_project_files.id",
             ondelete="SET NULL",
             use_alter=True,
-            name="fk_free_documents_head_file_id",
+            name="fk_pooled_documents_head_file_id",
         ),
         nullable=True,
     )
@@ -112,28 +112,28 @@ class FreeDocument(PooledOwnedMixin, TimestampMixin, MasterBase):
 
     __table_args__ = (
         CheckConstraint(
-            check_in("discipline", FREE_DOC_DISCIPLINES),
-            name="ck_free_documents_discipline",
+            check_in("discipline", POOLED_DOC_DISCIPLINES),
+            name="ck_pooled_documents_discipline",
         ),
         CheckConstraint(
-            check_in("status", FREE_DOC_STATUSES),
-            name="ck_free_documents_status",
+            check_in("status", POOLED_DOC_STATUSES),
+            name="ck_pooled_documents_status",
         ),
         CheckConstraint(
-            f"primary_file_type IS NULL OR {check_in('primary_file_type', FREE_DOC_FILE_TYPES)}",
-            name="ck_free_documents_primary_file_type",
+            f"primary_file_type IS NULL OR {check_in('primary_file_type', POOLED_DOC_FILE_TYPES)}",
+            name="ck_pooled_documents_primary_file_type",
         ),
         # Unique container name per project (mirrors paid uq_documents_project_name).
         # Partial so a soft-deleted container's name can be reused.
         Index(
-            "uq_free_documents_project_name",
-            "free_project_id",
+            "uq_pooled_documents_project_name",
+            "pooled_project_id",
             "name",
             unique=True,
             postgresql_where=text("deleted_at IS NULL"),
         ),
-        Index("ix_free_documents_owner", "owner_user_id"),
-        Index("ix_free_documents_owner_status", "owner_user_id", "status"),
-        Index("ix_free_documents_free_project", "free_project_id"),
+        Index("ix_pooled_documents_owner", "owner_user_id"),
+        Index("ix_pooled_documents_owner_status", "owner_user_id", "status"),
+        Index("ix_pooled_documents_free_project", "pooled_project_id"),
         {"schema": "public"},
     )

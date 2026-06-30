@@ -1,7 +1,7 @@
 """Tests for the free-tier findings export (CSV / XLSX / JSON).
 
 Mirrors the paid `/projects/{id}/findings/export.*` surface over pooled
-`free_findings`, reusing the paid column set + row builder. Access is gated on
+`pooled_findings`, reusing the paid column set + row builder. Access is gated on
 project participation (owner or member); a non-participant gets 404.
 """
 
@@ -12,7 +12,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.conftest import FakeStorage
-from tests.test_free_projects import _create_project
+from tests.test_pooled_projects import _create_project
 from tests.test_free_viewer import _auth, _create_document, _free_token
 
 _XLSX_MAGIC = b"PK\x03\x04"  # xlsx is a zip
@@ -46,7 +46,7 @@ async def _seed_two_snags(client: AsyncClient, token: str, owner_id: str) -> str
     return pid
 
 
-async def test_free_findings_export_csv(
+async def test_pooled_findings_export_csv(
     free_tier_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
@@ -81,7 +81,7 @@ async def test_free_findings_export_csv(
     assert by_title["Plain crack"]["created_by"] == expected_name
 
 
-async def test_free_findings_export_xlsx(
+async def test_pooled_findings_export_xlsx(
     free_tier_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
@@ -98,7 +98,7 @@ async def test_free_findings_export_xlsx(
     assert resp.content[:4] == _XLSX_MAGIC
 
 
-async def test_free_findings_export_json(
+async def test_pooled_findings_export_json(
     free_tier_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
@@ -116,7 +116,7 @@ async def test_free_findings_export_json(
     assert {f["title"] for f in body["findings"]} == {"Assigned beam", "Plain crack"}
 
 
-async def test_free_findings_export_non_participant_404(
+async def test_pooled_findings_export_non_participant_404(
     free_tier_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:

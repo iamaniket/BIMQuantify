@@ -1,7 +1,7 @@
-"""Free-tier project surface — pooled `public.free_projects` + project-scoped views.
+"""Free-tier project surface — pooled `public.pooled_projects` + project-scoped views.
 
-The free wedge lets an org-less user group their pooled `free_documents` under a
-pooled `free_projects` row (still owner-keyed RLS, never an `org_<hex>` schema).
+The free wedge lets an org-less user group their pooled `pooled_documents` under a
+pooled `pooled_projects` row (still owner-keyed RLS, never an `org_<hex>` schema).
 The portal renders free projects through the SAME paid components, so every
 endpoint here returns the IDENTICAL paid response schema:
 
@@ -13,7 +13,7 @@ endpoint here returns the IDENTICAL paid response schema:
   GET    /free/projects/{id}/findings      → list[FindingRead]           (board feed)
 
 The container + file CRUD (`/free/projects/{id}/documents…`) lives in
-`free_documents.py`; the `/findings` + `/overview` views here read those tables.
+`pooled_documents.py`; the `/findings` + `/overview` views here read those tables.
   GET    /free/projects/{id}/overview   → ProjectOverviewRead         (findings-only completeness)
 
 Org-only overview blocks (dossier / deadlines / certificates / attachments /
@@ -61,10 +61,10 @@ from bimdossier_api.deadlines.completeness import (
 from bimdossier_api.free_limits import resolve_free_limits
 from bimdossier_api.i18n import coerce_locale
 from bimdossier_api.models.finding import FindingStatus
-from bimdossier_api.models.free_document import FreeDocument
-from bimdossier_api.models.free_finding import FreeFinding
-from bimdossier_api.models.free_project import FreeProject
-from bimdossier_api.models.free_project_member import FreeProjectMember
+from bimdossier_api.models.free_document import PooledDocument
+from bimdossier_api.models.free_finding import PooledFinding
+from bimdossier_api.models.free_project import PooledProject
+from bimdossier_api.models.free_project_member import PooledProjectMember
 from bimdossier_api.models.project_member import ProjectRole
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.finding import (
@@ -140,15 +140,15 @@ async def create_free_project(
     count = (
         await session.scalar(
             select(func.count())
-            .select_from(FreeProject)
-            .where(FreeProject.owner_user_id == user.id)
+            .select_from(PooledProject)
+            .where(PooledProject.owner_user_id == user.id)
         )
     ) or 0
     if count >= limits.max_projects:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="FREE_PROJECT_CAP_REACHED"
         )
-    project = FreeProject(
+    project = PooledProject(
         owner_user_id=user.id,
         name=payload.name,
         description=payload.description,
@@ -175,7 +175,7 @@ async def create_free_project(
 
 
 @router.get("/projects", response_model=list[ProjectRead])
-async def list_free_projects(
+async def list_pooled_projects(
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_free_session),
     storage: StorageBackend = Depends(get_storage),
@@ -185,7 +185,7 @@ async def list_free_projects(
     rows = (
         (
             await session.execute(
-                select(FreeProject).order_by(FreeProject.created_at.desc())
+                select(PooledProject).order_by(PooledProject.created_at.desc())
             )
         )
         .scalars()
@@ -196,8 +196,8 @@ async def list_free_projects(
         for pid, role in (
             await session.execute(
                 select(
-                    FreeProjectMember.free_project_id, FreeProjectMember.role
-                ).where(FreeProjectMember.user_id == user.id)
+                    PooledProjectMember.pooled_project_id, PooledProjectMember.role
+                ).where(PooledProjectMember.user_id == user.id)
             )
         ).all()
     }
@@ -264,8 +264,8 @@ async def delete_free_project(
         doc_ids = list(
             (
                 await session.execute(
-                    select(FreeDocument.id).where(
-                        FreeDocument.free_project_id == project_id
+                    select(PooledDocument.id).where(
+                        PooledDocument.pooled_project_id == project_id
                     )
                 )
             )
@@ -353,7 +353,7 @@ async def list_free_project_snags(
 
 
 @router.get("/projects/{project_id}/findings/export.csv", response_class=Response)
-async def export_free_findings_csv(
+async def export_pooled_findings_csv(
     project_id: UUID,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_async_session),
@@ -376,7 +376,7 @@ async def export_free_findings_csv(
 
 
 @router.get("/projects/{project_id}/findings/export.xlsx", response_class=Response)
-async def export_free_findings_xlsx(
+async def export_pooled_findings_xlsx(
     project_id: UUID,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_async_session),
@@ -404,7 +404,7 @@ async def export_free_findings_xlsx(
 
 
 @router.get("/projects/{project_id}/findings/export.json", response_model=FindingExport)
-async def export_free_findings_json(
+async def export_pooled_findings_json(
     project_id: UUID,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_async_session),
@@ -497,7 +497,7 @@ async def get_free_project_overview(
 # ---------------------------------------------------------------------------
 # Member management (control plane)
 #
-# These endpoints read/write `users` + `free_project_members`, which the free
+# These endpoints read/write `users` + `pooled_project_members`, which the free
 # (bim_app) session's RLS hides — so they run on the SUPERUSER session
 # (`get_async_session`, RLS-bypassing) with ownership validated by hand, exactly
 # like the org-invite + signup flows. Membership NEVER creates an
@@ -507,7 +507,7 @@ async def get_free_project_overview(
 # ---------------------------------------------------------------------------
 
 # Roles assignable to an invited member (owner is not assignable — there is
-# exactly one owner, derived from free_projects.owner_user_id).
+# exactly one owner, derived from pooled_projects.owner_user_id).
 _FREE_ASSIGNABLE_ROLES = (ProjectRole.editor, ProjectRole.viewer)
 
 
@@ -521,7 +521,7 @@ class FreeMemberRoleUpdate(BaseModel):
 
 
 @router.get("/projects/{project_id}/members", response_model=list[ProjectMemberRead])
-async def list_free_project_members(
+async def list_pooled_project_members(
     project_id: UUID,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_async_session),
@@ -543,10 +543,10 @@ async def list_free_project_members(
         )
     rows = (
         await session.execute(
-            select(FreeProjectMember, User)
-            .join(User, FreeProjectMember.user_id == User.id)
-            .where(FreeProjectMember.free_project_id == project_id)
-            .order_by(FreeProjectMember.created_at.asc())
+            select(PooledProjectMember, User)
+            .join(User, PooledProjectMember.user_id == User.id)
+            .where(PooledProjectMember.pooled_project_id == project_id)
+            .order_by(PooledProjectMember.created_at.asc())
         )
     ).all()
     for m, u in rows:
@@ -628,9 +628,9 @@ async def add_free_project_member(
         new_user = True
 
     already = await session.scalar(
-        select(FreeProjectMember.user_id).where(
-            FreeProjectMember.free_project_id == project_id,
-            FreeProjectMember.user_id == target.id,
+        select(PooledProjectMember.user_id).where(
+            PooledProjectMember.pooled_project_id == project_id,
+            PooledProjectMember.user_id == target.id,
         )
     )
     if already is not None:
@@ -638,8 +638,8 @@ async def add_free_project_member(
             status_code=status.HTTP_409_CONFLICT, detail="FREE_MEMBER_ALREADY_EXISTS"
         )
 
-    member = FreeProjectMember(
-        free_project_id=project_id,
+    member = PooledProjectMember(
+        pooled_project_id=project_id,
         user_id=target.id,
         role=payload.role.value,
         created_by_user_id=user.id,
@@ -682,9 +682,9 @@ async def update_free_project_member(
     if project.owner_user_id != user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="FREE_FORBIDDEN")
     member = await session.scalar(
-        select(FreeProjectMember).where(
-            FreeProjectMember.free_project_id == project_id,
-            FreeProjectMember.user_id == member_user_id,
+        select(PooledProjectMember).where(
+            PooledProjectMember.pooled_project_id == project_id,
+            PooledProjectMember.user_id == member_user_id,
         )
     )
     if member is None:
@@ -721,9 +721,9 @@ async def remove_free_project_member(
     if project.owner_user_id != user.id and member_user_id != user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="FREE_FORBIDDEN")
     member = await session.scalar(
-        select(FreeProjectMember).where(
-            FreeProjectMember.free_project_id == project_id,
-            FreeProjectMember.user_id == member_user_id,
+        select(PooledProjectMember).where(
+            PooledProjectMember.pooled_project_id == project_id,
+            PooledProjectMember.user_id == member_user_id,
         )
     )
     if member is None:
@@ -741,10 +741,10 @@ async def remove_free_project_member(
 
 async def _load_free_project_superuser_or_404(
     session: AsyncSession, project_id: UUID
-) -> FreeProject:
+) -> PooledProject:
     """Load a free project on the SUPERUSER session (RLS-bypassed). Ownership /
     participation is validated by the caller."""
-    project = await session.get(FreeProject, project_id)
+    project = await session.get(PooledProject, project_id)
     if project is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="FREE_PROJECT_NOT_FOUND"
@@ -753,15 +753,15 @@ async def _load_free_project_superuser_or_404(
 
 
 async def _assert_free_participant(
-    session: AsyncSession, project: FreeProject, user_id: UUID
+    session: AsyncSession, project: PooledProject, user_id: UUID
 ) -> None:
     """404 (hide existence) unless the caller owns the project or is a member."""
     if project.owner_user_id == user_id:
         return
     member = await session.scalar(
-        select(FreeProjectMember.user_id).where(
-            FreeProjectMember.free_project_id == project.id,
-            FreeProjectMember.user_id == user_id,
+        select(PooledProjectMember.user_id).where(
+            PooledProjectMember.pooled_project_id == project.id,
+            PooledProjectMember.user_id == user_id,
         )
     )
     if member is None:
@@ -772,14 +772,14 @@ async def _assert_free_participant(
 
 async def _load_free_project_or_404(
     session: AsyncSession, project_id: UUID, user_id: UUID
-) -> FreeProject:
+) -> PooledProject:
     """OWNER-only project load — used by the owner-only mutations (PATCH/DELETE
     project). The explicit owner filter is belt-and-suspenders over RLS so a
     member can never reach a project's mutation endpoints."""
     project = (
         await session.execute(
-            select(FreeProject).where(
-                FreeProject.id == project_id, FreeProject.owner_user_id == user_id
+            select(PooledProject).where(
+                PooledProject.id == project_id, PooledProject.owner_user_id == user_id
             )
         )
     ).scalar_one_or_none()
@@ -790,11 +790,11 @@ async def _load_free_project_or_404(
 
 async def _load_accessible_free_project_or_404(
     session: AsyncSession, project_id: UUID
-) -> FreeProject:
+) -> PooledProject:
     """PARTICIPANT project load — owner OR member (RLS-scoped). Used by the read
     endpoints (get, documents, snags, overview)."""
     project = (
-        await session.execute(select(FreeProject).where(FreeProject.id == project_id))
+        await session.execute(select(PooledProject).where(PooledProject.id == project_id))
     ).scalar_one_or_none()
     if project is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FREE_PROJECT_NOT_FOUND")
@@ -802,7 +802,7 @@ async def _load_accessible_free_project_or_404(
 
 
 async def _resolve_free_user_names(
-    session: AsyncSession, snags: list[FreeFinding]
+    session: AsyncSession, snags: list[PooledFinding]
 ) -> dict[UUID, str]:
     """Map participant user ids (assignees + creators across the snags) to a
     display name (full_name, else email). Runs on the SUPERUSER session so the
@@ -819,7 +819,7 @@ async def _resolve_free_user_names(
     return {uid: (full_name or email) for uid, full_name, email in rows}
 
 
-def _free_finding_element_reference(s: FreeFinding) -> str:
+def _free_finding_element_reference(s: PooledFinding) -> str:
     """Readable location string for the export — the IFC GlobalId, else the
     file (+ page for a PDF anchor), else blank. Mirrors the paid helper."""
     if s.linked_element_global_id:
@@ -831,7 +831,7 @@ def _free_finding_element_reference(s: FreeFinding) -> str:
     return ""
 
 
-def _free_finding_csv_row(s: FreeFinding, names: dict[UUID, str]) -> dict[str, str]:
+def _free_finding_csv_row(s: PooledFinding, names: dict[UUID, str]) -> dict[str, str]:
     """Build an export row from a free snag, reusing the paid column builder. The
     paid-only columns (bbl ref, photos, resolution evidence/note) are blank/zero."""
     return _csv_row_dict(
@@ -853,14 +853,14 @@ def _free_finding_csv_row(s: FreeFinding, names: dict[UUID, str]) -> dict[str, s
     )
 
 
-async def _load_project_snags(session: AsyncSession, project_id: UUID) -> list[FreeFinding]:
+async def _load_project_snags(session: AsyncSession, project_id: UUID) -> list[PooledFinding]:
     return list(
         (
             await session.execute(
-                select(FreeFinding)
-                .join(FreeDocument, FreeDocument.id == FreeFinding.free_document_id)
-                .where(FreeDocument.free_project_id == project_id)
-                .order_by(FreeFinding.created_at.asc())
+                select(PooledFinding)
+                .join(PooledDocument, PooledDocument.id == PooledFinding.pooled_document_id)
+                .where(PooledDocument.pooled_project_id == project_id)
+                .order_by(PooledFinding.created_at.asc())
             )
         )
         .scalars()
@@ -869,7 +869,7 @@ async def _load_project_snags(session: AsyncSession, project_id: UUID) -> list[F
 
 
 async def _free_project_to_read(
-    p: FreeProject,
+    p: PooledProject,
     my_role: ProjectRole = ProjectRole.owner,
     storage: StorageBackend | None = None,
 ) -> ProjectRead:
@@ -921,7 +921,7 @@ def _role_enum(role: str | None) -> ProjectRole:
 
 
 def _free_finding_to_finding(
-    s: FreeFinding, project_id: UUID, *, include_photos: bool = False
+    s: PooledFinding, project_id: UUID, *, include_photos: bool = False
 ) -> FindingRead:
     """Adapt a pooled free snag to the paid FindingRead shape so the kanban board,
     finding cards AND the viewer inspector render free snags unchanged — the single
@@ -950,8 +950,8 @@ def _free_finding_to_finding(
         borgingsmoment_id=None,
         # Version-independent identity = the container; linked_file_id pins the
         # version it was filed against (mirrors paid Finding).
-        linked_document_id=s.free_document_id,
-        linked_file_id=s.linked_file_id or s.free_document_id,
+        linked_document_id=s.pooled_document_id,
+        linked_file_id=s.linked_file_id or s.pooled_document_id,
         linked_element_global_id=s.linked_element_global_id,
         linked_file_type=s.linked_file_type,
         anchor_x=s.anchor_x,

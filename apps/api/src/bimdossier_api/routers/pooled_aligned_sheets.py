@@ -1,4 +1,4 @@
-"""Free-tier PDF↔IFC calibration CRUD — pooled `public.free_aligned_sheets`.
+"""Free-tier PDF↔IFC calibration CRUD — pooled `public.pooled_aligned_sheets`.
 
 Mirror of routers/aligned_sheets.py for the free tier: a 2-point similarity that
 overlays a free PDF drawing page on a free IFC model in the unified viewer, reusing
@@ -21,16 +21,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api.alignment.similarity import DegeneratePointsError, solve_similarity
 from bimdossier_api.auth.fastapi_users import current_verified_user
-from bimdossier_api.models.free_aligned_sheet import FreeAlignedSheet
-from bimdossier_api.models.free_document import FreeDocument
-from bimdossier_api.models.free_level import FreeLevel
-from bimdossier_api.models.free_project_file import FreeProjectFile
+from bimdossier_api.models.free_aligned_sheet import PooledAlignedSheet
+from bimdossier_api.models.free_document import PooledDocument
+from bimdossier_api.models.free_level import PooledLevel
+from bimdossier_api.models.free_project_file import PooledProjectFile
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.free_access import (
     assert_free_account_not_expired,
     require_free_tier_enabled,
 )
-from bimdossier_api.routers.free_projects import (
+from bimdossier_api.routers.pooled_projects import (
     _load_accessible_free_project_or_404,
     _load_free_project_or_404,
 )
@@ -44,7 +44,7 @@ router = APIRouter(
 )
 
 
-class FreeAlignedSheetCreate(BaseModel):
+class PooledAlignedSheetCreate(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
     document_id: UUID  # the 3D (IFC) container supplying world coords
@@ -53,14 +53,14 @@ class FreeAlignedSheetCreate(BaseModel):
     page_number: int = Field(default=1, ge=1)
 
 
-class FreeAlignedSheetUpdate(BaseModel):
+class PooledAlignedSheetUpdate(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
     level_id: UUID | None = None
     page_number: int | None = Field(default=None, ge=1)
 
 
-class FreeAlignedSheetRead(BaseModel):
+class PooledAlignedSheetRead(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
     id: UUID
@@ -83,13 +83,13 @@ class FreeAlignedSheetRead(BaseModel):
     updated_at: datetime
 
 
-def _serialize(s: FreeAlignedSheet, *, is_stale: bool = False) -> FreeAlignedSheetRead:
-    return FreeAlignedSheetRead(
+def _serialize(s: PooledAlignedSheet, *, is_stale: bool = False) -> PooledAlignedSheetRead:
+    return PooledAlignedSheetRead(
         id=s.id,
-        project_id=s.free_project_id,
-        document_id=s.free_document_id,
-        level_id=s.free_level_id,
-        pdf_document_id=s.free_pdf_document_id,
+        project_id=s.pooled_project_id,
+        document_id=s.pooled_document_id,
+        level_id=s.pooled_level_id,
+        pdf_document_id=s.pooled_pdf_document_id,
         page_number=s.page_number,
         page_index=s.page_number - 1,
         calibrated_pdf_file_id=s.calibrated_pdf_file_id,
@@ -108,13 +108,13 @@ def _serialize(s: FreeAlignedSheet, *, is_stale: bool = False) -> FreeAlignedShe
 
 async def _load_sheet_or_404(
     session: AsyncSession, project_id: UUID, sheet_id: UUID
-) -> FreeAlignedSheet:
+) -> PooledAlignedSheet:
     sheet = (
         await session.execute(
-            select(FreeAlignedSheet).where(
-                FreeAlignedSheet.id == sheet_id,
-                FreeAlignedSheet.free_project_id == project_id,
-                FreeAlignedSheet.deleted_at.is_(None),
+            select(PooledAlignedSheet).where(
+                PooledAlignedSheet.id == sheet_id,
+                PooledAlignedSheet.pooled_project_id == project_id,
+                PooledAlignedSheet.deleted_at.is_(None),
             )
         )
     ).scalar_one_or_none()
@@ -127,38 +127,38 @@ async def _load_sheet_or_404(
 
 async def _pdf_head_file_id(session: AsyncSession, pdf_document_id: UUID) -> UUID | None:
     """Current head version of a free PDF container (head_file_id, else newest ready)."""
-    doc = await session.get(FreeDocument, pdf_document_id)
+    doc = await session.get(PooledDocument, pdf_document_id)
     if doc is not None and doc.head_file_id is not None:
         return doc.head_file_id
     return await session.scalar(
-        select(FreeProjectFile.id)
+        select(PooledProjectFile.id)
         .where(
-            FreeProjectFile.free_document_id == pdf_document_id,
-            FreeProjectFile.status == "ready",
-            FreeProjectFile.deleted_at.is_(None),
+            PooledProjectFile.pooled_document_id == pdf_document_id,
+            PooledProjectFile.status == "ready",
+            PooledProjectFile.deleted_at.is_(None),
         )
-        .order_by(FreeProjectFile.version_number.desc())
+        .order_by(PooledProjectFile.version_number.desc())
         .limit(1)
     )
 
 
-async def _is_stale(session: AsyncSession, sheet: FreeAlignedSheet) -> bool:
+async def _is_stale(session: AsyncSession, sheet: PooledAlignedSheet) -> bool:
     """True when calibration was solved on a PDF version that's no longer head."""
     if sheet.calibrated_pdf_file_id is None:
         return False
-    head = await _pdf_head_file_id(session, sheet.free_pdf_document_id)
+    head = await _pdf_head_file_id(session, sheet.pooled_pdf_document_id)
     return head is not None and sheet.calibrated_pdf_file_id != head
 
 
 async def _doc_in_project(
     session: AsyncSession, document_id: UUID, project_id: UUID, *, pdf: bool
-) -> FreeDocument | None:
+) -> PooledDocument | None:
     doc = (
         await session.execute(
-            select(FreeDocument).where(
-                FreeDocument.id == document_id,
-                FreeDocument.free_project_id == project_id,
-                FreeDocument.deleted_at.is_(None),
+            select(PooledDocument).where(
+                PooledDocument.id == document_id,
+                PooledDocument.pooled_project_id == project_id,
+                PooledDocument.deleted_at.is_(None),
             )
         )
     ).scalar_one_or_none()
@@ -169,13 +169,13 @@ async def _doc_in_project(
     return doc
 
 
-@router.post("", response_model=FreeAlignedSheetRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=PooledAlignedSheetRead, status_code=status.HTTP_201_CREATED)
 async def create_free_aligned_sheet(
     project_id: UUID,
-    payload: FreeAlignedSheetCreate,
+    payload: PooledAlignedSheetCreate,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_free_session),
-) -> FreeAlignedSheetRead:
+) -> PooledAlignedSheetRead:
     project = await _load_free_project_or_404(session, project_id, user.id)  # owner-only
     await assert_free_account_not_expired(user)
     # The PDF document must exist in the project and actually be a PDF.
@@ -191,21 +191,21 @@ async def create_free_aligned_sheet(
         )
     # The level must exist in the project.
     level = await session.scalar(
-        select(FreeLevel.id).where(
-            FreeLevel.id == payload.level_id,
-            FreeLevel.free_project_id == project.id,
-            FreeLevel.deleted_at.is_(None),
+        select(PooledLevel.id).where(
+            PooledLevel.id == payload.level_id,
+            PooledLevel.pooled_project_id == project.id,
+            PooledLevel.deleted_at.is_(None),
         )
     )
     if level is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="LEVEL_NOT_FOUND")
 
-    sheet = FreeAlignedSheet(
+    sheet = PooledAlignedSheet(
         owner_user_id=project.owner_user_id,
-        free_project_id=project.id,
-        free_document_id=payload.document_id,
-        free_level_id=payload.level_id,
-        free_pdf_document_id=payload.pdf_document_id,
+        pooled_project_id=project.id,
+        pooled_document_id=payload.document_id,
+        pooled_level_id=payload.level_id,
+        pooled_pdf_document_id=payload.pdf_document_id,
         page_number=payload.page_number,
         created_by_user_id=user.id,
     )
@@ -219,22 +219,22 @@ async def create_free_aligned_sheet(
     return _serialize(sheet, is_stale=False)
 
 
-@router.get("", response_model=list[FreeAlignedSheetRead])
-async def list_free_aligned_sheets(
+@router.get("", response_model=list[PooledAlignedSheetRead])
+async def list_pooled_aligned_sheets(
     project_id: UUID,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_free_session),
-) -> list[FreeAlignedSheetRead]:
+) -> list[PooledAlignedSheetRead]:
     await _load_accessible_free_project_or_404(session, project_id)  # owner-or-member
     rows = (
         (
             await session.execute(
-                select(FreeAlignedSheet)
+                select(PooledAlignedSheet)
                 .where(
-                    FreeAlignedSheet.free_project_id == project_id,
-                    FreeAlignedSheet.deleted_at.is_(None),
+                    PooledAlignedSheet.pooled_project_id == project_id,
+                    PooledAlignedSheet.deleted_at.is_(None),
                 )
-                .order_by(FreeAlignedSheet.created_at.asc())
+                .order_by(PooledAlignedSheet.created_at.asc())
             )
         )
         .scalars()
@@ -243,14 +243,14 @@ async def list_free_aligned_sheets(
     return [_serialize(s, is_stale=await _is_stale(session, s)) for s in rows]
 
 
-@router.post("/{sheet_id}/calibrate", response_model=FreeAlignedSheetRead)
+@router.post("/{sheet_id}/calibrate", response_model=PooledAlignedSheetRead)
 async def calibrate_free_aligned_sheet(
     project_id: UUID,
     sheet_id: UUID,
     payload: CalibrateRequest,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_free_session),
-) -> FreeAlignedSheetRead:
+) -> PooledAlignedSheetRead:
     await _load_free_project_or_404(session, project_id, user.id)  # owner-only
     await assert_free_account_not_expired(user)
     sheet = await _load_sheet_or_404(session, project_id, sheet_id)
@@ -285,14 +285,14 @@ async def calibrate_free_aligned_sheet(
     return _serialize(sheet, is_stale=await _is_stale(session, sheet))
 
 
-@router.patch("/{sheet_id}", response_model=FreeAlignedSheetRead)
+@router.patch("/{sheet_id}", response_model=PooledAlignedSheetRead)
 async def update_free_aligned_sheet(
     project_id: UUID,
     sheet_id: UUID,
-    payload: FreeAlignedSheetUpdate,
+    payload: PooledAlignedSheetUpdate,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_free_session),
-) -> FreeAlignedSheetRead:
+) -> PooledAlignedSheetRead:
     """Re-pin a sheet to a different level / page (owner-only)."""
     await _load_free_project_or_404(session, project_id, user.id)  # owner-only
     await assert_free_account_not_expired(user)
@@ -300,15 +300,15 @@ async def update_free_aligned_sheet(
     updates = payload.model_dump(exclude_unset=True)
     if updates.get("level_id") is not None:
         level = await session.scalar(
-            select(FreeLevel.id).where(
-                FreeLevel.id == updates["level_id"],
-                FreeLevel.free_project_id == project_id,
-                FreeLevel.deleted_at.is_(None),
+            select(PooledLevel.id).where(
+                PooledLevel.id == updates["level_id"],
+                PooledLevel.pooled_project_id == project_id,
+                PooledLevel.deleted_at.is_(None),
             )
         )
         if level is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="LEVEL_NOT_FOUND")
-        sheet.free_level_id = updates["level_id"]
+        sheet.pooled_level_id = updates["level_id"]
     if updates.get("page_number") is not None:
         sheet.page_number = updates["page_number"]
     try:

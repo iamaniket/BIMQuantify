@@ -1,7 +1,7 @@
 """Emission + Redis publish for free-tier notifications (pooled, per-recipient).
 
 Mirrors `notifications/service.py` on the free side. The free extraction callback
-(`routers/free_documents.py::free_extraction_callback`) calls
+(`routers/pooled_documents.py::free_extraction_callback`) calls
 `emit_free_job_notification` POST-commit so a slow Redis/notification step never
 extends the row lock or fails the worker callback.
 
@@ -22,8 +22,8 @@ from bimdossier_api.i18n import t
 from bimdossier_api.i18n.resolution import resolve_user_locale
 from bimdossier_api.jobs.priority import FREE_TIER_SENTINEL_ORG
 from bimdossier_api.models.free_notification import (
-    FreeNotification,
-    FreeNotificationUserState,
+    PooledNotification,
+    PooledNotificationUserState,
 )
 from bimdossier_api.models.user import User
 
@@ -48,23 +48,23 @@ async def _upsert_free_notification(
     event_type: str,
     title: str,
     body: str,
-    free_project_id: UUID | None,
-    free_document_id: UUID | None,
-    free_file_id: UUID | None,
-) -> FreeNotification:
+    pooled_project_id: UUID | None,
+    pooled_document_id: UUID | None,
+    pooled_file_id: UUID | None,
+) -> PooledNotification:
     """Create or resurface a free notification for (recipient, file).
 
     On retry-extraction the existing row is updated in place and its read/dismiss
     state cleared so it resurfaces as unread (mirrors paid `upsert_job_notification`).
     """
-    existing: FreeNotification | None = None
-    if free_file_id is not None:
+    existing: PooledNotification | None = None
+    if pooled_file_id is not None:
         existing = (
             await session.execute(
-                select(FreeNotification)
+                select(PooledNotification)
                 .where(
-                    FreeNotification.recipient_user_id == recipient_user_id,
-                    FreeNotification.free_file_id == free_file_id,
+                    PooledNotification.recipient_user_id == recipient_user_id,
+                    PooledNotification.pooled_file_id == pooled_file_id,
                 )
                 .with_for_update()
             )
@@ -74,33 +74,33 @@ async def _upsert_free_notification(
         existing.event_type = event_type
         existing.title = title
         existing.body = body
-        existing.free_project_id = free_project_id
-        existing.free_document_id = free_document_id
+        existing.pooled_project_id = pooled_project_id
+        existing.pooled_document_id = pooled_document_id
         existing.created_at = func.now()
         await session.execute(
-            delete(FreeNotificationUserState).where(
-                FreeNotificationUserState.notification_id == existing.id
+            delete(PooledNotificationUserState).where(
+                PooledNotificationUserState.notification_id == existing.id
             )
         )
         await session.flush()
         await session.refresh(existing)
         return existing
 
-    notification = FreeNotification(
+    notification = PooledNotification(
         recipient_user_id=recipient_user_id,
         event_type=event_type,
         title=title,
         body=body,
-        free_project_id=free_project_id,
-        free_document_id=free_document_id,
-        free_file_id=free_file_id,
+        pooled_project_id=pooled_project_id,
+        pooled_document_id=pooled_document_id,
+        pooled_file_id=pooled_file_id,
     )
     session.add(notification)
     await session.flush()
     return notification
 
 
-async def publish_free_notification(notification: FreeNotification) -> None:
+async def publish_free_notification(notification: PooledNotification) -> None:
     """Publish a free notification on its recipient's Redis channel.
 
     The JSON shape matches the paid notification payload (so the portal's shared
@@ -115,9 +115,9 @@ async def publish_free_notification(notification: FreeNotification) -> None:
             "organization_id": str(FREE_TIER_SENTINEL_ORG),
             "recipient_user_id": str(notification.recipient_user_id),
             "project_id": (
-                str(notification.free_project_id) if notification.free_project_id else None
+                str(notification.pooled_project_id) if notification.pooled_project_id else None
             ),
-            "file_id": (str(notification.free_file_id) if notification.free_file_id else None),
+            "file_id": (str(notification.pooled_file_id) if notification.pooled_file_id else None),
             "job_id": None,
             "event_type": notification.event_type,
             "title": notification.title,
@@ -157,7 +157,7 @@ async def emit_free_job_notification(
         return
     try:
         sm = get_session_maker()
-        created: list[FreeNotification] = []
+        created: list[PooledNotification] = []
         async with sm() as session, session.begin():
             # ≤4 recipients (owner + up to 3 members) — a per-id load is cheap and
             # avoids a typed-column .in_() over the User PK.
@@ -184,9 +184,9 @@ async def emit_free_job_notification(
                         event_type=event_type,
                         title=title,
                         body=body,
-                        free_project_id=project_id,
-                        free_document_id=document_id,
-                        free_file_id=file_id,
+                        pooled_project_id=project_id,
+                        pooled_document_id=document_id,
+                        pooled_file_id=file_id,
                     )
                 )
         # Publish AFTER commit so the rows are visible to readers.

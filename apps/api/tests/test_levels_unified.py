@@ -4,7 +4,7 @@ The same `/projects/{id}/levels` route now serves BOTH tiers (the client no long
 picks `/free/*` vs `/projects/*`):
 
 - a free (org-less) user hitting the canonical `/projects/{id}/levels` gets the
-  pooled FreeLevel path, returning the SAME `LevelRead` shape as paid;
+  pooled PooledLevel path, returning the SAME `LevelRead` shape as paid;
 - the legacy `/free/projects/{id}/levels` alias still works (backward compat for
   un-migrated clients) and is byte-identical;
 - a paid user is unchanged.
@@ -72,7 +72,7 @@ async def test_free_user_levels_full_crud_via_unified_path(
     assert (await client.get(f"/projects/{pid}/levels", headers=_auth(token))).json() == []
 
 
-async def test_free_levels_alias_still_works(
+async def test_pooled_levels_alias_still_works(
     free_tier_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:

@@ -4,10 +4,10 @@ Creates the entire `public` schema via `Base.metadata.create_all` over the live
 master-side models — anything the models declare lands here, so the schema follows
 the models with no per-column DDL. This covers both the identity layer (users,
 organizations, organization_members, access_requests, blog_posts, blog_post_tags)
-AND the pooled free-tier surface (free_projects, free_documents, free_project_files,
-free_project_members, free_findings, free_levels, free_aligned_sheets,
-free_notifications, free_notification_user_state, free_attachments,
-free_finding_attachments). Tenant tables (projects, jobs, audit_log, etc.) are NOT
+AND the pooled free-tier surface (pooled_projects, pooled_documents, pooled_project_files,
+pooled_project_members, pooled_findings, pooled_levels, pooled_aligned_sheets,
+pooled_notifications, pooled_notification_user_state, pooled_attachments,
+pooled_finding_attachments). Tenant tables (projects, jobs, audit_log, etc.) are NOT
 created here — they live in per-org schemas managed by the tenant chain.
 
 The handful of things create_all cannot express are applied in upgrade() below:
@@ -18,7 +18,7 @@ policies). The owner-only `enable_free_tier_rls_statements` is deliberately NOT
 used — the final state is the member-aware policy set.
 
 This baseline folds the former free-tier delta chain (0002_free_tier …
-0013_free_attachments) back into one revision; the schema it produces is identical.
+0013_pooled_attachments) back into one revision; the schema it produces is identical.
 
 Revision ID: 0001_master
 Revises:
@@ -39,13 +39,13 @@ depends_on: str | tuple[str, ...] | None = None
 def upgrade() -> None:
     from bimdossier_api._rls_sql import (
         create_app_role_statements,
-        enable_free_aligned_sheet_rls_statements,
-        enable_free_attachment_rls_statements,
-        enable_free_level_rls_statements,
-        enable_free_member_rls_statements,
-        enable_free_notification_rls_statements,
+        enable_pooled_aligned_sheet_rls_statements,
+        enable_pooled_attachment_rls_statements,
+        enable_pooled_level_rls_statements,
+        enable_pooled_member_rls_statements,
+        enable_pooled_notification_rls_statements,
         enable_rls_statements,
-        grant_free_tables_to_app_role,
+        grant_pooled_tables_to_app_role,
     )
     from bimdossier_api.db import Base, is_master_table
 
@@ -64,17 +64,17 @@ def upgrade() -> None:
         ChecklistItemResult,
         Deadline,
         Document,
-        FreeAlignedSheet,
-        FreeAttachment,
-        FreeDocument,
-        FreeFinding,
-        FreeFindingAttachment,
-        FreeLevel,
-        FreeNotification,
-        FreeNotificationUserState,
-        FreeProject,
-        FreeProjectFile,
-        FreeProjectMember,
+        PooledAlignedSheet,
+        PooledAttachment,
+        PooledDocument,
+        PooledFinding,
+        PooledFindingAttachment,
+        PooledLevel,
+        PooledNotification,
+        PooledNotificationUserState,
+        PooledProject,
+        PooledProjectFile,
+        PooledProjectMember,
         Job,
         Notification,
         NotificationUserState,
@@ -116,27 +116,27 @@ def upgrade() -> None:
     # grants; then the member-aware owner-OR-member RLS (which creates the
     # SECURITY DEFINER helpers), the level / aligned-sheet / attachment policies
     # that reuse those helpers, and the recipient-scoped notification policies.
-    for stmt in grant_free_tables_to_app_role():
+    for stmt in grant_pooled_tables_to_app_role():
         op.execute(stmt)
-    for stmt in enable_free_member_rls_statements():
+    for stmt in enable_pooled_member_rls_statements():
         op.execute(stmt)
-    for stmt in enable_free_level_rls_statements():
+    for stmt in enable_pooled_level_rls_statements():
         op.execute(stmt)
-    for stmt in enable_free_aligned_sheet_rls_statements():
+    for stmt in enable_pooled_aligned_sheet_rls_statements():
         op.execute(stmt)
-    for stmt in enable_free_notification_rls_statements():
+    for stmt in enable_pooled_notification_rls_statements():
         op.execute(stmt)
-    for stmt in enable_free_attachment_rls_statements():
+    for stmt in enable_pooled_attachment_rls_statements():
         op.execute(stmt)
 
 
 def downgrade() -> None:
     from bimdossier_api._rls_sql import (
-        disable_free_aligned_sheet_rls_statements,
-        disable_free_attachment_rls_statements,
-        disable_free_level_rls_statements,
-        disable_free_member_rls_statements,
-        disable_free_notification_rls_statements,
+        disable_pooled_aligned_sheet_rls_statements,
+        disable_pooled_attachment_rls_statements,
+        disable_pooled_level_rls_statements,
+        disable_pooled_member_rls_statements,
+        disable_pooled_notification_rls_statements,
         disable_rls_statements,
     )
     from bimdossier_api.db import Base, is_master_table
@@ -151,17 +151,17 @@ def downgrade() -> None:
         ChecklistItemResult,
         Deadline,
         Document,
-        FreeAlignedSheet,
-        FreeAttachment,
-        FreeDocument,
-        FreeFinding,
-        FreeFindingAttachment,
-        FreeLevel,
-        FreeNotification,
-        FreeNotificationUserState,
-        FreeProject,
-        FreeProjectFile,
-        FreeProjectMember,
+        PooledAlignedSheet,
+        PooledAttachment,
+        PooledDocument,
+        PooledFinding,
+        PooledFindingAttachment,
+        PooledLevel,
+        PooledNotification,
+        PooledNotificationUserState,
+        PooledProject,
+        PooledProjectFile,
+        PooledProjectMember,
         Job,
         Notification,
         NotificationUserState,
@@ -178,15 +178,15 @@ def downgrade() -> None:
     bind = op.get_bind()
     # Reverse the free-tier setup first (policies + SECURITY DEFINER helpers),
     # then the identity RLS, then drop every master table.
-    for stmt in disable_free_attachment_rls_statements():
+    for stmt in disable_pooled_attachment_rls_statements():
         op.execute(stmt)
-    for stmt in disable_free_notification_rls_statements():
+    for stmt in disable_pooled_notification_rls_statements():
         op.execute(stmt)
-    for stmt in disable_free_aligned_sheet_rls_statements():
+    for stmt in disable_pooled_aligned_sheet_rls_statements():
         op.execute(stmt)
-    for stmt in disable_free_level_rls_statements():
+    for stmt in disable_pooled_level_rls_statements():
         op.execute(stmt)
-    for stmt in disable_free_member_rls_statements():
+    for stmt in disable_pooled_member_rls_statements():
         op.execute(stmt)
     for stmt in disable_rls_statements():
         op.execute(stmt)

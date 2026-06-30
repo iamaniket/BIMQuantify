@@ -4,10 +4,10 @@ Covers GET /admin/users/free (list + usage), GET /admin/users/free/{id}
 (drill-down), and the account-recovery endpoints
 (/admin/users/{id}/send-password-reset, /resend-activation).
 
-Free content is the paid-mirror stack: FreeProject -> FreeDocument (container)
--> FreeProjectFile (versions), plus FreeFinding. Usage mirrors the authoritative
-quota in routers/free_documents.py (storage = active file bytes; containers =
-active free_documents). Rows are inserted directly via the `session` fixture
+Free content is the paid-mirror stack: PooledProject -> PooledDocument (container)
+-> PooledProjectFile (versions), plus PooledFinding. Usage mirrors the authoritative
+quota in routers/pooled_documents.py (storage = active file bytes; containers =
+active pooled_documents). Rows are inserted directly via the `session` fixture
 (the master, RLS-bypassing session) — the shortcut the other admin tests use.
 """
 
@@ -21,11 +21,11 @@ from fastapi_users.password import PasswordHelper
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimdossier_api.models.free_document import FreeDocument
-from bimdossier_api.models.free_finding import FreeFinding
-from bimdossier_api.models.free_project import FreeProject
-from bimdossier_api.models.free_project_file import FreeProjectFile
-from bimdossier_api.models.free_project_member import FreeProjectMember
+from bimdossier_api.models.free_document import PooledDocument
+from bimdossier_api.models.free_finding import PooledFinding
+from bimdossier_api.models.free_project import PooledProject
+from bimdossier_api.models.free_project_file import PooledProjectFile
+from bimdossier_api.models.free_project_member import PooledProjectMember
 from bimdossier_api.models.organization import Organization, OrganizationStatus
 from bimdossier_api.models.organization_member import (
     OrganizationMember,
@@ -102,8 +102,8 @@ async def _add_org_membership(
     return org
 
 
-async def _make_free_project(session: AsyncSession, owner: User, name: str) -> FreeProject:
-    project = FreeProject(owner_user_id=owner.id, name=name)
+async def _make_free_project(session: AsyncSession, owner: User, name: str) -> PooledProject:
+    project = PooledProject(owner_user_id=owner.id, name=name)
     session.add(project)
     await session.commit()
     await session.refresh(project)
@@ -111,9 +111,9 @@ async def _make_free_project(session: AsyncSession, owner: User, name: str) -> F
 
 
 async def _make_free_document(
-    session: AsyncSession, owner: User, project: FreeProject, name: str = "Container"
-) -> FreeDocument:
-    doc = FreeDocument(owner_user_id=owner.id, free_project_id=project.id, name=name)
+    session: AsyncSession, owner: User, project: PooledProject, name: str = "Container"
+) -> PooledDocument:
+    doc = PooledDocument(owner_user_id=owner.id, pooled_project_id=project.id, name=name)
     session.add(doc)
     await session.commit()
     await session.refresh(doc)
@@ -123,15 +123,15 @@ async def _make_free_document(
 async def _make_free_file(
     session: AsyncSession,
     owner: User,
-    document: FreeDocument,
+    document: PooledDocument,
     *,
     size_bytes: int,
     version_number: int = 1,
     deleted: bool = False,
-) -> FreeProjectFile:
-    f = FreeProjectFile(
+) -> PooledProjectFile:
+    f = PooledProjectFile(
         owner_user_id=owner.id,
-        free_document_id=document.id,
+        pooled_document_id=document.id,
         version_number=version_number,
         storage_key=f"free/{owner.id}/{document.id}/{uuid4()}.ifc",
         original_filename="model.ifc",
@@ -146,19 +146,19 @@ async def _make_free_file(
 
 
 async def _make_free_finding(
-    session: AsyncSession, owner: User, doc: FreeDocument, title: str
-) -> FreeFinding:
-    snag = FreeFinding(free_document_id=doc.id, owner_user_id=owner.id, title=title)
+    session: AsyncSession, owner: User, doc: PooledDocument, title: str
+) -> PooledFinding:
+    snag = PooledFinding(pooled_document_id=doc.id, owner_user_id=owner.id, title=title)
     session.add(snag)
     await session.commit()
     return snag
 
 
 async def _add_free_member(
-    session: AsyncSession, project: FreeProject, user: User, role: str = "viewer"
+    session: AsyncSession, project: PooledProject, user: User, role: str = "viewer"
 ) -> None:
     session.add(
-        FreeProjectMember(free_project_id=project.id, user_id=user.id, role=role)
+        PooledProjectMember(pooled_project_id=project.id, user_id=user.id, role=role)
     )
     await session.commit()
 

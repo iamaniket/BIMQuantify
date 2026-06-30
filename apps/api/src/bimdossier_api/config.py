@@ -291,11 +291,11 @@ class Settings(BaseSettings):
     free_upload_max_bytes: int = Field(
         default=250 * 1024 * 1024, alias="FREE_UPLOAD_MAX_BYTES"
     )
-    # Per-user CONTAINER cap (free_documents) — a coarse backstop alongside the
+    # Per-user CONTAINER cap (pooled_documents) — a coarse backstop alongside the
     # aggregate storage cap. (Each container holds versioned model files.)
     # Env alias kept as the legacy FREE_MAX_MODELS_PER_USER for back-compat.
     free_max_documents_per_user: int = Field(default=5, alias="FREE_MAX_MODELS_PER_USER")
-    # Per-user PROJECT cap (owned free_projects; shared projects don't count). The
+    # Per-user PROJECT cap (owned pooled_projects; shared projects don't count). The
     # "multiple projects" allowance for a free user — tunable so the cohort limit
     # can be widened/narrowed without a code change. Enforced at project-create.
     free_max_projects_per_user: int = Field(
@@ -338,7 +338,7 @@ class Settings(BaseSettings):
     )
     # A free container untouched (no viewer-bundle GET) for this many days is reaped.
     # Env alias kept as the legacy FREE_MODEL_IDLE_TTL_DAYS for back-compat.
-    free_document_idle_ttl_days: int = Field(default=30, alias="FREE_MODEL_IDLE_TTL_DAYS")
+    pooled_document_idle_ttl_days: int = Field(default=30, alias="FREE_MODEL_IDLE_TTL_DAYS")
     # How often the idle-free-model reaper runs (the TTL is in days, so a long
     # interval is fine). 0 disables it.
     free_idle_sweep_interval_minutes: int = Field(
