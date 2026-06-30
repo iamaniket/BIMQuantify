@@ -53,7 +53,7 @@ import { useDrawingMetadata } from '@/features/viewer/2d/drawing/useDrawingMetad
 import { useEntityMarkers3D } from '@/features/viewer/3d/useEntityMarkers3D';
 import { useFederatedEntityMarkers3D } from '@/features/viewer/3d/useFederatedEntityMarkers3D';
 import { useEntityMarkers2D } from '@/features/viewer/2d/useEntityMarkers2D';
-import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
+import { useFlattenedPages } from '@/lib/query/useAuthInfiniteQuery';
 import { useFileFindings } from '@/features/findings/useFindings';
 import { buildGlobalIdToLocalId } from '@/features/viewer/shared/buildGlobalIdToLocalId';
 import { SidePanel } from '@/components/shared/viewer/shared/SidePanel';
@@ -69,12 +69,15 @@ import { useFindingPinVisibility } from '@/features/viewer/shared/useFindingPinV
 import {
   setViewerTarget,
   useViewerSelectionHydrated,
+  useViewerTarget,
 } from '@/features/viewer/shared/viewerSelectionStore';
+import { LevelDrawingPane } from '@/features/viewer/2d/LevelDrawingPane';
 import { useViewerBridge } from '@/features/viewer/3d/useViewerBridge';
 import { useSpaceVisibility } from '@/features/viewer/3d/spaces';
 import { usePerformanceCulling } from '@/features/viewer/3d/performanceCulling';
 import { useDisplayMode } from '@/features/viewer/3d/displayMode';
 import { useViewerMode } from '@/features/viewer/3d/useViewerMode';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 import type { Finding } from '@/lib/api/schemas';
@@ -101,6 +104,10 @@ const DocumentViewer = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
 );
 
+// BCF is an org-only surface (its `/projects/<id>/bcf-topics` endpoint requires an
+// active org). Free (org-less) users get the same viewer minus that one rail tab.
+const FREE_HIDDEN_PANELS: PanelId[] = ['bcf'];
+
 export default function ViewerPage(): JSX.Element {
   const params = useParams<{ projectId: string }>();
   const { projectId } = params;
@@ -109,6 +116,9 @@ export default function ViewerPage(): JSX.Element {
   // until the store rehydrates so a refresh restores the exact scene.
   const hydrated = useViewerSelectionHydrated();
   const scope = useViewerScope(projectId, hydrated);
+  // Persona-A drawings mode: a model-less, by-Level PDF browser. Renders its own
+  // self-contained pane and skips the IFC/PDF scope machinery + chrome.
+  const isDrawingsMode = useViewerTarget(projectId).kind === 'drawings';
   // `modelId` / `fileId` are the ACTIVE model's API ids (single: the target
   // file; multi: the selected/primary model). Aliased so the existing panel
   // wiring below reads them unchanged.
@@ -457,8 +467,11 @@ export default function ViewerPage(): JSX.Element {
   // Split / 2D modes (and the view switcher) require a floor-plan artifact.
   const hasFloorPlans = Boolean(isIfc && scope.planFloorPlansUrl);
 
-  // "Align" (PDF↔model calibration) is offered to any editor on an IFC model.
-  // CalibrationPane guides the user to upload a PDF when the project has none.
+  // "Align" (PDF↔model calibration) is offered on an IFC model to anyone who can
+  // edit the project's documents — free + paid alike (free now has PDF upload +
+  // pooled aligned sheets). For free, `can('document','update')` resolves to
+  // owner-only, exactly matching the owner-gated free aligned-sheet endpoints.
+  const { isPooled: isFree } = useIsPooledContext();
   const perms = useProjectPermissions(projectId);
   const canCalibrate = isIfc && !perms.isLoading && perms.can('document', 'update');
 
@@ -537,7 +550,7 @@ export default function ViewerPage(): JSX.Element {
   // as the page mounts — the only thing we wait for is the bundle URL, and
   // even that is usually prefetched on hover. The canvas area shows its own
   // skeleton/progress UI underneath while the file loads.
-  const showChrome = error === null;
+  const showChrome = error === null && !isDrawingsMode;
   const showToolbarPlaceholder = showChrome && !ifcShellReady && !pdfShellReady && !isDrawing;
 
   // GlobalId → ItemId for the open model, so a marker click can select the
@@ -619,7 +632,7 @@ export default function ViewerPage(): JSX.Element {
   // Deep-link: open a finding's detail when arriving via `?finding=<id>` (the
   // "View in model" link from /findings → Locations). The finding is anchored to
   // this file, so it's already in the file-scoped query the markers fetch.
-  const fileFindings = flattenPages(useFileFindings(projectId, fileId).data);
+  const fileFindings = useFlattenedPages(useFileFindings(projectId, fileId).data);
   const deepLinkOpenedRef = useRef(false);
   useEffect(() => { deepLinkOpenedRef.current = false; }, [fileId, deepLinkFindingId]);
   useEffect(() => {
@@ -803,7 +816,10 @@ export default function ViewerPage(): JSX.Element {
   });
 
   let canvas: JSX.Element | null = null;
-  if (error !== null) {
+  if (isDrawingsMode) {
+    // Persona A: a PDF-only project browsed by project Level (no 3D model).
+    canvas = <LevelDrawingPane projectId={projectId} />;
+  } else if (error !== null) {
     canvas = (
       <ErrorBanner message={error} tone="soft" className="m-6 text-body2" />
     );
@@ -1013,7 +1029,7 @@ export default function ViewerPage(): JSX.Element {
                   isLoading={isLoadingDrawingMetadata}
                 />
               ) : undefined}
-              bcfContent={isIfc ? (
+              bcfContent={!isFree && isIfc ? (
                 <BcfPanel
                   projectId={projectId}
                   controller={bcf3dController}
@@ -1125,16 +1141,18 @@ export default function ViewerPage(): JSX.Element {
           </div>
         ) : null}
       </div>
-      <StatusBar
-        format={format}
-        metadata={metadata}
-        drawingMetadata={drawingMetadata}
-        viewerReady={viewerReady}
-        currentPage={pdfCurrentPage}
-        numPages={pdfNumPages}
-        projectId={projectId}
-        fileId={fileId}
-      />
+      {!isDrawingsMode ? (
+        <StatusBar
+          format={format}
+          metadata={metadata}
+          drawingMetadata={drawingMetadata}
+          viewerReady={viewerReady}
+          currentPage={pdfCurrentPage}
+          numPages={pdfNumPages}
+          projectId={projectId}
+          fileId={fileId}
+        />
+      ) : null}
 
       </div>
       {showChrome && bundle !== null ? (
@@ -1148,6 +1166,7 @@ export default function ViewerPage(): JSX.Element {
             activePanel={activePanel}
             onTogglePanel={togglePanel}
             badges={railBadges}
+            hiddenPanels={isFree ? FREE_HIDDEN_PANELS : undefined}
           />
         </div>
       ) : null}

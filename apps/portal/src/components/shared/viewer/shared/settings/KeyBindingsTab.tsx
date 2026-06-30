@@ -190,12 +190,6 @@ function use2DBindings(
 
 // ── Inline helper components ────────────────────────────────────────
 
-const PencilIcon = (): JSX.Element => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-  </svg>
-);
-
 function CaptureOverlay({ action, combo, cat, onCancel }: {
   action: string;
   combo: string;
@@ -532,14 +526,14 @@ export function KeyBindingsTab(props: Props): JSX.Element {
       }
 
       if (mode === '3d') {
-        const s = settings as ViewerSettings;
-        (onSettingsChange as (n: ViewerSettings) => void)({
+        const s = settings;
+        (onSettingsChange)({
           ...s,
           shortcuts: { ...s.shortcuts, [capturing]: combo },
         });
       } else {
-        const s = settings as DocumentSettings;
-        (onSettingsChange as (n: DocumentSettings) => void)({
+        const s = settings;
+        (onSettingsChange)({
           ...s,
           shortcuts: { ...s.shortcuts, [capturing]: combo },
         });
@@ -625,8 +619,8 @@ export function KeyBindingsTab(props: Props): JSX.Element {
                 />
               ) : (
                 <Mouse2DDiagram
-                  settings={settings as DocumentSettings}
-                  controls3D={(props as Props2D).controls3D}
+                  settings={settings}
+                  controls3D={(props).controls3D}
                   selected={selectedCode}
                   onPick={setSelectedCode}
                 />
@@ -643,9 +637,9 @@ export function KeyBindingsTab(props: Props): JSX.Element {
               />
             ) : (
               <Mouse2DSettings
-                settings={settings as DocumentSettings}
-                controls3D={(props as Props2D).controls3D}
-                onSettingsChange={onSettingsChange as (next: DocumentSettings) => void}
+                settings={settings}
+                controls3D={(props).controls3D}
+                onSettingsChange={onSettingsChange}
               />
             )}
           </div>

@@ -34,6 +34,7 @@ import { useUploadDocumentFile } from '@/features/documents/useUploadDocumentFil
 import { UploadProgressItem, type UploadState } from '@/features/documents/UploadProgressItem';
 import { viewerKeys } from '@/features/viewer/shared/queryKeys';
 import { setViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { getViewerBundle } from '@/lib/api/projectFiles';
 import { disciplineChipColors } from '@/lib/formatting/disciplineColors';
 import { formatFileSize } from '@/lib/formatting/files';
@@ -149,10 +150,19 @@ export function DocumentsTableRow({
     document.head_file_id != null ? files.find((f) => f.id === document.head_file_id) : undefined
   ) ?? (files.length > 0 ? files[0] : undefined);
   const isViewable = latestFile !== undefined && isFileViewable(latestFile);
-  const canCheckBbl = latestFile?.file_type === 'ifc' && latestFile.extraction_status === 'succeeded';
+  const { isPooled } = useIsPooledContext();
+  // BBL compliance is a paid-only capability (free has no compliance endpoint).
+  const canCheckBbl = !isPooled
+    && latestFile?.file_type === 'ifc'
+    && latestFile.extraction_status === 'succeeded';
+  // A container locks to its first file's type (ifc or pdf). A fresh free
+  // container is unlocked and accepts IFC or PDF (acceptedExtensions(..., free)
+  // excludes the paid-only DXF/DWG).
   const lockedFileType: FileTypeValue | null = document.primary_file_type ?? null;
 
-  // Clean URL — the loaded file is carried in the selection store, not the URL.
+  // Clean URL — the loaded file is carried in the selection store (set by
+  // `selectThisModel` on click), not the URL. Free + paid share the unified
+  // viewer; the free-aware bundle fetch in useViewerScope routes to `/free/*`.
   const viewHref = `/projects/${projectId}/viewer`;
   const selectThisModel = useCallback(() => {
     if (latestFile === undefined) return;
@@ -164,7 +174,7 @@ export function DocumentsTableRow({
   }, [projectId, document.id, latestFile]);
 
   const startUpload = useCallback((file: File): void => {
-    if (!isAllowedFile(file, lockedFileType)) {
+    if (!isAllowedFile(file, lockedFileType, isPooled)) {
       const id = crypto.randomUUID();
       setPending((prev) => [
         ...prev,
@@ -222,7 +232,7 @@ export function DocumentsTableRow({
         },
       },
     );
-  }, [projectId, document.id, uploadMutation, lockedFileType, tFiles]);
+  }, [projectId, document.id, uploadMutation, lockedFileType, isPooled, tFiles]);
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const chosen = event.target.files;
@@ -260,12 +270,14 @@ export function DocumentsTableRow({
     queryClient
       .prefetchQuery({
         queryKey: viewerKeys.bundle(projectId, document.id, fileId),
-        queryFn: () => getViewerBundle(accessToken, projectId, document.id, fileId),
+        // Match the free-aware fetch useViewerScope will run, so the prefetch
+        // actually warms the cache (the paid endpoint 404s for a free container).
+        queryFn: () => getViewerBundle(accessToken, projectId, document.id, fileId, isPooled),
         staleTime: 60_000,
       })
       .catch(() => undefined);
     import('@bimdossier/viewer').catch(() => undefined);
-  }, [isViewable, latestFile, tokens, queryClient, projectId, document.id]);
+  }, [isViewable, latestFile, tokens, queryClient, projectId, document.id, isPooled]);
 
   // Hover quick-actions (collapsed) and the expanded action bar share this set.
   const viewPill = (size: 'sm' | 'md'): JSX.Element | null => (
@@ -368,6 +380,31 @@ export function DocumentsTableRow({
                 <span className="shrink-0">{formatFileSize(latestFile.size_bytes)}</span>
                 <span className="shrink-0">·</span>
                 <span className="shrink-0">{formatRelativeTime(latestFile.updated_at, t)}</span>
+                {/* Extraction status — visible while a model is still processing
+                    or failed, so the user knows what's happening with their job
+                    (the list polls every 3s, so this updates live → "View"). */}
+                {latestFile.file_type === 'ifc'
+                  && latestFile.extraction_status !== 'succeeded' && (
+                  <>
+                    <span className="shrink-0">·</span>
+                    {latestFile.extraction_status === 'failed' ? (
+                      <span
+                        className="shrink-0 text-error"
+                        title={latestFile.extraction_error ?? undefined}
+                      >
+                        {latestFile.extraction_error != null
+                          ? t('extractionFailedReason', { reason: latestFile.extraction_error })
+                          : t('extractionFailed')}
+                      </span>
+                    ) : (
+                      <span className="shrink-0">
+                        {latestFile.extraction_status === 'running'
+                          ? t('extractionProcessing')
+                          : t('extractionQueued')}
+                      </span>
+                    )}
+                  </>
+                )}
               </>
             ) : (
               <span>{t('noFiles')}</span>
@@ -380,7 +417,7 @@ export function DocumentsTableRow({
         <input
           ref={inputRef}
           type="file"
-          accept={acceptedExtensions(lockedFileType).join(',')}
+          accept={acceptedExtensions(lockedFileType, isPooled).join(',')}
           multiple
           className="hidden"
           onChange={handleInputChange}
@@ -393,7 +430,7 @@ export function DocumentsTableRow({
               {viewPill('md')}
               {uploadPill('md')}
               {checkBblPill('md')}
-              {canEdit && (
+              {canEdit && !isPooled && (
                 <DisciplineAssignSelect
                   projectId={projectId}
                   documentId={document.id}
@@ -421,7 +458,7 @@ export function DocumentsTableRow({
 
           {files.length === 0 && (
             <FileDropZone
-              accept={acceptedExtensions(lockedFileType).join(',')}
+              accept={acceptedExtensions(lockedFileType, isPooled).join(',')}
               multiple
               onFiles={(chosen) => { Array.from(chosen).forEach(startUpload); }}
               hint={

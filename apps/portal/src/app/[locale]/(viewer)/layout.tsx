@@ -7,6 +7,7 @@ import { AppHeaderProvider } from '@/components/shared/header/AppHeaderContext';
 import { AppHeaderRoute } from '@/features/navigation/AppHeaderRoute';
 import { Sidebar } from '@/components/shared/sidebar/Sidebar';
 import { SidebarProvider } from '@/components/shared/sidebar/SidebarContext';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { useNotificationSocket } from '@/hooks/useNotificationSocket';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -17,7 +18,14 @@ type Props = {
 export default function ViewerLayout({ children }: Props): JSX.Element {
   const router = useRouter();
   const { tokens, hasHydrated } = useAuth();
-  useNotificationSocket(tokens === null ? null : tokens.access_token);
+  const { isPooled, ready } = useIsPooledContext();
+  // Free (org-less) users now reach the unified viewer too — point them at their
+  // per-user free notification channel (gated on /auth/me) so we never open the
+  // org socket for them.
+  useNotificationSocket(
+    ready && tokens !== null ? tokens.access_token : null,
+    { free: isPooled },
+  );
 
   useEffect(() => {
     if (hasHydrated && tokens === null) {

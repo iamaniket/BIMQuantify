@@ -7,6 +7,7 @@ import { useEffect, useState, type JSX } from 'react';
 import { AppDialog, Badge, Button, Tabs, TabsList, TabsTrigger } from '@bimdossier/ui';
 
 import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import type { Finding } from '@/lib/api/schemas';
 
 import { FindingCommentsTab } from './FindingCommentsTab';
@@ -33,6 +34,9 @@ export function FindingDetailModal({
   const t = useTranslations('findings.detail');
   const tStatus = useTranslations('findings.status');
   const tCommon = useTranslations('common');
+  // Comments + history are org-backed (audit/comment APIs are tenant-scoped), so
+  // the discussion strip is hidden for free users — they get the editable form only.
+  const { isPooled } = useIsPooledContext();
   const [tab, setTab] = useState<DiscussionTab>('comments');
   const api = useFindingDetailForm(projectId, finding, {
     onSaved: () => { onOpenChange(false); },
@@ -119,31 +123,35 @@ export function FindingDetailModal({
         <FindingDetailFields projectId={projectId} finding={finding} api={api} wide />
       </div>
 
-      {/* Discussion strip — Comments / History toggle below the form. */}
-      <div className="shrink-0 border-t border-border px-5">
-        <Tabs value={tab} onValueChange={(v) => { setTab(v as DiscussionTab); }}>
-          <TabsList className="gap-1 rounded-none bg-transparent p-0">
-            <TabsTrigger value="comments" className={TAB_TRIGGER_CLASS}>
-              <MessageSquare className="h-4 w-4" />
-              {t('tabs.comments')}
-            </TabsTrigger>
-            <TabsTrigger value="history" className={TAB_TRIGGER_CLASS}>
-              <Clock className="h-4 w-4" />
-              {t('tabs.history')}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+      {/* Discussion strip — Comments / History toggle below the form. Org-only. */}
+      {!isPooled && (
+        <>
+          <div className="shrink-0 border-t border-border px-5">
+            <Tabs value={tab} onValueChange={(v) => { setTab(v as DiscussionTab); }}>
+              <TabsList className="gap-1 rounded-none bg-transparent p-0">
+                <TabsTrigger value="comments" className={TAB_TRIGGER_CLASS}>
+                  <MessageSquare className="h-4 w-4" />
+                  {t('tabs.comments')}
+                </TabsTrigger>
+                <TabsTrigger value="history" className={TAB_TRIGGER_CLASS}>
+                  <Clock className="h-4 w-4" />
+                  {t('tabs.history')}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
 
-      {/* Independently-scrolling discussion region. `key` remounts on tab switch
-          so the inner scroll resets to the top. */}
-      <div key={tab} className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
-        {tab === 'comments' ? (
-          <FindingCommentsTab projectId={projectId} finding={finding} />
-        ) : (
-          <FindingHistoryTab projectId={projectId} finding={finding} />
-        )}
-      </div>
+          {/* Independently-scrolling discussion region. `key` remounts on tab
+              switch so the inner scroll resets to the top. */}
+          <div key={tab} className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
+            {tab === 'comments' ? (
+              <FindingCommentsTab projectId={projectId} finding={finding} />
+            ) : (
+              <FindingHistoryTab projectId={projectId} finding={finding} />
+            )}
+          </div>
+        </>
+      )}
     </AppDialog>
   );
 }

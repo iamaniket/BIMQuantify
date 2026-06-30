@@ -1,5 +1,6 @@
 import { computeFileSha256 } from '../upload/sha256';
 import { apiClient } from './client';
+import { projectScope } from './scope';
 import {
   InitiateUploadResponseSchema,
   DocumentSchema,
@@ -24,14 +25,22 @@ export type UploadProgressEvent =
   | { phase: 'uploading' }
   | { phase: 'completing' };
 
+// Free (org-less) and paid callers share these fetchers; `free` swaps the
+// `/pooled/projects` vs `/projects` prefix. The free two-phase upload + viewer
+// bundles are byte-identical to paid (same schemas). `listProjectFiles`,
+// `deleteProjectFile`, and `getDownloadUrl` are paid-only (no free endpoint).
+const filesBase = (projectId: string, modelId: string, free: boolean): string =>
+  `${projectScope(projectId, free)}/documents/${modelId}/files`;
+
 export async function initiateUpload(
   accessToken: string,
   projectId: string,
   modelId: string,
   input: InitiateUploadRequest,
+  free = false,
 ): Promise<InitiateUploadResponse> {
   return apiClient.post<InitiateUploadResponse>(
-    `/projects/${projectId}/documents/${modelId}/files/initiate`,
+    `${filesBase(projectId, modelId, free)}/initiate`,
     input,
     InitiateUploadResponseSchema,
     accessToken,
@@ -43,9 +52,10 @@ export async function completeUpload(
   projectId: string,
   modelId: string,
   fileId: string,
+  free = false,
 ): Promise<ProjectFile> {
   return apiClient.post<ProjectFile>(
-    `/projects/${projectId}/documents/${modelId}/files/${fileId}/complete`,
+    `${filesBase(projectId, modelId, free)}/${fileId}/complete`,
     {},
     ProjectFileSchema,
     accessToken,
@@ -64,7 +74,7 @@ export async function listProjectFiles(
   }
   const query = params.size === 0 ? '' : `?${params.toString()}`;
   return apiClient.get<ProjectFileList>(
-    `/projects/${projectId}/documents/${modelId}/files${query}`,
+    `${filesBase(projectId, modelId, false)}${query}`,
     ProjectFileListSchema,
     accessToken,
   );
@@ -77,7 +87,7 @@ export async function deleteProjectFile(
   fileId: string,
 ): Promise<void> {
   return apiClient.delete(
-    `/projects/${projectId}/documents/${modelId}/files/${fileId}`,
+    `${filesBase(projectId, modelId, false)}/${fileId}`,
     accessToken,
   );
 }
@@ -92,9 +102,10 @@ export async function restoreModelFileVersion(
   projectId: string,
   modelId: string,
   fileId: string,
+  free = false,
 ): Promise<Document> {
   return apiClient.post<Document>(
-    `/projects/${projectId}/documents/${modelId}/files/${fileId}/restore`,
+    `${filesBase(projectId, modelId, free)}/${fileId}/restore`,
     {},
     DocumentSchema,
     accessToken,
@@ -108,7 +119,7 @@ export async function getDownloadUrl(
   fileId: string,
 ): Promise<ProjectFileDownloadResponse> {
   return apiClient.get<ProjectFileDownloadResponse>(
-    `/projects/${projectId}/documents/${modelId}/files/${fileId}/download`,
+    `${filesBase(projectId, modelId, false)}/${fileId}/download`,
     ProjectFileDownloadResponseSchema,
     accessToken,
   );
@@ -119,9 +130,10 @@ export async function getViewerBundle(
   projectId: string,
   modelId: string,
   fileId: string,
+  free = false,
 ): Promise<ViewerBundleResponse> {
   return apiClient.get<ViewerBundleResponse>(
-    `/projects/${projectId}/documents/${modelId}/files/${fileId}/viewer-bundle`,
+    `${filesBase(projectId, modelId, free)}/${fileId}/viewer-bundle`,
     ViewerBundleResponseSchema,
     accessToken,
   );
@@ -135,9 +147,10 @@ export async function getViewerBundle(
 export async function getProjectViewerBundle(
   accessToken: string,
   projectId: string,
+  free = false,
 ): Promise<ProjectViewerManifestResponse> {
   return apiClient.get<ProjectViewerManifestResponse>(
-    `/projects/${projectId}/viewer-bundle`,
+    `${projectScope(projectId, free)}/viewer-bundle`,
     ProjectViewerManifestResponseSchema,
     accessToken,
   );
@@ -148,9 +161,10 @@ export async function retryExtraction(
   projectId: string,
   modelId: string,
   fileId: string,
+  free = false,
 ): Promise<ProjectFile> {
   return apiClient.post<ProjectFile>(
-    `/projects/${projectId}/documents/${modelId}/files/${fileId}/retry-extraction`,
+    `${filesBase(projectId, modelId, free)}/${fileId}/retry-extraction`,
     {},
     ProjectFileSchema,
     accessToken,
@@ -163,6 +177,7 @@ export async function uploadFileEnd2End(
   modelId: string,
   file: File,
   onProgress?: (event: UploadProgressEvent) => void,
+  free = false,
 ): Promise<ProjectFile> {
   onProgress?.({ phase: 'hashing', fraction: 0 });
   const contentSha256 = await computeFileSha256(file, (fraction) => {
@@ -170,12 +185,18 @@ export async function uploadFileEnd2End(
   });
 
   onProgress?.({ phase: 'uploading' });
-  const initiateResponse = await initiateUpload(accessToken, projectId, modelId, {
-    filename: file.name,
-    size_bytes: file.size,
-    content_type: file.type === '' ? 'application/octet-stream' : file.type,
-    content_sha256: contentSha256,
-  });
+  const initiateResponse = await initiateUpload(
+    accessToken,
+    projectId,
+    modelId,
+    {
+      filename: file.name,
+      size_bytes: file.size,
+      content_type: file.type === '' ? 'application/octet-stream' : file.type,
+      content_sha256: contentSha256,
+    },
+    free,
+  );
   await apiClient.putRaw(
     initiateResponse.upload_url,
     file,
@@ -183,5 +204,5 @@ export async function uploadFileEnd2End(
   );
 
   onProgress?.({ phase: 'completing' });
-  return completeUpload(accessToken, projectId, modelId, initiateResponse.file_id);
+  return completeUpload(accessToken, projectId, modelId, initiateResponse.file_id, free);
 }

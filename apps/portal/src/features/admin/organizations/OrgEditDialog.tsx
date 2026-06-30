@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { AppDialog, Input, Select } from '@bimdossier/ui';
 
 import { Field } from '@/components/shared/forms/Field';
-import { useRegisterField } from '@/hooks/useRegisterField';
+import { registerField } from '@/hooks/registerField';
 import { ApiError } from '@/lib/api/client';
 import type { OrganizationRead } from '@/lib/api/schemas';
 
@@ -133,11 +133,11 @@ export function OrgEditDialog({ organization, open, onOpenChange }: Props): JSX.
     >
       <div className="flex flex-col gap-4">
         <Field form={form} name="name" label={t('fields.name')}>
-          {({ id }) => <Input id={id} autoFocus {...useRegisterField(form, 'name')} />}
+          {({ id }) => <Input id={id} autoFocus {...registerField(form, 'name')} />}
         </Field>
         <Field form={form} name="status" label={t('fields.status')}>
           {({ id }) => (
-            <Select id={id} {...useRegisterField(form, 'status')}>
+            <Select id={id} {...registerField(form, 'status')}>
               <option value="active">{t('statuses.active')}</option>
               <option value="suspended">{t('statuses.suspended')}</option>
             </Select>
@@ -155,7 +155,7 @@ export function OrgEditDialog({ organization, open, onOpenChange }: Props): JSX.
               type="number"
               min={1}
               inputMode="numeric"
-              {...useRegisterField(form, 'seat_limit')}
+              {...registerField(form, 'seat_limit')}
             />
           )}
         </Field>
@@ -171,7 +171,7 @@ export function OrgEditDialog({ organization, open, onOpenChange }: Props): JSX.
               type="number"
               min={1}
               inputMode="numeric"
-              {...useRegisterField(form, 'active_storage_limit_gb')}
+              {...registerField(form, 'active_storage_limit_gb')}
             />
           )}
         </Field>

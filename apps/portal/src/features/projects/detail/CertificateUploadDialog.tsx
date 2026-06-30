@@ -17,7 +17,7 @@ import {
 import { FormDialog } from '@/components/shared/FormDialog';
 import { Field } from '@/components/shared/forms/Field';
 import { FileField } from '@/components/shared/resource';
-import { useRegisterField } from '@/hooks/useRegisterField';
+import { registerField } from '@/hooks/registerField';
 import type { CertificateMetadataInput } from '@/lib/api/certificates';
 import { anchorFieldsFromPoint, CertificateTypeEnum } from '@/lib/api/schemas';
 import type { CertificateTypeValue, LinkedFileTypeValue } from '@/lib/api/schemas';
@@ -110,13 +110,13 @@ export function CertificateUploadDialog({
     setFile(null);
   }, [open, initialType, resetForm, resetMutation]);
 
-  const typeField = useRegisterField(form, 'certificate_type');
-  const numberField = useRegisterField(form, 'certificate_number');
-  const issuerField = useRegisterField(form, 'issuer');
-  const subjectField = useRegisterField(form, 'subject');
-  const validFromField = useRegisterField(form, 'valid_from');
-  const validUntilField = useRegisterField(form, 'valid_until');
-  const descriptionField = useRegisterField(form, 'description');
+  const typeField = registerField(form, 'certificate_type');
+  const numberField = registerField(form, 'certificate_number');
+  const issuerField = registerField(form, 'issuer');
+  const subjectField = registerField(form, 'subject');
+  const validFromField = registerField(form, 'valid_from');
+  const validUntilField = registerField(form, 'valid_until');
+  const descriptionField = registerField(form, 'description');
 
   const validFrom = form.watch('valid_from');
   const validUntil = form.watch('valid_until');

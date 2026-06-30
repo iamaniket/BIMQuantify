@@ -1,0 +1,21 @@
+# Normalize line endings: git stores LF, working tree may be CRLF on Windows.
+# Makes EOL git's concern (not Prettier's / each editor's) so the Prettier
+# `endOfLine: "lf"` baseline never produces EOL-only churn in commits.
+* text=auto eol=lf
+
+# Binary assets — never normalize.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.wasm binary
+*.ifc binary
+*.frag binary
+*.pdf binary
+
+# Lockfile: keep as-is, never EOL-normalize.
+pnpm-lock.yaml -text

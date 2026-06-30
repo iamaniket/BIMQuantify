@@ -1,8 +1,14 @@
 import { uploadPhoto } from '@/features/photos/upload';
 import { ApiError } from '@/lib/api/client';
 import { createFinding, getFinding, updateFinding } from '@/lib/api/findings';
+import {
+  createPooledFinding,
+  getPooledFinding,
+  updatePooledFinding,
+} from '@/lib/api/pooledFindings';
 import type { Finding, FindingCreateInput, FindingUpdateInput } from '@/lib/api/schemas/findings';
 import { tokenManager } from '@/lib/api/tokenManager';
+import { readCachedMe } from '@/lib/auth/cachedMe';
 
 import { putOne, removeRow } from './cache';
 import { getNetworkStatus } from './networkStatus';
@@ -71,23 +77,29 @@ export class SyncEngine {
     this.setState('syncing');
     let hadTransient = false;
     try {
+      // Route this drain to the free or paid endpoints based on the cached
+      // /auth/me — a free user is org-less (no `org` JWT claim). The cache is
+      // written on every /auth/me + cleared on logout/org-switch, so it's the
+      // right source for the non-React sync engine.
+      const me = await readCachedMe();
+      const isFree = me !== null && me.active_organization_id === null;
       const pending = await listPending();
       // Order: photos → creates (→ updates → deletes when added). Photos go
       // first so a finding create can resolve its temp photo ids to real
       // attachment ids in the same pass.
       for (const entry of pending) {
         if (entry.kind !== 'upload_photo') continue;
-        const outcome = await this.syncPhoto(entry, token);
+        const outcome = await this.syncPhoto(entry, token, isFree);
         if (outcome === 'transient') hadTransient = true;
       }
       for (const entry of pending) {
         if (entry.kind !== 'create_finding') continue;
-        const outcome = await this.syncCreate(entry, token);
+        const outcome = await this.syncCreate(entry, token, isFree);
         if (outcome === 'transient') hadTransient = true;
       }
       for (const entry of pending) {
         if (entry.kind !== 'update_finding') continue;
-        const outcome = await this.syncUpdate(entry, token);
+        const outcome = await this.syncUpdate(entry, token, isFree);
         if (outcome === 'transient') hadTransient = true;
       }
       this.setState('idle');
@@ -115,7 +127,11 @@ export class SyncEngine {
     }, backoffMs(1));
   }
 
-  private async syncCreate(entry: OutboxEntry, token: string): Promise<CreateOutcome> {
+  private async syncCreate(
+    entry: OutboxEntry,
+    token: string,
+    isFree: boolean,
+  ): Promise<CreateOutcome> {
     if (entry.attempts >= MAX_ATTEMPTS) {
       await updateEntry(entry.id, { status: 'failed', lastError: 'Max attempts reached' });
       return 'failed';
@@ -139,6 +155,7 @@ export class SyncEngine {
         entry.scope,
         finalInput,
         entry.idempotencyKey,
+        isFree,
       );
       // temp → real remap: drop the optimistic row, cache the server row, and
       // record the id mapping so an update queued before this create lands on
@@ -168,13 +185,18 @@ export class SyncEngine {
     projectId: string,
     input: FindingCreateInput,
     idempotencyKey: string,
+    isFree: boolean,
   ): Promise<Finding> {
+    const doCreate = (t: string): Promise<Finding> =>
+      isFree
+        ? createPooledFinding(t, projectId, input, idempotencyKey)
+        : createFinding(t, projectId, input, idempotencyKey);
     try {
-      return await createFinding(token, projectId, input, idempotencyKey);
+      return await doCreate(token);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         const fresh = await tokenManager.refresh();
-        return createFinding(fresh, projectId, input, idempotencyKey);
+        return doCreate(fresh);
       }
       throw error;
     }
@@ -199,7 +221,11 @@ export class SyncEngine {
     return out.length > 0 ? out : null;
   }
 
-  private async syncUpdate(entry: OutboxEntry, token: string): Promise<CreateOutcome> {
+  private async syncUpdate(
+    entry: OutboxEntry,
+    token: string,
+    isFree: boolean,
+  ): Promise<CreateOutcome> {
     if (entry.attempts >= MAX_ATTEMPTS) {
       await updateEntry(entry.id, { status: 'failed', lastError: 'Max attempts reached' });
       return 'failed';
@@ -231,7 +257,13 @@ export class SyncEngine {
 
     await updateEntry(entry.id, { status: 'syncing' });
     try {
-      const finding = await this.updateWithRefresh(token, entry.scope, realFindingId, finalInput);
+      const finding = await this.updateWithRefresh(
+        token,
+        entry.scope,
+        realFindingId,
+        finalInput,
+        isFree,
+      );
       await putOne('finding', entry.scope, finding);
       await removeEntry(entry.id);
       return 'ok';
@@ -240,7 +272,7 @@ export class SyncEngine {
       // under us → conflict; the server wins. Overwrite the cache with the
       // current server row (best-effort) and park the entry as conflicted.
       if (error instanceof ApiError && error.status === 422) {
-        await this.overwriteWithServer(token, entry.scope, realFindingId);
+        await this.overwriteWithServer(token, entry.scope, realFindingId, isFree);
         await updateEntry(entry.id, {
           status: 'conflicted',
           conflictJson: JSON.stringify({ code: error.detail }),
@@ -267,13 +299,18 @@ export class SyncEngine {
     projectId: string,
     findingId: string,
     input: FindingUpdateInput,
+    isFree: boolean,
   ): Promise<Finding> {
+    const doUpdate = (t: string): Promise<Finding> =>
+      isFree
+        ? updatePooledFinding(t, projectId, findingId, input)
+        : updateFinding(t, projectId, findingId, input);
     try {
-      return await updateFinding(token, projectId, findingId, input);
+      return await doUpdate(token);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         const fresh = await tokenManager.refresh();
-        return updateFinding(fresh, projectId, findingId, input);
+        return doUpdate(fresh);
       }
       throw error;
     }
@@ -285,16 +322,23 @@ export class SyncEngine {
     token: string,
     projectId: string,
     findingId: string,
+    isFree: boolean,
   ): Promise<void> {
     try {
-      const fresh = await getFinding(token, projectId, findingId);
+      const fresh = isFree
+        ? await getPooledFinding(token, projectId, findingId)
+        : await getFinding(token, projectId, findingId);
       await putOne('finding', projectId, fresh);
     } catch {
       // Leave the cache as-is if the refetch fails.
     }
   }
 
-  private async syncPhoto(entry: OutboxEntry, token: string): Promise<CreateOutcome> {
+  private async syncPhoto(
+    entry: OutboxEntry,
+    token: string,
+    isFree: boolean,
+  ): Promise<CreateOutcome> {
     if (entry.attempts >= MAX_ATTEMPTS) {
       await updateEntry(entry.id, { status: 'failed', lastError: 'Max attempts reached' });
       return 'failed';
@@ -302,7 +346,7 @@ export class SyncEngine {
     await updateEntry(entry.id, { status: 'syncing' });
     const { photo } = entry.payload as UploadPhotoPayload;
     try {
-      const realId = await uploadPhoto(token, entry.scope, photo);
+      const realId = await uploadPhoto(token, entry.scope, photo, isFree);
       // Record the mapping so create_finding entries can swap temp → real, even
       // across an interrupted pass, then drop the photo entry.
       await setMeta(photoMapKey(entry.tempId), realId);

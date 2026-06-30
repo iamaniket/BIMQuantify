@@ -46,6 +46,18 @@ class Organization(MasterBase):
         server_default=OrganizationStatus.provisioning.value,
     )
 
+    # Entitlement/PLAN — the TIER axis, deliberately ORTHOGONAL to the
+    # schema-per-tenant ISOLATION axis (which data plane a request resolves to).
+    # Every org row is a paid tenant (defaults to "paid"); the pooled free tier is
+    # org-LESS, so its plan ("free") is resolved by absence of an org, not stored
+    # here. String + app-level validation, never an enum — the value set is
+    # expected to grow (pro / enterprise / …), see the enum-evolution rule.
+    # Resolved + surfaced via `entitlements.resolve_plan`; the client reads it as a
+    # read-only entitlement signal, re-checked server-side on gated actions.
+    plan: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="paid", server_default="paid"
+    )
+
     # Max consumed seats (pending + active + suspended members). NULL = unlimited.
     seat_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
 

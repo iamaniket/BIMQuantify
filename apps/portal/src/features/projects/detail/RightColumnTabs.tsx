@@ -22,6 +22,9 @@ type Props = {
   /** Server-computed dossier completeness (overview) for the readiness header —
    * replaces the page's old client-side `useDossierCompleteness` recompute. */
   dossier: DossierBlock;
+  /** Free tier: Readiness (dossier) + Deadlines are paid-only, so only the
+   * Documents (Containers) tab is shown and the launcher grid is Findings-only. */
+  isFree?: boolean;
 };
 
 export function RightColumnTabs({
@@ -30,6 +33,7 @@ export function RightColumnTabs({
   documents,
   deadlinesTotal,
   dossier,
+  isFree = false,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs');
   const [topTab, setTopTab] = useState('documents');
@@ -63,7 +67,7 @@ export function RightColumnTabs({
           (no nested card-in-card) and use the full width. Deadlines moved to the
           lower panel's tabs. */}
       <div className="min-h-0 flex-1 overflow-auto">
-        <QualityLauncherGrid projectId={projectId} />
+        <QualityLauncherGrid projectId={projectId} isFree={isFree} />
       </div>
 
       {/* Lower panel — Documents, Readiness (dossier checklist) and Deadlines */}
@@ -78,11 +82,15 @@ export function RightColumnTabs({
                     {documents.length}
                   </Badge>
                 </TabsTrigger>
-                <TabsTrigger value="readiness">{t('readiness.label')}</TabsTrigger>
-                <TabsTrigger value="deadlines">
-                  {t('deadlines.label')}
-                  <Badge variant="default" size="md" bordered={false}>{deadlinesCount}</Badge>
-                </TabsTrigger>
+                {!isFree && (
+                  <>
+                    <TabsTrigger value="readiness">{t('readiness.label')}</TabsTrigger>
+                    <TabsTrigger value="deadlines">
+                      {t('deadlines.label')}
+                      <Badge variant="default" size="md" bordered={false}>{deadlinesCount}</Badge>
+                    </TabsTrigger>
+                  </>
+                )}
               </TabsList>
             </Tabs>
             <div className="text-right">
@@ -97,8 +105,9 @@ export function RightColumnTabs({
         </div>
 
         <div className={`min-h-0 flex-1 px-3 pb-3 pt-2 ${topTab === 'documents' ? 'overflow-hidden' : 'overflow-auto'}`}>
-          {/* `readiness` backs the Readiness tab: dossier checklist groups */}
-          {topTab === 'readiness' && (
+          {/* `readiness` backs the Readiness tab: dossier checklist groups.
+              Org-only — never mounted for free (its hooks are tenant-scoped). */}
+          {!isFree && topTab === 'readiness' && (
             <DossierChecklistTab
               projectId={projectId}
               country={projectCountry}
@@ -108,7 +117,7 @@ export function RightColumnTabs({
           {topTab === 'documents' && (
             <DocumentsTab projectId={projectId} documents={documents} />
           )}
-          {topTab === 'deadlines' && <DeadlinesSection projectId={projectId} />}
+          {!isFree && topTab === 'deadlines' && <DeadlinesSection projectId={projectId} />}
         </div>
       </div>
     </div>

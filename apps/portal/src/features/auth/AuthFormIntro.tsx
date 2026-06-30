@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from 'react';
 
-interface AuthFormIntroProps {
+type AuthFormIntroProps = {
   eyebrow: string;
   heading: ReactNode;
   subtitle?: ReactNode;

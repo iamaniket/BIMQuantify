@@ -6,11 +6,11 @@ import type { DocumentViewerHandle } from '@bimdossier/viewer';
 
 import { useFileFindings } from '@/features/findings/useFindings';
 import type { Finding } from '@/lib/api/schemas';
-import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
+import { useFlattenedPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import { usePageFindingMarkers } from '../shared/useEntityMarkers';
 
-interface EntityMarkers2DOptions {
+type EntityMarkers2DOptions = {
   projectId: string;
   fileId: string | null;
   /** 1-based current PDF page, or null when not a PDF. */
@@ -43,7 +43,7 @@ export function useEntityMarkers2D(
   }, [handle, enabled, findingMarkers]);
 
   // Lookup map so click resolution is O(1) rather than a linear scan per click.
-  const findings = flattenPages(useFileFindings(projectId, scopedFileId).data);
+  const findings = useFlattenedPages(useFileFindings(projectId, scopedFileId).data);
   const findingMap = useMemo(() => new Map(findings.map((f) => [f.id, f])), [findings]);
 
   // Keep callbacks in a ref so subscriptions don't churn when handlers change.

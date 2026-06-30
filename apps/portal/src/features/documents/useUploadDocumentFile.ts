@@ -2,6 +2,7 @@
 
 import type { UseMutationResult } from '@tanstack/react-query';
 
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { uploadFileEnd2End, type UploadProgressEvent } from '@/lib/api/projectFiles';
 import type { ProjectFile } from '@/lib/api/schemas';
@@ -17,9 +18,10 @@ type UploadInput = {
 };
 
 export function useUploadDocumentFile(): UseMutationResult<ProjectFile, Error, UploadInput> {
+  const { isPooled } = useIsPooledContext();
   return useAuthMutation({
     mutationFn: (accessToken, { projectId, documentId, file, onProgress }) =>
-      uploadFileEnd2End(accessToken, projectId, documentId, file, onProgress),
+      uploadFileEnd2End(accessToken, projectId, documentId, file, onProgress, isPooled),
     invalidateKeys: ({ projectId, documentId }) => [
       documentFilesKey(projectId, documentId),
       documentKey(projectId, documentId),

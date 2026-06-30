@@ -26,6 +26,10 @@ from bimdossier_api.data_lifecycle import (
 )
 from bimdossier_api.db import get_engine
 from bimdossier_api.deadlines.reminder_engine import DeadlineReminderSweeper
+from bimdossier_api.pooled_reconcile import (
+    PooledExtractionReconcileSweeper,
+    IdlePooledContainerSweeper,
+)
 from bimdossier_api.i18n.http_errors import (
     generic_exception_handler,
     http_exception_handler,
@@ -48,6 +52,7 @@ from bimdossier_api.observability import init_sentry
 from bimdossier_api.routers.access_requests import router as access_requests_router
 from bimdossier_api.routers.activity import router as activity_router
 from bimdossier_api.routers.admin_blog import router as admin_blog_router
+from bimdossier_api.routers.admin_free_users import router as admin_free_users_router
 from bimdossier_api.routers.admin_impersonate import router as admin_impersonate_router
 from bimdossier_api.routers.admin_jobs import router as admin_jobs_router
 from bimdossier_api.routers.admin_organizations import router as admin_organizations_router
@@ -81,6 +86,14 @@ from bimdossier_api.routers.documents import router as documents_router
 from bimdossier_api.routers.element_inspections import router as element_inspections_router
 from bimdossier_api.routers.finding import router as finding_router
 from bimdossier_api.routers.finding_comment import router as finding_comment_router
+from bimdossier_api.routers.pooled_account import router as pooled_account_router
+from bimdossier_api.routers.pooled_activity import router as pooled_activity_router
+from bimdossier_api.routers.pooled_aligned_sheets import router as pooled_aligned_sheets_router
+from bimdossier_api.routers.pooled_attachments import router as pooled_attachments_router
+from bimdossier_api.routers.pooled_conversion import router as pooled_conversion_router
+from bimdossier_api.routers.pooled_documents import internal_router as pooled_internal_router
+from bimdossier_api.routers.pooled_documents import router as pooled_documents_router
+from bimdossier_api.routers.pooled_projects import router as pooled_projects_router
 from bimdossier_api.routers.health import router as health_router
 from bimdossier_api.routers.inspection import router as inspection_router
 from bimdossier_api.routers.jobs import router as jobs_router
@@ -228,6 +241,19 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         settings.job_stuck_timeout_minutes,
     )
     job_reconcile_sweeper.start()
+    # Free-tier extractions have no tenant Job row, so JobReconcileSweeper can't
+    # see them — this is their reconciliation backstop (reuses the same interval +
+    # stuck timeout).
+    pooled_reconcile_sweeper = PooledExtractionReconcileSweeper(
+        settings.job_reconcile_interval_minutes,
+        settings.job_stuck_timeout_minutes,
+    )
+    pooled_reconcile_sweeper.start()
+    pooled_idle_sweeper = IdlePooledContainerSweeper(
+        settings.pooled_idle_sweep_interval_minutes,
+        settings.pooled_document_idle_ttl_days,
+    )
+    pooled_idle_sweeper.start()
     # Data-lifecycle reapers (L11): abandoned pending uploads + expired/revoked
     # unused capture links.
     pending_upload_sweeper = PendingUploadSweeper(
@@ -249,6 +275,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         await close_http_client()
         await capture_link_sweeper.stop()
         await pending_upload_sweeper.stop()
+        await pooled_idle_sweeper.stop()
+        await pooled_reconcile_sweeper.stop()
         await job_reconcile_sweeper.stop()
         await deadline_sweeper.stop()
         await invitation_sweeper.stop()
@@ -390,6 +418,7 @@ def create_app() -> FastAPI:
     app.include_router(permissions_router)
     app.include_router(build_auth_router())
     app.include_router(admin_organizations_router)
+    app.include_router(admin_free_users_router)
     app.include_router(admin_jobs_router)
     app.include_router(admin_blog_router)
     app.include_router(admin_impersonate_router)
@@ -402,12 +431,28 @@ def create_app() -> FastAPI:
     app.include_router(me_profile_router)
     app.include_router(projects_router)
     app.include_router(documents_router)
+    # Tier-unified: the same documents router serves free container CRUD under the
+    # legacy /free alias (tier resolved from the JWT). The free file-upload flow +
+    # viewer bundles + free findings still live on pooled_documents_router for now.
+    app.include_router(documents_router, prefix="/pooled")
     app.include_router(levels_router)
+    # Tier-unified: the same levels router serves free callers under the legacy
+    # /free alias (the handler resolves the tier from the JWT, not the prefix).
+    # Replaces the deleted pooled_levels_router.
+    app.include_router(levels_router, prefix="/pooled")
     app.include_router(storeys_router)
     app.include_router(aligned_sheets_router)
     app.include_router(project_files_router)
     app.include_router(project_viewer_router)
     app.include_router(jobs_internal_router)
+    app.include_router(pooled_account_router)
+    app.include_router(pooled_activity_router)
+    app.include_router(pooled_documents_router)
+    app.include_router(pooled_projects_router)
+    app.include_router(pooled_aligned_sheets_router)
+    app.include_router(pooled_attachments_router)
+    app.include_router(pooled_internal_router)
+    app.include_router(pooled_conversion_router)
     app.include_router(compliance_router)
     app.include_router(compliance_project_router)
     app.include_router(deadlines_router)
@@ -432,6 +477,9 @@ def create_app() -> FastAPI:
     app.include_router(reports_router)
     app.include_router(activity_router)
     app.include_router(notifications_router)
+    # Tier-unified: the same notifications router serves free callers under the
+    # legacy /free alias (tier resolved from the JWT). Replaces pooled_notifications.
+    app.include_router(notifications_router, prefix="/pooled")
     app.include_router(ws_notifications_router)
     return app
 

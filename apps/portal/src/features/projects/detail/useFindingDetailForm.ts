@@ -16,7 +16,7 @@ import { useUpdateFinding } from '@/features/findings/useUpdateFinding';
 import { useFindingPinPreviewStore } from '@/features/viewer/shared/findingPinPreviewStore';
 import { useProjectPermissions } from '@/features/permissions';
 import { useProjectMembers } from '@/features/projects/members/useProjectMembers';
-import { useRegisterField } from '@/hooks/useRegisterField';
+import { registerField } from '@/hooks/registerField';
 import type {
   Finding,
   FindingStatusValue,
@@ -81,7 +81,7 @@ function buildPatch(
   return patch;
 }
 
-/** `useRegisterField` returns a register bound to the whole field-name union. */
+/** `registerField` returns a register bound to the whole field-name union. */
 type FindingFieldRegister = UseFormRegisterReturn<Path<FindingDetailFormValues>>;
 
 /** Local anchor state tracked by the form (saved on Submit, not immediately). */
@@ -196,12 +196,12 @@ export function useFindingDetailForm(
   const { reset: resetForm } = form;
 
   const fields = {
-    title: useRegisterField(form, 'title'),
-    description: useRegisterField(form, 'description'),
-    severity: useRegisterField(form, 'severity'),
-    bbl: useRegisterField(form, 'bbl_article_ref'),
-    assignee: useRegisterField(form, 'assignee_user_id'),
-    deadline: useRegisterField(form, 'deadline_date'),
+    title: registerField(form, 'title'),
+    description: registerField(form, 'description'),
+    severity: registerField(form, 'severity'),
+    bbl: registerField(form, 'bbl_article_ref'),
+    assignee: registerField(form, 'assignee_user_id'),
+    deadline: registerField(form, 'deadline_date'),
   };
 
   // Reset whenever a *different* finding is shown (a new row expands) or this
@@ -399,9 +399,9 @@ export function useFindingDetailForm(
     localAnchor: effectiveAnchor ?? null,
     updateAnchor: (anchor) => { setPendingAnchor(anchor); },
     removeAnchor: () => { setPendingAnchor(null); },
-    save: form.handleSubmit(onSubmit),
-    promote: form.handleSubmit(onPromoteSubmit),
-    resolve: form.handleSubmit(onResolveSubmit),
+    save: () => { void form.handleSubmit(onSubmit)(); },
+    promote: () => { void form.handleSubmit(onPromoteSubmit)(); },
+    resolve: () => { void form.handleSubmit(onResolveSubmit)(); },
     verify: () => { mutateWithSaved({ status: 'verified' }); },
     changeStatus: (to) => {
       if (finding === null || to === finding.status) return;
@@ -410,7 +410,7 @@ export function useFindingDetailForm(
       // Everything else persists the in-flight field edits alongside the new
       // status, same as the promote/resolve buttons. `resolved` carries the
       // note + evidence; the backend 422s (→ toast) if they're missing.
-      form.handleSubmit((values) => {
+      void form.handleSubmit((values) => {
         const opts: PatchOptions = to === 'resolved'
           ? { status: to, resolutionNote: resolutionNote.trim(), resolutionEvidenceIds }
           : { status: to };

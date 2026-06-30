@@ -1,11 +1,12 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { Button } from '@bimdossier/ui';
 
 import { Link } from '@/i18n/navigation';
+import { portalHref } from '@/lib/portalLinks';
 
 import { BrandAccentCta } from './BrandAccentCta';
 import { HeroPill } from './HeroPill';
@@ -13,6 +14,7 @@ import { HeroShell } from './HeroShell';
 
 export function HeroSection(): JSX.Element {
   const t = useTranslations('hero');
+  const locale = useLocale();
   // The trust line is authored as " · "-separated claims so it can render as a
   // scannable strip of dot-prefixed items (stacks on mobile, inlines from sm up).
   const trustItems = t('trust').split(' · ');
@@ -28,7 +30,7 @@ export function HeroSection(): JSX.Element {
       <p className="max-w-2xl text-title3 text-white/80">{t('subtitle')}</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <BrandAccentCta>{t('ctaPrimary')}</BrandAccentCta>
+        <BrandAccentCta href={portalHref(locale, '/signup')}>{t('ctaPrimary')}</BrandAccentCta>
         <Link href="/#showcase">
           <Button
             variant="ghost"

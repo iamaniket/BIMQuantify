@@ -22,8 +22,10 @@ export const AlignedSheetSchema = z.object({
   pdf_document_id: z.string().uuid(),
   calibrated_pdf_file_id: z.string().uuid().nullable(),
   // Logical page reference + its 1-indexed number; page_index (0-based) is kept
-  // for back-compat and derived from the page (page_number - 1).
-  page_id: z.string().uuid(),
+  // for back-compat and derived from the page (page_number - 1). `page_id` is the
+  // paid pdf_pages FK; the free tier references pages by number only, so it's
+  // null there (the UI keys off page_index, never page_id).
+  page_id: z.string().uuid().nullable(),
   page_number: z.number().int(),
   page_index: z.number().int(),
   transform_type: z.string(),

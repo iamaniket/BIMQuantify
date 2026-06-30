@@ -21,15 +21,33 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { getConfig } from '../config.js';
 
-const storage = new AsyncLocalStorage<string | undefined>();
+type CallbackContext = { url?: string; path?: string };
 
-/** Run `fn` with `callbackUrl` as the active per-job callback base. */
-export function runWithCallbackUrl<T>(callbackUrl: string | undefined, fn: () => T): T {
-  return storage.run(callbackUrl, fn);
+const storage = new AsyncLocalStorage<CallbackContext>();
+
+/**
+ * Run `fn` with the active per-job callback base URL and optional path override.
+ *
+ * `callbackPath` lets the free-tier IFC extraction route its callback to
+ * `/internal/jobs/free-callback` instead of the default tenant
+ * `/internal/jobs/callback`; the API threads it through the job payload. A job
+ * without it (every tenant job) falls back to the default path.
+ */
+export function runWithCallbackUrl<T>(
+  callbackUrl: string | undefined,
+  callbackPath: string | undefined,
+  fn: () => T,
+): T {
+  return storage.run({ url: callbackUrl, path: callbackPath }, fn);
 }
 
 /** Resolve the callback base URL (no trailing slash) for the current job. */
 export function callbackBaseUrl(): string {
-  const base = storage.getStore() ?? getConfig().API_BASE_URL;
+  const base = storage.getStore()?.url ?? getConfig().API_BASE_URL;
   return base.replace(/\/$/, '');
+}
+
+/** Per-job callback path override, if the API supplied one. */
+export function callbackPath(): string | undefined {
+  return storage.getStore()?.path;
 }

@@ -2,7 +2,9 @@
 
 import { useMemo } from 'react';
 
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { listFindings } from '@/lib/api/findings';
+import { listPooledFindings } from '@/lib/api/pooledFindings';
 import type { Finding } from '@/lib/api/schemas';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
@@ -39,10 +41,22 @@ export function useOrphanedElementItems(
   metadata: ModelMetadata | undefined,
   enabled = true,
 ): OrphanedElementItems {
+  const { isPooled, ready } = useIsPooledContext();
+  // Free-aware: free has no server element filter and no paid `/projects/*`
+  // findings route (org-less JWT → 409). `modelId` is the container id, so we
+  // list its snags directly; orphan detection is client-side either way.
+  // `ready` defers the fetch until /auth/me resolves so the free/paid branch
+  // isn't chosen prematurely (a 409 flash on the paid route).
   const findingsQuery = useAuthQuery({
-    queryKey: ['projects', projectId, 'findings', 'model', modelId] as const,
-    queryFn: (accessToken) => listFindings(accessToken, projectId, { linkedModelId: modelId }),
-    enabled,
+    queryKey: ['projects', projectId, 'findings', 'model', modelId, isPooled] as const,
+    queryFn: isPooled
+      ? async (accessToken) => {
+          // Free endpoint already returns the paid `Finding` shape (no adapter).
+          const data = await listPooledFindings(accessToken, modelId);
+          return { data, totalCount: data.length };
+        }
+      : (accessToken) => listFindings(accessToken, projectId, { linkedModelId: modelId }),
+    enabled: ready && enabled,
     staleTime: 30_000,
   });
 

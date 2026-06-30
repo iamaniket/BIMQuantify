@@ -12,7 +12,7 @@ import * as THREE from 'three';
 
 import { LAYER_OVERLAY } from '../../../core/layers.js';
 import type { Plugin, ViewerContext } from '../../../core/types.js';
-import { pick } from '../../../core/Raycaster.js';
+import { pick, type PickResult } from '../../../core/Raycaster.js';
 import type { SnappingPluginAPI } from '../snapping/index.js';
 import type { MouseBindingsAPI } from '../mouse-bindings/index.js';
 import {
@@ -108,6 +108,7 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
   let clickUnsub: (() => void) | null = null;
   let moveUnsub: (() => void) | null = null;
   let dblclickUnsub: (() => void) | null = null;
+  let modelEventUnsubs: Array<() => void> = [];
   // Clicks are serialized through this promise chain: a double-click is two
   // `pointer:click` events (each async via raycasting) followed by a sync
   // `pointer:doubleclick`. Chaining guarantees both points settle before the
@@ -157,6 +158,41 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
   const LINE_MAT = new THREE.LineBasicMaterial({ color: config.directColor, depthTest: false });
   const ARC_MAT = new THREE.LineBasicMaterial({ color: config.directColor, depthTest: false });
 
+  // Shared materials for the area/volume rubber-band PREVIEW. The preview
+  // rebuilds its geometry every pointer-move; reusing one dashed-line material
+  // (across all volume edges + the area closing line) and one fill material
+  // avoids allocating ~3n LineDashedMaterial + 2 MeshBasicMaterial per move.
+  // Created lazily, dash sizes/color refreshed from the (cached) model scale on
+  // each build, disposed in uninstall. Never disposed by clearPolygonPreview.
+  let previewDashedMat: THREE.LineDashedMaterial | null = null;
+  let previewFillMat: THREE.MeshBasicMaterial | null = null;
+  const ensurePreviewDashedMat = (): THREE.LineDashedMaterial => {
+    const scale = getModelScale();
+    if (!previewDashedMat) {
+      previewDashedMat = new THREE.LineDashedMaterial({
+        color: config.areaColor, depthTest: false,
+        dashSize: scale / 80, gapSize: scale / 120,
+      });
+    } else {
+      previewDashedMat.color.setHex(config.areaColor);
+      previewDashedMat.dashSize = scale / 80;
+      previewDashedMat.gapSize = scale / 120;
+    }
+    return previewDashedMat;
+  };
+  const ensurePreviewFillMat = (opacity: number): THREE.MeshBasicMaterial => {
+    if (!previewFillMat) {
+      previewFillMat = new THREE.MeshBasicMaterial({
+        color: config.areaColor, transparent: true, opacity,
+        side: THREE.DoubleSide, depthTest: false,
+      });
+    } else {
+      previewFillMat.color.setHex(config.areaColor);
+      previewFillMat.opacity = opacity;
+    }
+    return previewFillMat;
+  };
+
   const axisColor = (axis: string): number =>
     axis === 'X' ? config.xColor : axis === 'Y' ? config.yColor : config.zColor;
 
@@ -180,11 +216,19 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
 
   // ----- geometry helpers -----
 
+  // Cached largest-model-dimension scalar. Model boxes only change on
+  // load/unload, but getModelScale is called several times per preview pointer-
+  // move (createDot, createDashedLine, area/volume edge builders), each time
+  // unioning every model box + allocating. Compute once, reuse until a model
+  // load/unload invalidates it (subscriptions in install()).
+  let modelScaleCache: number | null = null;
   const getModelScale = (): number => {
+    if (modelScaleCache !== null) return modelScaleCache;
     if (!ctxRef) return 10;
     const boxes: Array<THREE.Box3 | undefined> = [];
     for (const model of ctxRef.models().values()) boxes.push(model.box);
-    return getModelScaleImpl(boxes);
+    modelScaleCache = getModelScaleImpl(boxes);
+    return modelScaleCache;
   };
 
   const createDot = (pos: THREE.Vector3): THREE.Mesh =>
@@ -693,6 +737,9 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
 
   const resolvePreviewPoint = async (
     ndc: { x: number; y: number },
+    // Pre-resolved raycast for this ndc (shared with the magnifier — same ndc,
+    // same frame). `undefined` means "not provided, pick it yourself".
+    prePicked?: PickResult | null,
   ): Promise<THREE.Vector3 | null> => {
     if (!ctxRef) return null;
     const snapping = ctxRef.plugins.get<SnappingPluginAPI>('snapping');
@@ -701,7 +748,7 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     if (snap) {
       pt = new THREE.Vector3(snap.point.x, snap.point.y, snap.point.z);
     } else {
-      pt = await pickOrGround(ctxRef, ndc);
+      pt = await pickOrGround(ctxRef, ndc, prePicked);
     }
     if (pt && axisLockActive && pendingPoints.length > 0) {
       const anchor = pendingPoints[pendingPoints.length - 1]!;
@@ -733,9 +780,12 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     ndc: { x: number; y: number },
     clientX: number,
     clientY: number,
+    // Pre-resolved raycast for this ndc (shared with the preview-point
+    // resolution). `undefined` means "not provided, pick it yourself".
+    prePicked?: PickResult | null,
   ): Promise<void> => {
     if (!ctxRef || !magnifier) return;
-    const result = await pick(ctxRef, ndc);
+    const result = prePicked === undefined ? await pick(ctxRef, ndc) : prePicked;
     if (result) {
       const pt = new THREE.Vector3(result.point.x, result.point.y, result.point.z);
       magnifier.update(pt, clientX, clientY);
@@ -757,14 +807,23 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
   ): Promise<void> => {
     if (!ctxRef || currentMode === null) return;
 
+    // One worker raycast per preview frame, shared by the magnifier and the
+    // preview-point resolution (both need the same hit for the same ndc; the
+    // camera is static within this handler). Previously each picked the same
+    // ndc independently — 2 worker round-trips per move. Only computed when the
+    // magnifier is shown (the normal measurement state); otherwise stays
+    // `undefined` so resolvePreviewPoint falls back to its own pick (unchanged).
+    let sharedPick: PickResult | null | undefined;
+
     // Always update magnifier, even before first point is placed
     if (magnifier) {
-      await updateMagnifier(ndc, clientX ?? 0, clientY ?? 0);
+      sharedPick = await pick(ctxRef, ndc);
+      await updateMagnifier(ndc, clientX ?? 0, clientY ?? 0, sharedPick);
     }
 
     const inVolumeHeight = currentMode === 'volume' && volumePhase === 'height';
     if (pendingPoints.length === 0 && !inVolumeHeight) return;
-    const pt = await resolvePreviewPoint(ndc);
+    const pt = await resolvePreviewPoint(ndc, sharedPick);
     if (!pt) return;
 
     if (!inVolumeHeight) updateRubberLine(pt);
@@ -906,11 +965,7 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
         const previewPts = [...pendingPoints, pt];
         // Closing line from cursor to first point
         const closeGeo = new THREE.BufferGeometry().setFromPoints([pt, pendingPoints[0]!]);
-        const closeMat = new THREE.LineDashedMaterial({
-          color: config.areaColor, depthTest: false,
-          dashSize: getModelScale() / 80, gapSize: getModelScale() / 120,
-        });
-        const closeLine = new THREE.Line(closeGeo, closeMat);
+        const closeLine = new THREE.Line(closeGeo, ensurePreviewDashedMat());
         closeLine.computeLineDistances();
         closeLine.renderOrder = 998;
         closeLine.layers.set(LAYER_OVERLAY);
@@ -919,15 +974,12 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
         polygonEdgeLines.push(closeLine);
 
         if (previewPts.length >= 3) {
-          const fillMat = new THREE.MeshBasicMaterial({
-            color: config.areaColor, transparent: true, opacity: config.areaOpacity * 0.5,
-            side: THREE.DoubleSide, depthTest: false,
-          });
-          const tempGroup = new THREE.Group();
-          polygonFillMesh = createPolygonFill(previewPts, config.areaColor, config.areaOpacity * 0.5, tempGroup);
-          polygonFillMesh.material = fillMat;
-          tempGroup.remove(polygonFillMesh);
-          ctxRef.scene.add(polygonFillMesh);
+          // Reuse the shared fill material (was: a fresh MeshBasicMaterial here
+          // PLUS another created inside createPolygonFill, which leaked).
+          polygonFillMesh = createPolygonFill(
+            previewPts, config.areaColor, config.areaOpacity * 0.5, ctxRef.scene,
+            ensurePreviewFillMat(config.areaOpacity * 0.5),
+          );
 
           const area = computePolygonArea(previewPts);
           const centroid = computePolygonCentroid(previewPts);
@@ -946,17 +998,14 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
           volumePreviewGroup = new THREE.Group();
           volumePreviewGroup.renderOrder = 999;
 
-          // Base + top edges (dashed)
+          // Base + top edges (dashed) — all share one cached dashed material.
+          const dashedMat = ensurePreviewDashedMat();
           for (const pts of [volumeBasePoints, topPts]) {
             for (let i = 0; i < pts.length; i++) {
               const a = pts[i]!;
               const b = pts[(i + 1) % pts.length]!;
               const geo = new THREE.BufferGeometry().setFromPoints([a, b]);
-              const mat = new THREE.LineDashedMaterial({
-                color: config.areaColor, depthTest: false,
-                dashSize: getModelScale() / 80, gapSize: getModelScale() / 120,
-              });
-              const line = new THREE.Line(geo, mat);
+              const line = new THREE.Line(geo, dashedMat);
               line.computeLineDistances();
               line.renderOrder = 998;
               line.layers.set(LAYER_OVERLAY);
@@ -967,20 +1016,17 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
           // Vertical edges
           for (let i = 0; i < volumeBasePoints.length; i++) {
             const geo = new THREE.BufferGeometry().setFromPoints([volumeBasePoints[i]!, topPts[i]!]);
-            const mat = new THREE.LineDashedMaterial({
-              color: config.areaColor, depthTest: false,
-              dashSize: getModelScale() / 80, gapSize: getModelScale() / 120,
-            });
-            const line = new THREE.Line(geo, mat);
+            const line = new THREE.Line(geo, dashedMat);
             line.computeLineDistances();
             line.renderOrder = 998;
             line.layers.set(LAYER_OVERLAY);
             volumePreviewGroup.add(line);
           }
 
-          // Fills
-          createPolygonFill(volumeBasePoints, config.areaColor, config.areaOpacity * 0.4, volumePreviewGroup);
-          createPolygonFill(topPts, config.areaColor, config.areaOpacity * 0.4, volumePreviewGroup);
+          // Fills — both share one cached fill material.
+          const fillMat = ensurePreviewFillMat(config.areaOpacity * 0.4);
+          createPolygonFill(volumeBasePoints, config.areaColor, config.areaOpacity * 0.4, volumePreviewGroup, fillMat);
+          createPolygonFill(topPts, config.areaColor, config.areaOpacity * 0.4, volumePreviewGroup, fillMat);
 
           volumePreviewGroup.traverse((child) => child.layers.set(LAYER_OVERLAY));
           ctxRef.scene.add(volumePreviewGroup);
@@ -1025,10 +1071,17 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
 
   // ---- end rubber-band preview ----
 
+  // The shared preview materials are reused across moves (see ensurePreview*),
+  // so the per-move teardown must dispose only geometry, never these.
+  const isSharedPreviewMat = (m: THREE.Material): boolean =>
+    m === previewDashedMat || m === previewFillMat || m === DOT_MAT || m === LINE_MAT;
+
   const clearPolygonPreview = (): void => {
     if (polygonFillMesh) {
       polygonFillMesh.geometry.dispose();
-      (polygonFillMesh.material as THREE.Material).dispose();
+      if (!isSharedPreviewMat(polygonFillMesh.material as THREE.Material)) {
+        (polygonFillMesh.material as THREE.Material).dispose();
+      }
       polygonFillMesh.removeFromParent();
       polygonFillMesh = null;
     }
@@ -1041,7 +1094,7 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
       volumePreviewGroup.traverse((child) => {
         const mesh = child as THREE.Mesh;
         if (mesh.geometry) mesh.geometry.dispose();
-        if (mesh.material && mesh.material !== DOT_MAT && mesh.material !== LINE_MAT) {
+        if (mesh.material && !isSharedPreviewMat(mesh.material as THREE.Material)) {
           (mesh.material as THREE.Material).dispose();
         }
       });
@@ -1075,8 +1128,11 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
   const pickOrGround = async (
     ctx: ViewerContext,
     ndc: { x: number; y: number },
+    // Pre-resolved raycast for this ndc. `undefined` means "not provided, pick
+    // it yourself"; `null` is a valid "no hit" → ground-plane fallback.
+    prePicked?: PickResult | null,
   ): Promise<THREE.Vector3 | null> => {
-    const result = await pick(ctx, ndc);
+    const result = prePicked === undefined ? await pick(ctx, ndc) : prePicked;
     if (result) {
       const snapping = ctx.plugins.get<SnappingPluginAPI>('snapping');
       const snapped = snapping?.resolve(result);
@@ -1477,6 +1533,16 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
       ctxRef = ctx;
       overlay = acquireCss2dOverlay(ctx);
 
+      // Model bounds change only on load/unload — drop the cached model scale so
+      // the next call recomputes it once (see getModelScale above).
+      const invalidateScale = (): void => {
+        modelScaleCache = null;
+      };
+      modelEventUnsubs = [
+        ctx.events.on('model:loaded', invalidateScale),
+        ctx.events.on('model:unloaded', invalidateScale),
+      ];
+
       ctx.commands.register('measure.activate', (args: unknown) => activate(args), {
         title: 'Start measuring',
       });
@@ -1541,6 +1607,9 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
     uninstall() {
       deactivate();
       clear();
+      for (const off of modelEventUnsubs) off();
+      modelEventUnsubs = [];
+      modelScaleCache = null;
       magnifier?.dispose();
       magnifier = null;
       hideAxisLockLabel();
@@ -1551,6 +1620,10 @@ export function measurementPlugin(): Plugin & MeasurementPluginAPI {
       DOT_MAT.dispose();
       LINE_MAT.dispose();
       ARC_MAT.dispose();
+      previewDashedMat?.dispose();
+      previewDashedMat = null;
+      previewFillMat?.dispose();
+      previewFillMat = null;
       ctxRef = null;
     },
   };

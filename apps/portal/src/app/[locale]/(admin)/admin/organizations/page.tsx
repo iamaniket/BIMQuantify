@@ -30,7 +30,6 @@ import { useAccessRequests } from '@/features/admin/access-requests/useAccessReq
 import { useRejectAccessRequest } from '@/features/admin/access-requests/useAccessRequestActions';
 import { BlogPostCreateDialog } from '@/features/admin/blog/BlogPostCreateDialog';
 import { BlogPostsTable } from '@/features/admin/blog/BlogPostsTable';
-import { useAdminBlogPosts } from '@/features/admin/blog/useAdminBlogPosts';
 import { useDeleteBlogPost } from '@/features/admin/blog/useDeleteBlogPost';
 import { useUpdateBlogPost } from '@/features/admin/blog/useUpdateBlogPost';
 import { OrgCreateDialog } from '@/features/admin/organizations/OrgCreateDialog';
@@ -40,9 +39,13 @@ import { usePurgeOrganization } from '@/features/admin/organizations/usePurgeOrg
 import { adminOrganizationsListKey } from '@/features/admin/organizations/queryKeys';
 import { useAdminOrganizations } from '@/features/admin/organizations/useAdminOrganizations';
 import { ProcessorPane } from '@/features/admin/processor/ProcessorPane';
+import { FreeUsersTable } from '@/features/admin/free-users/FreeUsersTable';
+import { FreeUserDetailPanel } from '@/features/admin/free-users/FreeUserDetailPanel';
+import { adminFreeUsersListKey } from '@/features/admin/free-users/queryKeys';
 import {
   exportAccessRequests,
   listAccessRequestsPage,
+  listFreeUsersPage,
   listOrganizationsPage,
 } from '@/lib/api/admin';
 import { listBlogPostsPage } from '@/lib/api/blog';
@@ -55,6 +58,7 @@ import { formatDate, formatMonthDay } from '@/lib/formatting/dates';
 import type {
   AccessRequestRead,
   BlogPostRead,
+  FreeUserRead,
   OrganizationRead,
 } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
@@ -368,12 +372,18 @@ export default function AdminOrganizationsPage(): JSX.Element {
   const tReq = useTranslations('admin.accessRequests');
   const tBlog = useTranslations('admin.blog');
   const tProc = useTranslations('admin.processor');
+  const tFree = useTranslations('admin.freeUsers');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [approveTarget, setApproveTarget] = useState<AccessRequestRead | null>(null);
   const [approveOpen, setApproveOpen] = useState(false);
   const [tab, setTab] = useState('overview');
+
+  // Free-users state
+  const [freeSearch, setFreeSearch] = useState('');
+  const [freeUser, setFreeUser] = useState<FreeUserRead | null>(null);
+  const [freePanelOpen, setFreePanelOpen] = useState(false);
 
   // Access-request state
   const [reqSearch, setReqSearch] = useState('');
@@ -468,6 +478,19 @@ export default function AdminOrganizationsPage(): JSX.Element {
   });
   const deleteBlogMutation = useDeleteBlogPost();
   const updateBlogMutation = useUpdateBlogPost();
+
+  // Free-users tab table — server-paginated, org-less users + usage stats.
+  const freeFilters = { q: freeSearch === '' ? undefined : freeSearch };
+  const freeTable = useTableQuery<FreeUserRead, typeof freeFilters>({
+    filters: freeFilters,
+    queryKey: (p) => adminFreeUsersListKey(p),
+    queryFn: (token, p) => listFreeUsersPage(token, p),
+    initialSort: { key: 'email', dir: 'asc' },
+  });
+  const handleManageFree = useCallback((u: FreeUserRead) => {
+    setFreeUser(u);
+    setFreePanelOpen(true);
+  }, []);
 
   const handleBlogToggleStatus = useCallback((post: BlogPostRead) => {
     const nextStatus = post.status === 'published' ? 'draft' : 'published';
@@ -580,6 +603,11 @@ export default function AdminOrganizationsPage(): JSX.Element {
       title: tProc('panel.title'),
       sub: tProc('panel.sub'),
     },
+    free: {
+      eyebrow: tFree('panel.eyebrow'),
+      title: tFree('panel.title', { count: freeTable.total }),
+      sub: '',
+    },
   }[tab] ?? { eyebrow: '', title: '', sub: '' };
 
   const toolbar = tab === 'organizations' ? (
@@ -637,6 +665,15 @@ export default function AdminOrganizationsPage(): JSX.Element {
         <option value="rejected">{tReq('statusFilters.rejected')}</option>
       </Select>
     </TableToolbar>
+  ) : tab === 'free' ? (
+    <TableToolbar>
+      <SearchInput
+        placeholder={tFree('searchPlaceholder')}
+        value={freeSearch}
+        onChange={setFreeSearch}
+        aria-label={tFree('searchAria')}
+      />
+    </TableToolbar>
   ) : undefined;
 
   return (
@@ -646,6 +683,7 @@ export default function AdminOrganizationsPage(): JSX.Element {
         { value: 'overview', label: t('tabs.overview'), icon: <LayoutGrid className="h-4 w-4" /> },
         { value: 'organizations', label: t('tabs.organizations'), icon: <Table2 className="h-4 w-4" />, badge: <Badge variant="primary" size="md" bordered={false}>{orgTable.total}</Badge> },
         { value: 'requests', label: t('tabs.requests'), icon: <Inbox className="h-4 w-4" />, badge: pendingRequestCount > 0 ? <Badge variant="primary" size="md" bordered={false}>{pendingRequestCount}</Badge> : undefined },
+        { value: 'free', label: tFree('tab'), icon: <Users className="h-4 w-4" />, badge: <Badge variant="default" size="md" bordered={false}>{freeTable.total}</Badge> },
         { value: 'blog', label: tBlog('tab'), icon: <BookOpen className="h-4 w-4" />, badge: <Badge variant="default" size="md" bordered={false}>{blogTable.total}</Badge> },
         { value: 'processor', label: tProc('tab'), icon: <Activity className="h-4 w-4" /> },
       ]}
@@ -653,7 +691,7 @@ export default function AdminOrganizationsPage(): JSX.Element {
       onTabChange={setTab}
       panelHeading={panelHeading}
       toolbar={toolbar}
-      fillContent={tab === 'organizations' || tab === 'requests' || tab === 'blog' || tab === 'processor'}
+      fillContent={tab === 'organizations' || tab === 'requests' || tab === 'blog' || tab === 'processor' || tab === 'free'}
       afterTabs={
         <>
           <OrgCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
@@ -666,6 +704,11 @@ export default function AdminOrganizationsPage(): JSX.Element {
             onConfirm={handlePurgeConfirm}
             isPending={purgeMutation.isPending}
             errorMessage={purgeError}
+          />
+          <FreeUserDetailPanel
+            user={freeUser}
+            open={freePanelOpen}
+            onOpenChange={setFreePanelOpen}
           />
         </>
       }
@@ -718,6 +761,14 @@ export default function AdminOrganizationsPage(): JSX.Element {
 
       <TabsContent value="processor" className="mt-0 flex min-h-0 flex-1 flex-col">
         <ProcessorPane />
+      </TabsContent>
+
+      <TabsContent value="free" className="mt-0 flex min-h-0 flex-1 flex-col">
+        <FreeUsersTable table={freeTable} onManage={handleManageFree} />
+        <TablePaginationFooter
+          table={freeTable}
+          className="shrink-0 border-t border-border px-5 py-2.5"
+        />
       </TabsContent>
     </TabbedPageShell>
   );

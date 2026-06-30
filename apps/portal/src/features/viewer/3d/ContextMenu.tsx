@@ -262,9 +262,9 @@ const PositionedMenu = forwardRef(function PositionedMenu(
   return (
     <div
       ref={(node) => {
-        (innerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        (innerRef).current = node;
         if (typeof ref === 'function') ref(node);
-        else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        else if (ref) (ref).current = node;
       }}
       className={
         'pointer-events-auto absolute min-w-[200px] rounded-lg border border-border bg-background p-1 shadow-2xl '
@@ -355,7 +355,7 @@ export function ContextMenu({ handle, viewerReady }: Props): JSX.Element | null 
         sessionStorage.setItem(PENDING_ELEMENT_POINT_KEY, JSON.stringify({ x, y, z }));
       }
       handle.commands.execute(cmd).catch((err: unknown) => {
-        // eslint-disable-next-line no-console
+         
         console.warn(`[context-menu] ${cmd} failed:`, err);
       });
       handle.commands.execute('contextMenu.close').catch(() => undefined);

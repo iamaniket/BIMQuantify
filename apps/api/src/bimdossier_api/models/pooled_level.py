@@ -1,0 +1,75 @@
+"""Pooled free-tier levels — `public.pooled_levels`.
+
+The pooled analog of `models.levels.Level`: a project-owned building level (the
+shared 2D/3D spine). It lets a free user group PDF drawings by floor and switch
+levels in the unified viewer. A free PDF container is assigned to a level via
+`pooled_documents.level_id`.
+
+Pooled-in-`public`, never a tenant `org_<hex>` schema — isolation is owner-keyed
+RLS on `owner_user_id` plus owner-OR-member visibility through the project (see
+`_rls_sql.enable_pooled_level_rls_statements`). Columns mirror the paid `Level` so
+the paid `LevelRead` schema serializes a free row unchanged; `source` is a
+`String` + `CHECK` (the "likely-to-grow → String+CHECK" convention), value set
+derived from the paid `LevelSource`.
+"""
+
+from datetime import datetime
+from uuid import UUID
+
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    text,
+)
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from bimdossier_api.db import MasterBase
+from bimdossier_api.models._pooled import PooledOwnedMixin, TimestampMixin
+from bimdossier_api.models.levels import LevelSource
+
+# Value set derived from the paid LevelSource — keeps the free CHECK and the paid
+# constant in lockstep. Free levels are manual today; `ifc` reserved for a future
+# storey→level reconciliation at free extraction time.
+POOLED_LEVEL_SOURCES: tuple[str, ...] = (LevelSource.manual, LevelSource.ifc)
+
+
+class PooledLevel(PooledOwnedMixin, TimestampMixin, MasterBase):
+    __tablename__ = "pooled_levels"
+
+    pooled_project_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("public.pooled_projects.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    elevation_m: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ordering: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="manual", server_default="manual"
+    )
+
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
+
+    __table_args__ = (
+        CheckConstraint("source IN ('manual', 'ifc')", name="ck_pooled_levels_source"),
+        # One active level per (project, name) — partial so a soft-deleted name reuses.
+        Index(
+            "uq_pooled_levels_project_name",
+            "pooled_project_id",
+            "name",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index("ix_pooled_levels_owner", "owner_user_id"),
+        Index("ix_pooled_levels_project", "pooled_project_id"),
+        {"schema": "public"},
+    )

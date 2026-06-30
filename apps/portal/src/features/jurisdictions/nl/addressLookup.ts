@@ -125,7 +125,7 @@ function formatPostcode(raw: string | undefined): string | null {
 /** Parse a WKT "POINT(lon lat)" string. Returns null if malformed. */
 function parsePoint(raw: string | undefined): { lat: number; lon: number } | null {
   if (raw === undefined) return null;
-  const match = /POINT\(([\-\d.]+)\s+([\-\d.]+)\)/i.exec(raw);
+  const match = /POINT\(([-\d.]+)\s+([-\d.]+)\)/i.exec(raw);
   if (match === null) return null;
   const lon = Number.parseFloat(match[1] ?? '');
   const lat = Number.parseFloat(match[2] ?? '');

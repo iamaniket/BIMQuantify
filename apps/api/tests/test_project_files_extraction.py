@@ -473,7 +473,7 @@ async def test_retry_requeues_failed_extraction(
     # Replace dispatcher with a recording stub so the retry succeeds.
     extraction_calls.clear()
 
-    async def _record(job, _settings, _organization_id=None) -> None:
+    async def _record(job, _settings, _organization_id=None, priority=0) -> None:
         payload = dict(job.payload or {})
         entry = {
             "job_id": str(job.id),

@@ -119,9 +119,17 @@ class _OneShotCloser:
             await self._ws.close(code=code, reason=reason)
 
 
+# A WS auth callable: resolves a token to a non-str success (the org path returns
+# (User, org_id); the free path returns just User) or a string close-reason. The
+# revalidation loop only cares whether the result is a str (reject) or not (ok), so
+# it stays generic over the success type.
+WsAuthFn = Callable[[str, Redis, AsyncSession], Awaitable[object]]
+
+
 async def _revalidation_loop(
     token: str,
     *,
+    authenticate: WsAuthFn = authenticate_ws_token,
     close: Callable[[int, str], Awaitable[None]],
     interval_seconds: float,
     max_lifetime_seconds: float,
@@ -129,13 +137,13 @@ async def _revalidation_loop(
     """Re-run the handshake auth gates on an already-open socket, on an interval.
 
     The handshake authenticates only once; without this loop a socket keeps
-    streaming the org feed after a logout-everywhere / password change / account
-    deactivation / org-deprovision until the access token's natural expiry (H5).
-    Each cycle opens a SHORT-LIVED session (never held across the sleep — that
-    would pin a pool connection) and reuses ``authenticate_ws_token``, so the gate
-    set stays identical to the handshake and the HTTP path. A hard lifetime cap
-    closes the socket with a benign ``session_refresh`` so the client reconnects
-    with a fresh token before the current one can expire mid-stream.
+    streaming after a logout-everywhere / password change / account deactivation /
+    org-deprovision until the access token's natural expiry (H5). Each cycle opens
+    a SHORT-LIVED session (never held across the sleep — that would pin a pool
+    connection) and reuses the same ``authenticate`` callable as the handshake, so
+    the gate set stays identical. A hard lifetime cap closes the socket with a
+    benign ``session_refresh`` so the client reconnects with a fresh token before
+    the current one can expire mid-stream.
     """
     loop = asyncio.get_running_loop()
     deadline = loop.time() + max_lifetime_seconds  # monotonic; immune to clock jumps
@@ -150,7 +158,7 @@ async def _revalidation_loop(
             return
         try:
             async with get_session_maker()() as session:
-                result = await authenticate_ws_token(token, get_redis(), session)
+                result = await authenticate(token, get_redis(), session)
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -240,6 +248,7 @@ async def ws_notifications(ws: WebSocket, token: str | None = Query(default=None
     revalidate_task = asyncio.create_task(
         _revalidation_loop(
             auth_token,
+            authenticate=authenticate_ws_token,
             close=safe_close,
             interval_seconds=settings.ws_revalidate_interval_seconds,
             max_lifetime_seconds=settings.ws_max_lifetime_seconds,
@@ -256,3 +265,99 @@ async def ws_notifications(ws: WebSocket, token: str | None = Query(default=None
         revalidate_task.cancel()
         await asyncio.gather(drain_task, revalidate_task, return_exceptions=True)
         manager.disconnect(ws, org_id)
+
+
+async def authenticate_ws_pooled_token(
+    token: str,
+    redis: Redis,
+    session: AsyncSession,
+) -> User | str:
+    """Resolve a WebSocket access token to the free (org-less) ``User``, or a
+    string close-reason.
+
+    Enforces the SAME token gates as the org path (``authenticate_ws_token``) —
+    per-JTI blocklist, the user row existing AND ``is_active``, and the per-user
+    ``tokens_valid_after`` epoch — but DROPS the org-membership check (a free
+    account has no org). No participation check is needed: a free socket only ever
+    subscribes to its own ``notifications:pooled:user:<uid>`` channel, so it can never
+    receive another user's notification regardless of project membership.
+    """
+    try:
+        decoded = decode_token_full(token, "access")
+    except TokenError:
+        return "invalid_token"
+
+    if decoded.jti and await is_revoked(redis, decoded.jti):
+        return "token_revoked"
+
+    user = await session.get(User, decoded.user_id)
+    if user is None or not user.is_active:
+        return "user_not_found"
+
+    if token_predates_epoch(decoded, getattr(user, "tokens_valid_after", None)):
+        return "token_revoked"
+
+    return user
+
+
+@router.websocket("/ws/pooled-notifications")
+async def ws_pooled_notifications(ws: WebSocket, token: str | None = Query(default=None)) -> None:
+    """Free-tier notification stream — per-user channel, no org.
+
+    Mirrors ``ws_notifications`` but authenticates via ``authenticate_ws_pooled_token``
+    (no org membership) and registers on the manager's per-user free index so a push
+    on ``notifications:pooled:user:<uid>`` reaches only this user's sockets.
+    """
+    auth_token, accept_subprotocol = _resolve_ws_token(ws.scope.get("subprotocols", []), token)
+    if auth_token is None:
+        await ws.close(code=WS_CLOSE_AUTH_FAILED, reason="missing_token")
+        return
+
+    redis = get_redis()
+    async with get_session_maker()() as session:
+        result = await authenticate_ws_pooled_token(auth_token, redis, session)
+
+    if isinstance(result, str):
+        await ws.close(code=WS_CLOSE_AUTH_FAILED, reason=result)
+        return
+    user = result
+
+    settings = get_settings()
+    manager = get_manager()
+    accepted = await manager.connect_pooled(
+        ws,
+        user.id,
+        max_per_user=settings.ws_max_connections_per_user,
+        subprotocol=accept_subprotocol,
+    )
+    if not accepted:
+        await ws.close(code=WS_CLOSE_TOO_MANY, reason="too_many_connections")
+        return
+
+    safe_close = _OneShotCloser(ws)
+
+    async def _drain() -> None:
+        try:
+            while True:
+                await ws.receive_text()
+        except WebSocketDisconnect:
+            return
+
+    drain_task = asyncio.create_task(_drain(), name="ws-free-notif-drain")
+    revalidate_task = asyncio.create_task(
+        _revalidation_loop(
+            auth_token,
+            authenticate=authenticate_ws_pooled_token,
+            close=safe_close,
+            interval_seconds=settings.ws_revalidate_interval_seconds,
+            max_lifetime_seconds=settings.ws_max_lifetime_seconds,
+        ),
+        name="ws-free-notif-revalidate",
+    )
+    try:
+        await asyncio.wait({drain_task, revalidate_task}, return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        drain_task.cancel()
+        revalidate_task.cancel()
+        await asyncio.gather(drain_task, revalidate_task, return_exceptions=True)
+        manager.disconnect_pooled(ws, user.id)

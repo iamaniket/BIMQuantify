@@ -10,7 +10,13 @@ import { Button, FormField, Input } from '@bimdossier/ui';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { AuthFormIntro } from '@/features/auth/AuthFormIntro';
 import { useRouter } from '@/i18n/navigation';
-import { apiClient } from '@/lib/api/client';
+import { ApiError, apiClient } from '@/lib/api/client';
+
+// Server-side minimum (auth/manager.py::MIN_PASSWORD_LENGTH). Checked client-side
+// too so a too-short password gets clear feedback instead of the generic
+// "link expired" message (the form is `noValidate`, so the input's minLength
+// alone does not block submit).
+const MIN_PASSWORD_LENGTH = 12;
 
 /**
  * Activation form body. One call to POST /auth/activate { token, password }
@@ -35,6 +41,10 @@ export function ActivatePanel(): JSX.Element {
   const onSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setError(null);
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setError(t('errors.passwordTooShort', { min: MIN_PASSWORD_LENGTH }));
+      return;
+    }
     if (password !== confirm) {
       setError(t('errors.passwordMismatch'));
       return;
@@ -43,8 +53,14 @@ export function ActivatePanel(): JSX.Element {
     try {
       await apiClient.postNoContent('/auth/activate', '', { token, password });
       router.replace('/login?activated=1');
-    } catch {
-      setError(t('errors.activationFailed'));
+    } catch (err) {
+      // The server collapses several password rules into ACTIVATION_INVALID_PASSWORD;
+      // show its real (localized) message instead of blaming the link.
+      if (err instanceof ApiError && err.code === 'ACTIVATION_INVALID_PASSWORD') {
+        setError(err.localizedMessage ?? t('errors.passwordTooShort', { min: MIN_PASSWORD_LENGTH }));
+      } else {
+        setError(t('errors.activationFailed'));
+      }
     } finally {
       setPending(false);
     }
@@ -57,12 +73,12 @@ export function ActivatePanel(): JSX.Element {
         <ErrorBanner message={t('errors.tokenMissing')} tone="soft" />
       ) : (
         <form noValidate onSubmit={onSubmit} className="flex w-full flex-col gap-3.5">
-          <FormField label={t('field.password')} htmlFor={passwordId}>
+          <FormField label={t('field.password')} htmlFor={passwordId} hint={t('field.passwordHint')}>
             <Input
               id={passwordId}
               type="password"
               required
-              minLength={8}
+              minLength={12}
               autoComplete="new-password"
               leading={<Lock size={18} />}
               value={password}
@@ -74,7 +90,7 @@ export function ActivatePanel(): JSX.Element {
               id={confirmId}
               type="password"
               required
-              minLength={8}
+              minLength={12}
               autoComplete="new-password"
               leading={<Lock size={18} />}
               value={confirm}

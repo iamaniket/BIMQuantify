@@ -19,13 +19,24 @@ from bimdossier_api.jobs.dispatcher import (
     set_job_canceller,
     set_job_dispatcher,
 )
+from bimdossier_api.jobs.priority import (
+    POOLED_CALLBACK_PATH,
+    POOLED_PAGES_CALLBACK_PATH,
+    FREE_TIER_SENTINEL_ORG,
+    JobTier,
+    resolve_priority,
+)
 
 __all__ = [
+    "POOLED_CALLBACK_PATH",
+    "POOLED_PAGES_CALLBACK_PATH",
+    "FREE_TIER_SENTINEL_ORG",
     "CancelResult",
     "DispatchJobError",
     "JobCanceller",
     "JobConcurrencyError",
     "JobDispatcher",
+    "JobTier",
     "cancel_dispatched_job",
     "check_job_concurrency",
     "dispatch_job",
@@ -34,6 +45,7 @@ __all__ = [
     "require_worker_secret",
     "reset_job_canceller",
     "reset_job_dispatcher",
+    "resolve_priority",
     "set_job_canceller",
     "set_job_dispatcher",
 ]

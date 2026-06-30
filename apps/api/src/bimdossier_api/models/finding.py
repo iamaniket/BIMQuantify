@@ -154,6 +154,18 @@ class Finding(TimestampMixin, SoftDeleteMixin, TenantBase):
     # a written note and >=1 evidence attachment.
     resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Duplicate linkage: when two inspectors snag the same defect (or it recurs
+    # across model versions), the redundant finding is marked a duplicate of the
+    # canonical one. SET NULL so deleting the canonical finding just unlinks the
+    # duplicate (it keeps its own history). Closing-as-duplicate is a dedicated
+    # action (POST .../mark-duplicate) that bypasses the resolve evidence gate —
+    # the link itself is the evidence — so the dossier isn't inflated by dupes.
+    duplicate_of_finding_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("findings.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     # Custom form template (#templates): the OrgTemplate (findings kind) this
     # finding was created from. Null = the built-in "standard form". SET NULL so a
     # template can be soft-deleted without blocking; `custom_values` snapshots the

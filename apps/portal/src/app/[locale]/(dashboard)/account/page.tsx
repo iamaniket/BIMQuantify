@@ -20,7 +20,9 @@ import {
   Card,
   CardBody,
   CardHeader,
+  CountChip,
   Eyebrow,
+  Progress,
   Skeleton,
   TabsContent,
 } from '@bimdossier/ui';
@@ -43,12 +45,30 @@ import {
   updateProfile,
   uploadAvatar,
 } from '@/lib/api/profile';
-import type { InvitationRead } from '@/lib/api/schemas';
+import type { FreeUserUsage, InvitationRead } from '@/lib/api/schemas';
 import { formatDate } from '@/lib/formatting/dates';
+import { formatFileSize } from '@/lib/formatting/files';
+import { useFreeUsage } from '@/hooks/useFreeUsage';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { useAuth } from '@/providers/AuthProvider';
+import { WelcomeDialog } from '@/features/onboarding/WelcomeDialog';
 
 function toInitials(nameOrEmail: string): string {
-  const words = nameOrEmail.split(/\s+/).filter(Boolean);
+  const cleaned = nameOrEmail.trim();
+  // A real display name (and not one that is itself an email): first letters of
+  // the first two words.
+  if (cleaned.length > 0 && !cleaned.includes('@')) {
+    const words = cleaned.split(/\s+/).filter(Boolean);
+    if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase();
+    return words
+      .slice(0, 2)
+      .map((w) => w[0]!.toUpperCase())
+      .join('');
+  }
+  // Email (or empty): derive from the local part so the '@'/domain never leak
+  // into the initials ("a@b.com" -> "A", not "A@").
+  const local = cleaned.includes('@') ? (cleaned.split('@')[0] ?? cleaned) : cleaned;
+  const words = local.split(/[\s._-]+/).filter(Boolean);
   if (words.length === 0) return '?';
   if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase();
   return words
@@ -69,6 +89,8 @@ function AccountHero({
   orgName,
   roleLabel,
   invitationCount,
+  isPooled,
+  usage,
 }: {
   userName: string;
   email: string;
@@ -76,8 +98,34 @@ function AccountHero({
   orgName: string;
   roleLabel: string;
   invitationCount: number;
+  isPooled: boolean;
+  usage: FreeUserUsage | undefined;
 }): JSX.Element {
   const t = useTranslations('account.hero');
+  const tPlan = useTranslations('account.plan');
+
+  // Free (org-less) accounts have no org/seats — surface plan + quota usage
+  // instead of the org/role/invitations KPIs a paid member sees.
+  const freeKpis = [
+    {
+      label: tPlan('planLabel'),
+      value: tPlan('freePlanName'),
+      sub: tPlan('pooledWorkspaceSub'),
+    },
+    {
+      label: tPlan('storageLabel'),
+      value: usage !== undefined ? formatFileSize(usage.storage_bytes_used) : '—',
+      sub:
+        usage !== undefined
+          ? tPlan('ofValue', { value: formatFileSize(usage.storage_bytes_cap) })
+          : '',
+    },
+    {
+      label: tPlan('projectsLabel'),
+      value: usage !== undefined ? String(usage.project_count) : '—',
+      sub: usage !== undefined ? tPlan('ofValue', { value: usage.project_cap }) : '',
+    },
+  ];
 
   return (
     <HeroShell
@@ -109,24 +157,126 @@ function AccountHero({
           {email}
         </span>
       }
-      kpis={[
-        {
-          label: t('org'),
-          value: orgName,
-          sub: t('activeOrg'),
-        },
-        {
-          label: t('role'),
-          value: roleLabel,
-          sub: t('currentRole'),
-        },
-        {
-          label: t('invitations'),
-          value: String(invitationCount),
-          sub: t('pending'),
-        },
-      ]}
+      kpis={
+        isPooled
+          ? freeKpis
+          : [
+              {
+                label: t('org'),
+                value: orgName,
+                sub: t('activeOrg'),
+              },
+              {
+                label: t('role'),
+                value: roleLabel,
+                sub: t('currentRole'),
+              },
+              {
+                label: t('invitations'),
+                value: String(invitationCount),
+                sub: t('pending'),
+              },
+            ]
+      }
     />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Free plan & usage card (free / org-less users)
+// ---------------------------------------------------------------------------
+
+function FreePlanCard({
+  usage,
+  isActive,
+  isVerified,
+}: {
+  usage: FreeUserUsage | undefined;
+  isActive: boolean;
+  isVerified: boolean;
+}): JSX.Element {
+  const t = useTranslations('account.plan');
+  const tOverview = useTranslations('account.overview');
+
+  const loading = usage === undefined;
+  const used = usage?.storage_bytes_used ?? 0;
+  const cap = usage?.storage_bytes_cap ?? 0;
+  const pct = cap > 0 ? Math.min(100, Math.round((used / cap) * 100)) : 0;
+  const variant = pct >= 100 ? 'error' : pct >= 70 ? 'warning' : 'success';
+
+  return (
+    <Card>
+      <CardHeader>
+        <h3 className="text-body2 font-bold">{t('title')}</h3>
+      </CardHeader>
+      <CardBody className="space-y-0 p-0">
+        <div className="divide-y divide-border">
+          {/* Plan */}
+          <div className="flex items-center justify-between px-5 py-2.5">
+            <div className="text-body3 font-medium text-foreground-secondary">{t('planLabel')}</div>
+            <Badge variant="info">{t('freePlanName')}</Badge>
+          </div>
+
+          {/* Storage — progress bar against the 1 GB cap */}
+          <div className="px-5 py-3">
+            <div className="flex items-center justify-between">
+              <span className="text-body3 font-medium text-foreground-secondary">{t('storageLabel')}</span>
+              {loading ? (
+                <Skeleton className="h-4 w-28" />
+              ) : (
+                <span className="text-body3 tabular-nums text-foreground">
+                  {t('usageValue', { used: formatFileSize(used), cap: formatFileSize(cap) })}
+                </span>
+              )}
+            </div>
+            <div className="mt-1.5 flex items-center gap-2">
+              <Progress value={pct} variant={variant} className="flex-1" />
+              <span className="text-caption tabular-nums text-foreground-tertiary">{t('usagePct', { pct })}</span>
+            </div>
+          </div>
+
+          {/* Projects */}
+          <div className="flex items-center justify-between px-5 py-2.5">
+            <div className="text-body3 font-medium text-foreground-secondary">{t('projectsLabel')}</div>
+            {loading ? (
+              <Skeleton className="h-4 w-12" />
+            ) : (
+              <CountChip>{t('countOfCap', { count: usage.project_count, cap: usage.project_cap })}</CountChip>
+            )}
+          </div>
+
+          {/* Containers */}
+          <div className="flex items-center justify-between px-5 py-2.5">
+            <div className="text-body3 font-medium text-foreground-secondary">{t('containersLabel')}</div>
+            {loading ? (
+              <Skeleton className="h-4 w-12" />
+            ) : (
+              <CountChip>{t('countOfCap', { count: usage.document_count, cap: usage.document_cap })}</CountChip>
+            )}
+          </div>
+
+          {/* Findings (no cap) */}
+          <div className="flex items-center justify-between px-5 py-2.5">
+            <div className="text-body3 font-medium text-foreground-secondary">{t('findingsLabel')}</div>
+            {loading ? <Skeleton className="h-4 w-8" /> : <CountChip>{usage.snag_count}</CountChip>}
+          </div>
+
+          {/* Account status + verification still apply to the user account. */}
+          <div className="flex items-center justify-between px-5 py-2.5">
+            <div className="text-body3 font-medium text-foreground-secondary">{tOverview('statusLabel')}</div>
+            <Badge variant={isActive ? 'success' : 'warning'}>
+              {isActive ? tOverview('statusActive') : tOverview('statusInactive')}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between px-5 py-2.5">
+            <div className="text-body3 font-medium text-foreground-secondary">{tOverview('verificationLabel')}</div>
+            <Badge variant={isVerified ? 'success' : 'warning'}>
+              {isVerified ? tOverview('verified') : tOverview('unverified')}
+            </Badge>
+          </div>
+        </div>
+      </CardBody>
+    </Card>
   );
 }
 
@@ -146,6 +296,8 @@ function ProfilePane({
   memberStatus,
   seatLimit,
   seatCountUsed,
+  isPooled,
+  usage,
   editingName,
   nameValue,
   nameBusy,
@@ -170,6 +322,8 @@ function ProfilePane({
   memberStatus: string | null;
   seatLimit: number | null;
   seatCountUsed: number;
+  isPooled: boolean;
+  usage: FreeUserUsage | undefined;
   editingName: boolean;
   nameValue: string;
   nameBusy: boolean;
@@ -313,8 +467,11 @@ function ProfilePane({
         </Card>
       </div>
 
-      {/* Right column — account details + quick actions */}
+      {/* Right column — account details / free usage + quick actions */}
       <div className="flex flex-col gap-5">
+        {isPooled ? (
+          <FreePlanCard usage={usage} isActive={isActive} isVerified={isVerified} />
+        ) : (
         <Card>
           <CardHeader>
             <h3 className="text-body2 font-bold">{tOverview('accountDetails')}</h3>
@@ -358,6 +515,7 @@ function ProfilePane({
             </div>
           </CardBody>
         </Card>
+        )}
 
         <Card>
           <CardHeader>
@@ -501,11 +659,12 @@ export default function AccountPage(): JSX.Element {
   const tPanel = useTranslations('account.panel');
   const { tokens, me, activeMembership, refreshMe } = useAuth();
   const accessToken = tokens?.access_token ?? null;
+  const { isPooled } = useIsPooledContext();
+  const { data: freeUsage } = useFreeUsage();
 
   const user = me?.user;
   const userName = user?.full_name?.trim() || user?.email || 'User';
   const email = user?.email ?? '—';
-  const initials = toInitials(userName);
   const roleLabel = activeMembership?.is_org_admin ? t('roleAdmin') : t('roleMember');
   const orgName = activeMembership?.organization_name ?? '—';
 
@@ -589,6 +748,7 @@ export default function AccountPage(): JSX.Element {
   const [invitationsLoading, setInvitationsLoading] = useState(true);
   const [pendingOrgId, setPendingOrgId] = useState<string | null>(null);
   const [invError, setInvError] = useState<string | null>(null);
+  const [welcome, setWelcome] = useState<{ orgName: string; isAdmin: boolean } | null>(null);
 
   const loadInvitations = useCallback(async (): Promise<void> => {
     if (accessToken === null) return;
@@ -609,13 +769,19 @@ export default function AccountPage(): JSX.Element {
 
   const onAccept = async (orgId: string): Promise<void> => {
     if (accessToken === null) return;
+    // Capture before the list reload clears it — drives the welcome dialog.
+    const invitation = invitations.find((inv) => inv.organization_id === orgId);
     setInvError(null);
     setPendingOrgId(orgId);
     try {
       await acceptInvitation(accessToken, orgId);
       await refreshMe();
       await loadInvitations();
-      toast.success(t('acceptSuccess'));
+      if (invitation !== undefined) {
+        setWelcome({ orgName: invitation.organization_name, isAdmin: invitation.is_org_admin });
+      } else {
+        toast.success(t('acceptSuccess'));
+      }
     } catch (err) {
       setInvError(err instanceof ApiError ? err.detail : t('errors.acceptFailed'));
     } finally {
@@ -673,6 +839,7 @@ export default function AccountPage(): JSX.Element {
   }[tab] ?? { eyebrow: '', title: '' };
 
   return (
+    <>
     <TabbedPageShell
       hero={
         <AccountHero
@@ -682,6 +849,8 @@ export default function AccountPage(): JSX.Element {
           orgName={orgName}
           roleLabel={roleLabel}
           invitationCount={me.pending_invitations_count}
+          isPooled={isPooled}
+          usage={freeUsage}
         />
       }
       tabs={[
@@ -712,6 +881,8 @@ export default function AccountPage(): JSX.Element {
               memberStatus={activeMembership?.member_status ?? null}
               seatLimit={activeMembership?.seat_limit ?? null}
               seatCountUsed={activeMembership?.seat_count_used ?? 0}
+              isPooled={isPooled}
+              usage={freeUsage}
               editingName={editingName}
               nameValue={nameValue}
               nameBusy={nameBusy}
@@ -738,5 +909,12 @@ export default function AccountPage(): JSX.Element {
             />
           </TabsContent>
     </TabbedPageShell>
+    <WelcomeDialog
+      open={welcome !== null}
+      orgName={welcome?.orgName ?? ''}
+      isAdmin={welcome?.isAdmin ?? false}
+      onClose={() => { setWelcome(null); }}
+    />
+    </>
   );
 }

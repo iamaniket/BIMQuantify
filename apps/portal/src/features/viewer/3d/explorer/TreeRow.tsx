@@ -3,6 +3,7 @@
 import {
   type CSSProperties,
   type JSX,
+  type KeyboardEvent,
   type MouseEvent,
   useCallback,
   useRef,
@@ -36,7 +37,10 @@ type TreeRowProps = {
   style: CSSProperties;
   node: TreeNodeData;
   depth: number;
-  expanded: Set<string>;
+  // Precomputed by the tree flattener — a primitive so memo(TreeRow) can bail
+  // out for unchanged rows (was the whole `expanded` Set, which changed identity
+  // on every toggle and invalidated every row).
+  isExpanded: boolean;
   onToggleExpand: (key: string) => void;
 };
 
@@ -44,11 +48,10 @@ function TreeRowInner({
   style,
   node,
   depth,
-  expanded,
+  isExpanded,
   onToggleExpand,
 }: TreeRowProps): JSX.Element {
   const t = useTranslations('viewer.explorer');
-  const isExpanded = expanded.has(node.key);
   const hasChildren = node.children != null && node.children.length > 0;
   const leftPad = 8 + depth * 16;
 
@@ -93,6 +96,26 @@ function TreeRowInner({
           if (visible.length > 0) select(visible);
         }
       }, 200);
+    },
+    [node.entityKeys, isRowSelected, select, clearSelection, hidden],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (node.entityKeys.length === 0) return;
+      if (clickTimer.current) {
+        clearTimeout(clickTimer.current);
+        clickTimer.current = null;
+      }
+      if (isRowSelected) {
+        clearSelection();
+      } else {
+        const visible = node.entityKeys.filter((k) => !hidden.has(k));
+        if (visible.length > 0) select(visible);
+      }
     },
     [node.entityKeys, isRowSelected, select, clearSelection, hidden],
   );
@@ -146,10 +169,12 @@ function TreeRowInner({
     <div style={style}>
       <div
         role="treeitem"
+        tabIndex={0}
         aria-expanded={hasChildren ? isExpanded : undefined}
         aria-selected={isRowSelected}
         onClick={handleSelect}
         onDoubleClick={handleDoubleClick}
+        onKeyDown={handleKeyDown}
         className={cn(
           'group flex h-full select-none items-center gap-2 pr-2 text-[13px]',
           'cursor-pointer',

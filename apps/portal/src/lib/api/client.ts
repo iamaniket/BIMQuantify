@@ -67,7 +67,7 @@ async function parseErrorDetail(response: Response): Promise<ParsedErrorDetail> 
       const { detail, code, message } = parsed.data;
       const text = typeof detail === 'string' ? detail : JSON.stringify(detail);
       const object = (detail !== null && typeof detail === 'object' && !Array.isArray(detail))
-        ? (detail as Record<string, unknown>)
+        ? (detail)
         : null;
       return { text, object, code: code ?? null, message: message ?? null };
     }

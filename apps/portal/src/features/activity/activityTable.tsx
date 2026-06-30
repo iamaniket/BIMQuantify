@@ -126,18 +126,27 @@ const ACTION_I18N_KEY: Record<string, string> = {
   'project_invitation.created': 'projectInvitationCreated',
 };
 
+// Snapshot fields are `unknown` (the before/after maps are `Record<string,
+// unknown>`). Coerce only genuine primitives to their string form; objects/
+// arrays/null become '' rather than rendering "[object Object]".
+function primitiveStr(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return '';
+}
+
 function descriptionParams(entry: ProjectActivityEntry): Record<string, string> {
   // Updates carry `after`; deletes carry only `before`. Merge so labels that
   // interpolate a name/title/filename still render for delete events (after
   // wins on conflict).
   const snap = { ...(entry.before ?? {}), ...(entry.after ?? {}) };
   return {
-    name: String(snap['name'] ?? ''),
-    filename: String(snap['original_filename'] ?? ''),
-    framework: String(snap['framework'] ?? ''),
-    title: String(snap['title'] ?? ''),
+    name: primitiveStr(snap['name']),
+    filename: primitiveStr(snap['original_filename']),
+    framework: primitiveStr(snap['framework']),
+    title: primitiveStr(snap['title']),
     // `imported_count` (BCF import) and `count` (CSV export) both feed {count}.
-    count: String(snap['imported_count'] ?? snap['count'] ?? ''),
+    count: primitiveStr(snap['imported_count'] ?? snap['count']),
   };
 }
 

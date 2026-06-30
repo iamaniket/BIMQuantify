@@ -92,6 +92,16 @@ type PlaceCameraArgs = {
 const EYE_HEIGHT = 1.6;
 /** Resolved storey membership (local ids = IFC express ids) + a display label. */
 type IsolateArgs = { localIds: number[]; label?: string | null };
+/**
+ * Cross-model isolation: pre-keyed `{ modelId, localId }` items spanning several
+ * federated models (the portal unions every discipline's storeys on one Level).
+ * Unlike {@link IsolateArgs} these carry their own modelId, so isolation hides
+ * off-level elements across ALL loaded models, not just the plan model.
+ */
+type IsolateAcrossArgs = {
+  items: Array<{ modelId: string; localId: number }>;
+  label?: string | null;
+};
 type CameraPose = { position: ViewerVec3; target: ViewerVec3 };
 
 export function minimapPlugin(
@@ -248,6 +258,26 @@ export function minimapPlugin(
     ctx.events.emit('minimap:level', { storeyName: label, isolated: true });
   };
 
+  /**
+   * Isolate elements across SEVERAL models at once. The portal passes the union of
+   * every discipline's storeys reconciled onto the active project Level, each item
+   * already keyed by its own `{ modelId, localId }`. Empty list → show all.
+   */
+  const isolateItemsAcrossModels = async (args: IsolateAcrossArgs): Promise<void> => {
+    const ctx = ctxRef;
+    if (!ctx) return;
+    const items = Array.isArray(args?.items) ? args.items : [];
+    const label = args?.label ?? null;
+    activeStorey = label;
+    if (items.length === 0) {
+      await showAllLevels();
+      return;
+    }
+    await ctx.commands.execute('visibility.isolateItem', items).catch(() => undefined);
+    isolated = true;
+    ctx.events.emit('minimap:level', { storeyName: label, isolated: true });
+  };
+
   const showAllLevels = async (): Promise<void> => {
     const ctx = ctxRef;
     if (!ctx) return;
@@ -342,6 +372,11 @@ export function minimapPlugin(
       ctx.commands.register('minimap.isolateItems', (args: unknown) => isolateItems(args as IsolateArgs), {
         title: 'Isolate a storey in 3D (hide other levels)',
       });
+      ctx.commands.register(
+        'minimap.isolateItemsAcrossModels',
+        (args: unknown) => isolateItemsAcrossModels(args as IsolateAcrossArgs),
+        { title: 'Isolate a level across all federated models' },
+      );
       ctx.commands.register('minimap.showAllLevels', () => showAllLevels(), {
         title: 'Show all levels (clear storey isolation)',
       });

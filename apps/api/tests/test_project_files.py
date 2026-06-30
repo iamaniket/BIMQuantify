@@ -173,7 +173,12 @@ async def test_initiate_editor_succeeds(
     )
     resp = await client.post(
         f"/projects/{project_id}/documents/{document_id}/files/initiate",
-        json={"filename": "x.ifc", "size_bytes": 100, "content_type": "application/octet-stream", "content_sha256": "9c95f91b4579b507d9af0db70dd312e86c9da9c8b3892f03b062ed5cf06d0135"},
+        json={
+            "filename": "x.ifc",
+            "size_bytes": 100,
+            "content_type": "application/octet-stream",
+            "content_sha256": "9c95f91b4579b507d9af0db70dd312e86c9da9c8b3892f03b062ed5cf06d0135",
+        },
         headers=_auth(same_org_user["access_token"]),
     )
     assert resp.status_code == 201
@@ -189,10 +194,17 @@ async def test_initiate_viewer_forbidden(
     project_id, document_id = await _project_and_model(
         client, org_user["access_token"], project_name="LockedV"
     )
-    await _add_member(client, org_user["access_token"], project_id, same_org_non_admin_user["id"], "viewer")
+    await _add_member(
+        client, org_user["access_token"], project_id, same_org_non_admin_user["id"], "viewer"
+    )
     resp = await client.post(
         f"/projects/{project_id}/documents/{document_id}/files/initiate",
-        json={"filename": "x.ifc", "size_bytes": 100, "content_type": "application/octet-stream", "content_sha256": "804615e99933939d6d99b0122be4a767c4f66008e3a8660655266eb4a852309a"},
+        json={
+            "filename": "x.ifc",
+            "size_bytes": 100,
+            "content_type": "application/octet-stream",
+            "content_sha256": "804615e99933939d6d99b0122be4a767c4f66008e3a8660655266eb4a852309a",
+        },
         headers=_auth(same_org_non_admin_user["access_token"]),
     )
     assert resp.status_code == 403
@@ -209,7 +221,12 @@ async def test_initiate_rejects_non_ifc_extension(
     )
     resp = await client.post(
         f"/projects/{project_id}/documents/{document_id}/files/initiate",
-        json={"filename": "model.txt", "size_bytes": 100, "content_type": "text/plain", "content_sha256": "0ff78641601947f0de6f1ec7f71320b1ac094385a5c75110f7fc3c04ecf31cc5"},
+        json={
+            "filename": "model.txt",
+            "size_bytes": 100,
+            "content_type": "text/plain",
+            "content_sha256": "0ff78641601947f0de6f1ec7f71320b1ac094385a5c75110f7fc3c04ecf31cc5",
+        },
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 400
@@ -260,7 +277,12 @@ async def test_initiate_cross_org_returns_404(
     )
     resp = await client.post(
         f"/projects/{project_id}/documents/{document_id}/files/initiate",
-        json={"filename": "x.ifc", "size_bytes": 100, "content_type": "application/octet-stream", "content_sha256": "120c25fad76244243e534863a961eb7c1f5085d520c9f1822c47afb3231b3da3"},
+        json={
+            "filename": "x.ifc",
+            "size_bytes": 100,
+            "content_type": "application/octet-stream",
+            "content_sha256": "120c25fad76244243e534863a961eb7c1f5085d520c9f1822c47afb3231b3da3",
+        },
         headers=_auth(other_org_user["access_token"]),
     )
     assert resp.status_code == 404
@@ -275,7 +297,12 @@ async def test_initiate_unknown_model_returns_404(
     project = await _create_project(client, org_user["access_token"], name="UnknownM")
     resp = await client.post(
         f"/projects/{project['id']}/documents/{uuid4()}/files/initiate",
-        json={"filename": "x.ifc", "size_bytes": 100, "content_type": "application/octet-stream", "content_sha256": "872161d28afc2d9d40e7c172c4f4f3a30de204b80da0b5148a9604b0c257ce66"},
+        json={
+            "filename": "x.ifc",
+            "size_bytes": 100,
+            "content_type": "application/octet-stream",
+            "content_sha256": "872161d28afc2d9d40e7c172c4f4f3a30de204b80da0b5148a9604b0c257ce66",
+        },
         headers=_auth(org_user["access_token"]),
     )
     assert resp.status_code == 404
@@ -879,7 +906,9 @@ async def test_delete_viewer_forbidden(
     project_id, document_id = await _project_and_model(
         client, org_user["access_token"], project_name="DelViewer"
     )
-    await _add_member(client, org_user["access_token"], project_id, same_org_non_admin_user["id"], "viewer")
+    await _add_member(
+        client, org_user["access_token"], project_id, same_org_non_admin_user["id"], "viewer"
+    )
     init = (
         await client.post(
             f"/projects/{project_id}/documents/{document_id}/files/initiate",
@@ -1351,12 +1380,37 @@ async def test_pages_callback_persists_manifest_and_bundle_serves_it(
     email_transport: object,
     fake_storage_client: tuple[AsyncClient, FakeStorage],
 ) -> None:
-    """A succeeded pdf_pages_rasterization callback persists the manifest key,
-    and the viewer-bundle then presigns a pdf_pages_url for the mobile viewer."""
+    """A succeeded pdf_pages_rasterization callback persists the manifest key, and
+    the viewer-bundle then reads that manifest, presigns each page image, and
+    inlines the rewritten manifest as a base64 ``data:`` URL for the mobile viewer
+    (see ``_build_pdf_pages_manifest_url`` — the manifest key never leaks to the
+    client; only presigned page URLs do)."""
+    import base64
+    import json
+
     client, fake = fake_storage_client
     project_id, document_id, file_id = await _complete_ready_pdf(
         client, fake, org_user, "1111111111111111111111111111111111111111111111111111111111111111"
     )
+
+    # The worker uploads the page-image manifest object; the callback only carries
+    # its KEY. Simulate that upload so the bundle can read + presign it.
+    manifest_key = f"projects/{project_id}/doc/plan.pages.json"
+    page_key = f"projects/{project_id}/doc/pages/page-0.webp"
+    fake.objects[manifest_key] = json.dumps(
+        {
+            "pages": [
+                {
+                    "key": page_key,
+                    "index": 0,
+                    "pageWidth": 800,
+                    "pageHeight": 600,
+                    "imageWidth": 1600,
+                    "imageHeight": 1200,
+                }
+            ]
+        }
+    ).encode()
 
     cb = await client.post(
         "/internal/jobs/pages/callback",
@@ -1364,7 +1418,7 @@ async def test_pages_callback_persists_manifest_and_bundle_serves_it(
             "file_id": file_id,
             "organization_id": org_user["organization_id"],
             "status": "succeeded",
-            "pdf_pages_key": f"projects/{project_id}/doc/plan.pages.json",
+            "pdf_pages_key": manifest_key,
             "page_count": 3,
         },
         headers=_WORKER_AUTH,
@@ -1378,8 +1432,13 @@ async def test_pages_callback_persists_manifest_and_bundle_serves_it(
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["file_type"] == "pdf"
+    # New behavior: the manifest is rewritten + inlined as a base64 data: URL whose
+    # page entries carry presigned image URLs (the raw manifest key never leaks).
     assert body["pdf_pages_url"] is not None
-    assert "pages.json" in body["pdf_pages_url"]
+    assert body["pdf_pages_url"].startswith("data:application/json;base64,")
+    decoded = json.loads(base64.b64decode(body["pdf_pages_url"].split(",", 1)[1]))
+    assert decoded["pages"][0]["index"] == 0
+    assert page_key in decoded["pages"][0]["url"]  # presigned from the page key
 
 
 async def test_pages_callback_failed_leaves_bundle_without_pages_url(
@@ -1858,12 +1917,8 @@ async def test_initiate_treats_pdf_and_ifc_symmetrically_for_dedup(
     """PDF dedup works the same way as IFC dedup."""
     client, _ = fake_storage_client
     project = await _create_project(client, org_user["access_token"], name="PdfDup")
-    model_a = await _create_document(
-        client, org_user["access_token"], project["id"], name="PA"
-    )
-    model_b = await _create_document(
-        client, org_user["access_token"], project["id"], name="PB"
-    )
+    model_a = await _create_document(client, org_user["access_token"], project["id"], name="PA")
+    model_b = await _create_document(client, org_user["access_token"], project["id"], name="PB")
 
     first = await client.post(
         f"/projects/{project['id']}/documents/{model_a['id']}/files/initiate",

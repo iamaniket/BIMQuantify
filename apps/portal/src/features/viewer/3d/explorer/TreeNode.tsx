@@ -1,6 +1,6 @@
 import type { EntityKey } from '@/stores/viewerEntityStore';
 
-/* eslint-disable no-restricted-syntax -- ?:  needed for exactOptionalPropertyTypes */
+ 
 export type TreeNodeData = {
   key: string;
   label: string;
@@ -11,4 +11,4 @@ export type TreeNodeData = {
   color?: string;
   mono?: boolean;
 };
-/* eslint-enable no-restricted-syntax */
+ 

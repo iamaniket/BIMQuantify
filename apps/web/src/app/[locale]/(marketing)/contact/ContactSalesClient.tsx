@@ -17,6 +17,8 @@ export function ContactSalesClient(): JSX.Element {
   const locale = useLocale();
   const bookingUrl = env.NEXT_PUBLIC_CONTACT_BOOKING_URL;
   const contactEmail = env.NEXT_PUBLIC_CONTACT_EMAIL;
+  const founderName = env.NEXT_PUBLIC_FOUNDER_NAME;
+  const founderLinkedin = env.NEXT_PUBLIC_FOUNDER_LINKEDIN_URL;
 
   return (
     <>
@@ -81,6 +83,36 @@ export function ContactSalesClient(): JSX.Element {
             )}
           </div>
         </div>
+
+        {founderName ? (
+          <div className="mt-10 border-t border-border pt-8 text-center">
+            <p className="text-body2 text-foreground-secondary">
+              {t('founder.lead', { name: founderName })}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-body2">
+              <span className="text-foreground-tertiary">{t('founder.reach')}</span>
+              {contactEmail ? (
+                <a
+                  href={`mailto:${contactEmail}`}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {contactEmail}
+                </a>
+              ) : null}
+              {founderLinkedin ? (
+                <a
+                  href={founderLinkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                >
+                  {t('founder.linkedin')}
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </a>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </section>
     </>
   );

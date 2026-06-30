@@ -22,7 +22,7 @@ const SIZE_CLASSES: Record<HeroSize, string> = {
   page: 'min-h-[540px] py-16 sm:min-h-[460px] sm:py-20',
 };
 
-export interface HeroShellProps {
+export type HeroShellProps = {
   size?: HeroSize;
   align?: 'start' | 'center';
   /** Extra classes for the inner content container (gap-*, max-w-* override, …). */

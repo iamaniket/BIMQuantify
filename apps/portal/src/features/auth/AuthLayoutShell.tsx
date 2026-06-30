@@ -5,7 +5,7 @@ import type { JSX, ReactNode } from 'react';
 import { AuthHeroBrand } from '@/features/auth/AuthHeroBrand';
 import { Link } from '@/i18n/navigation';
 
-interface AuthLayoutShellProps {
+type AuthLayoutShellProps = {
   children: ReactNode;
   /**
    * Override the top-right slot. Defaults to the back-to-sign-in link.

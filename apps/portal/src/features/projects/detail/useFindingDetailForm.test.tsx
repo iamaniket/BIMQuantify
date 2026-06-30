@@ -9,7 +9,7 @@ const h = vi.hoisted(() => ({
   updateMutate: vi.fn(),
   deleteMutate: vi.fn(),
   members: [] as Array<{ user_id: string; role: string }>,
-  me: { user: { id: 'u1' } } as { user: { id: string } } | null,
+  me: { user: { id: 'u1' } },
 }));
 
 vi.mock('@/features/findings/useUpdateFinding', () => ({
@@ -56,7 +56,7 @@ function makeFinding(overrides: Partial<Finding> = {}): Finding {
     created_at: '2026-05-29T10:00:00Z',
     updated_at: '2026-05-29T10:00:00Z',
     ...overrides,
-  } as Finding;
+  };
 }
 
 describe('useFindingDetailForm', () => {

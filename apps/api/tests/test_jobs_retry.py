@@ -50,7 +50,7 @@ async def test_retry_retriable_job_creates_new_job(
     # Recording dispatcher so the retry dispatch succeeds.
     job_dispatch_calls.clear()
 
-    async def _record(job, _settings, organization_id) -> None:
+    async def _record(job, _settings, organization_id, priority: int = 0) -> None:
         payload = dict(job.payload or {})
         entry: dict[str, object] = {"job_id": str(job.id), "payload": payload}
         for k in ("file_id", "project_id", "storage_key"):
@@ -203,7 +203,9 @@ async def test_concurrent_retry_creates_single_job(
     # Recording dispatcher so the winning retry dispatches cleanly (lands pending).
     job_dispatch_calls.clear()
 
-    async def _record(job, _settings: object, organization_id: object) -> None:
+    async def _record(
+        job, _settings: object, organization_id: object, priority: object = 0
+    ) -> None:
         job_dispatch_calls.append({"job_id": str(job.id)})
 
     set_job_dispatcher(_record)

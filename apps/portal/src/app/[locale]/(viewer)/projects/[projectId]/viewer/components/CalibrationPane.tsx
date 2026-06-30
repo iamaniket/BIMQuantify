@@ -36,12 +36,14 @@ import {
 import { useAlignedSheets } from '@/features/aligned-sheets/hooks';
 import { useSheetCalibration } from '@/features/aligned-sheets/useSheetCalibration';
 import { documentsWithVersionsKey } from '@/features/documents/queryKeys';
+import { headFileId } from '@/features/documents/headFileId';
 import { useStoreys } from '@/features/storeys/useStoreys';
 import { useFloorPlanData } from '@/features/viewer/2d/useFloorPlanData';
+import { useModelMetadata } from '@/features/viewer/3d/useModelMetadata';
 import { buildStoreyMembership } from '@/features/viewer/3d/minimap/storeyMembership';
 import { useViewerBundle } from '@/features/viewer/shared/useViewerBundle';
 import { listDocumentsWithVersions } from '@/lib/api/documents';
-import type { DocumentWithVersions } from '@/lib/api/schemas';
+import type { ProjectViewerDocumentEntry } from '@/lib/api/schemas';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 import { useAuthQuery } from '@/lib/query/useAuthQuery';
 
@@ -52,13 +54,16 @@ const DocumentViewer = dynamic(
 
 type Props = {
   projectId: string;
-  /** The 3D model's API UUID — owns the storeys the sheet pins to. */
+  /** The plan/arch model's API UUID — the DEFAULT model to calibrate against. */
   planApiModelId: string | null;
+  /** Every loaded federated model, so the user can calibrate a discipline PDF
+   * against its own model (not just the plan model). Empty in single-file mode. */
+  entries: ProjectViewerDocumentEntry[];
   viewerHandle: ViewerHandle | null;
   viewerReady: boolean;
-  /** The 3D model's extraction metadata — for minimap calibration + storey isolation. */
+  /** The plan model's extraction metadata — used when calibrating against the plan model. */
   metadata: ModelMetadata | undefined;
-  /** The 3D model's floor-plan artifact URL — supplies the plan axes for calibration. */
+  /** The plan model's floor-plan artifact URL — supplies the fallback plan axes. */
   floorPlansUrl: string | null;
   /** Leave calibration mode (e.g. to '2d' so the aligned sheet shows). */
   onExit: () => void;
@@ -72,15 +77,6 @@ function storeyLabel(
   return s.name ?? levelFallbackLabel((s.ordering ?? 0) + 1);
 }
 
-/** Resolve a model's head ProjectFile id (restore pointer, else newest ready). */
-function headFileId(model: DocumentWithVersions): string | null {
-  if (model.head_file_id) return model.head_file_id;
-  const ready = model.versions
-    .filter((v) => v.status === 'ready')
-    .sort((a, b) => b.version_number - a.version_number);
-  return ready[0]?.id ?? null;
-}
-
 /**
  * The right-hand pane of "calibration" view mode: a chosen PDF model rendered in
  * a DocumentViewer plus a launcher (PDF model · page · storey) and a stepper.
@@ -91,6 +87,7 @@ function headFileId(model: DocumentWithVersions): string | null {
 export function CalibrationPane({
   projectId,
   planApiModelId,
+  entries,
   viewerHandle,
   viewerReady,
   metadata,
@@ -110,11 +107,35 @@ export function CalibrationPane({
     [documentsQuery.data],
   );
 
-  // The dropdown is driven by the PLAN model's own storeys (each is a real 3D
+  // Which 3D model to calibrate the PDF against. Defaults to the plan/arch model,
+  // but in a federated scene the user can pick the discipline model the drawing
+  // belongs to (e.g. calibrate a structural sheet against the structural model) so
+  // the control-point picks land on that model's geometry. AlignedSheet.document_id
+  // records the choice; the sheet still pins to the shared project Level.
+  const [calibrateModelId, setCalibrateModelId] = useState<string | null>(null);
+  useEffect(() => {
+    if (calibrateModelId === null && planApiModelId) setCalibrateModelId(planApiModelId);
+  }, [calibrateModelId, planApiModelId]);
+  const activeModelId = calibrateModelId ?? planApiModelId;
+  const calibrateEntry = useMemo(
+    () => entries.find((e) => e.model_id === activeModelId) ?? null,
+    [entries, activeModelId],
+  );
+  // For the plan model, reuse the metadata/floor-plan URL the page already
+  // resolved (props); for any other discipline model fetch its own (URL-keyed,
+  // so it dedupes with the explorer's per-model metadata fetch).
+  const isPlanModel = activeModelId === planApiModelId;
+  const fetchedMeta = useModelMetadata(
+    isPlanModel ? null : (calibrateEntry?.metadata_url ?? null),
+  );
+  const activeMetadata = isPlanModel ? metadata : fetchedMeta.data;
+  const activeFloorPlansUrl = isPlanModel ? floorPlansUrl : (calibrateEntry?.floor_plans_url ?? null);
+
+  // The dropdown is driven by the SELECTED model's own storeys (each is a real 3D
   // floor that isolates cleanly), NOT by project-wide levels — a project-wide
   // level can belong to a different model and would isolate nothing. The shared
   // `level_id` (the aligned-sheet write target) is derived from the chosen storey.
-  const storeysQuery = useStoreys(projectId, planApiModelId ?? '');
+  const storeysQuery = useStoreys(projectId, activeModelId ?? '');
   const storeys = useMemo(() => storeysQuery.data ?? [], [storeysQuery.data]);
 
   const [selectedPdfModelId, setSelectedPdfModelId] = useState<string | null>(null);
@@ -137,7 +158,12 @@ export function CalibrationPane({
     }
   }, [pdfDocuments, selectedPdfModelId]);
   useEffect(() => {
-    if (selectedStoreyId === null && storeys.length > 0) {
+    if (storeys.length === 0) return;
+    // Re-default whenever the current pick isn't one of THIS model's storeys —
+    // covers both the initial load and a switch of the calibrate-against model.
+    const stillValid =
+      selectedStoreyId !== null && storeys.some((s) => s.id === selectedStoreyId);
+    if (!stillValid) {
       // Prefer the first reconciled storey (so Start is enabled immediately),
       // falling back to the first storey if none carry a level yet.
       const firstReconciled = storeys.find((s) => s.level_id !== null);
@@ -150,8 +176,15 @@ export function CalibrationPane({
   // the SAME source the Split view uses, so the captured transform stays
   // consistent with how pins/markers are projected later.
   const levelFallback = useCallback((n: number) => String(n), []);
-  const { planAxisX, planAxisY } = useFloorPlanData(floorPlansUrl, metadata, levelFallback);
-  const storeyMembership = useMemo(() => buildStoreyMembership(metadata), [metadata]);
+  // Plan axes for the selected model; fall back to the plan model's axes when the
+  // chosen discipline model has no floor-plan artifact (structural/MEP often
+  // don't). Axes are a shared site-coordinate property, so borrowing them is
+  // safe for standard models; the control-point picks are on live 3D geometry.
+  const planModelFp = useFloorPlanData(floorPlansUrl, metadata, levelFallback);
+  const selectedFp = useFloorPlanData(activeFloorPlansUrl, activeMetadata, levelFallback);
+  const planAxisX = activeFloorPlansUrl ? selectedFp.planAxisX : planModelFp.planAxisX;
+  const planAxisY = activeFloorPlansUrl ? selectedFp.planAxisY : planModelFp.planAxisY;
+  const storeyMembership = useMemo(() => buildStoreyMembership(activeMetadata), [activeMetadata]);
   // The selected plan-model storey (drives 3D isolation via its express_id).
   const selectedStorey = useMemo(
     () => storeys.find((s) => s.id === selectedStoreyId) ?? null,
@@ -170,7 +203,7 @@ export function CalibrationPane({
   // Calibrate the minimap here too — in calibration mode neither the Split pane
   // nor the minimap pop-out is mounted, so without this `minimap.projectPoint`
   // returns null and every calibration fails with MINIMAP_NOT_CALIBRATED.
-  const ifcBbox = metadata?.bbox;
+  const ifcBbox = activeMetadata?.bbox;
   useEffect(() => {
     if (!viewerHandle || !viewerReady || !ifcBbox) return;
     void viewerHandle.commands
@@ -247,7 +280,7 @@ export function CalibrationPane({
   // constraint and fails with ALIGNED_SHEET_DUPLICATE.
   const alignedSheetsQuery = useAlignedSheets(
     projectId,
-    planApiModelId ? { modelId: planApiModelId } : {},
+    activeModelId ? { modelId: activeModelId } : {},
   );
   const existingSheet = useMemo(
     () =>
@@ -262,7 +295,7 @@ export function CalibrationPane({
 
   const { step, errorCode, start, cancel } = useSheetCalibration({
     projectId,
-    modelId: planApiModelId ?? '',
+    modelId: activeModelId ?? '',
     levelId: selectedLevelId ?? '',
     pdfModelId: selectedPdfModelId ?? '',
     pageIndex,
@@ -344,6 +377,24 @@ export function CalibrationPane({
       <div className="absolute left-1/2 top-3 z-20 -translate-x-1/2">
         <ToolbarGroup className="gap-0.5">
           <Crosshair className="mx-1 h-3.5 w-3.5 text-foreground-tertiary" aria-hidden />
+          {/* Calibrate-against model picker — only meaningful when >1 model is
+              loaded; in single-file mode the lone plan model is implicit. */}
+          {entries.length > 1 && (
+            <>
+              <Dropdown
+                label={calibrateEntry?.model_name ?? ''}
+                title={t('aligned.calibrateAgainst')}
+                disabled={active}
+              >
+                {entries.map((e) => (
+                  <DropdownMenuItem key={e.model_id} onSelect={() => { setCalibrateModelId(e.model_id); }}>
+                    {e.model_name}
+                  </DropdownMenuItem>
+                ))}
+              </Dropdown>
+              <ToolbarDivider />
+            </>
+          )}
           <Dropdown label={modelLabel} disabled={active}>
             {pdfDocuments.map((m) => (
               <DropdownMenuItem key={m.id} onSelect={() => { setSelectedPdfModelId(m.id); }}>
@@ -456,10 +507,12 @@ export function CalibrationPane({
 function Dropdown({
   label,
   disabled,
+  title,
   children,
 }: {
   label: string;
   disabled: boolean;
+  title?: string;
   children: React.ReactNode;
 }): JSX.Element {
   return (
@@ -468,6 +521,7 @@ function Dropdown({
         <button
           type="button"
           disabled={disabled}
+          {...(title !== undefined ? { title } : {})}
           className="inline-flex h-8 max-w-[160px] items-center gap-1 rounded-md px-2 text-caption font-medium text-foreground/80 hover:bg-foreground/[0.06] focus-visible:outline-none disabled:opacity-50"
         >
           <span className="truncate">{label}</span>

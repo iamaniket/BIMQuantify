@@ -46,6 +46,50 @@ from bimdossier_api.models.finding_attachment import (
     FindingAttachment,
 )
 from bimdossier_api.models.finding_comment import FindingComment, FindingCommentMention
+from bimdossier_api.models.pooled_aligned_sheet import PooledAlignedSheet
+from bimdossier_api.models.pooled_attachment import (
+    POOLED_ATTACHMENT_CATEGORIES,
+    POOLED_ATTACHMENT_STATUSES,
+    PooledAttachment,
+)
+from bimdossier_api.models.pooled_document import (
+    POOLED_DOC_DISCIPLINES,
+    POOLED_DOC_FILE_TYPES,
+    POOLED_DOC_STATUSES,
+    PooledDocument,
+)
+from bimdossier_api.models.pooled_finding import (
+    POOLED_FINDING_NOTE_MAX,
+    POOLED_FINDING_SEVERITIES,
+    POOLED_FINDING_STATUSES,
+    PooledFinding,
+)
+from bimdossier_api.models.pooled_finding_attachment import (
+    POOLED_FINDING_ATTACHMENT_KINDS,
+    PooledFindingAttachment,
+)
+from bimdossier_api.models.pooled_level import POOLED_LEVEL_SOURCES, PooledLevel
+from bimdossier_api.models.pooled_notification import (
+    POOLED_NOTIFICATION_EVENT_TYPES,
+    PooledNotification,
+    PooledNotificationUserState,
+)
+from bimdossier_api.models.pooled_project import (
+    POOLED_PROJECT_BUILDING_TYPES,
+    POOLED_PROJECT_LIFECYCLE_STATES,
+    POOLED_PROJECT_PHASES,
+    PooledProject,
+)
+from bimdossier_api.models.pooled_project_file import (
+    POOLED_FILE_EXTRACTION_STATUSES,
+    POOLED_FILE_STATUSES,
+    PooledProjectFile,
+)
+from bimdossier_api.models.pooled_project_member import (
+    POOLED_MEMBER_ROLES,
+    PooledProjectMember,
+)
+from bimdossier_api.models.free_user_limits import FreeUserLimits
 from bimdossier_api.models.job import _JOB_TERMINAL, Job, JobStatus, JobType
 from bimdossier_api.models.levels import Level, LevelSource
 from bimdossier_api.models.notification import (
@@ -89,6 +133,23 @@ __all__ = [
     "ATTACHMENT_ALLOWED_EXTENSIONS",
     "CHECKLIST_RESULT_ATTACHMENT_KINDS",
     "FINDING_ATTACHMENT_KINDS",
+    "POOLED_ATTACHMENT_CATEGORIES",
+    "POOLED_ATTACHMENT_STATUSES",
+    "POOLED_FINDING_ATTACHMENT_KINDS",
+    "POOLED_DOC_DISCIPLINES",
+    "POOLED_DOC_FILE_TYPES",
+    "POOLED_DOC_STATUSES",
+    "POOLED_FILE_EXTRACTION_STATUSES",
+    "POOLED_FILE_STATUSES",
+    "POOLED_MEMBER_ROLES",
+    "POOLED_FINDING_NOTE_MAX",
+    "POOLED_FINDING_SEVERITIES",
+    "POOLED_FINDING_STATUSES",
+    "POOLED_LEVEL_SOURCES",
+    "POOLED_NOTIFICATION_EVENT_TYPES",
+    "POOLED_PROJECT_BUILDING_TYPES",
+    "POOLED_PROJECT_LIFECYCLE_STATES",
+    "POOLED_PROJECT_PHASES",
     "TRANSFORM_TYPE_SIMILARITY",
     "_JOB_TERMINAL",
     "_REPORT_TERMINAL",
@@ -134,6 +195,18 @@ __all__ = [
     "FindingCommentMention",
     "FindingSeverity",
     "FindingStatus",
+    "PooledAlignedSheet",
+    "PooledAttachment",
+    "PooledDocument",
+    "PooledFindingAttachment",
+    "PooledLevel",
+    "PooledNotification",
+    "PooledNotificationUserState",
+    "PooledProject",
+    "PooledProjectFile",
+    "PooledProjectMember",
+    "FreeUserLimits",
+    "PooledFinding",
     "IfcSchema",
     "InspectionVerdict",
     "Job",

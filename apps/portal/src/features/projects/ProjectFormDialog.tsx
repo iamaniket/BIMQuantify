@@ -23,6 +23,7 @@ import {
 
 import { Wizard } from '@/components/shared/wizard/Wizard';
 
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { ApiError } from '@/lib/api/client';
 import type { Project, ProjectRole } from '@/lib/api/schemas';
 import { useAuth } from '@/providers/AuthProvider';
@@ -110,10 +111,13 @@ export function ProjectFormDialog(props: Props): JSX.Element {
   const isReadOnly = project !== null && isProjectArchived(project);
   const router = useRouter();
   const { me, activeMembership } = useAuth();
+  const { isPooled } = useIsPooledContext();
 
-  // The Team step is create-only; existing projects manage members on the
-  // access page. Steps (and hence the last index) therefore depend on mode.
-  const steps = mode === 'create' ? PROJECT_CREATE_WIZARD_STEPS : PROJECT_WIZARD_STEPS;
+  // The Team step is create-only (existing projects manage members on the access
+  // page). Both paid and free creates get it — free invites up to 3 members by
+  // email (StepMembers pooledMode). It stays OPTIONAL for free (see submitDisabled).
+  const steps =
+    mode === 'create' ? PROJECT_CREATE_WIZARD_STEPS : PROJECT_WIZARD_STEPS;
   const LAST_STEP = steps.length - 1;
 
   const organizationId = activeMembership?.organization_id ?? null;
@@ -433,7 +437,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
               onBack={handleBack}
               onSubmit={handleSubmit}
               isSubmitting={isSubmitting}
-              submitDisabled={mode === 'create' && pendingTeam.length < 1}
+              submitDisabled={mode === 'create' && !isPooled && pendingTeam.length < 1}
               submitLabel={submitLabel}
               submitPendingLabel={submitPendingLabel}
               cancelSlot={(
@@ -475,6 +479,7 @@ export function ProjectFormDialog(props: Props): JSX.Element {
                     onAdd={handleAddTeam}
                     onRemove={handleRemoveTeam}
                     onChangeRole={handleChangeTeamRole}
+                    pooledMode={isPooled}
                   />
                 )}
               </div>

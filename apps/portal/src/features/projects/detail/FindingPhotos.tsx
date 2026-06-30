@@ -16,11 +16,15 @@ import { toast } from 'sonner';
 import { ImageAnnotatorDialog } from '@/features/attachments/ImageAnnotatorDialog';
 import { useAttachmentViewUrl } from '@/features/attachments/useAttachmentViewUrl';
 import { useUploadAttachment } from '@/features/attachments/useUploadAttachment';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 
 type ThumbnailProps = {
   projectId: string;
   attachmentId: string;
   disabled: boolean;
+  // Pooled (free) attachments have no versioning/annotation endpoint, so the
+  // annotate affordance is hidden for them (it would 409 on save).
+  annotatable: boolean;
   onRemove: () => void;
   onAnnotate: () => void;
 };
@@ -29,6 +33,7 @@ function PhotoThumbnail({
   projectId,
   attachmentId,
   disabled,
+  annotatable,
   onRemove,
   onAnnotate,
 }: ThumbnailProps): JSX.Element {
@@ -55,15 +60,17 @@ function PhotoThumbnail({
       >
         <X className="h-3 w-3" />
       </button>
-      <button
-        type="button"
-        title={t('annotate')}
-        disabled={disabled}
-        onClick={onAnnotate}
-        className="absolute bottom-0.5 right-0.5 inline-grid h-4 w-4 place-items-center rounded bg-background/80 text-foreground-tertiary transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
-      >
-        <Pencil className="h-3 w-3" />
-      </button>
+      {annotatable && (
+        <button
+          type="button"
+          title={t('annotate')}
+          disabled={disabled}
+          onClick={onAnnotate}
+          className="absolute bottom-0.5 right-0.5 inline-grid h-4 w-4 place-items-center rounded bg-background/80 text-foreground-tertiary transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
+        >
+          <Pencil className="h-3 w-3" />
+        </button>
+      )}
     </div>
   );
 }
@@ -87,6 +94,10 @@ export function FindingPhotos({
 }: Props): JSX.Element {
   const t = useTranslations('findings.photos');
   const uploadMutation = useUploadAttachment(projectId);
+  // Pooled (free) attachments have no annotation/versioning endpoint — hide the
+  // annotate affordance for free users (upload + view still work).
+  const { isPooled } = useIsPooledContext();
+  const annotatable = !isPooled;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
   const [annotatingId, setAnnotatingId] = useState<string | null>(null);
@@ -135,6 +146,7 @@ export function FindingPhotos({
             projectId={projectId}
             attachmentId={id}
             disabled={disabled}
+            annotatable={annotatable}
             onRemove={() => { onChange((prev) => prev.filter((x) => x !== id)); }}
             onAnnotate={() => { setAnnotatingId(id); }}
           />
@@ -165,15 +177,17 @@ export function FindingPhotos({
         className="hidden"
         onChange={(e) => { void handleFileChange(e); }}
       />
-      <ImageAnnotatorDialog
-        projectId={projectId}
-        attachmentId={annotatingId}
-        open={annotatingId !== null}
-        onOpenChange={(o) => { if (!o) setAnnotatingId(null); }}
-        onAnnotated={(newId) => {
-          onChange((prev) => prev.map((x) => (x === annotatingId ? newId : x)));
-        }}
-      />
+      {annotatable && (
+        <ImageAnnotatorDialog
+          projectId={projectId}
+          attachmentId={annotatingId}
+          open={annotatingId !== null}
+          onOpenChange={(o) => { if (!o) setAnnotatingId(null); }}
+          onAnnotated={(newId) => {
+            onChange((prev) => prev.map((x) => (x === annotatingId ? newId : x)));
+          }}
+        />
+      )}
     </div>
   );
 }

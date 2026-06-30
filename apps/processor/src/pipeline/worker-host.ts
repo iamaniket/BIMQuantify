@@ -35,7 +35,7 @@ import type { StoreyInfo } from './metadata.js';
  * is the parent Document's user-declared discipline (when supplied), threaded to
  * the floor-plan gate in the walk task. */
 export type ExtractionTask =
-  | { task: 'frag-outline'; bytes: Uint8Array }
+  | { task: 'frag-outline'; bytes: Uint8Array; threshold?: number }
   | { task: 'walk'; bytes: Uint8Array; discipline?: string };
 
 /** Flattened Error crossing the structuredClone boundary. `schema` carries

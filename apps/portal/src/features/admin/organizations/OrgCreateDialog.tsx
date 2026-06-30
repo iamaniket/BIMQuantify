@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { AppDialog, Input } from '@bimdossier/ui';
 
 import { Field } from '@/components/shared/forms/Field';
-import { useRegisterField } from '@/hooks/useRegisterField';
+import { registerField } from '@/hooks/registerField';
 import { lookupUserByEmail } from '@/lib/api/admin';
 import { ApiError } from '@/lib/api/client';
 import type { AdminUserRead } from '@/lib/api/schemas';
@@ -192,7 +192,7 @@ export function OrgCreateDialog({ open, onOpenChange, prefill, onCreated }: Prop
               id={id}
               placeholder={t('placeholders.name')}
               autoFocus
-              {...useRegisterField(form, 'name')}
+              {...registerField(form, 'name')}
             />
           )}
         </Field>
@@ -203,7 +203,7 @@ export function OrgCreateDialog({ open, onOpenChange, prefill, onCreated }: Prop
                 id={id}
                 type="email"
                 placeholder={t('placeholders.adminEmail')}
-                {...useRegisterField(form, 'admin_email')}
+                {...registerField(form, 'admin_email')}
               />
               {lookupPending && (
                 <p className="text-caption text-foreground-tertiary">
@@ -241,7 +241,7 @@ export function OrgCreateDialog({ open, onOpenChange, prefill, onCreated }: Prop
               id={id}
               placeholder={t('placeholders.adminFullName')}
               readOnly={existingUser !== null}
-              {...useRegisterField(form, 'admin_full_name', {
+              {...registerField(form, 'admin_full_name', {
                 onChange: () => {
                   fullNameTouchedRef.current = true;
                 },
@@ -262,7 +262,7 @@ export function OrgCreateDialog({ open, onOpenChange, prefill, onCreated }: Prop
               min={1}
               inputMode="numeric"
               placeholder={t('placeholders.seatLimit')}
-              {...useRegisterField(form, 'seat_limit')}
+              {...registerField(form, 'seat_limit')}
             />
           )}
         </Field>
@@ -279,7 +279,7 @@ export function OrgCreateDialog({ open, onOpenChange, prefill, onCreated }: Prop
               min={1}
               inputMode="numeric"
               placeholder={t('placeholders.storageLimit')}
-              {...useRegisterField(form, 'active_storage_limit_gb')}
+              {...registerField(form, 'active_storage_limit_gb')}
             />
           )}
         </Field>

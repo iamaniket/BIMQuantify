@@ -23,7 +23,7 @@ const IfcViewer = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
 );
 
-export interface IfcViewerCanvasProps {
+export type IfcViewerCanvasProps = {
   scope: ViewerScope;
   viewerEpoch: number;
   viewerHandleRef: React.MutableRefObject<ViewerHandle | null>;
@@ -238,6 +238,7 @@ export function IfcViewerCanvas({
           <CalibrationPane
             projectId={projectId}
             planApiModelId={planApiModelId}
+            entries={scope.entries}
             viewerHandle={viewerHandleRef.current}
             viewerReady={viewerReady}
             metadata={planMetadata}
@@ -255,6 +256,7 @@ export function IfcViewerCanvas({
             projectId={projectId}
             fileId={scope.planFileId ?? fileId}
             planModelId={planApiModelId}
+            entries={scope.entries}
             viewMode={viewMode}
             onFindingClick={onFindingClick}
             onRequestFindings={onRequestFloorPlanFindings}

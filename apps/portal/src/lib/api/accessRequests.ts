@@ -18,7 +18,7 @@ const AccessRequestResponseSchema = z.object({
 
 export type AccessRequestResponse = z.infer<typeof AccessRequestResponseSchema>;
 
-export interface AccessRequestPayload {
+export type AccessRequestPayload = {
   name: string;
   work_email: string;
   company: string;

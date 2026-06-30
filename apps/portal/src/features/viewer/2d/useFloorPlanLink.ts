@@ -5,12 +5,13 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { DocumentViewerHandle, ViewerHandle } from '@bimdossier/viewer';
 
 import { buildStoreyMembership } from '@/features/viewer/3d/minimap/storeyMembership';
+import type { IsolateItem } from '@/features/viewer/3d/minimap/useFederatedLevelMembership';
 import type { ModelMetadata } from '@/lib/api/viewerTypes';
 
 import type { SheetTransform } from './sheetTransform';
 import type { FloorPlanDisplayLevel } from './useFloorPlanData';
 
-interface FloorPlanLinkOptions {
+type FloorPlanLinkOptions = {
   fpHandle: DocumentViewerHandle | null;
   viewerHandle: ViewerHandle | null;
   viewerReady: boolean;
@@ -18,6 +19,13 @@ interface FloorPlanLinkOptions {
   activeLevel: number;
   /** Isolate the active storey in 3D (Split/2D default). */
   isolate: boolean;
+  /**
+   * Pre-resolved `{ modelId, localId }` items for the active Level unioned across
+   * ALL loaded models. When present, isolation hides off-level elements from every
+   * discipline (via `minimap.isolateItemsAcrossModels`); when null/empty it falls
+   * back to single-model isolation from this plan's `storeyMembership`.
+   */
+  crossModelItems?: IsolateItem[] | null;
   metadata: ModelMetadata | undefined;
   /** IFC horizontal axis indices for the plan (for calibration in Split/2D). */
   planAxisX: number;
@@ -29,6 +37,13 @@ interface FloorPlanLinkOptions {
    * would be clobbered by calibrate (which resets it). Reset to null on teardown.
    */
   sheetTransform?: SheetTransform | null;
+  /**
+   * The viewer scene id (`file-<fileId>`) of the model this plan/sheet represents.
+   * Passed to `minimap.calibrate` so storey isolation + space selection target the
+   * active SOURCE model (a discipline sheet calibrates against its own model, not
+   * the plan model). Omit for the single-file viewer (falls back to first model).
+   */
+  modelId?: string;
   /**
    * Mirror the live 3D camera onto the plan as a "you are here" marker — Split
    * only. Off in pure 2D, where there's no visible 3D view to anchor it to, so
@@ -63,6 +78,7 @@ type CameraPose = { position: { x: number; y: number; z: number }; target: { x: 
 export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
   const { fpHandle, viewerHandle, viewerReady, levels, activeLevel, isolate, metadata, planAxisX, planAxisY, linkCamera, setActiveLevel } = opts;
   const sheetTransform = opts.sheetTransform ?? null;
+  const modelId = opts.modelId;
 
   const storeyMembership = useMemo(() => buildStoreyMembership(metadata), [metadata]);
   // Reverse membership: element express id (== fragment localId) → its storey
@@ -87,12 +103,18 @@ export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
   useEffect(() => {
     if (!viewerHandle || !viewerReady || !ifcBbox) return undefined;
     void viewerHandle.commands
-      .execute('minimap.calibrate', { ifcBbox, planAxisX, planAxisY, sheetTransform })
+      .execute('minimap.calibrate', {
+        ifcBbox,
+        planAxisX,
+        planAxisY,
+        sheetTransform,
+        ...(modelId ? { modelId } : {}),
+      })
       .catch(() => undefined);
     return () => {
       void viewerHandle.commands.execute('minimap.setSheetTransform', null).catch(() => undefined);
     };
-  }, [viewerHandle, viewerReady, ifcBbox, planAxisX, planAxisY, sheetTransform]);
+  }, [viewerHandle, viewerReady, ifcBbox, planAxisX, planAxisY, sheetTransform, modelId]);
 
   // Suppress the 3D→2D bounce caused by our own programmatic selection.
   const lastSelectedSpaceRef = useRef<number | null>(null);
@@ -254,19 +276,29 @@ export function useFloorPlanLink(opts: FloorPlanLinkOptions): void {
   }, [fpHandle, viewerHandle, viewerReady, linkCamera]);
 
   // level→storey isolation. Restore the full model on unmount / mode exit.
+  // Prefer the cross-model union (hides off-level elements across every loaded
+  // discipline); fall back to single-model membership until it's ready.
+  const crossModelItems = opts.crossModelItems ?? null;
   useEffect(() => {
     if (!viewerHandle || !viewerReady) return undefined;
     const lvl = levels[activeLevel];
-    const localIds = lvl ? (storeyMembership.get(lvl.storeyExpressID) ?? []) : [];
-    if (isolate && localIds.length > 0) {
+    const label = lvl?.name ?? null;
+    if (isolate && crossModelItems && crossModelItems.length > 0) {
       void viewerHandle.commands
-        .execute('minimap.isolateItems', { localIds, label: lvl?.name ?? null })
+        .execute('minimap.isolateItemsAcrossModels', { items: crossModelItems, label })
         .catch(() => undefined);
     } else {
-      void viewerHandle.commands.execute('minimap.showAllLevels').catch(() => undefined);
+      const localIds = lvl ? (storeyMembership.get(lvl.storeyExpressID) ?? []) : [];
+      if (isolate && localIds.length > 0) {
+        void viewerHandle.commands
+          .execute('minimap.isolateItems', { localIds, label })
+          .catch(() => undefined);
+      } else {
+        void viewerHandle.commands.execute('minimap.showAllLevels').catch(() => undefined);
+      }
     }
     return () => {
       void viewerHandle.commands.execute('minimap.showAllLevels').catch(() => undefined);
     };
-  }, [viewerHandle, viewerReady, levels, activeLevel, isolate, storeyMembership]);
+  }, [viewerHandle, viewerReady, levels, activeLevel, isolate, storeyMembership, crossModelItems]);
 }

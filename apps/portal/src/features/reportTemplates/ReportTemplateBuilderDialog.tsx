@@ -169,7 +169,7 @@ export function ReportTemplateBuilderDialog({
     });
   };
   const patchSection = (index: number, patch: Partial<ContentEntry> & Partial<TextEntry>): void => {
-    setSections((prev) => prev.map((s, i) => (i === index ? ({ ...s, ...patch } as SectionEntry) : s)));
+    setSections((prev) => prev.map((s, i) => (i === index ? ({ ...s, ...patch }) : s)));
   };
   const addTextBlock = (): void => {
     setSections((prev) => [...prev, { kind: 'text', id: makeTextId(), title: '', body: '' }]);
@@ -246,7 +246,7 @@ export function ReportTemplateBuilderDialog({
     };
   }, [accent, accentSecondary, coverKey, footerText, headerText, logoKey, sections]);
 
-  const handleSubmit = useCallback(async (): Promise<void> => {
+  const handleSubmit = useCallback((): void => {
     setError(null);
     if (name.trim() === '') {
       setError(t('errors.NAME_REQUIRED'));
@@ -354,13 +354,13 @@ export function ReportTemplateBuilderDialog({
                   />
                 </div>
                 {!isEditing && (
-                  <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-low px-3 py-2">
-                    <span className="flex flex-col">
+                  <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-low px-3 py-2">
+                    <label htmlFor="rt-default" className="flex flex-col">
                       <span className="font-sans text-body3 font-medium text-foreground">{t('builder.defaultLabel')}</span>
                       <span className="font-sans text-caption text-foreground-tertiary">{t('builder.defaultHint')}</span>
-                    </span>
-                    <Switch checked={isDefault} onChange={(e) => { setIsDefault(e.target.checked); }} />
-                  </label>
+                    </label>
+                    <Switch id="rt-default" checked={isDefault} onChange={(e) => { setIsDefault(e.target.checked); }} />
+                  </div>
                 )}
               </div>
             )}

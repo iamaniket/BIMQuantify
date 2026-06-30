@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 
 import { Input, Label, Select } from '@bimdossier/ui';
 
-import { useRegisterField } from '@/hooks/useRegisterField';
+import { registerField } from '@/hooks/registerField';
 import type { ProjectFormValues } from '../projectFormSchema';
 
 import {
@@ -47,7 +47,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
             placeholder={t('fields.referenceCodePlaceholder')}
             invalid={refCodeError !== undefined}
             disabled={isReadOnly}
-            {...useRegisterField(form, 'reference_code')}
+            {...registerField(form, 'reference_code')}
           />
           {refCodeError !== undefined && (
             <span role="alert" className={fieldErrorClass}>{refCodeError}</span>
@@ -62,7 +62,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
             placeholder={t('fields.permitNumberPlaceholder')}
             invalid={permitError !== undefined}
             disabled={isReadOnly}
-            {...useRegisterField(form, 'permit_number')}
+            {...registerField(form, 'permit_number')}
           />
           {permitError !== undefined && (
             <span role="alert" className={fieldErrorClass}>{permitError}</span>
@@ -73,7 +73,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={phaseId} className={fieldLabelClass}>{t('fields.phase')}</Label>
-          <Select id={phaseId} disabled={isReadOnly} {...useRegisterField(form, 'phase')}>
+          <Select id={phaseId} disabled={isReadOnly} {...registerField(form, 'phase')}>
             {phaseOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
@@ -85,7 +85,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
           <Select
             id={buildingTypeId}
             disabled={isReadOnly}
-            {...useRegisterField(form, 'building_type')}
+            {...registerField(form, 'building_type')}
           >
             <option value="">—</option>
             {buildingTypeOptions.map((opt) => (
@@ -103,7 +103,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
             type="date"
             invalid={deliveryError !== undefined}
             disabled={isReadOnly}
-            {...useRegisterField(form, 'delivery_date')}
+            {...registerField(form, 'delivery_date')}
           />
           {deliveryError !== undefined && (
             <span role="alert" className={fieldErrorClass}>{deliveryError}</span>
@@ -117,7 +117,7 @@ export function StepDetails({ isReadOnly, country }: Props): JSX.Element {
             type="date"
             invalid={plannedStartError !== undefined}
             disabled={isReadOnly}
-            {...useRegisterField(form, 'planned_start_date')}
+            {...registerField(form, 'planned_start_date')}
           />
           {plannedStartError !== undefined && (
             <span role="alert" className={fieldErrorClass}>{plannedStartError}</span>

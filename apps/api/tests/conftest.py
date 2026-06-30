@@ -82,7 +82,17 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
     from bimdossier_api._rls_sql import (
         audit_log_append_only_statements,
         create_app_role_statements,
+        disable_pooled_aligned_sheet_rls_statements,
+        disable_pooled_attachment_rls_statements,
+        disable_pooled_level_rls_statements,
+        disable_pooled_member_rls_statements,
+        disable_pooled_notification_rls_statements,
         disable_rls_statements,
+        enable_pooled_aligned_sheet_rls_statements,
+        enable_pooled_attachment_rls_statements,
+        enable_pooled_level_rls_statements,
+        enable_pooled_member_rls_statements,
+        enable_pooled_notification_rls_statements,
         enable_rls_statements,
     )
     from bimdossier_api.db import Base
@@ -96,8 +106,8 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         ChecklistItem,
         ChecklistItemResult,
         Deadline,
-        Job,
         Document,
+        Job,
         Notification,
         NotificationUserState,
         Organization,
@@ -125,7 +135,14 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         # Drop policies/enum left behind from a prior aborted run, then recreate
         # the schema from metadata. `create_all` is DDL-only — RLS policies are
         # applied separately below to mirror what the migration does.
-        for stmt in disable_rls_statements():
+        for stmt in (
+            *disable_pooled_attachment_rls_statements(),
+            *disable_pooled_aligned_sheet_rls_statements(),
+            *disable_pooled_level_rls_statements(),
+            *disable_pooled_notification_rls_statements(),
+            *disable_pooled_member_rls_statements(),
+            *disable_rls_statements(),
+        ):
             await conn.exec_driver_sql(
                 f"DO $$ BEGIN {stmt} EXCEPTION WHEN others THEN NULL; END $$;"
             )
@@ -168,7 +185,8 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
             "WHERE status IN ('draft', 'published')"
         )
         # Partial unique index for "one active access-request per email" —
-        # mirrors alembic migration 0003_dedup_pending_access_requests.
+        # mirrors the ux_access_requests_active_email index in the master baseline
+        # (0001_initial_master), not expressible in __table_args__.
         await conn.exec_driver_sql(
             "CREATE UNIQUE INDEX ux_access_requests_active_email "
             "ON access_requests(lower(work_email)) "
@@ -192,7 +210,30 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         # here so H8 is actually exercised. Must follow the grants above.
         for stmt in audit_log_append_only_statements("public"):
             await conn.exec_driver_sql(stmt)
+        # `free_user_limits` is control-plane: production never grants it to bim_app
+        # (it is absent from grant_pooled_tables_to_app_role's POOLED_DML_TABLES). The
+        # blanket "GRANT ... ON ALL TABLES" above over-grants it here, masking that
+        # boundary — REVOKE it so the bim_app-denied isolation test (and migration
+        # 0002's explicit REVOKE) reflect the real production grant set.
+        await conn.exec_driver_sql("REVOKE ALL ON public.free_user_limits FROM bim_app")
         for stmt in enable_rls_statements():
+            await conn.exec_driver_sql(stmt)
+        # Pooled free-tier tables get owner-OR-member RLS (mirrors migration 0004)
+        # so the free RLS-isolation tests exercise the real boundary as bim_app.
+        for stmt in enable_pooled_member_rls_statements():
+            await conn.exec_driver_sql(stmt)
+        # Pooled free-notification tables get per-recipient RLS (migration 0008)
+        # so the free-notification isolation tests exercise the real boundary.
+        for stmt in enable_pooled_notification_rls_statements():
+            await conn.exec_driver_sql(stmt)
+        # Pooled free-levels get owner-OR-member RLS (migration 0010).
+        for stmt in enable_pooled_level_rls_statements():
+            await conn.exec_driver_sql(stmt)
+        # Pooled free-aligned-sheets get owner-OR-member RLS (migration 0011).
+        for stmt in enable_pooled_aligned_sheet_rls_statements():
+            await conn.exec_driver_sql(stmt)
+        # Pooled free-attachments get owner-OR-member RLS (migration 0013).
+        for stmt in enable_pooled_attachment_rls_statements():
             await conn.exec_driver_sql(stmt)
 
     yield eng
@@ -203,7 +244,14 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         )
         for (schema,) in rows.fetchall():
             await conn.exec_driver_sql(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
-        for stmt in disable_rls_statements():
+        for stmt in (
+            *disable_pooled_attachment_rls_statements(),
+            *disable_pooled_aligned_sheet_rls_statements(),
+            *disable_pooled_level_rls_statements(),
+            *disable_pooled_notification_rls_statements(),
+            *disable_pooled_member_rls_statements(),
+            *disable_rls_statements(),
+        ):
             await conn.exec_driver_sql(
                 f"DO $$ BEGIN {stmt} EXCEPTION WHEN others THEN NULL; END $$;"
             )
@@ -281,6 +329,8 @@ async def _clean_tables(
         "session",
         "fake_storage_client",
         "rate_limited_client",
+        "free_tier_client",
+        "free_tier_storage_client",
     }
     if not _db_fixture_names.intersection(request.fixturenames):
         return
@@ -307,7 +357,9 @@ async def _clean_tables(
                     text(
                         "TRUNCATE TABLE checklist_item_results, checklist_items, "
                         "borgingsmomenten, borgingsplans, deadlines, "
-                        "capture_links, blog_posts, "
+                        "capture_links, blog_posts, pooled_finding_attachments, "
+                        "pooled_attachments, pooled_findings, pooled_project_files, "
+                        "pooled_documents, pooled_project_members, pooled_projects, "
                         "risks, access_requests, reports, jobs, project_files, documents, "
                         "project_members, projects, notification_user_state, "
                         "notifications, audit_log, certificates, org_certificates, "
@@ -359,6 +411,8 @@ async def _platform_org(
         "session",
         "fake_storage_client",
         "rate_limited_client",
+        "free_tier_client",
+        "free_tier_storage_client",
     }
     if not _db_fixture_names.intersection(request.fixturenames):
         return
@@ -406,6 +460,8 @@ async def _flush_redis(
         "session",
         "fake_storage_client",
         "rate_limited_client",
+        "free_tier_client",
+        "free_tier_storage_client",
     }
     if not _db_fixture_names.intersection(request.fixturenames):
         return
@@ -429,13 +485,16 @@ def _stub_job_dispatcher() -> Generator[list[dict[str, object]], None, None]:
 
     calls: list[dict[str, object]] = []
 
-    async def _record(job: Job, _settings: Settings, organization_id) -> None:
+    async def _record(
+        job: Job, _settings: Settings, organization_id, priority: int = 0
+    ) -> None:
         payload = dict(job.payload or {})
         entry: dict[str, object] = {
             "job_id": str(job.id),
             "job_type": job.job_type.value,
             "organization_id": str(organization_id),
             "payload": payload,
+            "priority": priority,
         }
         # Convenience flat keys for tests that read e.g. calls[0]["file_id"].
         for k in ("file_id", "project_id", "storage_key"):
@@ -586,9 +645,16 @@ class FakeStorage:
         return self.last_put_url
 
     async def presigned_get_url(
-        self, key: str, filename: str, *, disposition: str = "attachment", bucket: str | None = None
+        self,
+        key: str,
+        filename: str,
+        *,
+        disposition: str = "attachment",
+        response_content_type: str | None = None,
+        bucket: str | None = None,
     ) -> str:
-        return f"http://fake-storage/{key}?download={filename}&disposition={disposition}"
+        ct = f"&content_type={response_content_type}" if response_content_type is not None else ""
+        return f"http://fake-storage/{key}?download={filename}&disposition={disposition}{ct}"
 
     async def put_object(
         self, key: str, content_type: str, data: bytes, *, bucket: str | None = None
@@ -648,6 +714,8 @@ async def fake_storage_client(
     from bimdossier_api.auth.ratelimit import (
         CAPTURE_INITIATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
+        FREE_FINDING_WRITE_LIMITER,
+        FREE_UPLOAD_INITIATE_LIMITER,
         INVITE_LIMITER,
         REPORT_GEN_LIMITER,
         UPLOAD_INITIATE_LIMITER,
@@ -681,6 +749,8 @@ async def fake_storage_client(
         UPLOAD_INITIATE_LIMITER,
         INVITE_LIMITER,
         CAPTURE_INITIATE_LIMITER,
+        FREE_UPLOAD_INITIATE_LIMITER,
+        FREE_FINDING_WRITE_LIMITER,
     ):
         app.dependency_overrides[limiter] = lambda: None
 
@@ -1037,6 +1107,8 @@ async def client(
     from bimdossier_api.auth.ratelimit import (
         CAPTURE_INITIATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
+        FREE_FINDING_WRITE_LIMITER,
+        FREE_UPLOAD_INITIATE_LIMITER,
         INVITE_LIMITER,
         REPORT_GEN_LIMITER,
         UPLOAD_INITIATE_LIMITER,
@@ -1068,12 +1140,148 @@ async def client(
         UPLOAD_INITIATE_LIMITER,
         INVITE_LIMITER,
         CAPTURE_INITIATE_LIMITER,
+        FREE_UPLOAD_INITIATE_LIMITER,
+        FREE_FINDING_WRITE_LIMITER,
     ):
         app.dependency_overrides[limiter] = lambda: None
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
+
+@pytest.fixture
+async def free_tier_client(
+    engine: AsyncEngine,
+    session_maker: async_sessionmaker[AsyncSession],
+    redis_client: Redis,
+    monkeypatch: pytest.MonkeyPatch,
+) -> AsyncGenerator[AsyncClient, None]:
+    """Same as `client` but with FREE_TIER_ENABLED=true so the free-wedge
+    surfaces (public /auth/signup, /free/* endpoints) are mounted. The flag is a
+    registration-time kill-switch, so the app must be built AFTER the env is set
+    and the settings cache cleared — hence its own fixture rather than the shared
+    `client`. The default `client` (flag off) is what tests the disabled path."""
+    from bimdossier_api import db as db_module
+    from bimdossier_api.auth.ratelimit import (
+        CAPTURE_INITIATE_LIMITER,
+        COMPLIANCE_CHECK_LIMITER,
+        FREE_FINDING_WRITE_LIMITER,
+        FREE_UPLOAD_INITIATE_LIMITER,
+        INVITE_LIMITER,
+        REPORT_GEN_LIMITER,
+        UPLOAD_INITIATE_LIMITER,
+    )
+    from bimdossier_api.auth.refresh import REFRESH_RATE_LIMITER
+    from bimdossier_api.auth.routes import (
+        FORGOT_RATE_LIMITER,
+        LOGIN_RATE_LIMITER,
+        SIGNUP_RATE_LIMITER,
+        VERIFY_REQUEST_RATE_LIMITER,
+    )
+    from bimdossier_api.cache import client as cache_module
+    from bimdossier_api.config import get_settings
+    from bimdossier_api.main import create_app
+    from bimdossier_api.routers.access_requests import ACCESS_REQUEST_RATE_LIMITER
+
+    db_module._engine = engine
+    db_module._session_maker = session_maker
+    cache_module._redis = redis_client
+
+    monkeypatch.setenv("FREE_TIER_ENABLED", "true")
+    get_settings.cache_clear()
+    try:
+        app = create_app()
+        for limiter in (
+            LOGIN_RATE_LIMITER,
+            FORGOT_RATE_LIMITER,
+            VERIFY_REQUEST_RATE_LIMITER,
+            SIGNUP_RATE_LIMITER,
+            REFRESH_RATE_LIMITER,
+            ACCESS_REQUEST_RATE_LIMITER,
+            COMPLIANCE_CHECK_LIMITER,
+            REPORT_GEN_LIMITER,
+            UPLOAD_INITIATE_LIMITER,
+            INVITE_LIMITER,
+            CAPTURE_INITIATE_LIMITER,
+            FREE_UPLOAD_INITIATE_LIMITER,
+            FREE_FINDING_WRITE_LIMITER,
+        ):
+            app.dependency_overrides[limiter] = lambda: None
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            yield ac
+    finally:
+        monkeypatch.delenv("FREE_TIER_ENABLED", raising=False)
+        get_settings.cache_clear()
+
+
+@pytest.fixture
+async def free_tier_storage_client(
+    engine: AsyncEngine,
+    session_maker: async_sessionmaker[AsyncSession],
+    redis_client: Redis,
+    monkeypatch: pytest.MonkeyPatch,
+) -> AsyncGenerator[tuple[AsyncClient, "FakeStorage"], None]:
+    """Like `free_tier_client` but also overrides `get_storage` with FakeStorage
+    and yields `(client, fake)` — for the free upload/extraction/viewer tests."""
+    from bimdossier_api import db as db_module
+    from bimdossier_api.auth.ratelimit import (
+        CAPTURE_INITIATE_LIMITER,
+        COMPLIANCE_CHECK_LIMITER,
+        FREE_FINDING_WRITE_LIMITER,
+        FREE_UPLOAD_INITIATE_LIMITER,
+        INVITE_LIMITER,
+        REPORT_GEN_LIMITER,
+        UPLOAD_INITIATE_LIMITER,
+    )
+    from bimdossier_api.auth.refresh import REFRESH_RATE_LIMITER
+    from bimdossier_api.auth.routes import (
+        FORGOT_RATE_LIMITER,
+        LOGIN_RATE_LIMITER,
+        SIGNUP_RATE_LIMITER,
+        VERIFY_REQUEST_RATE_LIMITER,
+    )
+    from bimdossier_api.cache import client as cache_module
+    from bimdossier_api.config import get_settings
+    from bimdossier_api.main import create_app
+    from bimdossier_api.routers.access_requests import ACCESS_REQUEST_RATE_LIMITER
+    from bimdossier_api.storage import get_storage
+
+    db_module._engine = engine
+    db_module._session_maker = session_maker
+    cache_module._redis = redis_client
+
+    monkeypatch.setenv("FREE_TIER_ENABLED", "true")
+    get_settings.cache_clear()
+    try:
+        app = create_app()
+        fake = FakeStorage()
+        app.dependency_overrides[get_storage] = lambda: fake
+        for limiter in (
+            LOGIN_RATE_LIMITER,
+            FORGOT_RATE_LIMITER,
+            VERIFY_REQUEST_RATE_LIMITER,
+            SIGNUP_RATE_LIMITER,
+            REFRESH_RATE_LIMITER,
+            ACCESS_REQUEST_RATE_LIMITER,
+            COMPLIANCE_CHECK_LIMITER,
+            REPORT_GEN_LIMITER,
+            UPLOAD_INITIATE_LIMITER,
+            INVITE_LIMITER,
+            CAPTURE_INITIATE_LIMITER,
+            FREE_UPLOAD_INITIATE_LIMITER,
+            FREE_FINDING_WRITE_LIMITER,
+        ):
+            app.dependency_overrides[limiter] = lambda: None
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            yield ac, fake
+    finally:
+        monkeypatch.delenv("FREE_TIER_ENABLED", raising=False)
+        get_settings.cache_clear()
 
 
 @pytest.fixture

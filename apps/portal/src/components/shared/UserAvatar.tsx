@@ -12,16 +12,21 @@ type Size = keyof typeof SIZE_CLASSES;
 
 function toInitials(name: string, email?: string): string {
   const cleaned = name.trim();
-  if (cleaned.length === 0) {
-    const fallback = email ?? '';
-    const local = fallback.includes('@') ? (fallback.split('@')[0] ?? fallback) : fallback;
-    const parts = local.split(/[\s._-]+/).filter((p) => p.length > 0);
-    if (parts.length === 0) return fallback.slice(0, 2).toUpperCase();
+  // A real display name (and not one that is itself an email address): take the
+  // first letter of the first two words.
+  if (cleaned.length > 0 && !cleaned.includes('@')) {
+    const parts = cleaned.split(/\s+/).filter(Boolean);
     if (parts.length === 1) return (parts[0] ?? '').slice(0, 2).toUpperCase();
     return `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}`.toUpperCase();
   }
-  const parts = cleaned.split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return cleaned.slice(0, 2).toUpperCase();
+  // No display name, or the "name" is itself an email (e.g. the sidebar chip
+  // falls back to email when full_name is unset): derive from the email local
+  // part so the '@' and domain never bleed into the initials ("a@b.com" -> "A",
+  // not "A@").
+  const fallback = cleaned.length > 0 ? cleaned : (email ?? '');
+  const local = fallback.includes('@') ? (fallback.split('@')[0] ?? fallback) : fallback;
+  const parts = local.split(/[\s._-]+/).filter((p) => p.length > 0);
+  if (parts.length === 0) return local.slice(0, 2).toUpperCase();
   if (parts.length === 1) return (parts[0] ?? '').slice(0, 2).toUpperCase();
   return `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}`.toUpperCase();
 }

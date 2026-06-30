@@ -14,14 +14,14 @@ export type FindingPinPreviewAnchor =
   | { kind: 'pdf'; x: number; y: number; page: number }
   | null;
 
-export interface FindingPinPreview {
+export type FindingPinPreview = {
   findingId: string;
   anchor: FindingPinPreviewAnchor;
   label: string;
   status: FindingStatusValue;
 }
 
-interface FindingPinPreviewState {
+type FindingPinPreviewState = {
   /** Single slot — only one finding detail form is expanded at a time. */
   preview: FindingPinPreview | null;
   setPreview: (preview: FindingPinPreview) => void;

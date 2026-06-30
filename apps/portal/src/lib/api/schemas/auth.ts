@@ -43,6 +43,9 @@ export const OrgMembershipBriefSchema = z.object({
   active_storage_limit_gb: z.union([z.number().int(), z.null()]),
   active_storage_used_gb: z.number(),
   organization_image_url: z.union([z.string(), z.null()]).optional(),
+  // The org's entitlement/plan (the TIER axis, distinct from ISOLATION). Optional
+  // so older responses / test mocks still parse; consumers default to 'paid'.
+  plan: z.string().optional(),
 });
 
 export type OrgMembershipBrief = z.infer<typeof OrgMembershipBriefSchema>;
@@ -52,6 +55,15 @@ export const AuthMeResponseSchema = z.object({
   active_organization_id: z.union([z.string(), z.null()]),
   memberships: z.array(OrgMembershipBriefSchema),
   pending_invitations_count: z.number().int(),
+  // True when the user owns or is a member of ≥1 free project — drives whether
+  // the org switcher shows a "Free workspace" entry. Optional so older server
+  // responses (and test mocks) still parse; consumers read it as `?? false`.
+  has_free_workspace: z.boolean().optional(),
+  // The acting principal's PLAN (entitlement) for the active scope: 'free' when
+  // org-less, else the active org's plan. The read-only TIER signal the UI gates
+  // on — ORTHOGONAL to the isolation surface (active_organization_id). Optional
+  // for back-compat; consumers default to 'free'.
+  plan: z.string().optional(),
 });
 
 export type AuthMeResponse = z.infer<typeof AuthMeResponseSchema>;

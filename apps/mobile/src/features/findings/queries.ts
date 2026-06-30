@@ -3,6 +3,13 @@ import * as Crypto from 'expo-crypto';
 
 import { ApiError } from '@/lib/api/client';
 import { getFinding, listFindings, createFinding, updateFinding } from '@/lib/api/findings';
+import {
+  createPooledFinding,
+  getPooledFinding,
+  listPooledProjectFindings,
+  updatePooledFinding,
+} from '@/lib/api/pooledFindings';
+import { useIsPooledContext } from '@/lib/hooks/useIsPooledContext';
 import { tokenManager } from '@/lib/api/tokenManager';
 import type { Finding, FindingCreateInput, FindingUpdateInput } from '@/lib/api/schemas/findings';
 import { useOfflineItemQuery, useOfflineListQuery } from '@/lib/query/useOfflineQuery';
@@ -14,22 +21,28 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useOffline } from '@/providers/OfflineProvider';
 
 export function useProjectFindings(projectId: string) {
+  const isFree = useIsPooledContext();
   return useOfflineListQuery<Finding>(
     ['projects', projectId, 'findings'],
     'finding',
     projectId,
-    (token) => listFindings(token, projectId),
+    (token) =>
+      isFree ? listPooledProjectFindings(token, projectId) : listFindings(token, projectId),
     { enabled: projectId.length > 0 },
   );
 }
 
 export function useFinding(projectId: string, findingId: string) {
+  const isFree = useIsPooledContext();
   return useOfflineItemQuery<Finding>(
     ['projects', projectId, 'findings', findingId],
     'finding',
     projectId,
     findingId,
-    (token) => getFinding(token, projectId, findingId),
+    (token) =>
+      isFree
+        ? getPooledFinding(token, projectId, findingId)
+        : getFinding(token, projectId, findingId),
     { enabled: projectId.length > 0 && findingId.length > 0 },
   );
 }
@@ -42,6 +55,7 @@ export function useFinding(projectId: string, findingId: string) {
  */
 export function useCreateFindingMutation(projectId: string) {
   const { tokens, me } = useAuth();
+  const isFree = useIsPooledContext();
   const offline = useOffline();
   const queryClient = useQueryClient();
   return useMutation<Finding, Error, FindingCreateInput>({
@@ -49,16 +63,20 @@ export function useCreateFindingMutation(projectId: string) {
     mutationFn: async (input) => {
       const idempotencyKey = Crypto.randomUUID();
       const token = tokens?.access_token ?? null;
+      const doCreate = (t: string): Promise<Finding> =>
+        isFree
+          ? createPooledFinding(t, projectId, input, idempotencyKey)
+          : createFinding(t, projectId, input, idempotencyKey);
       // If any photo is still queued (a temp id), the create must go through the
       // outbox too, so the engine can swap temp → real photo ids before the POST.
       const hasQueuedPhotos = (input.photo_ids ?? []).some((id) => id.startsWith('temp-photo-'));
       if (getNetworkStatus() && token !== null && !hasQueuedPhotos) {
         try {
-          return await createFinding(token, projectId, input, idempotencyKey);
+          return await doCreate(token);
         } catch (error) {
           if (error instanceof ApiError && error.status === 401) {
             const fresh = await tokenManager.refresh();
-            return await createFinding(fresh, projectId, input, idempotencyKey);
+            return await doCreate(fresh);
           }
           // A real HTTP error (e.g. 422 validation) surfaces to the caller; only
           // a connectivity failure falls through to the offline queue. The same
@@ -111,22 +129,27 @@ function mergeFinding(finding: Finding, input: FindingUpdateInput): Finding {
  */
 export function useUpdateFindingMutation(projectId: string) {
   const { tokens } = useAuth();
+  const isFree = useIsPooledContext();
   const offline = useOffline();
   const queryClient = useQueryClient();
   return useMutation<Finding, Error, UpdateVars>({
     networkMode: 'always',
     mutationFn: async ({ finding, input }) => {
       const token = tokens?.access_token ?? null;
+      const doUpdate = (t: string): Promise<Finding> =>
+        isFree
+          ? updatePooledFinding(t, projectId, finding.id, input)
+          : updateFinding(t, projectId, finding.id, input);
       const hasQueuedEvidence = (input.resolution_evidence_ids ?? []).some((id) =>
         id.startsWith('temp-photo-'),
       );
       if (getNetworkStatus() && token !== null && !hasQueuedEvidence) {
         try {
-          return await updateFinding(token, projectId, finding.id, input);
+          return await doUpdate(token);
         } catch (error) {
           if (error instanceof ApiError && error.status === 401) {
             const fresh = await tokenManager.refresh();
-            return await updateFinding(fresh, projectId, finding.id, input);
+            return await doUpdate(fresh);
           }
           // A real HTTP error (422 illegal transition / missing evidence, 403
           // verify-not-inspector) surfaces to the caller; only a connectivity

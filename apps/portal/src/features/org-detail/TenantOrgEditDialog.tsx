@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { AppDialog, Button, Input, Label } from '@bimdossier/ui';
 
 import { Field } from '@/components/shared/forms/Field';
-import { useRegisterField } from '@/hooks/useRegisterField';
+import { registerField } from '@/hooks/registerField';
 import { ApiError } from '@/lib/api/client';
 
 import { useUpdateOrgName } from './useUpdateOrgName';
@@ -76,13 +76,13 @@ export function TenantOrgEditDialog({
   }, [open, currentName, resetForm, resetMutation]);
 
   const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
       if (file.size > IMAGE_MAX_BYTES) return;
       setUploading(true);
       try {
-        await onImageUpload(file);
+        onImageUpload(file);
       } finally {
         setUploading(false);
       }
@@ -91,10 +91,10 @@ export function TenantOrgEditDialog({
     [onImageUpload],
   );
 
-  const handleRemoveImage = useCallback(async () => {
+  const handleRemoveImage = useCallback(() => {
     setUploading(true);
     try {
-      await onImageRemove();
+      onImageRemove();
     } finally {
       setUploading(false);
     }
@@ -199,7 +199,7 @@ export function TenantOrgEditDialog({
 
         {/* Name */}
         <Field form={form} name="name" label={t('fields.name')}>
-          {({ id }) => <Input id={id} autoFocus {...useRegisterField(form, 'name')} />}
+          {({ id }) => <Input id={id} autoFocus {...registerField(form, 'name')} />}
         </Field>
       </div>
     </AppDialog>

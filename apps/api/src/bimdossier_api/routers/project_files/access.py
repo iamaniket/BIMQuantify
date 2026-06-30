@@ -31,6 +31,7 @@ from bimdossier_api.models.project_file import (
 )
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.documents import _load_document_or_404
+from bimdossier_api.routers.free_access import require_free_tier_enabled
 from bimdossier_api.routers.project_files._shared import (
     _load_file_or_404,
     _presign_ifc_bundle,
@@ -45,6 +46,9 @@ from bimdossier_api.schemas.project_file import (
 from bimdossier_api.storage import StorageBackend, get_storage
 from bimdossier_api.storage.minio import ObjectNotFoundError
 from bimdossier_api.tenancy import (
+    ScopeContext,
+    get_scope_context,
+    get_scoped_session,
     get_tenant_session,
     open_tenant_session,
     require_active_organization,
@@ -55,9 +59,7 @@ from bimdossier_api.tenancy import (
 _PDF_PAGES_MANIFEST_MAX_BYTES = 8 * 1024 * 1024
 
 
-async def _build_pdf_pages_manifest_url(
-    storage: StorageBackend, manifest_key: str
-) -> str | None:
+async def _build_pdf_pages_manifest_url(storage: StorageBackend, manifest_key: str) -> str | None:
     """Rewrite the processor's page-image manifest into the shape the mobile
     viewer's ``ImageRasterSource`` consumes, and return it as a ``data:`` URL.
 
@@ -74,9 +76,7 @@ async def _build_pdf_pages_manifest_url(
     then reports "no 2D view" rather than rendering blank pages).
     """
     try:
-        raw = await storage.get_object_range(
-            manifest_key, 0, _PDF_PAGES_MANIFEST_MAX_BYTES - 1
-        )
+        raw = await storage.get_object_range(manifest_key, 0, _PDF_PAGES_MANIFEST_MAX_BYTES - 1)
     except ObjectNotFoundError:
         return None
     try:
@@ -88,9 +88,7 @@ async def _build_pdf_pages_manifest_url(
 
     async def _entry(page: dict[str, object]) -> dict[str, object]:
         # Presigned, fetchable url replaces the raw key; geometry is preserved.
-        url = await storage.presigned_get_url(
-            str(page["key"]), "page.webp", disposition="inline"
-        )
+        url = await storage.presigned_get_url(str(page["key"]), "page.webp", disposition="inline")
         return {
             "index": page.get("index"),
             "pageWidth": page.get("pageWidth"),
@@ -103,9 +101,7 @@ async def _build_pdf_pages_manifest_url(
     pages = await asyncio.gather(
         *[_entry(p) for p in source_pages if isinstance(p, dict) and p.get("key")]
     )
-    encoded = base64.b64encode(json.dumps({"v": 1, "pages": pages}).encode()).decode(
-        "ascii"
-    )
+    encoded = base64.b64encode(json.dumps({"v": 1, "pages": pages}).encode()).decode("ascii")
     return f"data:application/json;base64,{encoded}"
 
 
@@ -164,11 +160,29 @@ async def get_viewer_bundle(
     project_id: UUID,
     document_id: UUID,
     file_id: UUID,
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
+    session: AsyncSession = Depends(get_scoped_session),
+    scope: ScopeContext = Depends(get_scope_context),
     storage: StorageBackend = Depends(get_storage),
 ) -> ViewerBundleResponse:
+    if scope.is_free:
+        require_free_tier_enabled()
+        # Local import avoids any import-order cycle (pooled_documents deferred-imports
+        # project_files.access). The free helper reads the pooled free_* tables; the
+        # legacy /free/.../files/{id}/viewer-bundle route serves the same logic.
+        from bimdossier_api.routers import pooled_documents
+
+        return await pooled_documents.pooled_file_viewer_bundle(
+            project_id=project_id,
+            document_id=document_id,
+            file_id=file_id,
+            user=scope.user,
+            session=session,
+            storage=storage,
+        )
+
+    user = scope.user
+    assert scope.org_id is not None
+    active_org_id = scope.org_id
     project = await load_project_or_404(session, project_id)
     await require_project_read_access(session, project.id, user, active_org_id)
     document = await _load_document_or_404(session, project.id, document_id)
@@ -191,9 +205,7 @@ async def get_viewer_bundle(
         # the WebView's auth-free fetch gets pages it can actually load.
         pdf_pages_url: str | None = None
         if row.pdf_pages_storage_key is not None:
-            pdf_pages_url = await _build_pdf_pages_manifest_url(
-                storage, row.pdf_pages_storage_key
-            )
+            pdf_pages_url = await _build_pdf_pages_manifest_url(storage, row.pdf_pages_storage_key)
         return ViewerBundleResponse(
             file_type=row.file_type,
             file_url=file_url,

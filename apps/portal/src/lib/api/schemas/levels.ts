@@ -17,19 +17,3 @@ export type Level = z.infer<typeof LevelSchema>;
 export const LevelListSchema = z.array(LevelSchema);
 
 export type LevelList = z.infer<typeof LevelListSchema>;
-
-export const LevelCreateSchema = z.object({
-  name: z.string().min(1).max(255),
-  elevation_m: z.number().nullable().optional(),
-  ordering: z.number().int().nullable().optional(),
-});
-
-export type LevelCreateInput = z.infer<typeof LevelCreateSchema>;
-
-export const LevelUpdateSchema = z.object({
-  name: z.string().min(1).max(255).optional(),
-  elevation_m: z.number().nullable().optional(),
-  ordering: z.number().int().nullable().optional(),
-});
-
-export type LevelUpdateInput = z.infer<typeof LevelUpdateSchema>;

@@ -16,7 +16,7 @@ import {
   useViewerTarget,
 } from '@/features/viewer/shared/viewerSelectionStore';
 import type { DocumentWithVersions, ProjectFile } from '@/lib/api/schemas';
-import { kindForFormat, type ViewerFormat, type ViewerKind } from '@/components/shared/viewer/shared/viewerMode';
+import { kindForFormat, type ViewerKind } from '@/components/shared/viewer/shared/viewerMode';
 
 import { useDocumentsWithVersions } from '../documents/useDocumentsWithVersions';
 

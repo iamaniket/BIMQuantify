@@ -16,7 +16,9 @@ import {
   Skeleton,
 } from '@bimdossier/ui';
 
+import { AttachmentViewerDialog } from '@/features/attachments/AttachmentViewerDialog';
 import { useAttachments } from '@/features/attachments/useAttachments';
+import type { Attachment } from '@/lib/api/schemas';
 import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
 
 type Props = {
@@ -36,6 +38,7 @@ export function ReferenceDocumentPicker({
 }: Props): JSX.Element {
   const t = useTranslations('findings.referenceDocuments');
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [viewing, setViewing] = useState<Attachment | null>(null);
   const attachmentsQuery = useAttachments(projectId);
   const allAttachments = flattenPages(attachmentsQuery.data);
 
@@ -55,10 +58,17 @@ export function ReferenceDocumentPicker({
               key={doc.id}
               className="flex items-center gap-2 rounded-md border border-border bg-surface-low px-3 py-2"
             >
-              <FileText className="h-4 w-4 shrink-0 text-foreground-tertiary" />
-              <span className="min-w-0 flex-1 truncate text-body3 text-foreground">
-                {doc.original_filename}
-              </span>
+              <button
+                type="button"
+                title={t('openInViewer')}
+                onClick={() => { setViewing(doc); }}
+                className="group flex min-w-0 flex-1 items-center gap-2 text-left"
+              >
+                <FileText className="h-4 w-4 shrink-0 text-foreground-tertiary" />
+                <span className="min-w-0 flex-1 truncate text-body3 text-foreground group-hover:text-primary group-hover:underline">
+                  {doc.original_filename}
+                </span>
+              </button>
               {!disabled && (
                 <button
                   type="button"
@@ -95,6 +105,14 @@ export function ReferenceDocumentPicker({
         onPick={(id) => {
           onChange([...referenceIds, id]);
           setPickerOpen(false);
+        }}
+      />
+      <AttachmentViewerDialog
+        attachment={viewing}
+        projectId={projectId}
+        open={viewing !== null}
+        onOpenChange={(open) => {
+          if (!open) setViewing(null);
         }}
       />
     </div>

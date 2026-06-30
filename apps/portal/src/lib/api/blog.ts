@@ -33,18 +33,6 @@ function buildQuery(
   return parts.length === 0 ? '' : `?${parts.join('&')}`;
 }
 
-export async function listBlogPosts(
-  accessToken: string,
-  params: ListBlogPostsParams = {},
-): Promise<BlogPostRead[]> {
-  const query = buildQuery(params);
-  return apiClient.get<BlogPostRead[]>(
-    `/admin/blog/posts${query}`,
-    BlogPostListSchema,
-    accessToken,
-  );
-}
-
 /** Paginated variant — returns the page items plus the total (X-Total-Count). */
 export async function listBlogPostsPage(
   accessToken: string,
@@ -94,7 +82,7 @@ async function _multipartUpload<TSchema extends { parse: (value: unknown) => unk
         errBody &&
         typeof errBody === 'object' &&
         'detail' in errBody &&
-        typeof (errBody as { detail: unknown }).detail === 'string'
+        typeof (errBody).detail === 'string'
       ) {
         detail = (errBody as { detail: string }).detail;
       }

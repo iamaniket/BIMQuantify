@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,7 +22,22 @@ class User(SQLAlchemyBaseUserTableUUID, MasterBase):
     __table_args__ = {"schema": "public"}
 
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Optional, user-supplied at free-tier signup (paid users carry company via
+    # their organization). Lets an operator spot founding-partner candidates
+    # among self-serve free signups. Scrubbed on anonymization (see delete()).
+    company: Mapped[str | None] = mapped_column(String(255), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+
+    # Account-creation timestamp. `SQLAlchemyBaseUserTableUUID` carries no
+    # created_at, so we add one (migration 0010_user_created_at). `server_default`
+    # stamps new signups automatically; the migration backfills existing rows
+    # from their earliest owned free project. Surfaced in the super-admin views
+    # (AdminUserRead) so an operator can see account age and flag dead signups.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
 
     # Preferred UI / email language. NULL means "use platform default"
     # (currently "nl"). Resolved via `bimdossier_api.i18n.resolve_user_locale`;

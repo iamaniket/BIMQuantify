@@ -14,6 +14,7 @@ import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ApiError } from '@/lib/api/client';
 import { listProjectMembers } from '@/lib/api/projectMembers';
 import type { ProjectMemberList } from '@/lib/api/schemas';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { ProjectCard } from './ProjectCard';
@@ -49,6 +50,7 @@ type ProjectListProps = {
 export function ProjectList({ search, phaseFilter }: ProjectListProps): JSX.Element {
   const t = useTranslations('projects.list');
   const { tokens } = useAuth();
+  const { isPooled } = useIsPooledContext();
   const query = useProjects();
   const accessToken = tokens === null ? null : tokens.access_token;
 
@@ -78,7 +80,10 @@ export function ProjectList({ search, phaseFilter }: ProjectListProps): JSX.Elem
     );
   }
 
-  const memberQueryProjects = query.isSuccess ? filtered : [];
+  // A free project has only its owner; the per-project members endpoint is
+  // org-scoped (409s without an org), so skip it entirely for free users — the
+  // card just renders no member avatars.
+  const memberQueryProjects = query.isSuccess && !isPooled ? filtered : [];
   const projectMembersQueries = useQueries({
     queries: memberQueryProjects.map((project) => ({
       queryKey: projectMembersKey(project.id),
@@ -88,7 +93,7 @@ export function ProjectList({ search, phaseFilter }: ProjectListProps): JSX.Elem
         }
         return listProjectMembers(accessToken, project.id);
       },
-      enabled: accessToken !== null,
+      enabled: accessToken !== null && !isPooled,
       staleTime: 60_000,
     })),
   });

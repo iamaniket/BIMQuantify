@@ -78,7 +78,7 @@ export function TypeStep({
           >
             {REPORT_TEMPLATE_TYPES.map((rt) => (
               <option key={rt} value={rt}>
-                {tReport(`reportTypes.${rt}` as Parameters<typeof tReport>[0])}
+                {tReport(`reportTypes.${rt}`)}
               </option>
             ))}
           </Select>

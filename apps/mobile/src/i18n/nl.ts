@@ -235,8 +235,8 @@ export const nl: Record<MessageKey, string> = {
   'login.form.submit': 'Inloggen',
 
   // --- login: hero / brand canvas ---
-  'login.hero.subtext': 'Wkb-conform BIM-platform',
-  'login.hero.subtextTablet': 'BIM-platform conform de Wet kwaliteitsborging voor het bouwen (Wkb)',
+  'login.hero.subtext': 'Bouwkwaliteitsplatform',
+  'login.hero.subtextTablet': 'Het bouwkwaliteitsplatform voor Nederlandse aannemers',
   'login.hero.pillMobile': 'Wkb · Actief in NL',
   'login.hero.pillTablet': 'Wkb gereed',
   // Words wrapped in *asterisks* render as italic accent spans (any word order).

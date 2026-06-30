@@ -200,7 +200,7 @@ export function AuthHeroBrand(): JSX.Element {
   );
 }
 
-export interface AuthTopRightProps {
+export type AuthTopRightProps = {
   /**
    * Element rendered on the right side of the top bar. Defaults to the
    * `region · node` mono label (login). Legal pages override this with

@@ -210,6 +210,80 @@ async def test_export_csv_writes_audit_row(
     assert row.after is not None
     # The severity=high filter narrowed the dump to one of the two findings.
     assert row.after["count"] == 1
+    assert row.after["format"] == "csv"
     assert row.after["filters"]["severity"] == "high"
     assert row.after["filters"]["status"] is None
     assert row.after["filters"]["assignee_user_id"] is None
+
+
+async def test_export_xlsx_headers_and_rows(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    import openpyxl
+
+    token = org_user["access_token"]
+    project = await _create_project(client, token, name="export-xlsx")
+    await _create_finding(client, token, project["id"], title="Alpha", severity="high")
+    await _create_finding(client, token, project["id"], title="Beta", severity="low")
+
+    resp = await client.get(
+        f"/projects/{project['id']}/findings/export.xlsx",
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert f'filename="findings-{project["id"]}.xlsx"' in resp.headers["content-disposition"]
+
+    wb = openpyxl.load_workbook(io.BytesIO(resp.content))
+    ws = wb.active
+    grid = [[c.value for c in row] for row in ws.iter_rows()]
+    assert grid[0] == EXPECTED_HEADERS
+    titles = {row[1] for row in grid[1:]}
+    assert titles == {"Alpha", "Beta"}
+
+
+async def test_export_json_is_reimportable_superset(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token, name="export-json")
+    await _create_finding(client, token, project["id"], title="Alpha", severity="high")
+
+    resp = await client.get(
+        f"/projects/{project['id']}/findings/export.json",
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["project_id"] == project["id"]
+    assert body["count"] == 1
+    finding = body["findings"][0]
+    # Superset of the CSV: carries the anchor + attachment + custom-value fields
+    # the flat CSV can't, so the export round-trips back into a create.
+    assert finding["title"] == "Alpha"
+    assert "anchor_x" in finding
+    assert "photo_ids" in finding
+    assert "custom_values" in finding
+
+
+async def test_export_xlsx_writes_audit_row(
+    client: AsyncClient,
+    org_user: dict[str, str],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    token = org_user["access_token"]
+    project = await _create_project(client, token, name="export-xlsx-audit")
+    await _create_finding(client, token, project["id"], title="Hi")
+
+    resp = await client.get(
+        f"/projects/{project['id']}/findings/export.xlsx",
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+    rows = await _audit_rows(session_maker, "finding.exported")
+    assert len(rows) == 1
+    assert rows[0].after is not None
+    assert rows[0].after["format"] == "xlsx"
+    assert rows[0].after["count"] == 1

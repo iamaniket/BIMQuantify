@@ -19,6 +19,7 @@ vi.mock('@bimdossier/ui', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   TooltipContent: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+  Eyebrow: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock('@/providers/AuthProvider', () => ({
@@ -66,6 +67,7 @@ vi.mock('@/providers/AuthProvider', () => ({
       seat_count_used: 3,
     },
     switchOrganization: switchOrganizationMock,
+    switchToFree: vi.fn(async () => {}),
   }),
 }));
 

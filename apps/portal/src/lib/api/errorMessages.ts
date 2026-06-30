@@ -14,6 +14,8 @@ const KNOWN_DETAILS: Record<string, string> = {
   CANNOT_DELETE_DEFAULT_TEMPLATE: 'You can’t delete the default template. Set another as default first.',
   DEFAULT_TEMPLATE_CONFLICT: 'Another template was just set as default. Please try again.',
   FINDING_TEMPLATE_NOT_FOUND: 'That template no longer exists.',
+  FREE_ACCOUNT_EXPIRED:
+    'Your free trial has ended. Your projects are read-only — upgrade to keep creating and editing.',
   // Project-role gating backstop. UI gating should keep users from triggering
   // this, but if a stale view lets one through, show a clear message instead of
   // the raw serialized detail object.

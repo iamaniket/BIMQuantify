@@ -42,6 +42,15 @@ export function Footer(): JSX.Element {
       external: true,
     });
   }
+  // The founder's personal LinkedIn — a "real person you can reach" signal,
+  // distinct from the company page above. Shown only when both name + URL set.
+  if (env.NEXT_PUBLIC_FOUNDER_NAME && env.NEXT_PUBLIC_FOUNDER_LINKEDIN_URL) {
+    connectLinks.push({
+      label: tFooter('founderLinkedin', { name: env.NEXT_PUBLIC_FOUNDER_NAME }),
+      href: env.NEXT_PUBLIC_FOUNDER_LINKEDIN_URL,
+      external: true,
+    });
+  }
   if (env.NEXT_PUBLIC_CONTACT_EMAIL) {
     connectLinks.push({
       label: tFooter('email'),
@@ -69,6 +78,8 @@ export function Footer(): JSX.Element {
     {
       title: tFooter('legal'),
       links: [
+        // Security lives on the marketing site (not the portal) — link in-site.
+        { label: tHeader('security'), href: '/security', external: undefined },
         { label: tLegal('privacy'), href: portalHref(locale, '/legal/privacy'), external: true },
         { label: tLegal('terms'), href: portalHref(locale, '/legal/terms'), external: true },
         { label: tLegal('dpa'), href: portalHref(locale, '/legal/dpa'), external: true },
@@ -90,13 +101,13 @@ export function Footer(): JSX.Element {
         >
           <div className="col-span-2 flex flex-col gap-3 sm:col-span-1">
             <div className="flex items-center gap-2 text-primary">
-              <BrandMark size={31} />
+              <BrandMark size={40} />
               <span className="text-title2 font-semibold">
                 {tHeader('brand')}
               </span>
             </div>
             <p className="text-body3 text-foreground-tertiary">
-              {tBrand('tagline')}
+              {tBrand('strapline')}
             </p>
           </div>
 

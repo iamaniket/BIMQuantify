@@ -6,7 +6,7 @@ import type { ViewerHandle } from '@bimdossier/viewer';
 
 import type { FloorPlanDisplayLevel } from './useFloorPlanData';
 
-interface SplitEntryCameraOptions {
+type SplitEntryCameraOptions = {
   viewerHandle: ViewerHandle | null;
   viewerReady: boolean;
   /** True only in Split mode — first-person + camera snap need the 3D pane visible. */

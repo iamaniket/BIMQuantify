@@ -1,4 +1,101 @@
 {
+  "signup": {
+    "eyebrow": "Free preview",
+    "title": "Create your free account",
+    "subtitle": "Enter your email and we'll send a link to set a password. Then you can upload an IFC model, view it in 3D and place snags, free.",
+    "emailPlaceholder": "you@company.nl",
+    "namePlaceholder": "Your name",
+    "companyPlaceholder": "Your company",
+    "field": {
+      "email": "Email address",
+      "name": "Name (optional)",
+      "company": "Company (optional)"
+    },
+    "cta": "Create free account",
+    "submitting": "Sending…",
+    "sentTitle": "Check your inbox",
+    "sentBody": "If that email can be used, an activation link is on its way. Open it to set a password and sign in.",
+    "backToLogin": "Back to sign in",
+    "legal": "By continuing, you agree to our <terms>Terms</terms> and <privacy>Privacy Policy</privacy>.",
+    "disabledTitle": "Free signup isn't open yet",
+    "disabledBody": "We're rolling out the free viewer to early users. Request access and we'll let you in as soon as it opens.",
+    "requestAccessCta": "Request access",
+    "errors": {
+      "emailRequired": "Enter your email address.",
+      "emailInvalid": "Enter a valid email address.",
+      "rateLimited": "Too many signups from your network — please try again in an hour.",
+      "generic": "We couldn't complete signup. Please try again in a moment."
+    }
+  },
+  "freeTrial": {
+    "daysLeft": "{days} days left in your free trial",
+    "endingBody": "Upgrade to keep creating and editing once your trial ends.",
+    "expiredTitle": "Your free trial has ended",
+    "expiredBody": "Your projects are read-only. Upgrade to keep creating and editing.",
+    "cta": "Request access"
+  },
+  "pooledViewer": {
+    "eyebrow": "Free preview",
+    "heading": "View your IFC model in the browser. Free.",
+    "subtitle": "Upload a model, open it in 3D, and pin snags right on it. No desktop software, no setup. We're opening it to early users first.",
+    "bullet1": "Drag and drop an IFC file and view it in 3D in your browser",
+    "bullet2": "Pin snags on the model and share them with your team",
+    "bullet3": "Compliance checks and the full Wkb dossier come with a project",
+    "cta": "Join the free preview",
+    "note": "The free viewer is rolling out to early users. Add your details and we'll let you in as soon as it opens.",
+    "app": {
+      "title": "Your free models",
+      "uploadHeading": "Upload an IFC model",
+      "capNote": "{count} of {max} models used",
+      "uploading": "Uploading…",
+      "uploadButton": "Upload IFC",
+      "empty": "No models yet. Upload an IFC file to view it in 3D.",
+      "open": "Open",
+      "delete": "Delete",
+      "upgradeHeading": "Need compliance checks and a Wkb dossier?",
+      "upgradeBody": "Those come with a project. Request access to upgrade your workspace.",
+      "upgradeCta": "Request access",
+      "status": {
+        "none": "Not processed",
+        "queued": "Queued…",
+        "running": "Processing…",
+        "succeeded": "Ready to view",
+        "failed": "Processing failed"
+      },
+      "failedReason": "Processing failed: {reason}"
+    },
+    "viewer": {
+      "back": "Back",
+      "title": "Free viewer",
+      "loading": "Loading model…",
+      "loadError": "This model couldn't be loaded.",
+      "processing": "Still processing your model — this can take a minute…",
+      "failed": "This model couldn't be processed.",
+      "failedReason": "This model couldn't be processed: {reason}",
+      "snags": "Snags",
+      "snagTitle": "Snag title",
+      "snagNote": "Note (optional)",
+      "sevLow": "Low",
+      "sevMedium": "Medium",
+      "sevHigh": "High",
+      "addSnag": "Add snag",
+      "close": "Close",
+      "reopen": "Reopen",
+      "delete": "Delete",
+      "newFinding": "New finding",
+      "container": "Container",
+      "boardCreateSubtitle": "Add a finding to one of your containers.",
+      "createHint": "Right-click an element in the model to pin a finding, or fill this in and pin it.",
+      "noFindings": "No findings yet. Right-click the model or use New finding to add one.",
+      "assignee": "Assignee",
+      "unassigned": "Unassigned",
+      "deadline": "Deadline",
+      "statusLabel": "Status",
+      "save": "Save",
+      "cancel": "Cancel",
+      "edit": "Edit"
+    }
+  },
   "imageAnnotator": {
     "title": "Annotate photo",
     "subtitle": "Draw arrows, shapes, text or blur over the photo. The original is always kept.",
@@ -41,7 +138,8 @@
     "switcher": {
       "label": "Switch organization",
       "empty": "No active organization",
-      "adminBadge": "Admin"
+      "adminBadge": "Admin",
+      "pooledWorkspace": "Free workspace"
     }
   },
   "activate": {
@@ -50,12 +148,14 @@
     "subtitle": "Set a password to finish activating your BimDossier account.",
     "field": {
       "password": "New password",
-      "passwordConfirm": "Confirm password"
+      "passwordConfirm": "Confirm password",
+      "passwordHint": "At least 12 characters."
     },
     "cta": "Activate account",
     "errors": {
       "tokenMissing": "Activation link is missing the token. Please use the link from your invitation email.",
       "passwordMismatch": "Passwords do not match.",
+      "passwordTooShort": "Password must be at least {min} characters.",
       "activationFailed": "Activation failed. The link may have expired — ask your admin to resend the invite."
     },
     "success": "Account activated. You can sign in now."
@@ -421,6 +521,20 @@
       "seatsLabel": "Org seats",
       "seatsValue": "{used} of {limit} used",
       "seatsUnlimited": "Unlimited"
+    },
+    "plan": {
+      "title": "Plan & usage",
+      "planLabel": "Plan",
+      "freePlanName": "Free",
+      "pooledWorkspaceSub": "Personal workspace",
+      "storageLabel": "Storage",
+      "projectsLabel": "Projects",
+      "containersLabel": "Containers",
+      "findingsLabel": "Findings",
+      "usageValue": "{used} of {cap}",
+      "usagePct": "{pct}%",
+      "countOfCap": "{count} of {cap}",
+      "ofValue": "of {value}"
     }
   },
   "projects": {
@@ -646,12 +760,14 @@
         "listHeading": "People to add ({count})",
         "emptyState": "No one added yet.",
         "minOneHint": "Add at least one person to create the project.",
+        "pooledInviteHint": "Invite up to {max} people to collaborate (optional — you can add them later).",
         "inviteBadge": "Invite",
         "partialFailure": "Project created, but some people couldn't be added: {names}. Add them from the project's access page.",
         "errors": {
           "pickUser": "Select a member to add.",
           "invalidEmail": "Enter a valid email address.",
-          "duplicate": "This person is already in the list."
+          "duplicate": "This person is already in the list.",
+          "inviteCap": "You can invite up to {max} members on a free project."
         }
       }
     }
@@ -1295,6 +1411,7 @@
         "loadAll": "Load all",
         "loadAll3d": "Load all 3D",
         "loadAll2d": "Load all 2D",
+        "browseDrawings": "Open drawings",
         "loadAllMenu": "Load options",
         "selectedCount": "{count, plural, =1 {1 container selected} other {# containers selected}}",
         "clearSelection": "Clear",
@@ -1359,6 +1476,10 @@
           "viewFile": "View file",
           "selectAria": "Select {name} to load in the viewer",
           "noViewableFile": "No viewable file yet",
+          "extractionQueued": "Queued…",
+          "extractionProcessing": "Processing…",
+          "extractionFailed": "Processing failed",
+          "extractionFailedReason": "Processing failed: {reason}",
           "uploadFile": "Upload file",
           "checkBbl": "Check Bbl",
           "view": "View",
@@ -1952,7 +2073,8 @@
       "remove": "Remove",
       "pickerTitle": "Select a document",
       "pickerDescription": "Choose a project document to reference.",
-      "empty": "No documents available"
+      "empty": "No documents available",
+      "openInViewer": "Open document"
     }
   },
   "findingsBoard": {
@@ -2547,7 +2669,7 @@
   },
   "auth": {
     "brand": {
-      "tagline": "Wkb-compliant BIM platform"
+      "tagline": "Building quality platform"
     },
     "hero": {
       "checksBadge": "{wkb} Wkb · {bbl} BBL checks live",
@@ -2578,6 +2700,7 @@
       "heading": "Welcome back.",
       "intro": "Sign in to continue.",
       "newHere": "New here?",
+      "signupFreeCta": "Sign up free →",
       "requestAccessCta": "Request access →",
       "emailLabel": "Work email",
       "emailPlaceholder": "you@company.nl",
@@ -3287,6 +3410,86 @@
         "success": "Approved! Tenant \"{org}\" has been provisioned and an activation email sent."
       }
     },
+    "freeUsers": {
+      "tab": "Free users",
+      "loadError": "We couldn't load the free users. Please try again.",
+      "searchPlaceholder": "Search by email or name…",
+      "searchAria": "Search free users",
+      "panel": {
+        "eyebrow": "Free tier",
+        "title": "Free users ({count})"
+      },
+      "table": {
+        "user": "User",
+        "company": "Company",
+        "storage": "Storage",
+        "storageUsage": "{used} / {cap}",
+        "storagePct": "{pct}%",
+        "containers": "Containers",
+        "countOfCap": "{count} / {cap}",
+        "created": "Created",
+        "lastActive": "Last active",
+        "neverActive": "Never",
+        "staleBadge": "Stale",
+        "snags": "Snags",
+        "sharedWith": "Shared with",
+        "status": "Status",
+        "statusActive": "Active",
+        "statusSuspended": "Suspended",
+        "statusUnverified": "Unverified",
+        "lockedBadge": "Locked",
+        "manage": "Manage",
+        "empty": "No free users yet."
+      },
+      "detail": {
+        "storage": "{used} / {cap}",
+        "storagePct": "{pct}%",
+        "projectsStat": "{count} / {cap} projects",
+        "containersStat": "{count} / {cap} containers",
+        "snagsStat": "{count} snags",
+        "sharedStat": "{count} shared",
+        "filesStat": "{count} files",
+        "accountCreated": "Account created",
+        "lastActive": "Last active",
+        "firstContent": "First activity",
+        "never": "Never",
+        "loadError": "We couldn't load this user's content.",
+        "projectsTitle": "Projects ({count})",
+        "noProjects": "No projects.",
+        "projectMeta": "{containers} containers · {snags} snags · {size}",
+        "containersTitle": "Containers ({count})",
+        "noContainers": "No containers.",
+        "containerMeta": "{files} versions · {size}",
+        "snagsTitle": "Snags ({count})",
+        "noSnags": "No snags.",
+        "sharedTitle": "Shared with this user ({count})",
+        "sendReset": "Send password reset",
+        "resendActivation": "Resend activation",
+        "suspend": "Suspend",
+        "reactivate": "Reactivate",
+        "delete": "Delete account",
+        "reactivated": "Account reactivated.",
+        "suspended": "Account suspended.",
+        "resetSent": "Password reset email sent.",
+        "activationResent": "Activation email resent.",
+        "deleteConfirm": "Permanently anonymize {email}? This scrubs their data and disables sign-in. This cannot be undone.",
+        "deleted": "Account deleted.",
+        "limitsTitle": "Limits & trial",
+        "projectsLabel": "Projects",
+        "membersLabel": "Members / project",
+        "containersLabel": "Containers",
+        "storageLabel": "Storage (GB)",
+        "trialDaysLabel": "Trial (days)",
+        "defaultHint": "default {value}",
+        "exemptLabel": "Exempt from trial (permanent free account)",
+        "trialEnds": "Trial ends {date}",
+        "trialDaysLeft": "{days} days left",
+        "trialExpired": "Trial expired",
+        "trialExempt": "No expiry",
+        "saveLimits": "Save limits",
+        "limitsSaved": "Limits updated."
+      }
+    },
     "users": {
       "pageTitle": "Users",
       "pageSubtitle": "Search across all users in the platform, toggle access, and grant super-admin rights.",
@@ -3801,8 +4004,24 @@
       "showGeneratedPlan": "Show generated plan",
       "source": {
         "alignedPdf": "Aligned PDF",
-        "generated": "Generated plan"
+        "generated": "Generated plan",
+        "pickerLabel": "Drawing",
+        "sheetLabel": "{discipline} — p{page}"
+      },
+      "discipline": {
+        "architectural": "Architectural",
+        "structural": "Structural",
+        "mep": "MEP",
+        "coordination": "Coordination",
+        "other": "Other"
       }
+    },
+    "drawings": {
+      "empty": "No drawings yet",
+      "emptyHint": "Upload PDF drawings and assign them to a level to browse them here.",
+      "unassigned": "Unassigned",
+      "levelLabel": "Level",
+      "drawingLabel": "Drawing"
     },
     "viewMode": {
       "label": "View",
@@ -3817,6 +4036,7 @@
     },
     "aligned": {
       "pickPdfModel": "PDF drawing",
+      "calibrateAgainst": "Calibrate against this 3D model",
       "pickPage": "Page {n}",
       "pickLevel": "Level",
       "pickPdf": "Click the same point on the PDF",
@@ -4517,5 +4737,21 @@
     "cancelled": "Cancelled",
     "jobAlreadyRunning": "Job already started and can't be cancelled",
     "progressLabel": "{percent}%"
+  },
+  "onboarding": {
+    "welcome": {
+      "eyebrow": "Welcome",
+      "title": "Welcome to {org}",
+      "subtitleAdmin": "You've joined as an administrator. Here's how to get started:",
+      "subtitleMember": "You've joined as a member. Here's how to get started:",
+      "capAdminManageTeam": "Manage your team and invite colleagues",
+      "capAdminCreateProjects": "Create projects and set filing deadlines",
+      "capAdminFullAccess": "Full access to dossiers, findings, and reports",
+      "capMemberViewProjects": "View your organization's projects",
+      "capMemberUploadDocs": "Upload documents and drawings",
+      "capMemberTrackFindings": "Track findings and deadlines",
+      "getStarted": "Get started",
+      "dismiss": "Later"
+    }
   }
 }

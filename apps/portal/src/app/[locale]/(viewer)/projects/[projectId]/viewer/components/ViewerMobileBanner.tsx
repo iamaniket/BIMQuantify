@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { type JSX } from 'react';
 
-export interface ViewerMobileBannerProps {
+export type ViewerMobileBannerProps = {
   onDismiss: () => void;
 }
 

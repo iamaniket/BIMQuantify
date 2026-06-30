@@ -56,11 +56,13 @@ export function viewCubePlugin(options: ViewCubePluginOptions = {}): Plugin {
 
       ctx.container.appendChild(widget.element);
 
+      // Reused scratch — `sync` runs on every camera:change; syncTo copies the
+      // target out, so a single instance is safe.
+      const syncTarget = new THREE.Vector3();
       const sync = (): void => {
         if (!widget) return;
-        const target = new THREE.Vector3();
-        ctx.cameraControls.getTarget(target);
-        widget.syncTo(ctx.camera, target);
+        ctx.cameraControls.getTarget(syncTarget);
+        widget.syncTo(ctx.camera, syncTarget);
       };
 
       sync();

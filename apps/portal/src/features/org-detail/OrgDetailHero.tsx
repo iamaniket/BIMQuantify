@@ -47,7 +47,6 @@ export function OrgDetailHero({
   const storagePct = org.activeStorageLimitGb === null
     ? (org.activeStorageUsedGb > 0 ? 8 : 0)
     : Math.round((org.activeStorageUsedGb / org.activeStorageLimitGb) * 100);
-  const storageOverLimit = org.activeStorageLimitGb !== null && org.activeStorageUsedGb >= org.activeStorageLimitGb;
   const storageBarColor = storagePct >= 95
     ? 'bg-error'
     : storagePct >= 80

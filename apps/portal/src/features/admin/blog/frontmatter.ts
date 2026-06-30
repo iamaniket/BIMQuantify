@@ -51,7 +51,7 @@ function parseInlineArray(raw: string): string[] {
 }
 
 export function parseFrontmatter(source: string): ParsedFrontmatter {
-  const normalized = source.replace(/^﻿/, '');
+  const normalized = source.replace(/^\uFEFF/, '');
   // The opening fence must be the very first line — anything else means the
   // file is plain Markdown with no frontmatter to consume.
   if (!normalized.startsWith('---')) {

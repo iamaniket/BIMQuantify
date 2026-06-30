@@ -2,54 +2,114 @@
 
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query';
 
+import { useViewerTarget } from '@/features/viewer/shared/viewerSelectionStore';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { listFindings } from '@/lib/api/findings';
+import { listPooledProjectSnags } from '@/lib/api/pooledProjects';
+import { listPooledFindings } from '@/lib/api/pooledFindings';
 import type { PaginatedResponse } from '@/lib/api/client';
 import type { Finding } from '@/lib/api/schemas';
 import { useAuthInfiniteQuery, totalFromPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import { findingsKey, projectFindingsKey } from './queryKeys';
 
+/**
+ * Free-aware: the free board feed (`/pooled/projects/{id}/findings`) returns every
+ * snag as a single un-paginated `Finding[]`, so we wrap it as one page. The
+ * paid path keeps its real offset/limit pagination.
+ */
 export function useFindings(
   projectId: string,
 ): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Finding[]>>> {
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthInfiniteQuery({
     queryKey: findingsKey(projectId),
-    queryFn: (accessToken, offset, limit) =>
-      listFindings(accessToken, projectId, { limit, offset }),
+    queryFn: isPooled
+      ? async (accessToken) => {
+          const data = await listPooledProjectSnags(accessToken, projectId);
+          return { data, totalCount: data.length };
+        }
+      : (accessToken, offset, limit) =>
+          listFindings(accessToken, projectId, { limit, offset }),
+    // Gated on `ready`: until /auth/me resolves, `isPooled` is false and a free
+    // user would hit the org-only paid `/projects/{id}/findings` endpoint → 409.
+    enabled: ready,
   });
 }
 
 /** Project-level findings — those not linked to a 3D element. Shown in the
- * viewer inspector when no element is selected (mirrors useProjectAttachments). */
+ * viewer inspector when no element is selected (mirrors useProjectAttachments).
+ * Free-aware: the free board feed is unpaginated; "project-level" = snags with no
+ * element/anchor, filtered client-side. */
 export function useProjectFindings(
   projectId: string,
   enabled = true,
 ): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Finding[]>>> {
+  const { isPooled, ready } = useIsPooledContext();
   return useAuthInfiniteQuery({
     queryKey: projectFindingsKey(projectId),
-    queryFn: (accessToken, offset, limit) =>
-      listFindings(accessToken, projectId, { unlinked: true, limit, offset }),
-    enabled,
+    queryFn: isPooled
+      ? async (accessToken) => {
+          const all = await listPooledProjectSnags(accessToken, projectId);
+          const data = all.filter(
+            (f) => f.linked_element_global_id == null && f.anchor_x == null,
+          );
+          return { data, totalCount: data.length };
+        }
+      : (accessToken, offset, limit) =>
+          listFindings(accessToken, projectId, { unlinked: true, limit, offset }),
+    // `ready` defers the fetch until /auth/me resolves the free/paid branch (409).
+    enabled: ready && enabled,
   });
 }
 
 /** File-scoped findings — those linked to a given file (e.g. a PDF document).
- * Shown in the viewer inspector when a PDF is open (no element to anchor to). */
+ * Shown in the viewer inspector when a PDF is open (no element to anchor to).
+ * Free-aware: free snags are CONTAINER-scoped (the pooled endpoint is
+ * `/pooled/documents/{containerId}/findings`), NOT file-scoped. In the free viewer
+ * the container is the single-mode selection target's `modelId` (the `fileId`
+ * arg is the head file — used for 3D marker scene ids, not the findings query),
+ * so we resolve it from the same selection store the viewer scope reads. Without
+ * this the request would hit `/pooled/documents/{fileId}/findings` → 404 and the
+ * free viewer's markers never render. */
 export function useFileFindings(
   projectId: string,
   fileId: string | null,
 ): UseInfiniteQueryResult<InfiniteData<PaginatedResponse<Finding[]>>> {
+  const { isPooled, ready } = useIsPooledContext();
+  const target = useViewerTarget(projectId);
+  // For free, the container id (free_document_id) is the open single-mode target's
+  // modelId; fall back to fileId defensively (paid ignores this entirely).
+  const pooledContainerId =
+    target.kind === 'single' && target.modelId !== '' ? target.modelId : fileId;
   // An empty string is NOT a valid file id. In multi-model mode
   // `scope.activeFileId` is `''` until the manifest resolves; `'' !== null` is
   // true, so without this guard the query fires with `linked_file_id=` and 422s.
   const hasFile = fileId !== null && fileId !== '';
   return useAuthInfiniteQuery({
-    queryKey: [...findingsKey(projectId), 'file', fileId ?? ''] as const,
-    queryFn: (accessToken, offset, limit) => {
-      if (fileId === null || fileId === '') throw new Error('Missing fileId');
-      return listFindings(accessToken, projectId, { linkedFileId: fileId, limit, offset });
-    },
-    enabled: hasFile,
+    queryKey: [
+      ...findingsKey(projectId),
+      'file',
+      fileId ?? '',
+      // Free findings cache by container, not file, so two files of the same
+      // container share results; '' keeps the paid key shape unchanged.
+      isPooled ? `c:${pooledContainerId ?? ''}` : '',
+    ] as const,
+    queryFn: isPooled
+      ? async (accessToken) => {
+          if (pooledContainerId === null || pooledContainerId === '') {
+            throw new Error('Missing container');
+          }
+          // The free endpoint already emits the paid `Finding` shape (no adapter).
+          const data = await listPooledFindings(accessToken, pooledContainerId);
+          return { data, totalCount: data.length };
+        }
+      : (accessToken, offset, limit) => {
+          if (fileId === null || fileId === '') throw new Error('Missing fileId');
+          return listFindings(accessToken, projectId, { linkedFileId: fileId, limit, offset });
+        },
+    // `ready` defers the fetch until /auth/me resolves the free/paid branch (409).
+    enabled: ready && hasFile,
   });
 }
 

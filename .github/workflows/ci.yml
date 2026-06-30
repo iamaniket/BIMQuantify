@@ -19,6 +19,9 @@ jobs:
       portal: ${{ steps.filter.outputs.portal }}
       web: ${{ steps.filter.outputs.web }}
       processor: ${{ steps.filter.outputs.processor }}
+      packages: ${{ steps.filter.outputs.packages }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+      viewer_embed: ${{ steps.filter.outputs.viewer_embed }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,7 +55,30 @@ jobs:
               - 'turbo.json'
               - 'pnpm-lock.yaml'
               - 'package.json'
+            packages:
+              - 'packages/**'
+              - 'turbo.json'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+            mobile:
+              - 'apps/mobile/**'
+              - 'apps/viewer-embed/**'
+              - 'packages/**'
+              - 'turbo.json'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+            viewer_embed:
+              - 'apps/viewer-embed/**'
+              - 'packages/**'
+              - 'turbo.json'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
 
+  # NOTE: A `format` job running `pnpm run format:check` (Prettier) is intended here,
+  # mirroring the Python `ruff format --check` gate. It is DEFERRED until a one-time
+  # `pnpm run format` baseline is committed on a clean working tree (doing the repo-wide
+  # reformat now would entangle unrelated in-flight changes). Re-add this job in the same
+  # PR as that reformat commit. Prettier config + scripts are already in place.
   api:
     name: API (Python)
     needs: detect-changes
@@ -277,3 +303,121 @@ jobs:
 
       - name: Test
         run: pnpm run test --filter=processor
+
+  packages:
+    name: Packages (Node)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.packages == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # turbo resolves ^build first, so workspace deps (viewer <- annotation, etc.)
+      # are compiled before each package's vitest suite runs against built dist.
+      - name: Type check
+        run: pnpm exec turbo run type-check --filter='./packages/*'
+
+      - name: Test
+        run: pnpm exec turbo run test --filter='./packages/*'
+
+  mobile:
+    name: Mobile (Expo)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm exec turbo run type-check --filter=mobile
+
+      # NON-BLOCKING for now: mobile has ~8 pre-existing react-hooks errors
+      # (react-hooks/refs, set-state-in-effect in tokenManager / OfflineProvider).
+      # This step surfaces them without blocking PRs on pre-existing debt; flip to
+      # a hard gate (remove continue-on-error) once those are fixed.
+      - name: Lint (non-blocking)
+        continue-on-error: true
+        run: pnpm exec turbo run lint --filter=mobile
+
+  viewer-embed:
+    name: Viewer Embed (Node)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.viewer_embed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm exec turbo run type-check --filter=viewer-embed

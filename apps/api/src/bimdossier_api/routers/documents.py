@@ -25,7 +25,6 @@ from bimdossier_api.access import (
     require_project_read_access,
     require_project_writable,
 )
-from bimdossier_api.auth.fastapi_users import current_verified_user
 from bimdossier_api.auth.permissions import Action, Resource, require_permission
 from bimdossier_api.cache import (
     CACHE_TTL_DOCUMENT_DETAIL,
@@ -42,7 +41,8 @@ from bimdossier_api.models.project_file import (
     ProjectFile,
     ProjectFileStatus,
 )
-from bimdossier_api.models.user import User
+from bimdossier_api.routers import pooled_documents
+from bimdossier_api.routers.free_access import require_free_tier_enabled
 from bimdossier_api.routers.project_files._shared import resolve_head_file_id
 from bimdossier_api.schemas.document import (
     DocumentCreate,
@@ -52,7 +52,7 @@ from bimdossier_api.schemas.document import (
 )
 from bimdossier_api.storage import StorageBackend, get_storage
 from bimdossier_api.storage.minio import ObjectNotFoundError
-from bimdossier_api.tenancy import get_tenant_session, require_active_organization
+from bimdossier_api.tenancy import ScopeContext, get_scope_context, get_scoped_session
 
 logger = logging.getLogger(__name__)
 
@@ -65,9 +65,7 @@ async def _load_document_or_404(
     """Load a document the current tenant can see, scoped to the given project."""
     document = (
         await session.execute(
-            select(Document).where(
-                Document.id == document_id, Document.project_id == project_id
-            )
+            select(Document).where(Document.id == document_id, Document.project_id == project_id)
         )
     ).scalar_one_or_none()
     if document is None:
@@ -94,10 +92,21 @@ async def create_document(
     project_id: UUID,
     payload: DocumentCreate,
     request: Request,
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
-) -> Document:
+    session: AsyncSession = Depends(get_scoped_session),
+    scope: ScopeContext = Depends(get_scope_context),
+    settings: Settings = Depends(get_settings),
+) -> Document | DocumentRead:
+    if scope.is_free:
+        require_free_tier_enabled()
+        return await pooled_documents.create_pooled_document(
+            session=session,
+            user=scope.user,
+            project_id=project_id,
+            payload=pooled_documents.PooledDocumentCreate(**payload.model_dump()),
+            settings=settings,
+        )
+
+    user = scope.user
     project = await load_project_or_404(session, project_id)
     membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.document, Action.create)
@@ -143,17 +152,26 @@ async def create_document(
 async def list_documents(
     project_id: UUID,
     response: Response,
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
+    session: AsyncSession = Depends(get_scoped_session),
+    scope: ScopeContext = Depends(get_scope_context),
     status_filter: DocumentStatus | None = Query(default=None, alias="status"),
     discipline: DocumentDiscipline | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     include: str | None = Query(default=None),
 ) -> list[dict[str, object]]:
+    if scope.is_free:
+        require_free_tier_enabled()
+        # Free always returns the with-versions shape (the free client never asks
+        # for the light list); status/discipline/paging filters are paid-only.
+        docs = await pooled_documents.list_pooled_project_documents(session, project_id)
+        response.headers["X-Total-Count"] = str(len(docs))
+        return [d.model_dump() for d in docs]
+
+    user = scope.user
+    assert scope.org_id is not None
     project = await load_project_or_404(session, project_id)
-    await require_project_read_access(session, project.id, user, active_org_id)
+    await require_project_read_access(session, project.id, user, scope.org_id)
 
     stmt = select(Document).where(Document.project_id == project.id)
     if status_filter is not None:
@@ -200,12 +218,18 @@ async def get_document(
     project_id: UUID,
     document_id: UUID,
     response: Response,
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
+    session: AsyncSession = Depends(get_scoped_session),
+    scope: ScopeContext = Depends(get_scope_context),
 ) -> dict[str, object]:
+    if scope.is_free:
+        require_free_tier_enabled()
+        doc = await pooled_documents.get_pooled_document(session, project_id, document_id)
+        return doc.model_dump()
+
+    user = scope.user
+    assert scope.org_id is not None
     project = await load_project_or_404(session, project_id)
-    await require_project_read_access(session, project.id, user, active_org_id)
+    await require_project_read_access(session, project.id, user, scope.org_id)
 
     document = (
         await session.execute(
@@ -244,11 +268,23 @@ async def update_document(
     document_id: UUID,
     payload: DocumentUpdate,
     request: Request,
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
+    session: AsyncSession = Depends(get_scoped_session),
+    scope: ScopeContext = Depends(get_scope_context),
     settings: Settings = Depends(get_settings),
-) -> Document:
+) -> Document | DocumentRead:
+    if scope.is_free:
+        require_free_tier_enabled()
+        return await pooled_documents.update_pooled_document(
+            session=session,
+            user=scope.user,
+            project_id=project_id,
+            document_id=document_id,
+            payload=pooled_documents.PooledDocumentUpdate(**payload.model_dump(exclude_unset=True)),
+        )
+
+    user = scope.user
+    assert scope.org_id is not None
+    active_org_id = scope.org_id
     project = await load_project_or_404(session, project_id)
     membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.document, Action.update)
@@ -357,8 +393,7 @@ async def update_document(
                 if exc.status_code != status.HTTP_429_TOO_MANY_REQUESTS:
                     raise
                 logger.warning(
-                    "Re-extraction after discipline change skipped (job limit) "
-                    "for document %s",
+                    "Re-extraction after discipline change skipped (job limit) for document %s",
                     document.id,
                 )
 
@@ -370,11 +405,21 @@ async def delete_document(
     project_id: UUID,
     document_id: UUID,
     request: Request,
-    session: AsyncSession = Depends(get_tenant_session),
-    user: User = Depends(current_verified_user),
-    active_org_id: UUID = Depends(require_active_organization),
+    session: AsyncSession = Depends(get_scoped_session),
+    scope: ScopeContext = Depends(get_scope_context),
     storage: StorageBackend = Depends(get_storage),
 ) -> Response:
+    if scope.is_free:
+        require_free_tier_enabled()
+        await pooled_documents.delete_pooled_document(
+            user=scope.user,
+            project_id=project_id,
+            document_id=document_id,
+            storage=storage,
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    user = scope.user
     project = await load_project_or_404(session, project_id)
     membership = await require_membership(session, project.id, user.id)
     require_permission(membership.role, Resource.document, Action.delete)

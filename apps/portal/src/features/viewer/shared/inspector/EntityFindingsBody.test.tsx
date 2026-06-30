@@ -6,6 +6,8 @@ import type { Finding } from '@/lib/api/schemas';
 
 const q = vi.hoisted(() => ({
   file: {
+    // Widened so `setFile()` (Partial<typeof q.file>) accepts real infinite-query data,
+    // not just `undefined`. The runtime value is still undefined.
     data: undefined as unknown,
     isLoading: false,
     hasNextPage: false,
@@ -81,7 +83,7 @@ function makeFinding(overrides: Partial<Finding> = {}): Finding {
     created_at: '2026-05-29T10:00:00Z',
     updated_at: '2026-05-29T10:00:00Z',
     ...overrides,
-  } as Finding;
+  };
 }
 
 function infiniteData(items: Finding[]) {

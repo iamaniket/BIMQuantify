@@ -137,6 +137,7 @@ function ContentPreview({
         <p className="text-body3 font-medium text-foreground">
           {attachment.original_filename}
         </p>
+        {/* eslint-disable-next-line jsx-a11y/media-has-caption -- user-uploaded audio attachment; no caption track exists */}
         <audio controls src={viewUrl} className="w-full max-w-md" />
       </div>
     );

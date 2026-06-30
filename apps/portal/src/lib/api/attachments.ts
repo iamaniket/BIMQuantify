@@ -1,5 +1,6 @@
 import { computeFileSha256 } from '../upload/sha256';
 import { apiClient, type PaginatedResponse } from './client';
+import { projectScope } from './scope';
 import {
   CaptureLinkListSchema,
   CreateCaptureLinkResponseSchema,
@@ -7,7 +8,6 @@ import {
   AttachmentInitiateResponseSchema,
   AttachmentListSchema,
   AttachmentSchema,
-  type CaptureLink,
   type CaptureLinkList,
   type CreateCaptureLinkResponse,
   type Attachment,
@@ -51,9 +51,12 @@ export async function initiateAttachmentUpload(
     // that attachment's version group instead of a fresh root (#35).
     supersedes_id?: string | null;
   },
+  // Free (org-less) users upload to the pooled `/pooled/*` surface (identical
+  // request/response shape); the flag picks the prefix via `projectScope`.
+  free = false,
 ): Promise<AttachmentInitiateResponse> {
   return apiClient.post<AttachmentInitiateResponse>(
-    `/projects/${projectId}/attachments/initiate`,
+    `${projectScope(projectId, free)}/attachments/initiate`,
     input,
     AttachmentInitiateResponseSchema,
     accessToken,
@@ -64,9 +67,10 @@ export async function completeAttachmentUpload(
   accessToken: string,
   projectId: string,
   attachmentId: string,
+  free = false,
 ): Promise<Attachment> {
   return apiClient.post<Attachment>(
-    `/projects/${projectId}/attachments/${attachmentId}/complete`,
+    `${projectScope(projectId, free)}/attachments/${attachmentId}/complete`,
     {},
     AttachmentSchema,
     accessToken,
@@ -152,9 +156,12 @@ export async function getAttachmentViewUrl(
   accessToken: string,
   projectId: string,
   attachmentId: string,
+  // Free (org-less) findings carry free attachments on the `/free/*` surface; the
+  // response schema is identical, so the same fetcher serves both tiers.
+  free = false,
 ): Promise<AttachmentDownloadResponse> {
   return apiClient.get<AttachmentDownloadResponse>(
-    `/projects/${projectId}/attachments/${attachmentId}/download?disposition=inline`,
+    `${projectScope(projectId, free)}/attachments/${attachmentId}/download?disposition=inline`,
     AttachmentDownloadResponseSchema,
     accessToken,
   );
@@ -213,6 +220,8 @@ export async function uploadAttachmentEnd2End(
     supersedes_id?: string | null;
   },
   onProgress?: (event: AttachmentUploadProgressEvent) => void,
+  // Free (org-less) users route the whole two-phase upload to the pooled surface.
+  free = false,
 ): Promise<Attachment> {
   onProgress?.({ phase: 'hashing', fraction: 0 });
   const contentSha256 = await computeFileSha256(file, (fraction) => {
@@ -220,13 +229,18 @@ export async function uploadAttachmentEnd2End(
   });
 
   onProgress?.({ phase: 'uploading' });
-  const initResponse = await initiateAttachmentUpload(accessToken, projectId, {
-    filename: file.name,
-    size_bytes: file.size,
-    content_type: file.type === '' ? 'application/octet-stream' : file.type,
-    content_sha256: contentSha256,
-    ...extra,
-  });
+  const initResponse = await initiateAttachmentUpload(
+    accessToken,
+    projectId,
+    {
+      filename: file.name,
+      size_bytes: file.size,
+      content_type: file.type === '' ? 'application/octet-stream' : file.type,
+      content_sha256: contentSha256,
+      ...extra,
+    },
+    free,
+  );
   await apiClient.putRaw(
     initResponse.upload_url,
     file,
@@ -234,7 +248,7 @@ export async function uploadAttachmentEnd2End(
   );
 
   onProgress?.({ phase: 'completing' });
-  return completeAttachmentUpload(accessToken, projectId, initResponse.attachment_id);
+  return completeAttachmentUpload(accessToken, projectId, initResponse.attachment_id, free);
 }
 
 // ---------------------------------------------------------------------------

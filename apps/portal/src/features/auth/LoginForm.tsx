@@ -62,26 +62,28 @@ export function LoginForm(): JSX.Element {
 
   const onSubmit: SubmitHandler<LoginFormValues> = (values) => {
     login.mutate(values, {
-      onSuccess: async (tokens) => {
+      onSuccess: (tokens) => {
         setTokens(tokens);
         // Fetch memberships directly with the new access token
-        try {
-          const me = await getAuthMe(tokens.access_token);
-          if (me && me.memberships && me.memberships.length > 1) {
-            setMemberships(me.memberships.map((membership) => ({
-              organization_id: membership.organization_id,
-              organization_name: membership.organization_name,
-            })));
-            setPendingInvitationsCount(me.pending_invitations_count ?? 0);
-            setOrganizationError(null);
-            setSwitching(null);
-            setAuthStep('organization');
-          } else {
-            router.push(me.pending_invitations_count > 0 ? '/account' : '/projects');
+        void (async () => {
+          try {
+            const me = await getAuthMe(tokens.access_token);
+            if (me && me.memberships && me.memberships.length > 1) {
+              setMemberships(me.memberships.map((membership) => ({
+                organization_id: membership.organization_id,
+                organization_name: membership.organization_name,
+              })));
+              setPendingInvitationsCount(me.pending_invitations_count ?? 0);
+              setOrganizationError(null);
+              setSwitching(null);
+              setAuthStep('organization');
+            } else {
+              router.push(me.pending_invitations_count > 0 ? '/account' : '/projects');
+            }
+          } catch {
+            router.push('/projects');
           }
-        } catch {
-          router.push('/projects');
-        }
+        })();
       },
     });
   };
@@ -127,6 +129,10 @@ export function LoginForm(): JSX.Element {
               {t('intro')}{' '}
               <span className="whitespace-nowrap">
                 {t('newHere')}{' '}
+                <Link href="/signup" className="font-semibold text-primary no-underline">
+                  {t('signupFreeCta')}
+                </Link>
+                {' · '}
                 <Link href="/request-access" className="font-semibold text-primary no-underline">
                   {t('requestAccessCta')}
                 </Link>
@@ -156,9 +162,9 @@ export function LoginForm(): JSX.Element {
             htmlFor={passwordId}
             error={passwordError}
             action={
-              <a href="/forgot-password" className="text-[11px] font-semibold text-primary no-underline">
+              <Link href="/forgot-password" className="text-[11px] font-semibold text-primary no-underline">
                 {t('forgot')}
-              </a>
+              </Link>
             }
           >
             <Input

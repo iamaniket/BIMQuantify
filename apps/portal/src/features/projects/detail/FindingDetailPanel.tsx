@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type JSX } from 'react';
 import { Badge, Button, IconButton, Tabs, TabsList, TabsTrigger } from '@bimdossier/ui';
 
 import { TAB_TRIGGER_CLASS } from '@/components/shared/tabStyles';
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import type { Finding } from '@/lib/api/schemas';
 
 import { FindingCommentsTab } from './FindingCommentsTab';
@@ -35,6 +36,8 @@ type FindingTab = 'edit' | 'history' | 'comments';
 export function FindingDetailPanel({ projectId, finding, onClose, onExpand }: Props): JSX.Element {
   const t = useTranslations('findings.detail');
   const tStatus = useTranslations('findings.status');
+  // Comments + history are org-backed — hidden for free users (edit tab only).
+  const { isPooled } = useIsPooledContext();
   const [tab, setTab] = useState<FindingTab>('edit');
   const api = useFindingDetailForm(projectId, finding, {
     onSaved: onClose,
@@ -66,6 +69,26 @@ export function FindingDetailPanel({ projectId, finding, onClose, onExpand }: Pr
     panelRef.current?.focus();
   }, [findingId]);
 
+  // Close on Escape. Attached as a native listener (not a JSX `onKeyDown`) so the
+  // `<aside>` keeps its `complementary` landmark role without carrying an event
+  // handler. Events still bubble from inside the rail to this node, so Escape
+  // closes the panel from anywhere within it — identical to the JSX handler.
+  useEffect(() => {
+    const node = panelRef.current;
+    if (node === null) {
+      return;
+    }
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    node.addEventListener('keydown', handleKeyDown);
+    return () => {
+      node.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [findingId, onClose]);
+
   if (finding === null) {
     return <></>;
   }
@@ -78,7 +101,6 @@ export function FindingDetailPanel({ projectId, finding, onClose, onExpand }: Pr
       ref={panelRef}
       tabIndex={-1}
       aria-label={t('title')}
-      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
       className="flex w-[26rem] shrink-0 flex-col border-l border-border bg-surface-main outline-none"
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3">
@@ -105,14 +127,18 @@ export function FindingDetailPanel({ projectId, finding, onClose, onExpand }: Pr
               <Pencil className="h-4 w-4" />
               {t('tabs.edit')}
             </TabsTrigger>
-            <TabsTrigger value="comments" className={TAB_TRIGGER_CLASS}>
-              <MessageSquare className="h-4 w-4" />
-              {t('tabs.comments')}
-            </TabsTrigger>
-            <TabsTrigger value="history" className={TAB_TRIGGER_CLASS}>
-              <Clock className="h-4 w-4" />
-              {t('tabs.history')}
-            </TabsTrigger>
+            {!isPooled && (
+              <>
+                <TabsTrigger value="comments" className={TAB_TRIGGER_CLASS}>
+                  <MessageSquare className="h-4 w-4" />
+                  {t('tabs.comments')}
+                </TabsTrigger>
+                <TabsTrigger value="history" className={TAB_TRIGGER_CLASS}>
+                  <Clock className="h-4 w-4" />
+                  {t('tabs.history')}
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
         </Tabs>
       </div>

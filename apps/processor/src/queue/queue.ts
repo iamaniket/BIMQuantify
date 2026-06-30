@@ -16,6 +16,10 @@ export type WorkerJob = {
   // from a pre-fix API — the callback helpers then fall back to the baked
   // API_BASE_URL. See api/callbackContext.ts.
   callback_url?: string;
+  // Single-queue BullMQ priority by user tier (free-wedge D5). Lower = higher
+  // priority. Absent on jobs from a pre-priority API — enqueueJob defaults it
+  // to the paying priority.
+  priority?: number;
 };
 
 /**
@@ -87,12 +91,23 @@ export async function getQueueStats(): Promise<{ jobs: QueueCounts; actions: Que
   return { jobs, actions };
 }
 
+// Paying-tier BullMQ priority (mirrors the API's JOB_PRIORITY_PAYING default).
+// A job arriving without an explicit priority (a pre-priority API) is treated as
+// paying so it is never silently deprioritised. BullMQ: lower = higher.
+const DEFAULT_PRIORITY = 10;
+
 export async function enqueueJob(job: WorkerJob): Promise<void> {
-  const queue = ACTION_JOB_TYPES.has(job.job_type) ? getActionQueue() : getQueue();
+  const isAction = ACTION_JOB_TYPES.has(job.job_type);
+  const queue = isAction ? getActionQueue() : getQueue();
   // Use the API's job_id verbatim as the BullMQ job id so cancel can address
   // it. Safe because retry mints a fresh Job (new UUID) rather than re-adding
   // this id — BullMQ would otherwise dedupe a re-add against the same id.
-  await queue.add(job.job_type, job, { jobId: job.job_id });
+  // Priority orders the single `jobs` queue by user tier (free-wedge D5); the
+  // separate `actions` queue (send_email) stays FIFO.
+  const opts = isAction
+    ? { jobId: job.job_id }
+    : { jobId: job.job_id, priority: job.priority ?? DEFAULT_PRIORITY };
+  await queue.add(job.job_type, job, opts);
 }
 
 export type RemoveResult = 'removed' | 'active' | 'not_found';

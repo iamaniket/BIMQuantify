@@ -13,7 +13,7 @@ import { AuthFormIntro } from '@/features/auth/AuthFormIntro';
 import { ApiError } from '@/lib/api/client';
 import { submitAccessRequest } from '@/lib/api/accessRequests';
 
-interface SubmittedState {
+type SubmittedState = {
   name: string;
   email: string;
   company: string;

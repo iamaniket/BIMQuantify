@@ -9,16 +9,29 @@
     "features": "Features",
     "faq": "FAQ",
     "blog": "Blog",
+    "security": "Security",
     "requestAccess": "Become a partner",
+    "login": "Log in",
+    "startFree": "Start for free",
     "contactSales": "Contact sales",
     "themeToggle": "Toggle theme"
   },
+  "comingSoon": {
+    "metadata": {
+      "title": "Coming soon",
+      "description": "This part of the site is coming soon."
+    },
+    "eyebrow": "Coming soon",
+    "headline": "Coming soon",
+    "subtitle": "We're putting the finishing touches on this. Check back soon, or head back to the homepage.",
+    "backHome": "Back to home"
+  },
   "hero": {
-    "badge": "Founding partners · a few spots open for Dutch contractors",
-    "headline": "The construction quality platform, built on your model. From first snag to final dossier.",
+    "badge": "Free to try · still onboarding founding partners in the Netherlands",
+    "headline": "The building quality platform, built on your model. From first snag to final dossier.",
     "subtitle": "Pin every snag on your 3D model, or on a PDF floor plan if you don't have a model yet. Add photos, assign the fix, and follow it through to done. Deadlines track themselves, so your Wkb dossier stays ready from bouwmelding to gereedmelding.",
-    "trust": "Building it with founding partners in the Netherlands · EU-hosted, DPA included · Works alongside any kwaliteitsborger and instrument",
-    "ctaPrimary": "Become a founding partner",
+    "trust": "Building it with founding partners in the Netherlands · EU-hosted, GDPR-ready, DPA included · Works alongside any kwaliteitsborger and instrument",
+    "ctaPrimary": "Start for free",
     "ctaDemo": "See it on the model"
   },
   "features": {
@@ -40,6 +53,22 @@
       "inspections": {
         "title": "Inspections",
         "body": "Walk the site, log what you find, and turn the round into a PDF report."
+      },
+      "photos": {
+        "title": "Photos",
+        "body": "Snap photos on site and pin them to the model, so the proof sits where the work happened."
+      },
+      "onsite": {
+        "title": "On site",
+        "body": "Walk the building with your phone, log what you find, and it's on the model before you leave."
+      },
+      "teamwork": {
+        "title": "Teamwork",
+        "body": "Assign work, leave a note, and keep everyone looking at the same model."
+      },
+      "certificates": {
+        "title": "Certificates",
+        "body": "Collect product and install certificates against the project, ready for handover."
       },
       "handover": {
         "title": "Handover",
@@ -118,8 +147,8 @@
   },
   "cta": {
     "headline": "Stop chasing paperwork. Prove the work was done right.",
-    "subtitle": "Snagging, inspections and your Wkb dossier, all on your model. Join as a founding partner and walk into your next gereedmelding already done.",
-    "button": "Become a founding partner"
+    "subtitle": "Upload your model, place your first snags, and watch your project come together. Free to start, no credit card.",
+    "button": "Start for free"
   },
   "footer": {
     "product": "Product",
@@ -128,6 +157,7 @@
     "connect": "Connect",
     "youtube": "YouTube",
     "linkedin": "LinkedIn",
+    "founderLinkedin": "{name} on LinkedIn",
     "email": "Email us"
   },
   "blog": {
@@ -154,6 +184,11 @@
     "emailDescription": "Prefer email? Reach out and we'll get back to you as soon as we can.",
     "emailButton": "Email us",
     "noBookingUrl": "Booking link coming soon. For now, just reach out by email.",
+    "founder": {
+      "lead": "BimDossier is built and run by {name}.",
+      "reach": "Reach me directly:",
+      "linkedin": "Connect on LinkedIn"
+    },
     "metadata": {
       "title": "BimDossier · Contact sales",
       "description": "Book a demo or get in touch with the BimDossier team to discuss pricing and plans."
@@ -163,7 +198,7 @@
     "eyebrow": "Quality assurance, live",
     "headline": "Catch defects before they cost you.",
     "subtitle": "Drag to rotate the model. Snags are flagged right on it as inspectors find and fix them.",
-    "cta": "Become a founding partner",
+    "cta": "Start for free",
     "hintDrag": "Drag to rotate",
     "hintWatch": "Each pin flags a real snag",
     "learnMoreBlog": "See how snagging works on the blog",
@@ -218,30 +253,35 @@
     "items": {
       "hosting": {
         "title": "EU-hosted, DPA included",
-        "body": "Your data runs on EU infrastructure and never leaves it. We sign a verwerkersovereenkomst (DPA) with every founding partner."
+        "body": "Your data runs on EU infrastructure and never leaves it, in line with the GDPR (AVG). We sign a verwerkersovereenkomst (DPA) with customers on a paid plan."
       },
       "instrument": {
         "title": "Works alongside your kwaliteitsborger",
         "body": "BimDossier is not an approved Wkb instrument and doesn't replace one. It runs your dossier and works alongside any kwaliteitsborger and instrument you already use."
       },
       "team": {
-        "title": "A Dutch team, reachable",
-        "body": "Built in the Netherlands by the team behind BimDossier. As a founding partner you reach us directly. No ticket queue."
+        "title": "Founder-led, and reachable",
+        "body": "BimDossier is built for Dutch contractors and run by its founder. You reach the person who builds it directly. No ticket queue."
       }
     },
-    "dpaLink": "Read our DPA"
+    "dpaLink": "Read our DPA",
+    "securityLink": "How we protect your data"
   },
   "faq": {
     "eyebrow": "Questions",
     "headline": "What contractors ask us first",
     "items": [
       {
+        "q": "Is it really free to start?",
+        "a": "Yes. Create an account, upload an IFC model, view it in 3D and place snags, free. The free plan covers a few projects and a gigabyte of storage. The Wkb dossier, compliance reports and certificates are part of the paid plan. No credit card to start."
+      },
+      {
         "q": "What does becoming a founding partner mean for me?",
-        "a": "We onboard a small group of Dutch aannemers by hand. As a founding partner you get in early, a direct line to the team, and a real say in what we build next. In exchange, we ask for honest real-world feedback."
+        "a": "You can start free without applying. Founding partners go a step further: we onboard a small group of Dutch aannemers by hand, with a direct line to the team and a real say in what we build next. In exchange, we ask for honest real-world feedback."
       },
       {
         "q": "Where does my data live, and is there a DPA?",
-        "a": "Everything runs on EU infrastructure and never leaves it. We sign a verwerkersovereenkomst (DPA) with every founding partner. Read our DPA for the details."
+        "a": "Everything runs on EU infrastructure and never leaves it. We sign a verwerkersovereenkomst (DPA) with customers on a paid plan. Read our DPA for the details."
       },
       {
         "q": "Do I need BIM models, or do PDF floor plans work too?",
@@ -260,5 +300,89 @@
         "a": "Founding-partner pricing depends on your team and projects. Start the conversation and we'll talk it through. It commits you to nothing."
       }
     ]
+  },
+  "securityPage": {
+    "metadata": {
+      "title": "Security",
+      "description": "How BimDossier protects your data: EU hosting, per-organisation isolation, encryption, hardened authentication and audit logging. Built for legally load-bearing dossiers."
+    },
+    "hero": {
+      "eyebrow": "Security",
+      "headline": "Built for regulated work, and built to keep your data safe",
+      "lead": "Your dossier is legally load-bearing and has to last for years. Here is exactly how the platform protects it, in plain language, with nothing dressed up.",
+      "residency": "Hosted on EU infrastructure. Your data stays in the EU and never leaves it."
+    },
+    "controls": {
+      "eyebrow": "How we protect your data",
+      "headline": "Security built into every layer",
+      "subtitle": "Each of these is live in the platform today, not a promise for later.",
+      "items": {
+        "isolation": {
+          "title": "Your data in its own vault",
+          "body": "Every organisation gets its own separate database schema. Your data is physically separated from every other customer, not just filtered by a query, and a database role without extra privileges enforces it."
+        },
+        "encryption": {
+          "title": "Encrypted in transit and at rest",
+          "body": "Traffic is protected with TLS, and stored files and data are encrypted at rest on EU infrastructure."
+        },
+        "auth": {
+          "title": "Hardened sign-in",
+          "body": "Sessions use short-lived tokens that rotate on every refresh, with automatic detection of stolen tokens. Repeated failed logins lock the account with an increasing wait, and signing out revokes access straight away."
+        },
+        "access": {
+          "title": "Least-privilege access",
+          "body": "The app runs as a restricted database role, file storage is scoped per organisation so no request can reach another customer's files, and row-level security guards the shared tables."
+        },
+        "audit": {
+          "title": "Every action logged",
+          "body": "Security-relevant actions are written to an audit trail, and a single request id ties together the logs, the audit record and error monitoring so anything can be traced end to end."
+        },
+        "platform": {
+          "title": "A hardened platform",
+          "body": "Strict content-security and transport headers, rate limiting on sensitive endpoints, and a start-up check that refuses to boot with insecure settings keep the platform locked down by default."
+        }
+      }
+    },
+    "compliance": {
+      "eyebrow": "Compliance and your rights",
+      "headline": "In line with EU and Dutch rules",
+      "subtitle": "We are a processor of your data, and we treat it that way.",
+      "items": {
+        "residency": {
+          "title": "EU data residency",
+          "body": "All data is hosted within the EU and never leaves it."
+        },
+        "gdpr": {
+          "title": "GDPR / AVG",
+          "body": "Processing follows the GDPR (AVG). You can access, correct, export or delete personal data, and file a complaint with the Autoriteit Persoonsgegevens."
+        },
+        "dpa": {
+          "title": "Verwerkersovereenkomst (DPA)",
+          "body": "We sign a data processing agreement with every customer. Read it before you commit to anything."
+        },
+        "retention": {
+          "title": "Wkb retention",
+          "body": "Dossier data is kept for the statutory Wkb retention period of ten years after delivery, then returned or deleted."
+        },
+        "breach": {
+          "title": "Breach notification",
+          "body": "If a data breach affects your data, we notify you without undue delay and in any event within 72 hours of becoming aware of it, in line with GDPR Article 33."
+        },
+        "boundary": {
+          "title": "An honest boundary",
+          "body": "BimDossier is not an approved Wkb instrument and does not replace your kwaliteitsborger. It runs your dossier alongside the instrument you already use."
+        }
+      },
+      "dpaLink": "Read our DPA",
+      "privacyLink": "Read our privacy policy"
+    },
+    "disclosure": {
+      "eyebrow": "Responsible disclosure",
+      "headline": "Found a security issue?",
+      "body": "We welcome reports from security researchers. Email us and we will respond quickly. Please give us a reasonable chance to fix an issue before disclosing it publicly.",
+      "email": "security@bimdossier.nl",
+      "emailLabel": "Email the security team",
+      "txtLabel": "View security.txt"
+    }
   }
 }

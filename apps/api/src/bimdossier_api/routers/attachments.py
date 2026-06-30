@@ -25,6 +25,7 @@ from bimdossier_api.auth.fastapi_users import current_verified_user
 from bimdossier_api.auth.permissions import Action, Resource, require_permission
 from bimdossier_api.auth.ratelimit import UPLOAD_INITIATE_LIMITER
 from bimdossier_api.config import Settings, get_settings
+from bimdossier_api.content_disposition import resolve_attachment_download
 from bimdossier_api.idempotency import idempotency_key_header, is_idempotency_conflict
 from bimdossier_api.jobs import dispatch_job
 from bimdossier_api.models.job import Job, JobStatus, JobType
@@ -530,8 +531,15 @@ async def download_attachment(
         )
 
     bucket = get_attachments_bucket()
+    # Canonical extension-derived content-type overrides the stored (caller-supplied)
+    # type, and non-inline-safe types are forced to `attachment` — stored-XSS guard.
+    content_type, safe_disposition = resolve_attachment_download(att.original_filename, disposition)
     url = await storage.presigned_get_url(
-        att.storage_key, att.original_filename, disposition=disposition, bucket=bucket
+        att.storage_key,
+        att.original_filename,
+        disposition=safe_disposition,
+        response_content_type=content_type,
+        bucket=bucket,
     )
     return AttachmentDownloadResponse(download_url=url, expires_in=storage.presign_ttl)
 

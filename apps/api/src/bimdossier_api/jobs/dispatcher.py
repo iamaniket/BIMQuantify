@@ -17,17 +17,20 @@ import asyncio
 import hmac
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 from uuid import UUID
 
 import httpx
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy import func, select, text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api.background.locks import lock_id_for
 from bimdossier_api.config import Settings, get_settings
+from bimdossier_api.jobs.priority import JobTier, resolve_priority
 from bimdossier_api.models.job import Job, JobStatus
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +44,7 @@ class DispatchJobError(Exception):
     """Raised when the API cannot reach (or post to) the processor worker."""
 
 
-JobDispatcher = Callable[[Job, Settings, UUID], Awaitable[None]]
+JobDispatcher = Callable[[Job, Settings, UUID, int], Awaitable[None]]
 
 
 _RETRY_DELAYS = (0.5, 1.0, 2.0)
@@ -66,7 +69,9 @@ async def close_http_client() -> None:
         _http_client = None
 
 
-async def _http_dispatch(job: Job, settings: Settings, organization_id: UUID) -> None:
+async def _http_dispatch(
+    job: Job, settings: Settings, organization_id: UUID, priority: int
+) -> None:
     body = {
         "job_id": str(job.id),
         "job_type": job.job_type.value,
@@ -75,6 +80,9 @@ async def _http_dispatch(job: Job, settings: Settings, organization_id: UUID) ->
         # Tell the worker which API instance to call back to (L13) rather than
         # relying on its single baked API_BASE_URL.
         "callback_url": settings.api_base_url.rstrip("/"),
+        # Single-queue priority by user tier (BullMQ: lower = higher). See
+        # jobs/priority.py.
+        "priority": priority,
     }
     headers = {"Authorization": f"Bearer {settings.processor_shared_secret}"}
     timeout = httpx.Timeout(settings.processor_dispatch_timeout_seconds)
@@ -291,9 +299,17 @@ async def dispatch_job(
     job: Job,
     settings: Settings,
     organization_id: UUID,
+    *,
+    tier: JobTier = JobTier.paying,
 ) -> None:
-    """Hand a Job off to the processor worker. Raises DispatchJobError on failure."""
-    await _dispatcher(job, settings, organization_id)
+    """Hand a Job off to the processor worker. Raises DispatchJobError on failure.
+
+    ``tier`` sets the job's queue priority — paying jobs sort ahead of free-tier
+    jobs on the single shared queue. Existing tenant callers keep the ``paying``
+    default; the free-tier dispatch passes ``tier=JobTier.free``.
+    """
+    priority = resolve_priority(tier, settings)
+    await _dispatcher(job, settings, organization_id, priority)
 
 
 # ---------------------------------------------------------------------------

@@ -2,8 +2,10 @@
 
 import type { UseMutationResult } from '@tanstack/react-query';
 
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
+import { invitePooledProjectMember } from '@/lib/api/pooledProjects';
 import { addProjectMember, inviteToProject } from '@/lib/api/projectMembers';
 import { createProject, uploadProjectThumbnail } from '@/lib/api/projects';
 import type {
@@ -51,10 +53,36 @@ export function useCreateProject(): UseMutationResult<
   Error,
   ProjectCreatePayload
 > {
+  // Free-aware: a free (org-less) user creates a pooled `free_project`. Free
+  // projects support up to 3 invited members (by email) + a cover image, but no
+  // existing-org-member adds, so `members` is ignored; `invites` + `thumbnailFile`
+  // are applied best-effort after creation.
+  const { isPooled } = useIsPooledContext();
   return useAuthMutation({
     mutationFn: async (accessToken, {
       thumbnailFile, members = [], invites = [], ...input
     }) => {
+      if (isPooled) {
+        let created = await createProject(accessToken, input, true);
+        const failures: ProjectTeamFailure[] = [];
+        const inviteResults = await Promise.allSettled(
+          invites.map((inv) =>
+            invitePooledProjectMember(accessToken, created.id, {
+              email: inv.email,
+              role: inv.role,
+            }),
+          ),
+        );
+        inviteResults.forEach((r, i) => {
+          if (r.status === 'rejected') {
+            failures.push({ label: invites[i]?.email ?? '', reason: reasonOf(r.reason) });
+          }
+        });
+        if (thumbnailFile !== undefined) {
+          created = await uploadProjectThumbnail(accessToken, created.id, thumbnailFile, true);
+        }
+        return { project: created, failures };
+      }
       const created = await createProject(accessToken, input);
       const failures: ProjectTeamFailure[] = [];
 

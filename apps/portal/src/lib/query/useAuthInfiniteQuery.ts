@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import {
   useInfiniteQuery,
   type InfiniteData,
@@ -63,6 +64,20 @@ export function useAuthInfiniteQuery<
 export function flattenPages<T>(data: InfiniteData<PaginatedResponse<T[]>> | undefined): T[] {
   if (data === undefined) return [];
   return data.pages.flatMap((page) => page.data);
+}
+
+/**
+ * Memoized {@link flattenPages}. TanStack Query keeps `data` referentially
+ * stable across renders (structural sharing), so flattening only recomputes
+ * when the query result actually changes. Call this instead of
+ * `flattenPages(query.data)` in a render body — the bare call returns a fresh
+ * array every render, which silently defeats any downstream `useMemo`/`memo`
+ * that depends on the flattened list.
+ */
+export function useFlattenedPages<T>(
+  data: InfiniteData<PaginatedResponse<T[]>> | undefined,
+): T[] {
+  return useMemo(() => flattenPages(data), [data]);
 }
 
 export function totalFromPages<T>(data: InfiniteData<PaginatedResponse<T[]>> | undefined): number {

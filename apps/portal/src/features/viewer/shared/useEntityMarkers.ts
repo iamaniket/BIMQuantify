@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 
 import { useFileFindings } from '@/features/findings/useFindings';
-import { flattenPages } from '@/lib/query/useAuthInfiniteQuery';
+import { useFlattenedPages } from '@/lib/query/useAuthInfiniteQuery';
 
 import { federatedModelId } from '../3d/federation/federatedModelId';
 import type { EntityMarker2D, EntityMarker3D } from './entityMarkerTypes';
@@ -14,7 +14,7 @@ export function usePageFindingMarkers(
   fileId: string | null,
   page: number | null,
 ): EntityMarker2D[] {
-  const data = flattenPages(useFileFindings(projectId, fileId).data);
+  const data = useFlattenedPages(useFileFindings(projectId, fileId).data);
   const preview = useFindingPinPreviewStore((s) => s.preview);
   return useMemo(() => {
     const base: EntityMarker2D[] =
@@ -69,7 +69,7 @@ export function useModelFindingMarkers(
   projectId: string,
   fileId: string | null,
 ): EntityMarker3D[] {
-  const data = flattenPages(useFileFindings(projectId, fileId).data);
+  const data = useFlattenedPages(useFileFindings(projectId, fileId).data);
   const preview = useFindingPinPreviewStore((s) => s.preview);
   return useMemo(() => {
     const base: EntityMarker3D[] =

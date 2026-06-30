@@ -59,7 +59,7 @@ export function ModelOutOfViewIndicator({ handle, viewerReady, active }: Props):
         .catch(() => undefined);
     }
     const off = handle.events.on('camera:framing', (e) => {
-      apply(e as FramingEvent);
+      apply(e);
     });
     return () => {
       off();

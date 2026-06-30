@@ -125,7 +125,15 @@ export function IssuesTab({ issues, onDownloadCsv }: Props): JSX.Element {
             return (
               <div
                 key={issue.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => { setSelectedIssue(issue); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedIssue(issue);
+                  }
+                }}
                 className="grid cursor-pointer grid-cols-[50px_80px_1fr_80px_80px_60px] items-center border-t border-border px-3 py-2 text-body3 transition-colors hover:bg-background-hover"
               >
                 <Badge variant={issue.severity === 'fail' ? 'error' : 'warning'} className="w-fit">

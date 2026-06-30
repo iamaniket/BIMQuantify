@@ -2,6 +2,8 @@ export type SharedMessages = {
   brand: {
     name: string;
     legalEntity: string;
+    /** Short product strapline shown next to the wordmark (header + footer). */
+    strapline: string;
     tagline: string;
     productDescription: string;
     pilotHeading: string;

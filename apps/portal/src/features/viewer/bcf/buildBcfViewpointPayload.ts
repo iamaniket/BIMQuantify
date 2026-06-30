@@ -13,7 +13,7 @@ export function buildBcfViewpointPayload(vp: BcfViewpointRead): Record<string, u
   const vpData: Record<string, unknown> = { camera: cam };
 
   if (vp.components !== null) {
-    const comp = vp.components as Record<string, unknown>;
+    const comp = vp.components;
     vpData['components'] = {
       visibility: {
         defaultVisibility: comp['default_visibility'] ?? true,

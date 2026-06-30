@@ -233,8 +233,8 @@ export const en = {
   'login.form.submit': 'Sign in',
 
   // --- login: hero / brand canvas ---
-  'login.hero.subtext': 'Wkb-compliant BIM platform',
-  'login.hero.subtextTablet': 'Quality Assurance in Construction Act (Wkb)-compliant BIM platform',
+  'login.hero.subtext': 'Building quality platform',
+  'login.hero.subtextTablet': 'The building quality platform for Dutch contractors',
   'login.hero.pillMobile': 'Wkb · Live in NL',
   'login.hero.pillTablet': 'Quality Assurance in Construction Act (Wkb) Ready',
   // Words wrapped in *asterisks* render as italic accent spans (any word order).

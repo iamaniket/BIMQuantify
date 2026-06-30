@@ -558,3 +558,7 @@ async def test_me_includes_seat_fields(
     assert len(memberships) == 1
     assert memberships[0]["seat_limit"] == 4
     assert memberships[0]["seat_count_used"] == 1
+    # Entitlement axis: every org is a paid tenant; the active scope's plan is
+    # surfaced top-level too (orthogonal to the isolation surface).
+    assert memberships[0]["plan"] == "paid"
+    assert body["plan"] == "paid"

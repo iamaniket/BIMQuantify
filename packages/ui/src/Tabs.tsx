@@ -75,7 +75,14 @@ export const TabsContent = forwardRef<
   <RadixTabs.Content
     ref={ref}
     className={cn(
-      'mt-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      // `data-[state=inactive]:hidden` keeps an inactive panel collapsed even when
+      // a caller passes a `display` utility (e.g. `flex` for a full-height table
+      // tab). Radix hides inactive panels with the bare `hidden` attribute, but
+      // `[hidden]{display:none}` (specificity 0,1,0) loses the tie to a `.flex`
+      // utility — leaving phantom panels that push the active one off-screen. The
+      // attribute-qualified selector here (0,2,0) wins, so inactive panels stay
+      // `display:none` regardless of the utilities layered on.
+      'mt-0 data-[state=inactive]:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
       className,
     )}
     {...rest}

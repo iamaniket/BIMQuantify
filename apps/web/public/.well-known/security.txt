@@ -1,0 +1,10 @@
+# BimDossier security contact and responsible-disclosure policy
+# Format: RFC 9116 — https://www.rfc-editor.org/rfc/rfc9116
+#
+# PLACEHOLDER: confirm the production domain + that the security@ mailbox is
+# live before launch, and refresh the Expires date at least once a year.
+
+Contact: mailto:security@bimdossier.nl
+Expires: 2027-06-28T00:00:00.000Z
+Preferred-Languages: nl, en
+Canonical: https://bimdossier.nl/.well-known/security.txt

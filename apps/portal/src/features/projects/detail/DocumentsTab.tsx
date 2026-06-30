@@ -11,7 +11,7 @@ import {
 } from '@bimdossier/ui';
 
 import { ResourceList, TabToolbar } from '@/components/shared/resource';
-import type { Document, Level, ModelDisciplineValue, ProjectFile } from '@/lib/api/schemas';
+import type { Document, ModelDisciplineValue, ProjectFile } from '@/lib/api/schemas';
 import { useAlignedSheets } from '@/features/aligned-sheets/hooks';
 import { useProjectLevels } from '@/features/levels/hooks';
 import { LevelAssignSelect } from '@/features/levels/LevelAssignSelect';
@@ -75,6 +75,8 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
   const router = useRouter();
   const { can } = useProjectPermissions(projectId);
   const canCreateDocument = can('document', 'create');
+
+  const onNewClick = (): void => { setNewDocumentOpen(true); };
 
   // Checkbox selection turns the "Load all" button into "Load selected".
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(new Set());
@@ -182,6 +184,9 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
     }
   }
   const single2d = readyPdfTargets.length === 1 ? readyPdfTargets[0]! : null;
+  // ≥2 ready drawings → the by-Level drawing browser (persona A/D). A lone drawing
+  // keeps the richer single-file viewer (markup, findings, measurement).
+  const multiDrawings = readyPdfTargets.length >= 2;
 
   const toggleSelected = (documentId: string): void => {
     setSelectedDocumentIds((prev) => {
@@ -202,6 +207,8 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
   };
 
   const goViewer = (target: ViewerTarget): void => {
+    // Free + paid share the unified viewer; useViewerScope routes the bundle
+    // fetch to the `/free/*` endpoints for an org-less user.
     setViewerTarget(projectId, target);
     router.push(`/projects/${projectId}/viewer`);
   };
@@ -214,6 +221,7 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
   // Main click: 3D when any document can federate, else the lone 2D document.
   const loadAllSmart = (): void => {
     if (canLoad3d) loadAll3d();
+    else if (multiDrawings) goViewer({ kind: 'drawings' });
     else if (single2d !== null) loadAll2d();
   };
 
@@ -235,7 +243,15 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
       onSelect: loadAll2d,
     });
   }
-  const canLoadAll = canLoad3d || single2d !== null;
+  if (multiDrawings) {
+    loadItems.push({
+      id: 'browse-2d',
+      label: t('browseDrawings'),
+      icon: <FileText className="h-4 w-4" />,
+      onSelect: () => { goViewer({ kind: 'drawings' }); },
+    });
+  }
+  const canLoadAll = canLoad3d || single2d !== null || multiDrawings;
 
   // Only the loadable subset of the selection can join a federated scene.
   const loadableSelected = documents.filter((m) => selectedDocumentIds.has(m.id) && isLoadable(m.id));
@@ -394,11 +410,7 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
               />
             ) : null}
             {canCreateDocument ? (
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => { setNewDocumentOpen(true); }}
-              >
+              <Button variant="primary" size="md" onClick={onNewClick}>
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 {t('newModel')}
               </Button>
@@ -420,11 +432,7 @@ export function DocumentsTab({ projectId, documents }: Props): JSX.Element {
               title={t('emptyState')}
               description={t('emptyDescription')}
               action={canCreateDocument ? (
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => { setNewDocumentOpen(true); }}
-                >
+                <Button variant="primary" size="md" onClick={onNewClick}>
                   <Plus className="mr-1.5 h-3.5 w-3.5" />
                   {t('newModel')}
                 </Button>

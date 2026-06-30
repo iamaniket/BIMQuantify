@@ -13,6 +13,7 @@ Config is via `EXPO_PUBLIC_*` env vars (inlined at build time, validated in `src
 
 - `EXPO_PUBLIC_API_URL` — the API. On a physical device use your dev machine's **LAN IP** (`localhost` from a phone is the phone). The dev API binds `0.0.0.0` so the LAN can reach it.
 - `EXPO_PUBLIC_VIEWER_EMBED_URL` — optional. A served build of `apps/viewer-embed` for the 3D viewer (dev/preview, and currently the only path on iOS). When unset, Android loads the in-app bundle (below) and iOS shows a "not configured" notice.
+- `EXPO_PUBLIC_ENABLE_3D_VIEWER` — **experimental, off by default (not in v1).** `true` shows the in-viewer 3D/2D switcher and drives the embed's 3D pane over the bridge. MUST be paired with a 3D-capable embed build (`VITE_ENABLE_3D=true`, see [Enabling the 3D viewer](#enabling-the-3d-viewer-experimental-not-in-v1)); against a default 2D-only embed it silently stays 2D. Any value other than `true`/`1` is off.
 
 ## Embedded 3D viewer
 
@@ -33,6 +34,34 @@ pnpm --filter=viewer-embed build    # → apps/viewer-embed/dist
 > iOS in-app bundling is a follow-up (Xcode resource folder reference + main-bundle path resolver). Until then, use `EXPO_PUBLIC_VIEWER_EMBED_URL` on iOS.
 >
 > The embed fetches presigned MinIO URLs cross-origin from a `file://` origin — the bucket CORS must allow it (see `apps/api/.../storage/minio.py`).
+
+### Enabling the 3D viewer (experimental, not in v1)
+
+The mobile viewer is **2D-only by default**. The 3D pane is gated at two layers that must be set **together** — one is a hard build-time kill-switch, the other the runtime opt-in:
+
+| Layer | Flag | Where | Effect |
+|---|---|---|---|
+| Build (embed) | `VITE_ENABLE_3D=true` | env when building `apps/viewer-embed` | Compiles the 3D `IfcViewer` pane in. Off ⇒ a build can never mount 3D. (Not a size lever — the 2D viewer is itself three/web-ifc-based, so those deps ship either way.) |
+| Runtime (native) | `EXPO_PUBLIC_ENABLE_3D_VIEWER=true` | the mobile app build | Shows the 3D/2D switcher and requests the 3D layout over the bridge. |
+
+A 3D-capable embed with the native flag **off** still renders 2D-only; the native flag **on** against a default (2D-only) embed also stays 2D. You need both.
+
+For a dev device against a served embed:
+
+```bash
+# 1. serve a 3D-capable embed, LAN-reachable
+VITE_ENABLE_3D=true pnpm --filter=viewer-embed build
+pnpm --filter=viewer-embed dev        # vite on :5173 — bind/host it on your LAN IP
+
+# 2. run the app pointing at it, with the native flag on
+EXPO_PUBLIC_ENABLE_3D_VIEWER=true \
+EXPO_PUBLIC_VIEWER_EMBED_URL=http://<LAN-IP>:5173 \
+pnpm --filter=mobile start
+```
+
+For an in-app (offline) build, set both flags in an EAS profile (e.g. `preview-3d`); the `eas-build-post-install` hook builds the embed, so pass `VITE_ENABLE_3D` there.
+
+> **Heads-up (Phase 0 spike):** running the Fragments 3D renderer inside `react-native-webview` is unverified — Worker / `SharedArrayBuffer` / IndexedDB availability needs a device check before relying on it. See the plan.
 
 ## Build (EAS)
 

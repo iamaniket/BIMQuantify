@@ -78,6 +78,20 @@ export function hoverHighlightPlugin(
   const edges = new EdgeOverlay({ lineWidth: 1.5 });
   let cachedSectionPlanes: SectionPlaneData[] = [];
 
+  // The colour highlight (setColor) is cheap and stays instant on every hover
+  // change. The fat-line edge overlay, by contrast, is a GPU geometry upload
+  // (LineSegmentsGeometry + LineSegments2) built per crossed element — during a
+  // fast hover sweep over many small elements that churns GPU objects. So the
+  // edge build is DEFERRED behind a short settle timer: it only runs once the
+  // pointer rests on an element. `edgePainted` is the item whose edges are in
+  // the scene; `edgeAddToken` invalidates an in-flight async build if the target
+  // changes before it resolves (so a stale outline can never stick).
+  const EDGE_SETTLE_MS = 40;
+  let edgePainted: ItemId | null = null;
+  let edgePending: ItemId | null = null;
+  let edgeTimer: ReturnType<typeof setTimeout> | null = null;
+  let edgeAddToken = 0;
+
   const isClippedBySection = (pt: { x: number; y: number; z: number }): boolean =>
     isPointClipped(pt, cachedSectionPlanes);
 
@@ -94,26 +108,85 @@ export function hoverHighlightPlugin(
 
   const modelOf = (item: ItemId) => ctxRef?.models().get(item.modelId);
 
+  // Cancel the pending settle timer (no edges built yet).
+  const clearEdgeTimer = (): void => {
+    if (edgeTimer !== null) {
+      clearTimeout(edgeTimer);
+      edgeTimer = null;
+    }
+    edgePending = null;
+  };
+
+  // Remove any shown edges synchronously (cheap — dispose only) and invalidate
+  // any in-flight async build so it doesn't add a now-stale outline.
+  const removeEdges = (): void => {
+    edgeAddToken++;
+    if (edgePainted && ctxRef) {
+      edges.remove(ctxRef, [edgePainted]);
+      edgePainted = null;
+    }
+  };
+
+  // Build edges for `item` (the expensive GPU path). Async: if the hover target
+  // changes (removeEdges / a newer build) before this resolves, the token check
+  // drops it and removes the stale outline. Renders once it lands, since the
+  // build can resolve after the post-move AUTO hold has elapsed.
+  const commitEdges = (item: ItemId): void => {
+    const ctx = ctxRef;
+    if (!ctx) return;
+    const token = ++edgeAddToken;
+    void edges
+      .add(ctx, [item], color)
+      .then(() => {
+        if (token !== edgeAddToken || ctxRef !== ctx) {
+          edges.remove(ctx, [item]);
+          return;
+        }
+        edgePainted = item;
+        ctx.requestRender();
+      })
+      .catch(() => undefined);
+  };
+
+  // Defer the edge build until the pointer rests on `item` for EDGE_SETTLE_MS.
+  const scheduleEdges = (item: ItemId): void => {
+    clearEdgeTimer();
+    edgePending = item;
+    edgeTimer = setTimeout(() => {
+      edgeTimer = null;
+      const target = edgePending;
+      edgePending = null;
+      if (!target) return;
+      // Re-validate: still the live hover target, active, not selected.
+      if (sameItem(target, current) && isActive() && !isSelected(target)) {
+        commitEdges(target);
+      }
+    }, EDGE_SETTLE_MS);
+  };
+
   // Synchronous: we fire setColor/resetColor without awaiting. The
   // library's MeshConnection batches these inside one tile-update cycle,
-  // so paying for sequential `await`s only delays the visual.
+  // so paying for sequential `await`s only delays the visual. The edge overlay
+  // is decoupled: removed instantly on change, re-built only after a settle.
   const apply = (next: ItemId | null): void => {
     if (!ctxRef) return;
     if (sameItem(next, current)) return;
     current = next;
 
-    // Always clear what we previously painted.
+    // Always clear what we previously painted (colour instant; edges instant +
+    // cancel any pending/in-flight build).
     if (painted) {
       void modelOf(painted)?.resetColor([painted.localId]).catch(() => undefined);
-      edges.remove(ctxRef, [painted]);
       painted = null;
     }
+    removeEdges();
+    clearEdgeTimer();
 
     // Paint new only if eligible (active + not already selected).
     if (next && isActive() && !isSelected(next)) {
       void modelOf(next)?.setColor([next.localId], color).catch(() => undefined);
-      void edges.add(ctxRef, [next], color);
       painted = next;
+      scheduleEdges(next);
     }
 
     ctxRef.events.emit('hover:change', { item: next });
@@ -127,14 +200,16 @@ export function hoverHighlightPlugin(
     if (!ctxRef) return;
     if (painted && added.some((a) => sameItem(a, painted))) {
       // Selection took over the color; let it. Drop our edge overlay
-      // (selection has its own).
-      edges.remove(ctxRef, [painted]);
+      // (selection has its own) and cancel any pending build.
+      removeEdges();
+      clearEdgeTimer();
       painted = null;
     }
     if (current && !painted && removed.some((r) => sameItem(r, current)) && !isSelected(current) && isActive()) {
       void modelOf(current)?.setColor([current.localId], color).catch(() => undefined);
-      void edges.add(ctxRef, [current], color);
       painted = current;
+      // Discrete event (pointer is resting) — build edges now, not deferred.
+      commitEdges(current);
     }
   };
 
@@ -260,13 +335,20 @@ export function hoverHighlightPlugin(
         color.set(next);
         if (ctxRef && painted) {
           void modelOf(painted)?.setColor([painted.localId], color).catch(() => undefined);
-          edges.remove(ctxRef, [painted]);
-          void edges.add(ctxRef, [painted], color);
+        }
+        // Recolor already-shown edges in place (a pending build picks up the new
+        // shared color automatically when its timer fires).
+        if (ctxRef && edgePainted) {
+          const item = edgePainted;
+          removeEdges();
+          commitEdges(item);
         }
       }, { title: 'Set hover highlight color' });
     },
 
     uninstall() {
+      clearEdgeTimer();
+      edgeAddToken++; // invalidate any in-flight edge build
       if (ctxRef) {
         if (painted) {
           void modelOf(painted)?.resetColor([painted.localId]).catch(() => undefined);
@@ -275,6 +357,7 @@ export function hoverHighlightPlugin(
       }
       current = null;
       painted = null;
+      edgePainted = null;
       pending = null;
       inFlight = false;
       cachedSectionPlanes = [];

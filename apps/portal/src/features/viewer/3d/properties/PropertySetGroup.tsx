@@ -3,7 +3,7 @@
 import { CountChip, Eyebrow } from '@bimdossier/ui';
 import type { JSX } from 'react';
 
-import type { PropertySet } from '@/lib/api/viewerTypes';
+import type { PropertySet, PropertyValue } from '@/lib/api/viewerTypes';
 
 import { PropertyRow } from './PropertyRow';
 
@@ -20,7 +20,7 @@ type PropertySetGroupProps = {
 
 function matchesFilter(
   key: string,
-  value: unknown,
+  value: PropertyValue,
   q: string,
 ): boolean {
   const lower = q.toLowerCase();

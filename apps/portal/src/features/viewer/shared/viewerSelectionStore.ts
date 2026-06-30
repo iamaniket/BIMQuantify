@@ -15,11 +15,14 @@ import { createJSONStorage, persist } from 'zustand/middleware';
  *              viewer dropdown checkboxes).
  * - `single` — one exact file: a specific version, a PDF/drawing, or a
  *              finding deep-link. The only mode for non-IFC files.
+ * - `drawings` — persona-A by-Level drawing browser: no 3D model, navigate the
+ *              project's PDF drawings organized by project Level.
  */
 export type ViewerTarget =
   | { kind: 'all' }
   | { kind: 'models'; modelIds: string[] }
-  | { kind: 'single'; modelId: string; fileId: string; findingId?: string };
+  | { kind: 'single'; modelId: string; fileId: string; findingId?: string }
+  | { kind: 'drawings' };
 
 const DEFAULT_TARGET: ViewerTarget = { kind: 'all' };
 

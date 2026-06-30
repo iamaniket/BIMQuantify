@@ -34,6 +34,8 @@ export type PublicBlogPost = {
  * blog appear empty.
  */
 export async function fetchBlogPosts(locale: string): Promise<PublicBlogPost[]> {
+  // Standalone "placeholder" mode: never reach for the backend.
+  if (env.NEXT_PUBLIC_STANDALONE) return [];
   try {
     const response = await fetch(
       `${env.NEXT_PUBLIC_API_URL}/public/blog/posts?locale=${encodeURIComponent(locale)}`,
@@ -52,6 +54,8 @@ export async function fetchBlogPost(
   slug: string,
   locale: string,
 ): Promise<PublicBlogPost | null> {
+  // Standalone "placeholder" mode: never reach for the backend.
+  if (env.NEXT_PUBLIC_STANDALONE) return null;
   try {
     const response = await fetch(
       `${env.NEXT_PUBLIC_API_URL}/public/blog/posts/${encodeURIComponent(slug)}?locale=${encodeURIComponent(locale)}`,

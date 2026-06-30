@@ -12,7 +12,11 @@ import { isProjectActivityQueryKey } from '@/features/projects/queryKeys';
 
 const MAX_RECONNECT_DELAY = 30_000;
 
-export function useNotificationSocket(accessToken: string | null): void {
+export function useNotificationSocket(
+  accessToken: string | null,
+  opts?: { free?: boolean },
+): void {
+  const free = opts?.free ?? false;
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttempt = useRef(0);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -66,7 +70,9 @@ export function useNotificationSocket(accessToken: string | null): void {
       // (['bearer', <token>]), NOT the URL query string — a token in the URL is
       // logged by proxies, the uvicorn access log, and browser history (M-ws).
       // The server reads the token off the subprotocol and echoes 'bearer'.
-      const ws = new WebSocket(`${wsUrl}/ws/notifications`, ['bearer', token]);
+      // Free (org-less) users use the per-user free channel; paid use the org one.
+      const path = free ? '/ws/pooled-notifications' : '/ws/notifications';
+      const ws = new WebSocket(`${wsUrl}${path}`, ['bearer', token]);
       wsRef.current = ws;
 
       ws.addEventListener('open', () => {
@@ -108,5 +114,5 @@ export function useNotificationSocket(accessToken: string | null): void {
         wsRef.current = null;
       }
     };
-  }, [accessToken, invalidate]);
+  }, [accessToken, invalidate, free]);
 }

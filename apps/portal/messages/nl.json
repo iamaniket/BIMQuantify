@@ -1,4 +1,101 @@
 {
+  "signup": {
+    "eyebrow": "Gratis preview",
+    "title": "Maak uw gratis account",
+    "subtitle": "Vul uw e-mailadres in en we sturen u een link om een wachtwoord in te stellen. Daarna kunt u een IFC-model uploaden, in 3D bekijken en opleverpunten plaatsen, gratis.",
+    "emailPlaceholder": "jij@bedrijf.nl",
+    "namePlaceholder": "Uw naam",
+    "companyPlaceholder": "Uw bedrijf",
+    "field": {
+      "email": "E-mailadres",
+      "name": "Naam (optioneel)",
+      "company": "Bedrijf (optioneel)"
+    },
+    "cta": "Gratis account aanmaken",
+    "submitting": "Versturen…",
+    "sentTitle": "Controleer uw inbox",
+    "sentBody": "Als dit e-mailadres bruikbaar is, is er een activatielink onderweg. Open deze om een wachtwoord in te stellen en in te loggen.",
+    "backToLogin": "Terug naar inloggen",
+    "legal": "Door verder te gaan gaat u akkoord met onze <terms>Voorwaarden</terms> en <privacy>Privacyverklaring</privacy>.",
+    "disabledTitle": "Gratis aanmelden is nog niet open",
+    "disabledBody": "We rollen de gratis viewer uit naar de eerste gebruikers. Vraag toegang aan en we laten u binnen zodra het opengaat.",
+    "requestAccessCta": "Toegang aanvragen",
+    "errors": {
+      "emailRequired": "Vul uw e-mailadres in.",
+      "emailInvalid": "Vul een geldig e-mailadres in.",
+      "rateLimited": "Te veel aanmeldingen vanaf uw netwerk — probeer het over een uur opnieuw.",
+      "generic": "We konden de aanmelding niet voltooien. Probeer het zo opnieuw."
+    }
+  },
+  "freeTrial": {
+    "daysLeft": "Nog {days} dagen in je gratis proefperiode",
+    "endingBody": "Upgrade om te blijven aanmaken en bewerken zodra je proefperiode afloopt.",
+    "expiredTitle": "Je gratis proefperiode is afgelopen",
+    "expiredBody": "Je projecten zijn alleen-lezen. Upgrade om te blijven aanmaken en bewerken.",
+    "cta": "Toegang aanvragen"
+  },
+  "pooledViewer": {
+    "eyebrow": "Gratis preview",
+    "heading": "Bekijk uw IFC-model in de browser. Gratis.",
+    "subtitle": "Upload een model, bekijk het in 3D en zet bevindingen er direct op vast. Geen desktopsoftware, geen installatie. We openen hem eerst voor de eerste gebruikers.",
+    "bullet1": "Sleep een IFC-bestand erin en bekijk het in 3D in uw browser",
+    "bullet2": "Zet bevindingen op het model en deel ze met uw team",
+    "bullet3": "Wkb-controles en het volledige dossier horen bij een project",
+    "cta": "Doe mee aan de gratis preview",
+    "note": "De gratis viewer wordt uitgerold onder de eerste gebruikers. Laat uw gegevens achter en we geven u toegang zodra hij opengaat.",
+    "app": {
+      "title": "Uw gratis modellen",
+      "uploadHeading": "Upload een IFC-model",
+      "capNote": "{count} van {max} modellen gebruikt",
+      "uploading": "Uploaden…",
+      "uploadButton": "IFC uploaden",
+      "empty": "Nog geen modellen. Upload een IFC-bestand om het in 3D te bekijken.",
+      "open": "Openen",
+      "delete": "Verwijderen",
+      "upgradeHeading": "Wkb-controles en een dossier nodig?",
+      "upgradeBody": "Die horen bij een project. Vraag toegang aan om uw werkruimte te upgraden.",
+      "upgradeCta": "Toegang aanvragen",
+      "status": {
+        "none": "Niet verwerkt",
+        "queued": "In wachtrij…",
+        "running": "Verwerken…",
+        "succeeded": "Klaar om te bekijken",
+        "failed": "Verwerking mislukt"
+      },
+      "failedReason": "Verwerking mislukt: {reason}"
+    },
+    "viewer": {
+      "back": "Terug",
+      "title": "Gratis viewer",
+      "loading": "Model laden…",
+      "loadError": "Dit model kon niet worden geladen.",
+      "processing": "Uw model wordt nog verwerkt — dit kan even duren…",
+      "failed": "Dit model kon niet worden verwerkt.",
+      "failedReason": "Dit model kon niet worden verwerkt: {reason}",
+      "snags": "Bevindingen",
+      "snagTitle": "Titel bevinding",
+      "snagNote": "Notitie (optioneel)",
+      "sevLow": "Laag",
+      "sevMedium": "Midden",
+      "sevHigh": "Hoog",
+      "addSnag": "Bevinding toevoegen",
+      "close": "Sluiten",
+      "reopen": "Heropenen",
+      "delete": "Verwijderen",
+      "newFinding": "Nieuwe bevinding",
+      "container": "Container",
+      "boardCreateSubtitle": "Voeg een bevinding toe aan een van uw containers.",
+      "createHint": "Klik met de rechtermuisknop op een element in het model om een bevinding te plaatsen, of vul dit in en plaats hem.",
+      "noFindings": "Nog geen bevindingen. Klik met de rechtermuisknop op het model of gebruik Nieuwe bevinding om er een toe te voegen.",
+      "assignee": "Toegewezen aan",
+      "unassigned": "Niet toegewezen",
+      "deadline": "Deadline",
+      "statusLabel": "Status",
+      "save": "Opslaan",
+      "cancel": "Annuleren",
+      "edit": "Bewerken"
+    }
+  },
   "imageAnnotator": {
     "title": "Foto annoteren",
     "subtitle": "Teken pijlen, vormen, tekst of vervaging over de foto. Het origineel blijft altijd bewaard.",
@@ -41,7 +138,8 @@
     "switcher": {
       "label": "Wissel van organisatie",
       "empty": "Geen actieve organisatie",
-      "adminBadge": "Beheerder"
+      "adminBadge": "Beheerder",
+      "pooledWorkspace": "Gratis werkruimte"
     }
   },
   "activate": {
@@ -50,12 +148,14 @@
     "subtitle": "Stel een wachtwoord in om uw BimDossier-account te activeren.",
     "field": {
       "password": "Nieuw wachtwoord",
-      "passwordConfirm": "Bevestig wachtwoord"
+      "passwordConfirm": "Bevestig wachtwoord",
+      "passwordHint": "Minimaal 12 tekens."
     },
     "cta": "Account activeren",
     "errors": {
       "tokenMissing": "Activatielink mist het token. Gebruik de link uit uw uitnodigingsmail.",
       "passwordMismatch": "Wachtwoorden komen niet overeen.",
+      "passwordTooShort": "Het wachtwoord moet minimaal {min} tekens bevatten.",
       "activationFailed": "Activatie mislukt. De link is mogelijk verlopen — vraag uw beheerder de uitnodiging opnieuw te versturen."
     },
     "success": "Account geactiveerd. U kunt nu inloggen."
@@ -421,6 +521,20 @@
       "seatsLabel": "Org-seats",
       "seatsValue": "{used} van {limit} gebruikt",
       "seatsUnlimited": "Onbeperkt"
+    },
+    "plan": {
+      "title": "Abonnement & gebruik",
+      "planLabel": "Abonnement",
+      "freePlanName": "Gratis",
+      "pooledWorkspaceSub": "Persoonlijke werkruimte",
+      "storageLabel": "Opslag",
+      "projectsLabel": "Projecten",
+      "containersLabel": "Containers",
+      "findingsLabel": "Bevindingen",
+      "usageValue": "{used} van {cap}",
+      "usagePct": "{pct}%",
+      "countOfCap": "{count} van {cap}",
+      "ofValue": "van {value}"
     }
   },
   "projects": {
@@ -646,12 +760,14 @@
         "listHeading": "Toe te voegen mensen ({count})",
         "emptyState": "Nog niemand toegevoegd.",
         "minOneHint": "Voeg minstens één persoon toe om het project aan te maken.",
+        "pooledInviteHint": "Nodig tot {max} mensen uit om samen te werken (optioneel — je kunt ze later toevoegen).",
         "inviteBadge": "Uitnodiging",
         "partialFailure": "Project aangemaakt, maar sommige mensen konden niet worden toegevoegd: {names}. Voeg ze toe via de toegangspagina van het project.",
         "errors": {
           "pickUser": "Selecteer een lid om toe te voegen.",
           "invalidEmail": "Voer een geldig e-mailadres in.",
-          "duplicate": "Deze persoon staat al in de lijst."
+          "duplicate": "Deze persoon staat al in de lijst.",
+          "inviteCap": "Je kunt maximaal {max} leden uitnodigen voor een gratis project."
         }
       }
     }
@@ -1295,6 +1411,7 @@
         "loadAll": "Alles laden",
         "loadAll3d": "Alle 3D laden",
         "loadAll2d": "Alle 2D laden",
+        "browseDrawings": "Tekeningen openen",
         "loadAllMenu": "Laadopties",
         "selectedCount": "{count, plural, =1 {1 informatiecontainer geselecteerd} other {# informatiecontainers geselecteerd}}",
         "clearSelection": "Wissen",
@@ -1359,6 +1476,10 @@
           "viewFile": "Bestand bekijken",
           "selectAria": "{name} selecteren om in de viewer te laden",
           "noViewableFile": "Nog geen weergeefbaar bestand",
+          "extractionQueued": "In wachtrij…",
+          "extractionProcessing": "Verwerken…",
+          "extractionFailed": "Verwerking mislukt",
+          "extractionFailedReason": "Verwerking mislukt: {reason}",
           "uploadFile": "Bestand uploaden",
           "checkBbl": "Bbl controleren",
           "view": "Bekijken",
@@ -1952,7 +2073,8 @@
       "remove": "Verwijderen",
       "pickerTitle": "Selecteer een document",
       "pickerDescription": "Kies een projectdocument als referentie.",
-      "empty": "Geen documenten beschikbaar"
+      "empty": "Geen documenten beschikbaar",
+      "openInViewer": "Document openen"
     }
   },
   "findingsBoard": {
@@ -2547,7 +2669,7 @@
   },
   "auth": {
     "brand": {
-      "tagline": "Wkb-conform BIM-platform"
+      "tagline": "Bouwkwaliteitsplatform"
     },
     "hero": {
       "checksBadge": "{wkb} Wkb · {bbl} BBL-toetsen actief",
@@ -2578,6 +2700,7 @@
       "heading": "Welkom terug.",
       "intro": "Meld je aan om verder te gaan.",
       "newHere": "Nieuw hier?",
+      "signupFreeCta": "Gratis aanmelden →",
       "requestAccessCta": "Toegang aanvragen →",
       "emailLabel": "Werk-e-mail",
       "emailPlaceholder": "jij@bedrijf.nl",
@@ -3287,6 +3410,86 @@
         "success": "Goedgekeurd! Tenant \"{org}\" is ingericht en een activatie-e-mail is verzonden."
       }
     },
+    "freeUsers": {
+      "tab": "Gratis gebruikers",
+      "loadError": "We konden de gratis gebruikers niet laden. Probeer het opnieuw.",
+      "searchPlaceholder": "Zoek op e-mail of naam…",
+      "searchAria": "Zoek gratis gebruikers",
+      "panel": {
+        "eyebrow": "Gratis tier",
+        "title": "Gratis gebruikers ({count})"
+      },
+      "table": {
+        "user": "Gebruiker",
+        "company": "Bedrijf",
+        "storage": "Opslag",
+        "storageUsage": "{used} / {cap}",
+        "storagePct": "{pct}%",
+        "containers": "Informatiecontainers",
+        "countOfCap": "{count} / {cap}",
+        "created": "Aangemaakt",
+        "lastActive": "Laatst actief",
+        "neverActive": "Nooit",
+        "staleBadge": "Inactief",
+        "snags": "Meldingen",
+        "sharedWith": "Gedeeld met",
+        "status": "Status",
+        "statusActive": "Actief",
+        "statusSuspended": "Opgeschort",
+        "statusUnverified": "Niet geverifieerd",
+        "lockedBadge": "Vergrendeld",
+        "manage": "Beheren",
+        "empty": "Nog geen gratis gebruikers."
+      },
+      "detail": {
+        "storage": "{used} / {cap}",
+        "storagePct": "{pct}%",
+        "projectsStat": "{count} / {cap} projecten",
+        "containersStat": "{count} / {cap} containers",
+        "snagsStat": "{count} meldingen",
+        "sharedStat": "{count} gedeeld",
+        "filesStat": "{count} bestanden",
+        "accountCreated": "Account aangemaakt",
+        "lastActive": "Laatst actief",
+        "firstContent": "Eerste activiteit",
+        "never": "Nooit",
+        "loadError": "We konden de inhoud van deze gebruiker niet laden.",
+        "projectsTitle": "Projecten ({count})",
+        "noProjects": "Geen projecten.",
+        "projectMeta": "{containers} containers · {snags} meldingen · {size}",
+        "containersTitle": "Informatiecontainers ({count})",
+        "noContainers": "Geen containers.",
+        "containerMeta": "{files} versies · {size}",
+        "snagsTitle": "Meldingen ({count})",
+        "noSnags": "Geen meldingen.",
+        "sharedTitle": "Gedeeld met deze gebruiker ({count})",
+        "sendReset": "Wachtwoordherstel versturen",
+        "resendActivation": "Activatie opnieuw versturen",
+        "suspend": "Opschorten",
+        "reactivate": "Heractiveren",
+        "delete": "Account verwijderen",
+        "reactivated": "Account geheractiveerd.",
+        "suspended": "Account opgeschort.",
+        "resetSent": "Wachtwoordherstel-e-mail verzonden.",
+        "activationResent": "Activatie-e-mail opnieuw verzonden.",
+        "deleteConfirm": "{email} permanent anonimiseren? Dit wist hun gegevens en schakelt inloggen uit. Dit kan niet ongedaan worden gemaakt.",
+        "deleted": "Account verwijderd.",
+        "limitsTitle": "Limieten & proefperiode",
+        "projectsLabel": "Projecten",
+        "membersLabel": "Leden / project",
+        "containersLabel": "Containers",
+        "storageLabel": "Opslag (GB)",
+        "trialDaysLabel": "Proefperiode (dagen)",
+        "defaultHint": "standaard {value}",
+        "exemptLabel": "Vrijgesteld van proefperiode (permanent gratis account)",
+        "trialEnds": "Proefperiode eindigt {date}",
+        "trialDaysLeft": "nog {days} dagen",
+        "trialExpired": "Proefperiode verlopen",
+        "trialExempt": "Geen vervaldatum",
+        "saveLimits": "Limieten opslaan",
+        "limitsSaved": "Limieten bijgewerkt."
+      }
+    },
     "users": {
       "pageTitle": "Gebruikers",
       "pageSubtitle": "Zoek over alle gebruikers in het platform, schakel toegang in/uit en wissel superbeheerderrechten.",
@@ -3801,8 +4004,24 @@
       "showGeneratedPlan": "Gegenereerde plattegrond tonen",
       "source": {
         "alignedPdf": "Uitgelijnde PDF",
-        "generated": "Gegenereerde plattegrond"
+        "generated": "Gegenereerde plattegrond",
+        "pickerLabel": "Tekening",
+        "sheetLabel": "{discipline} — p{page}"
+      },
+      "discipline": {
+        "architectural": "Bouwkundig",
+        "structural": "Constructief",
+        "mep": "Installaties",
+        "coordination": "Coördinatie",
+        "other": "Overig"
       }
+    },
+    "drawings": {
+      "empty": "Nog geen tekeningen",
+      "emptyHint": "Upload PDF-tekeningen en wijs ze toe aan een verdieping om ze hier te bekijken.",
+      "unassigned": "Niet toegewezen",
+      "levelLabel": "Verdieping",
+      "drawingLabel": "Tekening"
     },
     "viewMode": {
       "label": "Weergave",
@@ -3817,6 +4036,7 @@
     },
     "aligned": {
       "pickPdfModel": "PDF-tekening",
+      "calibrateAgainst": "Kalibreren tegen dit 3D-model",
       "pickPage": "Pagina {n}",
       "pickLevel": "Verdieping",
       "pickPdf": "Klik hetzelfde punt op de PDF",
@@ -4517,5 +4737,21 @@
     "cancelled": "Geannuleerd",
     "jobAlreadyRunning": "Taak is al gestart en kan niet worden geannuleerd",
     "progressLabel": "{percent}%"
+  },
+  "onboarding": {
+    "welcome": {
+      "eyebrow": "Welkom",
+      "title": "Welkom bij {org}",
+      "subtitleAdmin": "Je bent toegevoegd als beheerder. Zo ga je aan de slag:",
+      "subtitleMember": "Je bent toegevoegd als lid. Zo ga je aan de slag:",
+      "capAdminManageTeam": "Beheer je team en nodig collega's uit",
+      "capAdminCreateProjects": "Maak projecten aan en stel meldingsdeadlines in",
+      "capAdminFullAccess": "Volledige toegang tot dossiers, bevindingen en rapporten",
+      "capMemberViewProjects": "Bekijk de projecten van je organisatie",
+      "capMemberUploadDocs": "Upload documenten en tekeningen",
+      "capMemberTrackFindings": "Volg bevindingen en deadlines",
+      "getStarted": "Aan de slag",
+      "dismiss": "Later"
+    }
   }
 }

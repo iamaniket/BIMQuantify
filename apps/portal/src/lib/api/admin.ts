@@ -5,6 +5,9 @@ import {
   AdminUserListSchema,
   AdminUserReadSchema,
   AuditEntryListSchema,
+  FreeUserDetailSchema,
+  FreeUserListSchema,
+  FreeUserReadSchema,
   OrganizationCreateResponseSchema,
   OrganizationListSchema,
   OrganizationReadSchema,
@@ -13,14 +16,18 @@ import {
   type AccessRequestRead,
   type AdminUserRead,
   type AuditEntry,
+  type FreeUserDetail,
+  type FreeUserLimitsUpdate,
+  type FreeUserRead,
   type OrganizationCreateInput,
   type OrganizationCreateResponse,
   type OrganizationRead,
   type OrganizationUpdateInput,
 } from './schemas';
 
-export type AdminUserList = AdminUserRead[];
-export type AuditEntryList = AuditEntry[];
+// Internal return-type aliases (not exported — no external consumer).
+type AdminUserList = AdminUserRead[];
+type AuditEntryList = AuditEntry[];
 
 // ----------------------------------------------------------------------------
 // Organizations
@@ -244,6 +251,86 @@ export async function unlockUser(
     `/admin/users/${userId}/unlock`,
     undefined,
     AdminUserReadSchema,
+    accessToken,
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Free-tier accounts (super-admin)
+// ----------------------------------------------------------------------------
+
+export type ListFreeUsersParams = {
+  q?: string | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
+} & SortQueryParams;
+
+/** Paginated list of org-less free users + their usage (X-Total-Count). */
+export async function listFreeUsersPage(
+  accessToken: string,
+  params: ListFreeUsersParams = {},
+): Promise<PaginatedResponse<FreeUserRead[]>> {
+  const query = buildQuery(params);
+  return apiClient.getWithMeta<FreeUserRead[]>(
+    `/admin/users/free${query}`,
+    FreeUserListSchema,
+    accessToken,
+  );
+}
+
+/** Drill-down for one free user: usage + their projects/containers/findings/shared. */
+export async function getFreeUserDetail(
+  accessToken: string,
+  userId: string,
+): Promise<FreeUserDetail> {
+  return apiClient.get<FreeUserDetail>(
+    `/admin/users/free/${userId}`,
+    FreeUserDetailSchema,
+    accessToken,
+  );
+}
+
+/**
+ * Set (full-replace) a free user's per-user limit overrides + trial exemption.
+ * Each numeric field: a positive int to override, or null to clear (fall back to
+ * the env default). Returns the refreshed free-user row. Super-admin only.
+ */
+export async function updateFreeUserLimits(
+  accessToken: string,
+  userId: string,
+  input: FreeUserLimitsUpdate,
+): Promise<FreeUserRead> {
+  return apiClient.patch<FreeUserRead>(
+    `/admin/users/free/${userId}/limits`,
+    input,
+    FreeUserReadSchema,
+    accessToken,
+  );
+}
+
+/** Anonymize-in-place (GDPR erasure): scrubs PII + disables auth. Super-admin. */
+export async function deleteUser(accessToken: string, userId: string): Promise<void> {
+  return apiClient.delete(`/users/${userId}`, accessToken);
+}
+
+/** Email a password-reset link on the user's behalf (202). */
+export async function sendPasswordReset(
+  accessToken: string,
+  userId: string,
+): Promise<void> {
+  return apiClient.postNoContent(
+    `/admin/users/${userId}/send-password-reset`,
+    accessToken,
+  );
+}
+
+/** Re-send the activation email to an unverified user (202). */
+export async function resendActivation(
+  accessToken: string,
+  userId: string,
+): Promise<void> {
+  return apiClient.postNoContent(
+    `/admin/users/${userId}/resend-activation`,
     accessToken,
   );
 }

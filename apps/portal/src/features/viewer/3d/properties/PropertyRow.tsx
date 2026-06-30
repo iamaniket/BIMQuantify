@@ -52,9 +52,23 @@ export function PropertyRow({
     [display],
   );
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!onSelect) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        onSelect();
+      }
+    },
+    [onSelect],
+  );
+
   return (
     <div
       onClick={onSelect}
+      onKeyDown={handleKeyDown}
+      role={onSelect ? 'button' : undefined}
+      tabIndex={onSelect ? 0 : undefined}
       className={cn(
         'group grid min-h-[30px] cursor-default select-text items-center gap-2.5 border-l-2 pl-7 pr-2.5 transition-colors duration-100',
         selected

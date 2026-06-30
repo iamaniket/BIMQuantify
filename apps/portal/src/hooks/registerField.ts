@@ -19,7 +19,7 @@ import type {
  * `onChange` handler. It also absorbs the "clear server errors on change"
  * pattern that was previously hand-written on individual fields.
  */
-export function useRegisterField<T extends FieldValues>(
+export function registerField<T extends FieldValues>(
   form: UseFormReturn<T>,
   name: Path<T>,
   options?: RegisterOptions<T, Path<T>>,

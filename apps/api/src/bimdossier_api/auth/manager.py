@@ -1,3 +1,4 @@
+import logging
 import secrets
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
@@ -29,6 +30,8 @@ from bimdossier_api.models.organization_member import (
     OrganizationMemberStatus,
 )
 from bimdossier_api.models.user import User
+
+logger = logging.getLogger(__name__)
 
 # Minimum password length enforced by `UserManager.validate_password`. fastapi-users
 # ships a no-op validator (any password — even a single char — is accepted); this is
@@ -292,6 +295,33 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
             sql_delete(OrganizationMember).where(OrganizationMember.user_id == user.id)
         )
 
+        # Free-tier data (GDPR): anonymize does NOT hard-delete the user row, so
+        # the `ON DELETE CASCADE` from public.users never fires and the user's
+        # pooled free projects/containers/files/findings + their S3 objects would
+        # leak. Delete them explicitly. Deleting the owned pooled_projects cascades
+        # pooled_documents → pooled_project_files → pooled_findings (FK CASCADE); also drop
+        # the user's memberships in others' free projects. Object cleanup is
+        # best-effort (the idle reaper is the backstop for any leftover prefix).
+        from bimdossier_api.models.pooled_project import PooledProject
+        from bimdossier_api.models.pooled_project_member import PooledProjectMember
+
+        await session.execute(
+            sql_delete(PooledProject).where(PooledProject.owner_user_id == user.id)
+        )
+        await session.execute(
+            sql_delete(PooledProjectMember).where(PooledProjectMember.user_id == user.id)
+        )
+        try:
+            from bimdossier_api.storage import get_storage
+
+            await get_storage().delete_prefix(f"free/{user.id}/")
+        except Exception:
+            logger.warning(
+                "free-tier object cleanup failed for anonymized user %s "
+                "(idle reaper will backstop)",
+                user.id,
+            )
+
         now = datetime.now(UTC)
         # `update` persists + commits via the user_db session, which also commits
         # the membership delete above (same transaction).
@@ -300,6 +330,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
             {
                 "email": f"deleted+{user.id}@users.invalid",
                 "full_name": None,
+                "company": None,
                 "avatar_url": None,
                 "locale": None,
                 "is_active": False,

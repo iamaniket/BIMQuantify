@@ -146,6 +146,12 @@ class Settings(BaseSettings):
     rate_limit_verify_request_per_hour: int = Field(
         default=5, alias="RATE_LIMIT_VERIFY_REQUEST_PER_HOUR"
     )
+    # Per-IP/hour budget on the PUBLIC free-tier signup endpoint (/auth/signup),
+    # which emails an activation link to a brand-new org-less account. Same
+    # email-bomb / enumeration posture as forgot-password and request-verify:
+    # always 202, never reveals whether the address exists. Only mounted when
+    # FREE_TIER_ENABLED — org/founding-partner onboarding stays invite-only.
+    rate_limit_signup_per_hour: int = Field(default=5, alias="RATE_LIMIT_SIGNUP_PER_HOUR")
     # Per-user/hour budgets on the expensive authenticated endpoints (synchronous
     # arbiter compliance check, puppeteer report pipeline, upload presign churn,
     # admin invite/resend email fan-out).
@@ -259,6 +265,97 @@ class Settings(BaseSettings):
     log_format: str | None = Field(default=None, alias="LOG_FORMAT")
 
     max_concurrent_jobs_per_org: int = Field(default=10, alias="MAX_CONCURRENT_JOBS_PER_ORG")
+
+    # Single-queue job priority by user tier (BullMQ: lower number = higher
+    # priority, unset = 0). Paying jobs sort ahead of free-tier jobs on the one
+    # shared `jobs` queue. The gap between the two leaves room for a future paid
+    # sub-tier (e.g. founding_partner ~5) without a schema change. See
+    # jobs/priority.py and docs/free-wedge-implementation-plan.md (D5).
+    job_priority_paying: int = Field(default=10, alias="JOB_PRIORITY_PAYING")
+    job_priority_free: int = Field(default=100, alias="JOB_PRIORITY_FREE")
+    # Global cap on concurrent free-tier extractions (operationally
+    # JOB_CONCURRENCY - 1) so free jobs can never occupy every processor slot and
+    # starve paying work — priority orders the queue but does not preempt a
+    # running job. Enforced at the free-dispatch site (free-wedge Phase 2).
+    pooled_extraction_concurrency_global: int = Field(
+        default=1, alias="POOLED_EXTRACTION_CONCURRENCY_GLOBAL"
+    )
+    # Master kill-switch for the whole free-tier ("free wedge") surface: public
+    # signup route mounting, every /free/* endpoint, the portal route group. Off
+    # by default so the feature ships dark and is flipped on for a capped cohort
+    # at soft-launch. A flag only SOME surfaces honor is a half-open door — gate
+    # every surface on this. See docs/free-wedge-implementation-plan.md.
+    free_tier_enabled: bool = Field(default=False, alias="FREE_TIER_ENABLED")
+    # Per-model size cap for free uploads (D4) — well under the 2 GB tenant cap,
+    # covers the gevolgklasse-1 ICP while bounding processor + storage cost.
+    free_upload_max_bytes: int = Field(
+        default=250 * 1024 * 1024, alias="FREE_UPLOAD_MAX_BYTES"
+    )
+    # Per-user CONTAINER cap (pooled_documents) — a coarse backstop alongside the
+    # aggregate storage cap. (Each container holds versioned model files.)
+    # Env alias kept as the legacy FREE_MAX_MODELS_PER_USER for back-compat.
+    free_max_documents_per_user: int = Field(default=5, alias="FREE_MAX_MODELS_PER_USER")
+    # Per-user PROJECT cap (owned pooled_projects; shared projects don't count). The
+    # "multiple projects" allowance for a free user — tunable so the cohort limit
+    # can be widened/narrowed without a code change. Enforced at project-create.
+    free_max_projects_per_user: int = Field(
+        default=3, alias="FREE_MAX_PROJECTS_PER_USER"
+    )
+    # Per-project INVITED-member cap (the owner is not counted, so owner + cap =
+    # total seats). The "add up to N collaborators" allowance — tunable. Enforced
+    # at member-invite.
+    free_max_members_per_project: int = Field(
+        default=3, alias="FREE_MAX_MEMBERS_PER_PROJECT"
+    )
+    # Per-user FINDINGS (snags) cap — a coarse backstop on the only otherwise
+    # unbounded write on the shared public heap (findings carry no storage bytes,
+    # so they escape the aggregate byte cap). GLOBAL env cap (like
+    # `free_upload_max_bytes`), keyed on the project OWNER. Enforced at snag-create.
+    free_max_findings_per_user: int = Field(
+        default=200, alias="FREE_MAX_FINDINGS_PER_USER"
+    )
+    # Per-user AGGREGATE storage cap (the 1 GB ceiling) — the binding constraint
+    # on a free user's footprint. Enforced at upload-initiate against the sum of
+    # the owner's own model bytes (members can't upload, so it is owner-only).
+    free_storage_max_bytes: int = Field(
+        default=1024 ** 3, alias="FREE_STORAGE_MAX_BYTES"
+    )
+    # Free-account TRIAL window in days, anchored on `users.created_at`. After it
+    # elapses the account goes READ-ONLY (every free write returns 403
+    # FREE_ACCOUNT_EXPIRED) to nudge an upgrade; existing data stays viewable.
+    # This is the GLOBAL default — a super-admin can override (or exempt) a single
+    # account via `public.free_user_limits`. Starts at 90; intended to tighten to
+    # ~30 later, which is a pure env change. See free_limits.resolve_free_limits.
+    free_account_max_age_days: int = Field(
+        default=90, alias="FREE_ACCOUNT_MAX_AGE_DAYS"
+    )
+    # Per-user/hour presign churn on the free upload-initiate endpoint.
+    rate_limit_free_upload_initiate_per_hour: int = Field(
+        default=30, alias="RATE_LIMIT_FREE_UPLOAD_INITIATE_PER_HOUR"
+    )
+    # Per-user/hour write budget on free finding (snag) create + update — bounds
+    # churn on the shared public heap alongside the FREE_MAX_FINDINGS_PER_USER cap.
+    rate_limit_free_finding_write_per_hour: int = Field(
+        default=120, alias="RATE_LIMIT_FREE_FINDING_WRITE_PER_HOUR"
+    )
+    # Max concurrent in-flight free extractions for a single user (queued+running).
+    pooled_extraction_concurrency_per_user: int = Field(
+        default=1, alias="POOLED_EXTRACTION_CONCURRENCY_PER_USER"
+    )
+    # Geometry tessellation threshold for the FREE extraction path — higher than
+    # the paid default of 1 (which meshes every element) to shrink frag size +
+    # meshing time. The paid path keeps threshold 1 and its visibility test green.
+    pooled_job_geometry_threshold: int = Field(
+        default=10, alias="POOLED_JOB_GEOMETRY_THRESHOLD"
+    )
+    # A free container untouched (no viewer-bundle GET) for this many days is reaped.
+    # Env alias kept as the legacy FREE_MODEL_IDLE_TTL_DAYS for back-compat.
+    pooled_document_idle_ttl_days: int = Field(default=30, alias="FREE_MODEL_IDLE_TTL_DAYS")
+    # How often the idle-free-model reaper runs (the TTL is in days, so a long
+    # interval is fine). 0 disables it.
+    pooled_idle_sweep_interval_minutes: int = Field(
+        default=360, alias="POOLED_IDLE_SWEEP_INTERVAL_MINUTES"
+    )
 
     # Ceiling on custom fields per finding template (env-authoritative; the
     # Pydantic MAX_TEMPLATE_FIELDS constant is the UX guardrail mirrored in Zod).
@@ -385,6 +482,55 @@ def validate_production_config(settings: Settings) -> list[str]:
             "WS_MAX_LIFETIME_SECONDS exceeds JWT_ACCESS_TTL_SECONDS; a notification socket "
             "could outlive its access token, defeating the revalidation lifetime cap."
         )
+    # Free-tier guardrails: only meaningful once the wedge is live. A free tier
+    # with no real caps lets public signups starve the shared processor / blow up
+    # storage, so refuse to boot with dangerous defaults (mirrors the dev-secret
+    # refusals above).
+    if settings.free_tier_enabled:
+        if settings.pooled_extraction_concurrency_global < 1:
+            errors.append(
+                "FREE_TIER_ENABLED is on but POOLED_EXTRACTION_CONCURRENCY_GLOBAL < 1; "
+                "set a positive global cap (operationally JOB_CONCURRENCY - 1) so free "
+                "extractions can never hold every processor slot."
+            )
+        if settings.pooled_extraction_concurrency_global > 50:
+            errors.append(
+                "FREE_TIER_ENABLED is on but POOLED_EXTRACTION_CONCURRENCY_GLOBAL is "
+                "effectively unbounded (>50); a long free extraction could starve "
+                "paying jobs. Set it to roughly JOB_CONCURRENCY - 1."
+            )
+        if settings.free_max_documents_per_user < 1:
+            errors.append(
+                "FREE_TIER_ENABLED is on but FREE_MAX_MODELS_PER_USER < 1; set a "
+                "positive per-user container cap to bound storage."
+            )
+        if settings.free_max_projects_per_user < 1:
+            errors.append(
+                "FREE_TIER_ENABLED is on but FREE_MAX_PROJECTS_PER_USER < 1; set a "
+                "positive per-user project cap (a free user needs at least one)."
+            )
+        if settings.free_max_members_per_project < 1:
+            errors.append(
+                "FREE_TIER_ENABLED is on but FREE_MAX_MEMBERS_PER_PROJECT < 1; set a "
+                "positive per-project invited-member cap."
+            )
+        if settings.free_upload_max_bytes < 1:
+            errors.append(
+                "FREE_TIER_ENABLED is on but FREE_UPLOAD_MAX_BYTES < 1; set a positive "
+                "per-model size cap."
+            )
+        if settings.free_storage_max_bytes < settings.free_upload_max_bytes:
+            errors.append(
+                "FREE_TIER_ENABLED is on but FREE_STORAGE_MAX_BYTES is below "
+                "FREE_UPLOAD_MAX_BYTES; the aggregate cap must be at least one "
+                "model's worth or no upload can ever succeed."
+            )
+        if settings.free_account_max_age_days < 1:
+            errors.append(
+                "FREE_TIER_ENABLED is on but FREE_ACCOUNT_MAX_AGE_DAYS < 1; set a "
+                "positive trial window (a free account needs at least one day "
+                "before it goes read-only), or grant individual exemptions."
+            )
     return errors
 
 

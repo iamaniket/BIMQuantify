@@ -40,12 +40,10 @@ function clampPage(value: number, max: number | null): number {
 export function DocumentToolbar({
   currentPage,
   numPages,
-  scale,
   activeTool,
   documentHandle,
   settings,
   onPageChange,
-  onScaleChange,
   onActiveToolChange,
   onSettingsChange,
 }: Props): JSX.Element {

@@ -396,7 +396,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
     // Fix: directly mutate _formValues in the RHF form context via React fiber
     // (reached at depth 10 from the latitude input element).
     await page.evaluate(() => {
-      const el = document.querySelector('input[name="latitude"]') as HTMLElement | null;
+      const el = document.querySelector('input[name="latitude"]');
       if (!el) throw new Error('latitude input not found');
       const fiberKey = Object.keys(el).find((k) => k.startsWith('__reactFiber'));
       if (!fiberKey) throw new Error('no React fiber key');
@@ -858,7 +858,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
 
     // Step 2 — Address (fix lat/lng NaN issue, same as C3)
     await page.evaluate(() => {
-      const el = document.querySelector('input[name="latitude"]') as HTMLElement | null;
+      const el = document.querySelector('input[name="latitude"]');
       if (!el) throw new Error('latitude input not found');
       const fiberKey = Object.keys(el).find((k) => k.startsWith('__reactFiber'));
       if (!fiberKey) throw new Error('no React fiber key');
@@ -1902,7 +1902,7 @@ test.describe.serial('Multitenant E2E Journey', () => {
 
     // Fix lat/lng NaN issue (same as C3).
     await page.evaluate(() => {
-      const el = document.querySelector('input[name="latitude"]') as HTMLElement | null;
+      const el = document.querySelector('input[name="latitude"]');
       if (!el) throw new Error('latitude input not found');
       const fiberKey = Object.keys(el).find((k) => k.startsWith('__reactFiber'));
       if (!fiberKey) throw new Error('no React fiber key');

@@ -2,7 +2,7 @@ import type { FindingStatusValue } from '@/lib/api/schemas';
 
 type EntityMarkerType = 'finding' | 'certificate' | 'attachment';
 
-export interface EntityMarker2D {
+export type EntityMarker2D = {
   id: string;
   type: EntityMarkerType;
   x: number;
@@ -15,7 +15,7 @@ export interface EntityMarker2D {
   draft?: boolean;
 }
 
-export interface EntityMarker3D {
+export type EntityMarker3D = {
   id: string;
   type: EntityMarkerType;
   position: { x: number; y: number; z: number };

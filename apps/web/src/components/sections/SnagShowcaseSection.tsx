@@ -215,7 +215,7 @@ export function SnagShowcaseSection(): JSX.Element {
                 </li>
               </ul>
               <div className="pointer-events-auto mt-2 flex flex-wrap items-center gap-4">
-                <a href={portalHref(locale, '/request-access')}>
+                <a href={portalHref(locale, '/signup')}>
                   <Button variant="primary" size="lg">
                     {t('cta')}
                   </Button>

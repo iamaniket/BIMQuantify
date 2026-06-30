@@ -21,6 +21,13 @@ import { runCompletionDeclarationReport } from '../pipeline/report/verklaring.js
 import { captureException } from '../sentry.js';
 import { getRedis, type ProgressReporter, type WorkerJob } from './queue.js';
 
+/** Optional per-job callback path override, carried in the job payload by the
+ * free-tier dispatch (→ /internal/jobs/free-callback). Absent for tenant jobs. */
+const _callbackPathOf = (data: WorkerJob): string | undefined => {
+  const value = data.payload?.['callback_path'];
+  return typeof value === 'string' ? value : undefined;
+};
+
 const pickStr = (payload: Record<string, unknown>, key: string): string => {
   const value = payload[key];
   if (typeof value === 'string') return value;
@@ -156,9 +163,10 @@ export function startWorker(): Worker<WorkerJob> {
   const worker = new Worker<WorkerJob>(
     QUEUE_NAME,
     async (job) =>
-      // Bind this job's per-job callback base URL (L13) for the whole pipeline,
-      // so every post*Callback inside resolves the right API instance.
-      runWithCallbackUrl(job.data.callback_url, async () => {
+      // Bind this job's per-job callback base URL (L13) + optional path override
+      // (free-tier → /internal/jobs/free-callback) for the whole pipeline, so
+      // every post*Callback inside resolves the right API instance and route.
+      runWithCallbackUrl(job.data.callback_url, _callbackPathOf(job.data), async () => {
       logger.info({ jobId: job.id, jobType: job.data.job_type }, 'job started');
       const onProgress: ProgressReporter = (pct) => job.updateProgress(pct);
       try {
@@ -230,7 +238,7 @@ export function startWorker(): Worker<WorkerJob> {
     captureException(err, { jobId: job.id, jobType: job.data.job_type });
     // The 'failed' event fires outside the processor's callback-url scope, so
     // re-bind it here too (L13) before the terminal callback.
-    void runWithCallbackUrl(job.data.callback_url, () =>
+    void runWithCallbackUrl(job.data.callback_url, _callbackPathOf(job.data), () =>
       notifyTerminalFailure(job.data, err),
     ).catch((cbErr) => {
       logger.error({ jobId: job.id, err: cbErr }, 'terminal failure callback failed');

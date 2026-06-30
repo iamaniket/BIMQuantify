@@ -32,6 +32,11 @@ const ASSIGNABLE_ROLES: readonly ProjectRole[] = [
   'client',
 ];
 
+// The free tier supports only editor/viewer members (the backend rejects the
+// rest), and there is no existing-org-member picker — invites only.
+const FREE_ASSIGNABLE_ROLES: readonly ProjectRole[] = ['editor', 'viewer'];
+const FREE_MAX_INVITES = 3;
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** One person queued to join the project once it's created — either an
@@ -49,6 +54,9 @@ export type StepMembersProps = {
   onAdd: (entry: PendingTeamEntry) => void;
   onRemove: (index: number) => void;
   onChangeRole: (index: number, role: ProjectRole) => void;
+  /** Free workspace: email-invites only (no org picker), roles limited to
+   * editor/viewer, capped at 3 invited members. */
+  pooledMode?: boolean;
 };
 
 export function StepMembers({
@@ -58,12 +66,15 @@ export function StepMembers({
   onAdd,
   onRemove,
   onChangeRole,
+  pooledMode = false,
 }: StepMembersProps): JSX.Element {
   const t = useTranslations('projects.wizard.members');
   const tRoles = useTranslations('projectAccess.table.roles');
   const selectableQuery = useSelectableOrgMembers(organizationId);
+  const roles = pooledMode ? FREE_ASSIGNABLE_ROLES : ASSIGNABLE_ROLES;
+  const atInviteCap = pooledMode && entries.length >= FREE_MAX_INVITES;
 
-  const [tab, setTab] = useState<'fromOrg' | 'invite'>('fromOrg');
+  const [tab, setTab] = useState<'fromOrg' | 'invite'>(pooledMode ? 'invite' : 'fromOrg');
   const [userId, setUserId] = useState('');
   const [orgRole, setOrgRole] = useState<ProjectRole>('viewer');
   const [email, setEmail] = useState('');
@@ -111,6 +122,10 @@ export function StepMembers({
 
   const handleAddInvite = (): void => {
     setAddError(null);
+    if (atInviteCap) {
+      setAddError(t('errors.inviteCap', { max: FREE_MAX_INVITES }));
+      return;
+    }
     const trimmed = email.trim();
     if (!EMAIL_RE.test(trimmed)) {
       setAddError(t('errors.invalidEmail'));
@@ -148,13 +163,16 @@ export function StepMembers({
             setAddError(null);
           }}
         >
-          <TabsList className="mb-3 w-full">
-            <TabsTrigger value="fromOrg" className="flex-1">{t('tabs.fromOrg')}</TabsTrigger>
-            <TabsTrigger value="invite" className="flex-1">{t('tabs.inviteByEmail')}</TabsTrigger>
-          </TabsList>
+          {!pooledMode && (
+            <TabsList className="mb-3 w-full">
+              <TabsTrigger value="fromOrg" className="flex-1">{t('tabs.fromOrg')}</TabsTrigger>
+              <TabsTrigger value="invite" className="flex-1">{t('tabs.inviteByEmail')}</TabsTrigger>
+            </TabsList>
+          )}
 
           <ErrorBanner message={addError} className="mb-3" />
 
+          {!pooledMode && (
           <TabsContent value="fromOrg">
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
@@ -185,7 +203,7 @@ export function StepMembers({
                     value={orgRole}
                     onChange={(e) => { setOrgRole(e.target.value as ProjectRole); }}
                   >
-                    {ASSIGNABLE_ROLES.map((r) => (
+                    {roles.map((r) => (
                       <option key={r} value={r}>{tRoles(r)}</option>
                     ))}
                   </Select>
@@ -203,6 +221,7 @@ export function StepMembers({
               </div>
             </div>
           </TabsContent>
+          )}
 
           <TabsContent value="invite">
             <div className="flex flex-col gap-3">
@@ -235,12 +254,18 @@ export function StepMembers({
                     value={inviteRole}
                     onChange={(e) => { setInviteRole(e.target.value as ProjectRole); }}
                   >
-                    {ASSIGNABLE_ROLES.map((r) => (
+                    {roles.map((r) => (
                       <option key={r} value={r}>{tRoles(r)}</option>
                     ))}
                   </Select>
                 </div>
-                <Button type="button" variant="primary" size="md" onClick={handleAddInvite}>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  onClick={handleAddInvite}
+                  disabled={atInviteCap}
+                >
                   <Plus className="mr-1 h-3.5 w-3.5" />
                   {t('actions.add')}
                 </Button>
@@ -281,7 +306,7 @@ export function StepMembers({
                   className="w-36"
                   aria-label={t('fields.role')}
                 >
-                  {ASSIGNABLE_ROLES.map((r) => (
+                  {roles.map((r) => (
                     <option key={r} value={r}>{tRoles(r)}</option>
                   ))}
                 </Select>
@@ -299,8 +324,14 @@ export function StepMembers({
           </ul>
         )}
 
-        {entries.length === 0 && (
-          <p className="text-caption text-foreground-tertiary">{t('minOneHint')}</p>
+        {pooledMode ? (
+          <p className="text-caption text-foreground-tertiary">
+            {t('pooledInviteHint', { max: FREE_MAX_INVITES })}
+          </p>
+        ) : (
+          entries.length === 0 && (
+            <p className="text-caption text-foreground-tertiary">{t('minOneHint')}</p>
+          )
         )}
       </div>
     </div>

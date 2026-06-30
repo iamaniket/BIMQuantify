@@ -7,7 +7,7 @@ import { useFormContext, useWatch } from 'react-hook-form';
 import { Input, Label } from '@bimdossier/ui';
 
 import type { ResolvedAddress } from '@/features/jurisdictions/nl/addressLookup';
-import { useRegisterField } from '@/hooks/useRegisterField';
+import { registerField } from '@/hooks/registerField';
 
 import { AddressLookup } from '../AddressLookup';
 import type { ProjectFormValues } from '../projectFormSchema';
@@ -82,7 +82,7 @@ export function StepAddress({ initialLookupLabel, isReadOnly }: StepAddressProps
             type="text"
             placeholder={t('streetPlaceholder')}
             disabled={isReadOnly}
-            {...useRegisterField(form, 'street')}
+            {...registerField(form, 'street')}
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -92,7 +92,7 @@ export function StepAddress({ initialLookupLabel, isReadOnly }: StepAddressProps
             type="text"
             placeholder={t('houseNumberPlaceholder')}
             disabled={isReadOnly}
-            {...useRegisterField(form, 'house_number')}
+            {...registerField(form, 'house_number')}
           />
         </div>
       </div>
@@ -106,7 +106,7 @@ export function StepAddress({ initialLookupLabel, isReadOnly }: StepAddressProps
             placeholder={t('postalCodePlaceholder')}
             invalid={postalError !== undefined}
             disabled={isReadOnly}
-            {...useRegisterField(form, 'postal_code')}
+            {...registerField(form, 'postal_code')}
           />
           {postalError !== undefined && (
             <span role="alert" className={fieldErrorClass}>{postalError}</span>
@@ -119,7 +119,7 @@ export function StepAddress({ initialLookupLabel, isReadOnly }: StepAddressProps
             type="text"
             placeholder={t('cityPlaceholder')}
             disabled={isReadOnly}
-            {...useRegisterField(form, 'city')}
+            {...registerField(form, 'city')}
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -129,7 +129,7 @@ export function StepAddress({ initialLookupLabel, isReadOnly }: StepAddressProps
             type="text"
             placeholder={t('municipalityPlaceholder')}
             disabled={isReadOnly}
-            {...useRegisterField(form, 'municipality')}
+            {...registerField(form, 'municipality')}
           />
         </div>
       </div>

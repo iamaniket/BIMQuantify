@@ -27,8 +27,7 @@ import { useAllTemplates, type UnifiedTemplateRow } from '@/features/orgTemplate
 
 import { useAuth } from '@/providers/AuthProvider';
 
-const TYPE_FILTERS = ['all', 'findings', 'reports'] as const;
-type TypeFilterValue = (typeof TYPE_FILTERS)[number];
+type TypeFilterValue = 'all' | 'findings' | 'reports';
 
 export default function TemplatesPage(): JSX.Element {
   const t = useTranslations('orgTemplates');

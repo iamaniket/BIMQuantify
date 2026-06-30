@@ -1,3 +1,4 @@
+import secrets
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -9,7 +10,7 @@ from fastapi_users.jwt import decode_jwt
 from pydantic import BaseModel, EmailStr
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api import audit
@@ -28,12 +29,15 @@ from bimdossier_api.cache import get_redis_dep
 from bimdossier_api.cache.blocklist import revoke_jti
 from bimdossier_api.config import get_settings
 from bimdossier_api.db import get_async_session, get_session_maker
+from bimdossier_api.entitlements import PLAN_FREE, PLAN_PAID, resolve_plan
+from bimdossier_api.i18n import coerce_locale
 from bimdossier_api.models.organization import Organization, OrganizationStatus
 from bimdossier_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
 )
 from bimdossier_api.models.user import User
+from bimdossier_api.routers.free_access import user_has_pooled_participation
 from bimdossier_api.schemas.user import UserRead, UserUpdate
 from bimdossier_api.storage import get_attachments_bucket, get_storage
 
@@ -45,6 +49,12 @@ FORGOT_RATE_LIMITER = ResilientRateLimiter(
 # activation link, so an unthrottled endpoint is an email-bomb vector.
 VERIFY_REQUEST_RATE_LIMITER = ResilientRateLimiter(
     times=get_settings().rate_limit_verify_request_per_hour, seconds=3600
+)
+# Per-IP/hour throttle on the public free-tier signup endpoint (same email-bomb
+# posture as forgot-password / request-verify). Only wired when the route is
+# mounted (FREE_TIER_ENABLED).
+SIGNUP_RATE_LIMITER = ResilientRateLimiter(
+    times=get_settings().rate_limit_signup_per_hour, seconds=3600
 )
 
 
@@ -64,6 +74,10 @@ class OrgMembershipBrief(BaseModel):
     active_storage_limit_gb: int | None
     active_storage_used_gb: float
     organization_image_url: str | None = None
+    # The org's entitlement/plan (e.g. "paid"). The ENTITLEMENT axis, distinct
+    # from ISOLATION — see entitlements.resolve_plan. Defaults so older callers
+    # that don't send it still validate.
+    plan: str = PLAN_PAID
 
 
 class AuthMeResponse(BaseModel):
@@ -71,6 +85,21 @@ class AuthMeResponse(BaseModel):
     active_organization_id: UUID | None
     memberships: list[OrgMembershipBrief]
     pending_invitations_count: int
+    # True when the user owns or is a member of ≥1 free project — drives whether
+    # the portal shows a "Free workspace" entry in the org switcher.
+    has_free_workspace: bool = False
+    # The acting principal's PLAN (entitlement) for the active scope: "free" when
+    # org-less (pooled), else the active org's plan. This is the read-only TIER
+    # signal the client gates UI on — ORTHOGONAL to the isolation surface
+    # (active_organization_id). Re-checked server-side on gated actions.
+    plan: str = PLAN_FREE
+
+
+class SwitchToFreeRequest(BaseModel):
+    # Optional current refresh token, revoked alongside the access token so a
+    # replayed pre-switch refresh can't keep minting org-scoped access. Mirrors
+    # SwitchOrgRequest.
+    refresh_token: str | None = None
 
 
 class SwitchOrgRequest(BaseModel):
@@ -93,6 +122,22 @@ class ForgotPasswordRequest(BaseModel):
 
 class RequestVerifyTokenRequest(BaseModel):
     email: EmailStr
+
+
+class SignupRequest(BaseModel):
+    """Public free-tier signup body. `locale` is the new account's preferred
+    language (coerced to a supported locale, platform default otherwise) so
+    later single-locale emails (password reset) and the portal render correctly.
+    The activation email itself is bilingual — the recipient has no verified
+    locale yet."""
+
+    email: EmailStr
+    locale: str | None = None
+    # Optional lead enrichment captured on the free-signup form. No validation
+    # (both optional); truncated to the column width in the handler so an
+    # oversized value can never break the always-202 contract.
+    full_name: str | None = None
+    company: str | None = None
 
 
 async def _decode_verify_token_to_user(
@@ -433,6 +478,7 @@ def build_auth_router() -> APIRouter:
                     active_storage_limit_gb=org.active_storage_limit_gb,
                     active_storage_used_gb=storage_usage.get(org.id, 0.0),
                     organization_image_url=image_urls.get(org.id),
+                    plan=org.plan or PLAN_PAID,
                 )
             )
 
@@ -441,11 +487,26 @@ def build_auth_router() -> APIRouter:
             if m.status == OrganizationMemberStatus.pending
         )
 
+        # Free participation (owns or is a member of a free project) — drives the
+        # "Free workspace" switcher entry. RLS-bypassed here (superuser session).
+        has_free = await user_has_pooled_participation(session, user.id)
+
+        # ENTITLEMENT (plan) for the active scope — orthogonal to ISOLATION
+        # (active_organization_id). Org-less → "free"; otherwise the active org's
+        # plan. The active org is the membership matching the JWT's `org` claim;
+        # a stale claim with no matching membership falls through to "free".
+        active_org = next(
+            (org for _m, org in rows if org.id == active_org_id), None
+        ) if active_org_id is not None else None
+        plan = resolve_plan(active_org)
+
         return AuthMeResponse(
             user=UserRead.model_validate(user, from_attributes=True),
             active_organization_id=active_org_id,
             memberships=memberships,
             pending_invitations_count=pending_count,
+            has_free_workspace=has_free,
+            plan=plan,
         )
 
     @me_router.post("/switch-organization", response_model=TokenPair)
@@ -559,6 +620,69 @@ def build_auth_router() -> APIRouter:
             refresh_token=create_token(
                 user.id, "refresh", active_organization_id=payload.organization_id
             ),
+        )
+
+    @me_router.post("/switch-to-free", response_model=TokenPair)
+    async def switch_to_free(
+        request: Request,
+        payload: SwitchToFreeRequest,
+        user: User = Depends(current_active_user),
+        session: AsyncSession = Depends(get_async_session),
+        redis: Any = Depends(get_redis_dep),
+    ) -> TokenPair:
+        # The free workspace is a selectable context: dropping the active org →
+        # the next tokens carry NO `org` claim, so org endpoints 409 and /free/*
+        # serves the user's pooled data. Only enter it if there's something
+        # there — the user owns or is a member of ≥1 free project.
+        if not await user_has_pooled_participation(session, user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="FREE_WORKSPACE_UNAVAILABLE",
+            )
+        # Revoke the current org-scoped access token (mirrors switch-organization)
+        # so it can't keep acting in the previous org until its natural expiry.
+        auth_header = request.headers.get("authorization") or ""
+        if auth_header.lower().startswith("bearer "):
+            current_access = auth_header.split(" ", 1)[1].strip()
+            try:
+                decoded = decode_token_full(current_access, "access")
+            except TokenError:
+                decoded = None
+            if decoded is not None and decoded.jti is not None and decoded.exp is not None:
+                ttl = max(decoded.exp - int(datetime.now(UTC).timestamp()), 1)
+                try:
+                    await revoke_jti(redis, decoded.jti, ttl)
+                except RedisError as exc:
+                    # Fail CLOSED — same rationale as switch-organization.
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="SWITCH_REVOCATION_UNAVAILABLE",
+                    ) from exc
+        if payload.refresh_token:
+            try:
+                old_refresh = decode_token_full(payload.refresh_token, "refresh")
+            except TokenError:
+                old_refresh = None
+            if (
+                old_refresh is not None
+                and old_refresh.user_id == user.id
+                and old_refresh.jti is not None
+            ):
+                ttl = max(old_refresh.exp - int(datetime.now(UTC).timestamp()), 1)
+                try:
+                    await revoke_jti(redis, old_refresh.jti, ttl)
+                except RedisError as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="SWITCH_REVOCATION_UNAVAILABLE",
+                    ) from exc
+        await session.execute(
+            update(User).where(User.id == user.id).values(active_organization_id=None)
+        )
+        await session.commit()
+        return TokenPair(
+            access_token=create_token(user.id, "access", active_organization_id=None),
+            refresh_token=create_token(user.id, "refresh", active_organization_id=None),
         )
 
     router.include_router(me_router)
@@ -696,6 +820,71 @@ def build_auth_router() -> APIRouter:
             return
 
     router.include_router(forgot_router)
+
+    # --- public free-tier signup (mounted only when FREE_TIER_ENABLED) ----
+    # We are invite-only by default: there is no /auth/register, and org /
+    # founding-partner onboarding stays invite-only and unchanged. The free
+    # wedge needs ONE public door — a real, email-verified, ORG-LESS account.
+    #
+    # Threat model: reintroducing public signup reopens (a) email-bomb via the
+    # activation mail, (b) account enumeration, (c) mass fake signups.
+    # Mitigations: per-IP ResilientRateLimiter (SIGNUP_RATE_LIMITER), an
+    # always-202 enumeration-safe response, email-verify-before-upload (free
+    # uploads require a verified session), and this FREE_TIER_ENABLED
+    # kill-switch — the route is not even mounted when the flag is off, so the
+    # attack surface is physically closed, not merely guarded.
+    #
+    # The created user is deliberately ORG-LESS: signup MUST NOT insert an
+    # OrganizationMember. Admin invites do; a stray pending membership would let
+    # `_flip_pending_memberships` auto-accept it on first login and silently turn
+    # a free user into an org member (defeating the pooled-tenant design).
+    if get_settings().free_tier_enabled:
+        signup_router = APIRouter(prefix="/auth", tags=["auth"])
+
+        @signup_router.post(
+            "/signup",
+            status_code=status.HTTP_202_ACCEPTED,
+            dependencies=[Depends(SIGNUP_RATE_LIMITER)],
+        )
+        async def signup(
+            request: Request,
+            payload: SignupRequest,
+            user_manager: UserManager = Depends(get_user_manager),
+            session: AsyncSession = Depends(get_async_session),
+        ) -> None:
+            # Enumeration-safe: identical 202 whether or not the email exists.
+            # `get_async_session` is dependency-cached within the request, so this
+            # is the same master session `user_manager.user_db` writes through.
+            normalized = payload.email.strip().lower()
+            existing = await session.scalar(
+                select(User).where(func.lower(User.email) == normalized)
+            )
+            if existing is not None:
+                # Already a user (free or paid, verified or not). Resending an
+                # activation link is the dedicated /auth/request-verify-token
+                # endpoint's job; here we stay silent so we leak no signal.
+                return
+            # Mirror the admin-invite `_find_or_create_user` pattern: insert with
+            # an unguessable pre-hashed password (the activation flow sets the
+            # real one) so we never trip `validate_password`, then send the
+            # activation email via the same request_verify hook.
+            user = User(
+                email=payload.email,
+                hashed_password=user_manager.password_helper.hash(secrets.token_hex(32)),
+                is_active=True,
+                is_verified=False,
+                is_superuser=False,
+                locale=coerce_locale(payload.locale),
+                full_name=(payload.full_name or "").strip()[:255] or None,
+                company=(payload.company or "").strip()[:255] or None,
+            )
+            session.add(user)
+            await session.commit()
+            # Best-effort email (send failures are swallowed in
+            # on_after_request_verify); the account already persists.
+            await user_manager.request_verify(user, request)
+
+        router.include_router(signup_router)
 
     # --- request-verify-token shadow with rate limiting -------------------
     # FastAPI Users' get_verify_router() bundles /auth/request-verify-token AND

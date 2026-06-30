@@ -6,11 +6,13 @@ import type { JSX } from 'react';
 import { X } from '@bimdossier/ui/icons';
 import { TooltipProvider } from '@bimdossier/ui';
 
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { DossierLogo } from '@/components/shared/charts/StitchLogo';
+import { DossierLogo } from '@/components/shared/charts/DossierLogo';
 import { SidebarWorkspaceNav } from '@/features/projects/SidebarWorkspaceNav';
 
 import { SidebarCollapseToggle } from './SidebarCollapseToggle';
+import { SidebarPooledNav } from './SidebarPooledNav';
 import { SidebarNav } from './SidebarNav';
 import { SidebarTenantCard } from './SidebarTenantCard';
 import { SidebarUserChip } from './SidebarUserChip';
@@ -25,16 +27,14 @@ function BrandFooter({ collapsed }: { collapsed: boolean }): JSX.Element {
         collapsed ? 'flex justify-center px-0 py-3' : 'flex items-center gap-2.5 px-4 py-3'
       }`}
     >
-      <div className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-md border border-white/[0.28] bg-white/[0.16]">
-        <DossierLogo size={17} color="#fff" />
-      </div>
+      <DossierLogo size={32} className="shrink-0" />
       {!collapsed && (
         <div className="min-w-0 flex-1">
           <div className="text-[14.5px] font-semibold leading-[1.1] tracking-tight text-white">
             {'BimDossier'}
           </div>
-          <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/55">
-            {'NL · Wkb + BBL'}
+          <div className="mt-0.5 whitespace-nowrap text-[8.5px] font-semibold uppercase tracking-[0.04em] text-white/55">
+            {'Building quality platform'}
           </div>
         </div>
       )}
@@ -46,6 +46,11 @@ export function Sidebar(): JSX.Element {
   const { collapsed, forceCollapsed, hydrated, transitionsReady, mobileOpen, setMobileOpen } = useSidebar();
   const t = useTranslations('common');
   const isMobile = useIsMobile();
+  const { isPooled, ready } = useIsPooledContext();
+  // Org-less free users get a trimmed "Projects"-only workspace nav (no
+  // Certificates/Templates/Calendar, no `useProjects` 409). Defer until
+  // /auth/me resolves so we never flash the org-scoped nav.
+  const workspaceNav = !ready ? null : isPooled ? <SidebarPooledNav /> : <SidebarWorkspaceNav />;
 
   if (isMobile) {
     return (
@@ -81,7 +86,7 @@ export function Sidebar(): JSX.Element {
 
             <SidebarUserChip />
             <SidebarTenantCard />
-            <SidebarWorkspaceNav />
+            {workspaceNav}
 
             <div className="flex-1" />
 
@@ -111,7 +116,7 @@ export function Sidebar(): JSX.Element {
         <SidebarUserChip />
         {!forceCollapsed && <SidebarCollapseToggle />}
         <SidebarTenantCard />
-        <SidebarWorkspaceNav />
+        {workspaceNav}
 
         <div className="flex-1" />
 

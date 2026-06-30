@@ -51,17 +51,28 @@ export function snappingPlugin(
   let pendingNdc: { x: number; y: number } | null = null;
 
   let moveUnsub: (() => void) | null = null;
+  let modelEventUnsubs: Array<() => void> = [];
 
+  // Largest dimension of the union of all model AABBs (min 1). Model boxes only
+  // change on load/unload, so this is computed once and cached — recomputing it
+  // per pointer-move (the call site in processMove → indicator.show) needlessly
+  // unioned every model's box + allocated a Box3/Vector3 on each snapped frame.
+  // Invalidated by the model:loaded / model:unloaded subscriptions in install().
+  const _scaleBox = new THREE.Box3();
+  const _scaleSize = new THREE.Vector3();
+  let modelScaleCache: number | null = null;
   const getModelScale = (): number => {
+    if (modelScaleCache !== null) return modelScaleCache;
     if (!ctx) return 10;
-    const box = new THREE.Box3();
+    const box = _scaleBox.makeEmpty();
     for (const model of ctx.models().values()) {
       const mBox = model.box;
       if (mBox && !mBox.isEmpty()) box.union(mBox);
     }
     if (box.isEmpty()) return 10;
-    const size = box.getSize(new THREE.Vector3());
-    return Math.max(size.x, size.y, size.z, 1);
+    const size = box.getSize(_scaleSize);
+    modelScaleCache = Math.max(size.x, size.y, size.z, 1);
+    return modelScaleCache;
   };
 
   const emitChange = (): void => {
@@ -178,6 +189,16 @@ export function snappingPlugin(
 
       moveUnsub = ctx.events.on('pointer:move', (e) => void handleMove(e));
 
+      // Model bounds change only on load/unload — drop the cached model scale so
+      // the next pointer-move recomputes it once (see getModelScale above).
+      const invalidateScale = (): void => {
+        modelScaleCache = null;
+      };
+      modelEventUnsubs = [
+        ctx.events.on('model:loaded', invalidateScale),
+        ctx.events.on('model:unloaded', invalidateScale),
+      ];
+
       ctx.commands.register(
         'snapping.toggle',
         () => setEnabled(!enabled),
@@ -230,6 +251,9 @@ export function snappingPlugin(
     uninstall() {
       moveUnsub?.();
       moveUnsub = null;
+      for (const off of modelEventUnsubs) off();
+      modelEventUnsubs = [];
+      modelScaleCache = null;
       if (ctx) indicator.hide(ctx.scene);
       indicator.dispose();
       cache.clear();

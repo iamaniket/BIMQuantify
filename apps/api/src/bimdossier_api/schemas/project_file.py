@@ -93,8 +93,11 @@ class ProjectViewerDocumentEntry(BaseModel):
     (floor-plan) source; `discipline` is the user-entered label, informational."""
 
     file_id: UUID
-    document_id: UUID
-    document_name: str
+    # Viewer terminology — the 3D viewer's modelId concept is intentionally
+    # distinct from the Document rename (see CLAUDE.md). The portal manifest
+    # schema + every federated consumer key on `model_id`/`model_name`.
+    model_id: UUID
+    model_name: str
     discipline: DocumentDiscipline
     detected_kind: str | None = None
     fragments_url: str | None = None

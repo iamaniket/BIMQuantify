@@ -8,7 +8,7 @@ import {
 import { PanelEmptyState } from '@/components/shared/viewer/shared/PanelEmptyState';
 import { PropertiesToolbar } from '@/features/viewer/3d/properties/PropertiesToolbar';
 import { PropertySetGroup } from '@/features/viewer/3d/properties/PropertySetGroup';
-import type { ElementEntry, ModelProperties } from '@/lib/api/viewerTypes';
+import type { ElementEntry, ModelProperties, PropertySet } from '@/lib/api/viewerTypes';
 
 type PropertiesBodyProps = {
   element: ElementEntry;
@@ -17,7 +17,7 @@ type PropertiesBodyProps = {
 };
 
 function countFiltered(
-  psetEntries: [string, Record<string, unknown>][],
+  psetEntries: [string, PropertySet][],
   q: string,
 ): number {
   if (!q) return psetEntries.reduce((s, [, pset]) => s + Object.keys(pset).length, 0);

@@ -132,9 +132,9 @@ const PositionedMenu = forwardRef(function PositionedMenu(
   return (
     <div
       ref={(node) => {
-        (innerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        (innerRef).current = node;
         if (typeof ref === 'function') ref(node);
-        else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        else if (ref) (ref).current = node;
       }}
       className={
         'pointer-events-auto absolute min-w-[200px] rounded-lg border border-border bg-background p-1 shadow-2xl '

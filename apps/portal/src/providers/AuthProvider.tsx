@@ -19,7 +19,11 @@ import { PORTAL_EVENTS, track } from '@/lib/analytics';
 import { tokenManager } from '@/lib/auth/tokenManager';
 
 import { ApiError } from '@/lib/api/client';
-import { getAuthMe, switchOrganization as switchOrgApi } from '@/lib/api/organizations';
+import {
+  getAuthMe,
+  switchOrganization as switchOrgApi,
+  switchToFree as switchToFreeApi,
+} from '@/lib/api/organizations';
 import {
   TokenPairSchema,
   type AuthMeResponse,
@@ -49,6 +53,9 @@ type AuthState = {
   activeMembership: OrgMembershipBrief | null;
   /** Switch the active org. Updates JWT, persists tokens, re-fetches /auth/me. */
   switchOrganization: (organizationId: string) => Promise<void>;
+  /** Enter the org-less "Free workspace" (no org claim). Updates JWT, persists
+   * tokens, re-fetches /auth/me. */
+  switchToFree: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -221,6 +228,18 @@ export function AuthProvider({ children }: Props): JSX.Element {
     [setTokens, queryClient],
   );
 
+  const switchToFree = useCallback(async (): Promise<void> => {
+    const current = tokensRef.current;
+    if (current === null) {
+      throw new Error('Cannot switch to the free workspace without an active session');
+    }
+    const nextTokens = await switchToFreeApi(current.access_token);
+    setTokens(nextTokens);
+    await queryClient.invalidateQueries();
+    track(PORTAL_EVENTS.ORGANIZATION_SWITCHED, { organization_id: 'free' });
+    // /auth/me will be re-fetched by the effect that watches `tokens`.
+  }, [setTokens, queryClient]);
+
   const activeMembership = useMemo<OrgMembershipBrief | null>(() => {
     if (me === null) return null;
     if (me.active_organization_id === null) return null;
@@ -237,8 +256,19 @@ export function AuthProvider({ children }: Props): JSX.Element {
       refreshMe,
       activeMembership,
       switchOrganization,
+      switchToFree,
     }),
-    [tokens, setTokens, hasHydrated, me, meError, refreshMe, activeMembership, switchOrganization],
+    [
+      tokens,
+      setTokens,
+      hasHydrated,
+      me,
+      meError,
+      refreshMe,
+      activeMembership,
+      switchOrganization,
+      switchToFree,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

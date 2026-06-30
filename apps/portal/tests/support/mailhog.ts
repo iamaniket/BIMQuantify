@@ -65,7 +65,7 @@ export function extractUrlFromEmail(body: string, pattern: RegExp): string {
   // 2. Bare URL in text
   const urlRe = /https?:\/\/[^\s"'<>]+/g;
   while ((m = urlRe.exec(body)) !== null) {
-    if (pattern.test(m[0]!)) return m[0]!;
+    if (pattern.test(m[0])) return m[0];
   }
 
   throw new Error(`No URL matching ${pattern.toString()} found in email body`);

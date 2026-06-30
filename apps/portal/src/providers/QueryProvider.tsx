@@ -27,8 +27,12 @@ export function QueryProvider({ children }: Props): JSX.Element {
       // Sentry instead of silently displaying empty/wrong data.
       queryCache: new QueryCache({
         onError: (error, query) => {
+          const queryKeyHead = query.queryKey?.[0];
           Sentry.captureException(error, {
-            tags: { source: 'react-query', queryKey: String(query.queryKey?.[0] ?? 'unknown') },
+            tags: {
+              source: 'react-query',
+              queryKey: typeof queryKeyHead === 'string' ? queryKeyHead : 'unknown',
+            },
           });
         },
       }),

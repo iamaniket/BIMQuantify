@@ -42,6 +42,9 @@ export const OrgMembershipBriefSchema = z.object({
   active_storage_limit_gb: z.union([z.number().int(), z.null()]),
   active_storage_used_gb: z.number(),
   organization_image_url: z.union([z.string(), z.null()]).optional(),
+  // Org entitlement/plan (TIER axis, distinct from ISOLATION); optional for
+  // back-compat, consumers default to 'paid'.
+  plan: z.string().optional(),
 });
 
 export type OrgMembershipBrief = z.infer<typeof OrgMembershipBriefSchema>;
@@ -51,6 +54,10 @@ export const AuthMeResponseSchema = z.object({
   active_organization_id: z.union([z.string(), z.null()]),
   memberships: z.array(OrgMembershipBriefSchema),
   pending_invitations_count: z.number().int(),
+  // Acting principal's PLAN (entitlement) for the active scope — 'free' org-less,
+  // else the org's plan. Read-only TIER signal, orthogonal to the isolation
+  // surface. Optional for back-compat; consumers default to 'free'.
+  plan: z.string().optional(),
 });
 
 export type AuthMeResponse = z.infer<typeof AuthMeResponseSchema>;
