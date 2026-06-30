@@ -108,7 +108,11 @@ from bimdossier_api.schemas.project_file import (
 )
 from bimdossier_api.storage import StorageBackend, get_storage
 from bimdossier_api.storage.minio import ObjectNotFoundError
-from bimdossier_api.storage.scoping import assert_free_key_scoped, free_key_prefix
+from bimdossier_api.storage.scoping import (
+    assert_free_key_scoped,
+    assert_key_scoped,
+    free_key_prefix,
+)
 from bimdossier_api.tenancy import get_free_session, open_free_session
 
 # Free tier accepts IFC (3D) and PDF (2D drawings) — viewer parity. (.ifczip is a
@@ -848,7 +852,7 @@ async def complete_free_file_upload(
     try:
         await dispatch_job(detached, settings, FREE_TIER_SENTINEL_ORG, tier=JobTier.free)
     except DispatchJobError as exc:
-        await _set_extraction_failed(file_id, "dispatch failed")
+        await _set_extraction_failed(file_id, user.id, "dispatch failed")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail="PROCESSOR_UNREACHABLE"
         ) from exc
@@ -913,7 +917,7 @@ async def retry_free_extraction(
     try:
         await dispatch_job(detached, settings, FREE_TIER_SENTINEL_ORG, tier=JobTier.free)
     except DispatchJobError as exc:
-        await _set_extraction_failed(file_id, "dispatch failed")
+        await _set_extraction_failed(file_id, user.id, "dispatch failed")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail="PROCESSOR_UNREACHABLE"
         ) from exc
@@ -1382,6 +1386,14 @@ async def free_extraction_callback(
             row.extraction_status = "running"
             row.extraction_started_at = func.now()
         elif payload.status == "succeeded":
+            # Bind every worker-supplied artifact key to THIS file's own namespace,
+            # not just the owner prefix. Artifacts are siblings of the source object
+            # (the processor derives them by suffix-replace — see
+            # apps/processor/src/storage/s3.ts), so they must live under
+            # free/<owner>/<document>/<file>/, reconstructed here from trusted row
+            # columns. The owner check stays as the cross-user boundary; the
+            # file-prefix check adds the cross-file boundary within the owner.
+            file_prefix = f"{free_key_prefix(owner)}{row.free_document_id}/{row.id}/"
             for key in (
                 payload.fragments_key,
                 payload.metadata_key,
@@ -1391,6 +1403,7 @@ async def free_extraction_callback(
                 payload.geometry_key,
             ):
                 assert_free_key_scoped(key, owner)
+                assert_key_scoped(key, file_prefix, detail="INVALID_FREE_STORAGE_KEY")
             row.fragments_storage_key = payload.fragments_key
             row.metadata_storage_key = payload.metadata_key
             row.outline_storage_key = payload.outline_key
@@ -1471,6 +1484,11 @@ async def free_pages_rasterization_callback(
         if row is None:
             return {"ok": True}  # file gone — nothing to stamp
         assert_free_key_scoped(payload.pdf_pages_key, row.owner_user_id)
+        assert_key_scoped(
+            payload.pdf_pages_key,
+            f"{free_key_prefix(row.owner_user_id)}{row.free_document_id}/{row.id}/",
+            detail="INVALID_FREE_STORAGE_KEY",
+        )
         row.pdf_pages_storage_key = payload.pdf_pages_key
         if payload.page_count is not None and row.page_count is None:
             row.page_count = payload.page_count
@@ -1616,11 +1634,18 @@ async def _set_file_rejected(user_id: UUID, file_id: UUID, reason: str) -> None:
         )
 
 
-async def _set_extraction_failed(file_id: UUID, error: str) -> None:
+async def _set_extraction_failed(file_id: UUID, user_id: UUID, error: str) -> None:
+    # Superuser session (RLS-bypassed) — the owner_user_id predicate is the only
+    # structural guard, so it MUST be present (parity with _set_file_rejected /
+    # _claim_free_extraction_slot). Without it a stray file_id would flip an
+    # arbitrary user's row to failed.
     async with get_session_maker()() as session, session.begin():
         await session.execute(
             update(FreeProjectFile)
-            .where(FreeProjectFile.id == file_id)
+            .where(
+                FreeProjectFile.id == file_id,
+                FreeProjectFile.owner_user_id == user_id,
+            )
             .values(extraction_status="failed", extraction_error=error)
         )
 

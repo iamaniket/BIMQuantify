@@ -160,7 +160,13 @@ async def extraction_callback(
                     )
             else:
                 # Bind every worker-supplied artifact key to this file's project
-                # before persisting — see assert_key_scoped.
+                # before persisting — see assert_key_scoped. (The paid blast radius
+                # is single-project: the project prefix IS the tenant boundary.
+                # Tightening to the per-document sub-path — the free-side STOR-1
+                # analog — is deferred; unlike free, paid artifacts live in a
+                # per-document dir, not a per-file one, so it adds only same-project
+                # cross-file protection and isn't worth re-keying the callback test
+                # fixtures here.)
                 project_prefix = f"projects/{row.project_id}/"
                 for candidate in (
                     payload.fragments_key,

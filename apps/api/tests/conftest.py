@@ -210,6 +210,12 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         # here so H8 is actually exercised. Must follow the grants above.
         for stmt in audit_log_append_only_statements("public"):
             await conn.exec_driver_sql(stmt)
+        # `free_user_limits` is control-plane: production never grants it to bim_app
+        # (it is absent from grant_free_tables_to_app_role's FREE_DML_TABLES). The
+        # blanket "GRANT ... ON ALL TABLES" above over-grants it here, masking that
+        # boundary — REVOKE it so the bim_app-denied isolation test (and migration
+        # 0002's explicit REVOKE) reflect the real production grant set.
+        await conn.exec_driver_sql("REVOKE ALL ON public.free_user_limits FROM bim_app")
         for stmt in enable_rls_statements():
             await conn.exec_driver_sql(stmt)
         # Pooled free-tier tables get owner-OR-member RLS (mirrors migration 0004)

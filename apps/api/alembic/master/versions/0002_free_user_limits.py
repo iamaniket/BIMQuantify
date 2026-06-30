@@ -42,6 +42,15 @@ def upgrade() -> None:
         )
         """
     )
+    # Control-plane isolation is "bim_app has no grant on this table" — but absence
+    # of a GRANT is unreliable: `create_app_role_statements()`'s ALTER DEFAULT
+    # PRIVILEGES (run in 0001) auto-grants DML on any table created AFTER it by the
+    # same role, which would catch this table on a DB previously stamped at a
+    # pre-`free_user_limits` 0001 then forward-migrated. Assert the boundary with an
+    # explicit REVOKE rather than relying on the table having pre-existed the ALTER.
+    # No-op on a fresh DB (create_all built the table before the ALTER, so no grant
+    # exists to revoke); load-bearing on the legacy-stamp path.
+    op.execute("REVOKE ALL ON public.free_user_limits FROM bim_app")
 
 
 def downgrade() -> None:

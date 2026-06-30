@@ -16,6 +16,17 @@ The free tier has two planes:
     pattern the org-invite flow and `_claim_free_extraction_slot` already use.
 
 Both routers (`free_projects`, `free_viewer`) import from here.
+
+**HARD RULE — superuser free probes MUST carry an owner predicate.** Any query
+that runs on a SUPERUSER session over a pooled `free_*` table (i.e. NOT through
+`get_free_session` / `open_free_session`, so RLS is bypassed) MUST filter on
+`owner_user_id == <owner>` (or `user_id == <user>` for per-user tables). RLS is
+OFF on these sessions, so the hand-written predicate is the ONLY thing scoping the
+read to one user — drop it and the probe silently reads across every free user.
+`user_has_org_membership`, `free_owner_used_bytes`, `assert_assignee_is_participant`
+and the `resolve_free_limits` probe all follow this; a new probe added in this
+style without the predicate is a cross-user leak. `tests/test_scope_isolation.py`
+guards the aggregate-byte probe against regression.
 """
 
 from uuid import UUID

@@ -53,6 +53,7 @@ from bimdossier_api.models.project_file import (
 )
 from bimdossier_api.models.user import User
 from bimdossier_api.storage import StorageBackend, get_storage
+from bimdossier_api.storage.scoping import assert_free_key_scoped
 from bimdossier_api.tenancy import open_tenant_session, require_active_organization
 
 router = APIRouter(tags=["free-conversion"])
@@ -285,6 +286,12 @@ async def import_free_model(
         # project namespace. Free + tenant IFC share one bucket (s3_bucket_ifc),
         # so copy_object's single-bucket signature is sufficient. A failure here
         # rolls back every row above (nothing was committed yet).
+        #
+        # Re-assert the source key is scoped to the caller's free namespace before
+        # it crosses into the tenant bucket prefix — this is the one place a pooled
+        # free key is copied into a silo, so it goes through the storage/scoping.py
+        # choke-point (defense-in-depth over the owner-scoped RLS read of `free`).
+        assert_free_key_scoped(free.storage_key, user.id)
         await storage.copy_object(free.storage_key, new_key)
         findings_created = len(snags)
 
