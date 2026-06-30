@@ -21,10 +21,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api.alignment.similarity import DegeneratePointsError, solve_similarity
 from bimdossier_api.auth.fastapi_users import current_verified_user
-from bimdossier_api.models.free_aligned_sheet import PooledAlignedSheet
-from bimdossier_api.models.free_document import PooledDocument
-from bimdossier_api.models.free_level import PooledLevel
-from bimdossier_api.models.free_project_file import PooledProjectFile
+from bimdossier_api.models.pooled_aligned_sheet import PooledAlignedSheet
+from bimdossier_api.models.pooled_document import PooledDocument
+from bimdossier_api.models.pooled_level import PooledLevel
+from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.free_access import (
     assert_free_account_not_expired,

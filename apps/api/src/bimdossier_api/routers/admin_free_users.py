@@ -46,11 +46,11 @@ from bimdossier_api.free_limits import (
     resolve_free_limits_batch,
 )
 from bimdossier_api.free_usage import compute_free_usage
-from bimdossier_api.models.free_document import PooledDocument
-from bimdossier_api.models.free_finding import PooledFinding
-from bimdossier_api.models.free_project import PooledProject
-from bimdossier_api.models.free_project_file import PooledProjectFile
-from bimdossier_api.models.free_project_member import PooledProjectMember
+from bimdossier_api.models.pooled_document import PooledDocument
+from bimdossier_api.models.pooled_finding import PooledFinding
+from bimdossier_api.models.pooled_project import PooledProject
+from bimdossier_api.models.pooled_project_file import PooledProjectFile
+from bimdossier_api.models.pooled_project_member import PooledProjectMember
 from bimdossier_api.models.free_user_limits import FreeUserLimits
 from bimdossier_api.models.organization_member import (
     OrganizationMember,

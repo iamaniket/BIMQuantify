@@ -33,8 +33,8 @@ from bimdossier_api.config import Settings, get_settings
 from bimdossier_api.db import get_session_maker
 from bimdossier_api.free_limits import resolve_free_limits
 from bimdossier_api.idempotency import idempotency_key_header, is_idempotency_conflict
-from bimdossier_api.models.free_attachment import PooledAttachment
-from bimdossier_api.models.free_project import PooledProject
+from bimdossier_api.models.pooled_attachment import PooledAttachment
+from bimdossier_api.models.pooled_project import PooledProject
 from bimdossier_api.models.project_file import ATTACHMENT_ALLOWED_EXTENSIONS
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.free_access import (

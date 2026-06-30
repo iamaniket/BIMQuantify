@@ -34,7 +34,7 @@ from bimdossier_api.access import (
     require_project_writable,
 )
 from bimdossier_api.auth.permissions import Action, Resource, require_permission
-from bimdossier_api.models.free_level import PooledLevel
+from bimdossier_api.models.pooled_level import PooledLevel
 from bimdossier_api.models.levels import Level, LevelSource
 from bimdossier_api.pagination import set_total_count
 from bimdossier_api.routers.free_access import (

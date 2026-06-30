@@ -302,8 +302,8 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
         # pooled_documents → pooled_project_files → pooled_findings (FK CASCADE); also drop
         # the user's memberships in others' free projects. Object cleanup is
         # best-effort (the idle reaper is the backstop for any leftover prefix).
-        from bimdossier_api.models.free_project import PooledProject
-        from bimdossier_api.models.free_project_member import PooledProjectMember
+        from bimdossier_api.models.pooled_project import PooledProject
+        from bimdossier_api.models.pooled_project_member import PooledProjectMember
 
         await session.execute(
             sql_delete(PooledProject).where(PooledProject.owner_user_id == user.id)

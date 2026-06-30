@@ -134,6 +134,6 @@ class PooledDocument(PooledOwnedMixin, TimestampMixin, MasterBase):
         ),
         Index("ix_pooled_documents_owner", "owner_user_id"),
         Index("ix_pooled_documents_owner_status", "owner_user_id", "status"),
-        Index("ix_pooled_documents_free_project", "pooled_project_id"),
+        Index("ix_pooled_documents_pooled_project", "pooled_project_id"),
         {"schema": "public"},
     )

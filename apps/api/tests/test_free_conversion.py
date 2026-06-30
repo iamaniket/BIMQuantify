@@ -15,10 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from bimdossier_api.models.document import Document
 from bimdossier_api.models.finding import Finding
-from bimdossier_api.models.free_document import PooledDocument
-from bimdossier_api.models.free_finding import PooledFinding
-from bimdossier_api.models.free_project import PooledProject
-from bimdossier_api.models.free_project_file import PooledProjectFile
+from bimdossier_api.models.pooled_document import PooledDocument
+from bimdossier_api.models.pooled_finding import PooledFinding
+from bimdossier_api.models.pooled_project import PooledProject
+from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.tenancy import schema_name_for
 from tests.conftest import FakeStorage, _create_project
 

@@ -37,7 +37,7 @@ from bimdossier_api.db import MasterBase
 from bimdossier_api.models._pooled import PooledOwnedMixin, TimestampMixin, check_in
 
 if TYPE_CHECKING:
-    from bimdossier_api.models.free_finding_attachment import PooledFindingAttachment
+    from bimdossier_api.models.pooled_finding_attachment import PooledFindingAttachment
 
 # Neutral severity/status codes — kept value-compatible with FindingSeverity so
 # conversion is a direct map. Imported by the router/schemas to keep CHECK and

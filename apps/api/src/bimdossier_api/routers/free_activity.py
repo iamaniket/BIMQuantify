@@ -35,10 +35,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api.auth.fastapi_users import current_verified_user
-from bimdossier_api.models.free_document import PooledDocument
-from bimdossier_api.models.free_finding import PooledFinding
-from bimdossier_api.models.free_project_file import PooledProjectFile
-from bimdossier_api.models.free_project_member import PooledProjectMember
+from bimdossier_api.models.pooled_document import PooledDocument
+from bimdossier_api.models.pooled_finding import PooledFinding
+from bimdossier_api.models.pooled_project_file import PooledProjectFile
+from bimdossier_api.models.pooled_project_member import PooledProjectMember
 from bimdossier_api.models.project_file import ExtractionStatus
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.free_access import require_free_tier_enabled, resolve_free_role

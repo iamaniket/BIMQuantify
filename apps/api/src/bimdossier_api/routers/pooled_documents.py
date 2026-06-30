@@ -65,18 +65,18 @@ from bimdossier_api.jobs import (
     require_worker_secret,
 )
 from bimdossier_api.models.document import DocumentDiscipline, DocumentStatus
-from bimdossier_api.models.free_attachment import PooledAttachment
-from bimdossier_api.models.free_document import PooledDocument
-from bimdossier_api.models.free_finding import (
+from bimdossier_api.models.pooled_attachment import PooledAttachment
+from bimdossier_api.models.pooled_document import PooledDocument
+from bimdossier_api.models.pooled_finding import (
     POOLED_FINDING_NOTE_MAX,
     POOLED_FINDING_SEVERITIES,
     POOLED_FINDING_STATUSES,
     PooledFinding,
 )
-from bimdossier_api.models.free_finding_attachment import PooledFindingAttachment
-from bimdossier_api.models.free_level import PooledLevel
-from bimdossier_api.models.free_project_file import PooledProjectFile
-from bimdossier_api.models.free_project_member import PooledProjectMember
+from bimdossier_api.models.pooled_finding_attachment import PooledFindingAttachment
+from bimdossier_api.models.pooled_level import PooledLevel
+from bimdossier_api.models.pooled_project_file import PooledProjectFile
+from bimdossier_api.models.pooled_project_member import PooledProjectMember
 from bimdossier_api.models.job import Job, JobStatus, JobType
 from bimdossier_api.models.project_file import (
     ExtractionStatus,

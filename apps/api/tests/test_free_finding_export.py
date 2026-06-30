@@ -12,7 +12,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.conftest import FakeStorage
-from tests.test_pooled_projects import _create_project
+from tests.test_free_projects import _create_project
 from tests.test_free_viewer import _auth, _create_document, _free_token
 
 _XLSX_MAGIC = b"PK\x03\x04"  # xlsx is a zip

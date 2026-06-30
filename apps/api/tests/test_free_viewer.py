@@ -22,8 +22,8 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from bimdossier_api.config import get_settings
-from bimdossier_api.models.free_document import PooledDocument
-from bimdossier_api.models.free_project_file import PooledProjectFile
+from bimdossier_api.models.pooled_document import PooledDocument
+from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.models.user import User
 from tests.conftest import FakeStorage, make_test_user
 

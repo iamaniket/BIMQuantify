@@ -61,10 +61,10 @@ from bimdossier_api.deadlines.completeness import (
 from bimdossier_api.free_limits import resolve_free_limits
 from bimdossier_api.i18n import coerce_locale
 from bimdossier_api.models.finding import FindingStatus
-from bimdossier_api.models.free_document import PooledDocument
-from bimdossier_api.models.free_finding import PooledFinding
-from bimdossier_api.models.free_project import PooledProject
-from bimdossier_api.models.free_project_member import PooledProjectMember
+from bimdossier_api.models.pooled_document import PooledDocument
+from bimdossier_api.models.pooled_finding import PooledFinding
+from bimdossier_api.models.pooled_project import PooledProject
+from bimdossier_api.models.pooled_project_member import PooledProjectMember
 from bimdossier_api.models.project_member import ProjectRole
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.finding import (

@@ -28,7 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api.cache import get_redis_dep
 from bimdossier_api.jobs.priority import FREE_TIER_SENTINEL_ORG
-from bimdossier_api.models.free_notification import (
+from bimdossier_api.models.pooled_notification import (
     PooledNotification,
     PooledNotificationUserState,
 )

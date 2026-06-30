@@ -20,12 +20,12 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
 
-from bimdossier_api.models.free_attachment import PooledAttachment
-from bimdossier_api.models.free_document import PooledDocument
-from bimdossier_api.models.free_finding import PooledFinding
-from bimdossier_api.models.free_project import PooledProject
-from bimdossier_api.models.free_project_file import PooledProjectFile
-from bimdossier_api.models.free_project_member import PooledProjectMember
+from bimdossier_api.models.pooled_attachment import PooledAttachment
+from bimdossier_api.models.pooled_document import PooledDocument
+from bimdossier_api.models.pooled_finding import PooledFinding
+from bimdossier_api.models.pooled_project import PooledProject
+from bimdossier_api.models.pooled_project_file import PooledProjectFile
+from bimdossier_api.models.pooled_project_member import PooledProjectMember
 from bimdossier_api.schemas.admin import FreeUserUsage
 
 if TYPE_CHECKING:

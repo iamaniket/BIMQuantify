@@ -21,11 +21,11 @@ from fastapi_users.password import PasswordHelper
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bimdossier_api.models.free_document import PooledDocument
-from bimdossier_api.models.free_finding import PooledFinding
-from bimdossier_api.models.free_project import PooledProject
-from bimdossier_api.models.free_project_file import PooledProjectFile
-from bimdossier_api.models.free_project_member import PooledProjectMember
+from bimdossier_api.models.pooled_document import PooledDocument
+from bimdossier_api.models.pooled_finding import PooledFinding
+from bimdossier_api.models.pooled_project import PooledProject
+from bimdossier_api.models.pooled_project_file import PooledProjectFile
+from bimdossier_api.models.pooled_project_member import PooledProjectMember
 from bimdossier_api.models.organization import Organization, OrganizationStatus
 from bimdossier_api.models.organization_member import (
     OrganizationMember,

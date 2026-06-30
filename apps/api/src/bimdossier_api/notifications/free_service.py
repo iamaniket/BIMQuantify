@@ -21,7 +21,7 @@ from bimdossier_api.cache import get_redis
 from bimdossier_api.i18n import t
 from bimdossier_api.i18n.resolution import resolve_user_locale
 from bimdossier_api.jobs.priority import FREE_TIER_SENTINEL_ORG
-from bimdossier_api.models.free_notification import (
+from bimdossier_api.models.pooled_notification import (
     PooledNotification,
     PooledNotificationUserState,
 )

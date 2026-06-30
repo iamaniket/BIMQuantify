@@ -27,9 +27,9 @@ import pytest
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import ProgrammingError
 
-from bimdossier_api.models.free_finding import PooledFinding
-from bimdossier_api.models.free_project import PooledProject
-from bimdossier_api.models.free_project_file import PooledProjectFile
+from bimdossier_api.models.pooled_finding import PooledFinding
+from bimdossier_api.models.pooled_project import PooledProject
+from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.free_access import (
     free_owner_used_bytes,

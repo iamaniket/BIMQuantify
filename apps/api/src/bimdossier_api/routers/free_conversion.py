@@ -39,9 +39,9 @@ from bimdossier_api.config import Settings, get_settings
 from bimdossier_api.jobs import DispatchJobError, dispatch_job
 from bimdossier_api.models.document import Document, DocumentDiscipline, DocumentStatus
 from bimdossier_api.models.finding import Finding, FindingSeverity, FindingStatus
-from bimdossier_api.models.free_document import PooledDocument
-from bimdossier_api.models.free_finding import PooledFinding
-from bimdossier_api.models.free_project_file import PooledProjectFile
+from bimdossier_api.models.pooled_document import PooledDocument
+from bimdossier_api.models.pooled_finding import PooledFinding
+from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.models.job import Job, JobStatus, JobType
 from bimdossier_api.models.project_file import (
     ExtractionStatus,

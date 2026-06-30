@@ -29,8 +29,8 @@ from sqlalchemy import delete as sql_delete
 
 from bimdossier_api.background.periodic import PeriodicSweeper
 from bimdossier_api.db import get_session_maker
-from bimdossier_api.models.free_document import PooledDocument
-from bimdossier_api.models.free_project_file import PooledProjectFile
+from bimdossier_api.models.pooled_document import PooledDocument
+from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.storage import get_storage
 
 if TYPE_CHECKING:

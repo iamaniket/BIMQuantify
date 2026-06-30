@@ -30,7 +30,7 @@ from bimdossier_api.db import MasterBase
 from bimdossier_api.models._pooled import PooledOwnedMixin
 
 if TYPE_CHECKING:
-    from bimdossier_api.models.free_finding import PooledFinding
+    from bimdossier_api.models.pooled_finding import PooledFinding
 
 # Same value set as the paid FINDING_ATTACHMENT_KINDS. String + CHECK (never an
 # enum — the set can grow). photo = captured while logging; resolution_evidence =
@@ -78,7 +78,7 @@ class PooledFindingAttachment(PooledOwnedMixin, MasterBase):
             "pooled_finding_id",
             "pooled_attachment_id",
             "kind",
-            name="uq_free_finding_attachment",
+            name="uq_pooled_finding_attachment",
         ),
         Index("ix_pooled_finding_attachments_finding", "pooled_finding_id"),
         Index("ix_pooled_finding_attachments_attachment", "pooled_attachment_id"),

@@ -38,11 +38,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimdossier_api.config import get_settings
 from bimdossier_api.db import get_session_maker
 from bimdossier_api.free_limits import FreeLimits, resolve_free_limits
-from bimdossier_api.models.free_attachment import PooledAttachment
-from bimdossier_api.models.free_document import PooledDocument
-from bimdossier_api.models.free_project import PooledProject
-from bimdossier_api.models.free_project_file import PooledProjectFile
-from bimdossier_api.models.free_project_member import PooledProjectMember
+from bimdossier_api.models.pooled_attachment import PooledAttachment
+from bimdossier_api.models.pooled_document import PooledDocument
+from bimdossier_api.models.pooled_project import PooledProject
+from bimdossier_api.models.pooled_project_file import PooledProjectFile
+from bimdossier_api.models.pooled_project_member import PooledProjectMember
 from bimdossier_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
