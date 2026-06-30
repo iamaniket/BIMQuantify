@@ -8,7 +8,7 @@ quotas in `config.py`.
 
 The computation is OWNER-keyed (the free quota model) and mirrors the
 authoritative quota filters in `routers/free_documents.py` exactly: storage =
-SUM of active (`deleted_at IS NULL`) file bytes per owner; container count =
+SUM of active (`deleted_at IS NULL`) file + attachment bytes per owner; container count =
 active `free_documents` per owner. It runs ONE grouped query per metric (each
 index-backed) so a multi-id request can't fan out cartesian-style across
 `free_documents`, `free_project_files`, and `free_findings`.
@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
 
+from bimdossier_api.models.free_attachment import FreeAttachment
 from bimdossier_api.models.free_document import FreeDocument
 from bimdossier_api.models.free_finding import FreeFinding
 from bimdossier_api.models.free_project import FreeProject
@@ -93,6 +94,23 @@ async def compute_free_usage(
         storage[uid] = int(total or 0)
         file_activity[uid] = last_edit
 
+    # Attachment (photo/evidence) bytes count toward the storage footprint too
+    # (FSL-1), so the cap and the displayed usage stay consistent with the gate.
+    for uid, total in (
+        await session.execute(
+            select(
+                FreeAttachment.owner_user_id,
+                func.coalesce(func.sum(FreeAttachment.size_bytes), 0),
+            )
+            .where(
+                FreeAttachment.owner_user_id.in_(user_ids),
+                FreeAttachment.deleted_at.is_(None),
+            )
+            .group_by(FreeAttachment.owner_user_id)
+        )
+    ).all():
+        storage[uid] = storage.get(uid, 0) + int(total or 0)
+
     # Containers = active free_documents per owner + last view + last edit.
     for uid, count, last_viewed, last_edit in (
         await session.execute(
@@ -165,7 +183,7 @@ async def compute_free_usage(
             project_count=projects.get(uid, 0),
             project_cap=_cap(uid, "max_projects", settings.free_max_projects_per_user),
             document_count=documents.get(uid, 0),
-            document_cap=_cap(uid, "max_documents", settings.free_max_models_per_user),
+            document_cap=_cap(uid, "max_documents", settings.free_max_documents_per_user),
             member_cap=_cap(
                 uid, "max_members_per_project", settings.free_max_members_per_project
             ),

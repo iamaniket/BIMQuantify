@@ -119,7 +119,7 @@ class FreeUserUsage(BaseModel):
     Caps come from settings so the UI never hardcodes the quota thresholds.
     Mirrors the authoritative quota in `routers/free_documents.py`: storage sums
     active (`deleted_at IS NULL`) file bytes; `document_count` counts active
-    containers against `free_max_models_per_user`.
+    containers against `free_max_documents_per_user`.
     """
 
     storage_bytes_used: int

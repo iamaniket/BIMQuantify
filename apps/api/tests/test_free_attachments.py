@@ -11,9 +11,11 @@ a second free user can't reach another's attachment.
 import hashlib
 from uuid import uuid4
 
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from bimdossier_api.config import get_settings
 from tests.conftest import FakeStorage
 from tests.test_free_viewer import (
     _auth,
@@ -221,3 +223,52 @@ async def test_free_attachment_cross_owner_isolation(
         headers=_auth(token_b),
     )
     assert dl.status_code == 404, dl.text
+
+
+# ---------------------------------------------------------------------------
+# FSL-1 — attachment (photo) bytes count toward the aggregate 1 GB free storage
+# cap, so a free user can't bypass the ceiling with unbounded evidence, and the
+# displayed usage reflects them.
+# ---------------------------------------------------------------------------
+
+
+async def test_free_attachment_initiate_respects_storage_cap(
+    free_tier_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _ = free_tier_storage_client
+    token = await _free_token(client, session_maker, "fsl1-cap@example.com")
+    pid = await _create_project(client, token)
+
+    # Squeeze the aggregate cap below the photo size so the next attachment trips
+    # it (per-request get_settings() reloads after the cache clear).
+    monkeypatch.setenv("FREE_STORAGE_MAX_BYTES", str(len(_PHOTO_BYTES) - 1))
+    get_settings.cache_clear()
+
+    init = await client.post(
+        f"/free/projects/{pid}/attachments/initiate",
+        json={
+            "filename": "snag.jpg",
+            "size_bytes": len(_PHOTO_BYTES),
+            "content_type": "image/jpeg",
+            "content_sha256": _sha("snag.jpg"),
+        },
+        headers=_auth(token),
+    )
+    assert init.status_code == 413, init.text
+    assert init.json()["detail"] == "FREE_STORAGE_CAP_REACHED"
+
+
+async def test_free_usage_includes_attachment_bytes(
+    free_tier_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    client, fake = free_tier_storage_client
+    token = await _free_token(client, session_maker, "fsl1-usage@example.com")
+    pid = await _create_project(client, token)
+    await _upload_attachment(client, fake, token, pid)
+
+    usage = await client.get("/free/account/usage", headers=_auth(token))
+    assert usage.status_code == 200, usage.text
+    assert usage.json()["storage_bytes_used"] >= len(_PHOTO_BYTES)

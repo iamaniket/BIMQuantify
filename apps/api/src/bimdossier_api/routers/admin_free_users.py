@@ -13,7 +13,7 @@ The free tier mirrors the paid Document → ProjectFile stack: a `FreeDocument`
 (container) holds versioned `FreeProjectFile` rows. Usage mirrors the
 authoritative quota in `routers/free_documents.py` exactly — storage = SUM of
 active (`deleted_at IS NULL`) file bytes per owner; container count = active
-`free_documents` per owner (capped by `free_max_models_per_user`).
+`free_documents` per owner (capped by `free_max_documents_per_user`).
 
 The list query is deliberately TWO-STEP to avoid cartesian fan-out: page the
 org-less users first, then aggregate only that page's ids with one grouped

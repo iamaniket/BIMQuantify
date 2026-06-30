@@ -27,8 +27,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bimdossier_api.config import get_settings
 from bimdossier_api.db import get_session_maker
 from bimdossier_api.free_limits import FreeLimits, resolve_free_limits
+from bimdossier_api.models.free_attachment import FreeAttachment
 from bimdossier_api.models.free_document import FreeDocument
 from bimdossier_api.models.free_project import FreeProject
+from bimdossier_api.models.free_project_file import FreeProjectFile
 from bimdossier_api.models.free_project_member import FreeProjectMember
 from bimdossier_api.models.organization_member import (
     OrganizationMember,
@@ -250,3 +252,29 @@ async def count_free_members(session: AsyncSession, project_id: UUID) -> int:
             .where(FreeProjectMember.free_project_id == project_id)
         )
     ) or 0
+
+
+async def free_owner_used_bytes(session: AsyncSession, owner_id: UUID) -> int:
+    """Total active free storage footprint for an owner: model-file bytes +
+    attachment (photo/evidence) bytes (FSL-1). The 1 GB aggregate cap is enforced
+    against this combined sum so photos can't bypass the ceiling. Both sums are
+    owner-keyed; pass a SUPERUSER session when the caller isn't the owner (a
+    member uploading evidence) so the RLS scope doesn't hide the owner's bytes in
+    projects the caller doesn't share."""
+    file_bytes = (
+        await session.scalar(
+            select(func.coalesce(func.sum(FreeProjectFile.size_bytes), 0)).where(
+                FreeProjectFile.owner_user_id == owner_id,
+                FreeProjectFile.deleted_at.is_(None),
+            )
+        )
+    ) or 0
+    attachment_bytes = (
+        await session.scalar(
+            select(func.coalesce(func.sum(FreeAttachment.size_bytes), 0)).where(
+                FreeAttachment.owner_user_id == owner_id,
+                FreeAttachment.deleted_at.is_(None),
+            )
+        )
+    ) or 0
+    return int(file_bytes) + int(attachment_bytes)

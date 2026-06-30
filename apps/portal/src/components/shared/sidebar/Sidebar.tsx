@@ -8,7 +8,7 @@ import { TooltipProvider } from '@bimdossier/ui';
 
 import { useIsFreeUser } from '@/hooks/useIsFreeUser';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { DossierLogo } from '@/components/shared/charts/StitchLogo';
+import { DossierLogo } from '@/components/shared/charts/DossierLogo';
 import { SidebarWorkspaceNav } from '@/features/projects/SidebarWorkspaceNav';
 
 import { SidebarCollapseToggle } from './SidebarCollapseToggle';

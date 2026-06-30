@@ -48,6 +48,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api.auth.fastapi_users import current_verified_user
 from bimdossier_api.auth.manager import UserManager, get_user_manager
+from bimdossier_api.auth.ratelimit import INVITE_LIMITER
 from bimdossier_api.background.locks import lock_id_for
 from bimdossier_api.config import Settings, get_settings
 from bimdossier_api.db import get_async_session
@@ -78,6 +79,7 @@ from bimdossier_api.routers.free_access import (
     require_free_tier_enabled,
     resolve_free_role,
 )
+from bimdossier_api.routers.projects._shared import _validate_country
 from bimdossier_api.schemas.finding import FindingExport, FindingRead
 from bimdossier_api.schemas.project import (
     ProjectCreate,
@@ -126,6 +128,9 @@ async def create_free_project(
     # content. A paid user may be a member of a free project but never create one.
     # Returns the user's effective caps (override ?? env default).
     limits = await assert_can_create_free_content(user)
+    # Reject a country with no registered jurisdiction before persisting (mirrors
+    # the paid create; an unsupported country breaks a later free→paid conversion).
+    _validate_country(payload.country)
     # Serialize this user's concurrent creates so the owned-project cap can't be
     # TOCTOU-raced. Transaction-scoped (released on the free session's commit).
     await session.execute(
@@ -229,6 +234,8 @@ async def update_free_project(
     project = await _load_free_project_or_404(session, project_id, user.id)
     await assert_free_account_not_expired(user)
     data = payload.model_dump(exclude_unset=True)
+    if "country" in data:
+        _validate_country(data["country"])
     for field, value in data.items():
         if field == "phase" and value is not None:
             project.phase = value.value if hasattr(value, "value") else value
@@ -560,6 +567,7 @@ async def list_free_project_members(
     "/projects/{project_id}/members",
     response_model=ProjectMemberRead,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(INVITE_LIMITER)],
 )
 async def add_free_project_member(
     project_id: UUID,

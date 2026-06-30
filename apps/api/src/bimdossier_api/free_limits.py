@@ -112,7 +112,7 @@ def _build_limits(
         else settings.free_max_members_per_project,
         max_documents=o_documents
         if o_documents is not None
-        else settings.free_max_models_per_user,
+        else settings.free_max_documents_per_user,
         storage_max_bytes=o_storage
         if o_storage is not None
         else settings.free_storage_max_bytes,
@@ -129,7 +129,7 @@ def _build_limits(
         override_account_max_age_days=o_age,
         default_max_projects=settings.free_max_projects_per_user,
         default_max_members_per_project=settings.free_max_members_per_project,
-        default_max_documents=settings.free_max_models_per_user,
+        default_max_documents=settings.free_max_documents_per_user,
         default_storage_max_bytes=settings.free_storage_max_bytes,
         default_account_max_age_days=settings.free_account_max_age_days,
     )

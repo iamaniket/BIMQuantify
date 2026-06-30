@@ -251,7 +251,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     free_reconcile_sweeper.start()
     free_idle_sweeper = IdleFreeContainerSweeper(
         settings.free_idle_sweep_interval_minutes,
-        settings.free_model_idle_ttl_days,
+        settings.free_document_idle_ttl_days,
     )
     free_idle_sweeper.start()
     # Data-lifecycle reapers (L11): abandoned pending uploads + expired/revoked

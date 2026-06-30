@@ -75,7 +75,7 @@ def test_free_tier_disabled_skips_free_checks() -> None:
             **_SECURE_OVERRIDES,
             "free_tier_enabled": False,
             "free_extraction_concurrency_global": 100000,
-            "free_max_models_per_user": 0,
+            "free_max_documents_per_user": 0,
         }
     )
     assert validate_production_config(settings) == []
@@ -101,7 +101,7 @@ def test_free_tier_enabled_flags_zero_caps() -> None:
             **_SECURE_OVERRIDES,
             "free_tier_enabled": True,
             "free_extraction_concurrency_global": 0,
-            "free_max_models_per_user": 0,
+            "free_max_documents_per_user": 0,
             "free_upload_max_bytes": 0,
         }
     )
@@ -118,7 +118,7 @@ def test_free_tier_enabled_with_sane_caps_passes() -> None:
             **_SECURE_OVERRIDES,
             "free_tier_enabled": True,
             "free_extraction_concurrency_global": 1,
-            "free_max_models_per_user": 5,
+            "free_max_documents_per_user": 5,
             "free_upload_max_bytes": 250 * 1024 * 1024,
         }
     )

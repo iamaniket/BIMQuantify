@@ -51,7 +51,7 @@ async def test_free_account_usage_reflects_owned_content(
     assert body["project_count"] == 1
     assert body["project_cap"] == settings.free_max_projects_per_user
     assert body["document_count"] == 1
-    assert body["document_cap"] == settings.free_max_models_per_user
+    assert body["document_cap"] == settings.free_max_documents_per_user
     assert body["snag_count"] == 1
     assert body["member_of_count"] == 0
 
@@ -76,7 +76,7 @@ async def test_free_account_usage_zero_for_new_user(
     assert body["member_of_count"] == 0
     assert body["storage_bytes_cap"] == settings.free_storage_max_bytes
     assert body["project_cap"] == settings.free_max_projects_per_user
-    assert body["document_cap"] == settings.free_max_models_per_user
+    assert body["document_cap"] == settings.free_max_documents_per_user
     assert body["last_activity_at"] is None
     assert body["first_activity_at"] is None
 

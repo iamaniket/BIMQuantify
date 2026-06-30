@@ -125,7 +125,7 @@ async def test_resolver_defaults_and_override(
         assert limits.max_projects == 42
         assert limits.override_max_projects == 42
         # Untouched knobs still fall back to the default.
-        assert limits.max_documents == s.free_max_models_per_user
+        assert limits.max_documents == s.free_max_documents_per_user
 
 
 async def test_resolver_expiry_and_exempt(

@@ -7,12 +7,15 @@ completeness, org blocks zeroed), the widened 5-value snag status set, and — t
 security gate — RLS isolation between two free users.
 """
 
+from collections.abc import AsyncGenerator
+
 import pytest
-from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from httpx import ASGITransport, AsyncClient
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from bimdossier_api.config import get_settings
-from tests.conftest import FakeStorage
+from tests.conftest import FakeStorage, make_test_user
 from tests.test_free_viewer import (
     _auth,
     _create_document,
@@ -315,3 +318,108 @@ async def test_rls_isolation_free_projects(
 
     # A still sees their own project.
     assert (await client.get(f"/free/projects/{pid}", headers=_auth(token_a))).status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# FR-5 — free create/update must reject a country with no registered
+# jurisdiction (paid does via `_validate_country`); persisting "US" would break
+# a later free→paid conversion.
+# ---------------------------------------------------------------------------
+
+
+async def test_create_free_project_rejects_unsupported_country(
+    free_tier_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    client, _ = free_tier_storage_client
+    token = await _free_token(client, session_maker, "fr5-create@example.com")
+    resp = await client.post(
+        "/free/projects", json={"name": "X", "country": "US"}, headers=_auth(token)
+    )
+    assert resp.status_code == 422, resp.text
+    assert resp.json()["detail"].startswith("UNSUPPORTED_COUNTRY")
+
+
+async def test_update_free_project_rejects_unsupported_country(
+    free_tier_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    client, _ = free_tier_storage_client
+    token = await _free_token(client, session_maker, "fr5-update@example.com")
+    pid = (await _create_project(client, token, name="Valid NL"))["id"]
+    resp = await client.patch(
+        f"/free/projects/{pid}", json={"country": "US"}, headers=_auth(token)
+    )
+    assert resp.status_code == 422, resp.text
+    assert resp.json()["detail"].startswith("UNSUPPORTED_COUNTRY")
+
+
+# ---------------------------------------------------------------------------
+# FR-14 — the free member-invite endpoint emails an activation link for a new
+# invitee, so it MUST share the per-user INVITE_LIMITER budget (mail-bomb
+# defense), exactly like the paid org-invite. The second call past the squeezed
+# budget trips 429.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+async def free_limited_client(
+    engine: AsyncEngine,
+    session_maker: async_sessionmaker[AsyncSession],
+    redis_client: Redis,
+    monkeypatch: pytest.MonkeyPatch,
+) -> AsyncGenerator[AsyncClient, None]:
+    """FREE_TIER_ENABLED with rate limiting ACTIVE (limiters NOT overridden) —
+    mirrors `limited_fake_storage_client` but mounts the free surface."""
+    from fastapi_limiter import FastAPILimiter
+
+    from bimdossier_api import db as db_module
+    from bimdossier_api.cache import client as cache_module
+    from bimdossier_api.main import create_app
+    from bimdossier_api.storage import get_storage
+
+    db_module._engine = engine
+    db_module._session_maker = session_maker
+    cache_module._redis = redis_client
+
+    monkeypatch.setenv("FREE_TIER_ENABLED", "true")
+    get_settings.cache_clear()
+    await FastAPILimiter.init(redis_client)
+    try:
+        app = create_app()
+        app.dependency_overrides[get_storage] = lambda: FakeStorage()
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            yield ac
+    finally:
+        await FastAPILimiter.close()
+        monkeypatch.delenv("FREE_TIER_ENABLED", raising=False)
+        get_settings.cache_clear()
+
+
+async def test_free_invite_member_enforces_rate_limit(
+    free_limited_client: AsyncClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from bimdossier_api.auth.ratelimit import INVITE_LIMITER
+
+    # Squeeze the shared "org_invite" budget to one call so the second invite trips.
+    monkeypatch.setattr(INVITE_LIMITER, "times", 1)
+    client = free_limited_client
+    token = await _free_token(client, session_maker, "fr14-owner@example.com")
+    pid = (await _create_project(client, token, name="RL"))["id"]
+    # Pre-create the invitees so the handler takes the existing-user path (no
+    # activation email); the limiter runs BEFORE the handler so it still counts.
+    await make_test_user(session_maker, email="fr14-a@example.com", is_verified=True)
+    await make_test_user(session_maker, email="fr14-b@example.com", is_verified=True)
+    url = f"/free/projects/{pid}/members"
+
+    first = await client.post(
+        url, json={"email": "fr14-a@example.com", "role": "viewer"}, headers=_auth(token)
+    )
+    second = await client.post(
+        url, json={"email": "fr14-b@example.com", "role": "viewer"}, headers=_auth(token)
+    )
+    assert first.status_code == 201, first.text
+    assert second.status_code == 429

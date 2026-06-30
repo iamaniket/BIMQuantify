@@ -22,12 +22,16 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
+from sqlalchemy import text as sql_text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api.auth.fastapi_users import current_verified_user
 from bimdossier_api.auth.ratelimit import FREE_UPLOAD_INITIATE_LIMITER
+from bimdossier_api.background.locks import lock_id_for
 from bimdossier_api.config import Settings, get_settings
+from bimdossier_api.db import get_session_maker
+from bimdossier_api.free_limits import resolve_free_limits
 from bimdossier_api.idempotency import idempotency_key_header, is_idempotency_conflict
 from bimdossier_api.models.free_attachment import FreeAttachment
 from bimdossier_api.models.free_project import FreeProject
@@ -35,6 +39,7 @@ from bimdossier_api.models.project_file import ATTACHMENT_ALLOWED_EXTENSIONS
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.free_access import (
     assert_free_account_not_expired,
+    free_owner_used_bytes,
     require_free_tier_enabled,
     require_free_write_role,
     resolve_free_role,
@@ -143,6 +148,31 @@ async def initiate_free_attachment_upload(
                 storage_key=prior.storage_key,
                 expires_in=storage.presign_ttl,
             )
+
+    # FSL-1: photos count toward the same aggregate 1 GB ceiling as model files, so
+    # a free user can't bypass the cap with unbounded evidence. Serialize this
+    # owner's concurrent initiates (transaction-scoped advisory lock, shared key
+    # with the model-upload path), then read the owner's effective cap + total
+    # bytes on a SUPERUSER probe — the override table has no bim_app grant, and a
+    # MEMBER uploader's RLS session can't see the owner's bytes in projects they
+    # don't share.
+    await session.execute(
+        sql_text("SELECT pg_advisory_xact_lock(:k)"),
+        {"k": lock_id_for(f"free_upload:{owner_id}")},
+    )
+    async with get_session_maker()() as probe, probe.begin():
+        owner = await probe.get(User, owner_id)
+        cap = (
+            (await resolve_free_limits(owner, probe)).storage_max_bytes
+            if owner is not None
+            else settings.free_storage_max_bytes
+        )
+        used_bytes = await free_owner_used_bytes(probe, owner_id)
+    if used_bytes + payload.size_bytes > cap:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="FREE_STORAGE_CAP_REACHED",
+        )
 
     attachment_id = uuid4()
     storage_key = f"{free_key_prefix(owner_id)}attachments/{attachment_id}/source{ext}"

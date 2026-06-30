@@ -92,6 +92,7 @@ from bimdossier_api.routers.free_access import (
     assert_can_create_free_content,
     assert_free_account_not_expired,
     assert_free_project_owned,
+    free_owner_used_bytes,
     require_free_tier_enabled,
     require_free_write_role,
     resolve_free_document_role,
@@ -655,16 +656,10 @@ async def initiate_free_file_upload(
             detail="FREE_UPLOAD_TOO_LARGE",
         )
 
-    # Per-user aggregate storage cap (the 1 GB ceiling): sum the OWNER's own file
-    # bytes across all versions (members can't upload, so it's owner-only).
-    used_bytes = (
-        await session.scalar(
-            select(func.coalesce(func.sum(FreeProjectFile.size_bytes), 0)).where(
-                FreeProjectFile.owner_user_id == user.id,
-                FreeProjectFile.deleted_at.is_(None),
-            )
-        )
-    ) or 0
+    # Per-user aggregate storage cap (the 1 GB ceiling): the OWNER's model-file
+    # bytes PLUS attachment (photo) bytes (FSL-1) — uploads are owner-only here, so
+    # the owner's RLS session sees all of their own bytes.
+    used_bytes = await free_owner_used_bytes(session, user.id)
     if used_bytes + payload.size_bytes > limits.storage_max_bytes:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
