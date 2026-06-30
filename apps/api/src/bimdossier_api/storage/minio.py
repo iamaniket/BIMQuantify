@@ -32,7 +32,13 @@ class StorageBackend(Protocol):
     ) -> str: ...
 
     async def presigned_get_url(
-        self, key: str, filename: str, *, disposition: str = "attachment", bucket: str | None = None
+        self,
+        key: str,
+        filename: str,
+        *,
+        disposition: str = "attachment",
+        response_content_type: str | None = None,
+        bucket: str | None = None,
     ) -> str: ...
 
     async def put_object(
@@ -163,18 +169,29 @@ class S3Storage:
         return url
 
     async def presigned_get_url(
-        self, key: str, filename: str, *, disposition: str = "attachment", bucket: str | None = None
+        self,
+        key: str,
+        filename: str,
+        *,
+        disposition: str = "attachment",
+        response_content_type: str | None = None,
+        bucket: str | None = None,
     ) -> str:
         client = await self._get_presign_client()
+        params: dict[str, str] = {
+            "Bucket": self._resolve_bucket(bucket),
+            "Key": key,
+            "ResponseContentDisposition": safe_content_disposition(
+                filename, disposition=disposition
+            ),
+        }
+        # When set, overrides the stored (caller-controlled) object Content-Type in
+        # the response — the stored-XSS choke-point for attachment downloads.
+        if response_content_type is not None:
+            params["ResponseContentType"] = response_content_type
         url: str = await client.generate_presigned_url(
             "get_object",
-            Params={
-                "Bucket": self._resolve_bucket(bucket),
-                "Key": key,
-                "ResponseContentDisposition": safe_content_disposition(
-                    filename, disposition=disposition
-                ),
-            },
+            Params=params,
             ExpiresIn=self._ttl,
         )
         return url

@@ -2,6 +2,8 @@ export { AuthShell } from './AuthShell.js';
 export type { AuthShellProps } from './AuthShell.js';
 export { BrandMark } from './BrandMark.js';
 export type { BrandMarkProps, BrandMarkVariant } from './BrandMark.js';
+export { BrandMarkArt } from './BrandMarkArt.js';
+export type { BrandMarkArtProps, BrandMarkArtVariant } from './BrandMarkArt.js';
 export { HeroGrid } from './HeroGrid.js';
 export type { HeroGridProps } from './HeroGrid.js';
 export { KpiStrip } from './KpiStrip.js';

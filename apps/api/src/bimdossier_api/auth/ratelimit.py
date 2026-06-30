@@ -155,3 +155,10 @@ FREE_UPLOAD_INITIATE_LIMITER = ResilientRateLimiter(
     seconds=3600,
     identifier=make_identifier("free_upload_initiate"),
 )
+# Per-user write budget on free finding (snag) create + update — the only otherwise
+# unbounded write on the shared public heap.
+FREE_FINDING_WRITE_LIMITER = ResilientRateLimiter(
+    times=_settings.rate_limit_free_finding_write_per_hour,
+    seconds=3600,
+    identifier=make_identifier("free_finding_write"),
+)

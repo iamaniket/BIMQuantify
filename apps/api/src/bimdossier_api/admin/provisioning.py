@@ -32,6 +32,7 @@ from bimdossier_api.admin.storage import wipe_org_storage
 from bimdossier_api.background.locks import advisory_lock
 from bimdossier_api.config import get_settings
 from bimdossier_api.db import get_admin_engine, get_session_maker
+from bimdossier_api.entitlements import PLAN_PAID
 from bimdossier_api.models.organization import Organization, OrganizationStatus
 from bimdossier_api.storage import StorageBackend, get_storage
 from bimdossier_api.models.organization_member import (
@@ -111,6 +112,7 @@ async def provision_organization(
     admin_full_name: str | None,
     seat_limit: int | None = None,
     active_storage_limit_gb: int | None = None,
+    plan: str = PLAN_PAID,
     requester: User,
     request: Request | None = None,
 ) -> ProvisionResult:
@@ -147,6 +149,10 @@ async def provision_organization(
                 status=OrganizationStatus.provisioning,
                 seat_limit=seat_limit,
                 active_storage_limit_gb=active_storage_limit_gb,
+                # Entitlement axis: written explicitly (not just the column default)
+                # so `Organization.plan` is the authoritative tier source for
+                # resolve_plan / resolve_user_plan, ready for future non-default tiers.
+                plan=plan,
             )
             s.add(org)
         completed.add("master_row")

@@ -157,6 +157,7 @@
     "connect": "Contact",
     "youtube": "YouTube",
     "linkedin": "LinkedIn",
+    "founderLinkedin": "{name} op LinkedIn",
     "email": "Mail ons"
   },
   "blog": {
@@ -183,6 +184,11 @@
     "emailDescription": "Liever e-mailen? Neem contact op en we reageren zo snel mogelijk.",
     "emailButton": "Mail ons",
     "noBookingUrl": "Boekingslink volgt binnenkort. Neem in de tussentijd gerust contact op via e-mail.",
+    "founder": {
+      "lead": "BimDossier wordt gebouwd en beheerd door {name}.",
+      "reach": "Bereik me direct:",
+      "linkedin": "Connect op LinkedIn"
+    },
     "metadata": {
       "title": "BimDossier · Verkoop contacteren",
       "description": "Boek een demo of neem contact op met het BimDossier-team om prijzen en abonnementen te bespreken."
@@ -254,8 +260,8 @@
         "body": "BimDossier is geen erkend Wkb-instrument en vervangt er ook geen. Het draait uw dossier en werkt naast elke kwaliteitsborger en elk instrument dat u al gebruikt."
       },
       "team": {
-        "title": "Een Nederlands team, bereikbaar",
-        "body": "Gebouwd in Nederland door het team achter BimDossier. U heeft direct contact met ons. Geen ticketwachtrij."
+        "title": "Door de maker, direct bereikbaar",
+        "body": "BimDossier is gemaakt voor Nederlandse aannemers en wordt door de oprichter zelf gebouwd. U bereikt de persoon die het bouwt direct. Geen ticketwachtrij."
       }
     },
     "dpaLink": "Lees onze verwerkersovereenkomst",

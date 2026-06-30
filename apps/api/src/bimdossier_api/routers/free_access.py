@@ -37,9 +37,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api.config import get_settings
 from bimdossier_api.db import get_session_maker
+from bimdossier_api.entitlements import PLAN_FREE, PLAN_PAID, resolve_plan
 from bimdossier_api.free_limits import FreeLimits, resolve_free_limits
+from bimdossier_api.models.organization import Organization
 from bimdossier_api.models.pooled_attachment import PooledAttachment
 from bimdossier_api.models.pooled_document import PooledDocument
+from bimdossier_api.models.pooled_finding import PooledFinding
 from bimdossier_api.models.pooled_project import PooledProject
 from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.models.pooled_project_member import PooledProjectMember
@@ -117,6 +120,32 @@ async def user_has_org_membership(user_id: UUID) -> bool:
     return found is not None
 
 
+async def resolve_user_plan(user: User) -> str:
+    """The user's effective entitlement PLAN — the single server-side TIER source.
+
+    Applies ``entitlements.resolve_plan`` to the user's active org: org-less ⇒
+    ``"free"``; an org member ⇒ that org's stored ``plan`` (default ``"paid"``).
+    Superusers are platform operators, never free-plane principals, so they
+    resolve to PAID — this keeps an org-less super-admin OFF the pooled free tier
+    (POOL-SUPERADMIN-TIER-1: they can't create pooled content). Runs on a SUPERUSER
+    probe because ``organizations`` / ``organization_members`` are RLS-hidden to a
+    pooled (bim_app) session. This is the entitlement re-check; it stays orthogonal
+    to ISOLATION (which data plane ``get_scoped_session`` picks from the JWT)."""
+    if user.is_superuser:
+        return PLAN_PAID
+    async with get_session_maker()() as session, session.begin():
+        org = await session.scalar(
+            select(Organization)
+            .join(OrganizationMember, OrganizationMember.organization_id == Organization.id)
+            .where(
+                OrganizationMember.user_id == user.id,
+                OrganizationMember.status != OrganizationMemberStatus.removed,
+            )
+            .limit(1)
+        )
+    return resolve_plan(org)
+
+
 async def user_has_pooled_participation(
     session: AsyncSession, user_id: UUID
 ) -> bool:
@@ -154,18 +183,22 @@ async def assert_can_create_free_content(user: User) -> FreeLimits:
     The resolved `FreeLimits` is returned so the caller can enforce the numeric
     caps (projects / containers / storage) without re-reading the override row.
 
-    NOTE (accepted residual race): the org-membership probe runs on its own
-    superuser session because organization_members is RLS-hidden in the free
-    session (no org GUC). A user added to an org in the narrow window between this
-    check and the caller's insert could create one free project they shouldn't.
-    This is a benign abuse-resistance gap (no cross-tenant exposure, bounded to a
-    single row), not closable without cross-cutting locks, so it is left as-is.
+    Gates on the ENTITLEMENT (`resolve_user_plan(user) == PLAN_FREE`) rather than
+    raw org-presence, so the single tier source decides — and an org-less SUPERUSER
+    (resolved to PAID) is kept off the free create path (POOL-SUPERADMIN-TIER-1).
+
+    NOTE (accepted residual race): the plan probe runs on its own superuser session
+    because organizations / organization_members are RLS-hidden in the free session
+    (no org GUC). A user added to an org in the narrow window between this check and
+    the caller's insert could create one free project they shouldn't. This is a
+    benign abuse-resistance gap (no cross-tenant exposure, bounded to a single row),
+    not closable without cross-cutting locks, so it is left as-is.
     """
-    if await user_has_org_membership(user.id):
+    if await resolve_user_plan(user) != PLAN_FREE:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="FREE_CREATE_FORBIDDEN"
         )
-    # User is org-less (a free account) here, so the trial applies directly.
+    # Caller is on the free plan here, so the trial applies directly.
     limits = await resolve_free_limits(user)
     if limits.is_expired:
         raise HTTPException(
@@ -178,9 +211,10 @@ async def assert_free_account_not_expired(user: User) -> None:
     """403 FREE_ACCOUNT_EXPIRED once the acting FREE account's trial window has
     elapsed — the gate that makes an expired free account READ-ONLY on the
     write/edit paths (snags, container edits, member invites, …). Reads never call
-    this. A no-op for org-bearing (paid) users — they are never on the free trial
-    — and for admin-exempted / extended accounts (their `is_expired` is False)."""
-    if await user_has_org_membership(user.id):
+    this. A no-op for non-free principals (paid users + superusers are never on the
+    free trial) — keyed off the entitlement `resolve_user_plan` — and for
+    admin-exempted / extended accounts (their `is_expired` is False)."""
+    if await resolve_user_plan(user) != PLAN_FREE:
         return
     limits = await resolve_free_limits(user)
     if limits.is_expired:
@@ -299,3 +333,20 @@ async def pooled_owner_used_bytes(session: AsyncSession, owner_id: UUID) -> int:
         )
     ) or 0
     return int(file_bytes) + int(attachment_bytes)
+
+
+async def pooled_owner_finding_count(session: AsyncSession, owner_id: UUID) -> int:
+    """Total findings (snags) owned by `owner_id` across all their pooled projects.
+
+    Owner-keyed like `pooled_owner_used_bytes` — a member may file a snag against the
+    owner's project, so the count is keyed on the project OWNER (`owner_user_id`), and
+    a SUPERUSER session MUST be passed when the caller isn't the owner: a member's RLS
+    scope would hide the owner's snags in projects the member doesn't share, under-
+    counting the cap (H4: every superuser pooled probe carries an owner predicate)."""
+    return (
+        await session.scalar(
+            select(func.count())
+            .select_from(PooledFinding)
+            .where(PooledFinding.owner_user_id == owner_id)
+        )
+    ) or 0

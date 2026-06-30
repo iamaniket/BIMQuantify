@@ -20,6 +20,7 @@ type NavItem = { label: string; href: string; activeMatch?: string; external?: b
  */
 export function MarketingHeader(): JSX.Element {
   const t = useTranslations('header');
+  const tBrand = useTranslations('shared.brand');
   const locale = useLocale();
   const pathname = usePathname();
 
@@ -34,8 +35,13 @@ export function MarketingHeader(): JSX.Element {
     <header className="sticky top-0 z-40 border-b border-border bg-background">
       <div className="mx-auto flex w-full max-w-8xl items-center justify-between gap-4 px-6 py-3">
         <Link href="/" className="flex items-center gap-2 text-primary">
-          <BrandMark size={31} />
-          <span className="text-title2 font-semibold">{t('brand')}</span>
+          <BrandMark size={40} />
+          <span className="flex flex-col leading-tight">
+            <span className="text-title2 font-semibold">{t('brand')}</span>
+            <span className="hidden text-body3 font-medium text-foreground-tertiary sm:block">
+              {tBrand('strapline')}
+            </span>
+          </span>
         </Link>
 
         <nav className="hidden items-center gap-6 md:flex">

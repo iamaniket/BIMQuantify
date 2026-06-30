@@ -157,6 +157,7 @@
     "connect": "Connect",
     "youtube": "YouTube",
     "linkedin": "LinkedIn",
+    "founderLinkedin": "{name} on LinkedIn",
     "email": "Email us"
   },
   "blog": {
@@ -183,6 +184,11 @@
     "emailDescription": "Prefer email? Reach out and we'll get back to you as soon as we can.",
     "emailButton": "Email us",
     "noBookingUrl": "Booking link coming soon. For now, just reach out by email.",
+    "founder": {
+      "lead": "BimDossier is built and run by {name}.",
+      "reach": "Reach me directly:",
+      "linkedin": "Connect on LinkedIn"
+    },
     "metadata": {
       "title": "BimDossier · Contact sales",
       "description": "Book a demo or get in touch with the BimDossier team to discuss pricing and plans."
@@ -254,8 +260,8 @@
         "body": "BimDossier is not an approved Wkb instrument and doesn't replace one. It runs your dossier and works alongside any kwaliteitsborger and instrument you already use."
       },
       "team": {
-        "title": "A Dutch team, reachable",
-        "body": "Built in the Netherlands by the team behind BimDossier. You reach us directly. No ticket queue."
+        "title": "Founder-led, and reachable",
+        "body": "BimDossier is built for Dutch contractors and run by its founder. You reach the person who builds it directly. No ticket queue."
       }
     },
     "dpaLink": "Read our DPA",

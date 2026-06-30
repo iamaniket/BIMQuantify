@@ -2,14 +2,13 @@ import type { CSSProperties, JSX } from 'react';
 
 import { cn } from '@bimdossier/ui';
 
+import { BrandMarkArt } from './BrandMarkArt.js';
+
 /**
- * The logo variants. The art lives in `assets/logos/` (the single source of truth)
- * and is copied into each app's `public/brand/` by `scripts/sync-brand-assets.mjs`.
- *
- * NOTE: any app rendering this shared component must run the brand-sync hook so
- * `/brand/brand-<variant>.png` resolves. Today only web (`:3000`) and portal
- * (`:3001`) consume it; both run it on `predev`/`prebuild`. Mobile has its own
- * `<BrandMark>` that `require()`s the bundled copies instead.
+ * The logo variants. Picks the colour treatment for the surface the mark sits
+ * on. The art is a detailed inline SVG (see `BrandMarkArt`) — resolution
+ * independent, so it stays crisp at every size and pixel density. No
+ * `/brand/*.png` fetch is involved anymore.
  */
 export type BrandMarkVariant = 'primary' | 'white';
 
@@ -31,9 +30,8 @@ export interface BrandMarkProps {
 }
 
 /**
- * The BimDossier brand logo — the flat "A-house" mark, rendered at `size`.
- * One image for every surface; the `variant` picks the colour for the
- * background it sits on. Served as a real file from `/brand/` (never inlined).
+ * The BimDossier brand logo, rendered at `size`. One mark for every surface;
+ * the `variant` picks the colour for the background it sits on.
  */
 export function BrandMark({
   size = 32,
@@ -42,25 +40,15 @@ export function BrandMark({
   variant = 'primary',
   plate = false,
 }: BrandMarkProps): JSX.Element {
-  const mark = (
-    <span
-      aria-hidden
-      className={cn('inline-block', plate ? undefined : className)}
-      style={{
-        width: size,
-        height: size,
-        backgroundImage: `url(/brand/brand-${variant}.png)`,
-        backgroundSize: 'contain',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        flexShrink: 0,
-        ...(plate ? undefined : style),
-      }}
-    />
-  );
-
   if (!plate) {
-    return mark;
+    return (
+      <BrandMarkArt
+        size={size}
+        variant={variant}
+        className={className}
+        style={style}
+      />
+    );
   }
 
   return (
@@ -77,7 +65,7 @@ export function BrandMark({
         ...style,
       }}
     >
-      {mark}
+      <BrandMarkArt size={size} variant={variant} />
     </span>
   );
 }

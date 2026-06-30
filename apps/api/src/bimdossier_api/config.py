@@ -307,6 +307,13 @@ class Settings(BaseSettings):
     free_max_members_per_project: int = Field(
         default=3, alias="FREE_MAX_MEMBERS_PER_PROJECT"
     )
+    # Per-user FINDINGS (snags) cap — a coarse backstop on the only otherwise
+    # unbounded write on the shared public heap (findings carry no storage bytes,
+    # so they escape the aggregate byte cap). GLOBAL env cap (like
+    # `free_upload_max_bytes`), keyed on the project OWNER. Enforced at snag-create.
+    free_max_findings_per_user: int = Field(
+        default=200, alias="FREE_MAX_FINDINGS_PER_USER"
+    )
     # Per-user AGGREGATE storage cap (the 1 GB ceiling) — the binding constraint
     # on a free user's footprint. Enforced at upload-initiate against the sum of
     # the owner's own model bytes (members can't upload, so it is owner-only).
@@ -325,6 +332,11 @@ class Settings(BaseSettings):
     # Per-user/hour presign churn on the free upload-initiate endpoint.
     rate_limit_free_upload_initiate_per_hour: int = Field(
         default=30, alias="RATE_LIMIT_FREE_UPLOAD_INITIATE_PER_HOUR"
+    )
+    # Per-user/hour write budget on free finding (snag) create + update — bounds
+    # churn on the shared public heap alongside the FREE_MAX_FINDINGS_PER_USER cap.
+    rate_limit_free_finding_write_per_hour: int = Field(
+        default=120, alias="RATE_LIMIT_FREE_FINDING_WRITE_PER_HOUR"
     )
     # Max concurrent in-flight free extractions for a single user (queued+running).
     pooled_extraction_concurrency_per_user: int = Field(

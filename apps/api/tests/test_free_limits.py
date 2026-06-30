@@ -13,7 +13,7 @@ free/admin tests use), so we can stamp `created_at` to simulate an aged trial.
 """
 
 from datetime import UTC, datetime, timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi_users.password import PasswordHelper
@@ -28,9 +28,11 @@ from bimdossier_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
 )
+from bimdossier_api.models.pooled_project_member import PooledProjectMember
 from bimdossier_api.models.user import User
 from bimdossier_api.tenancy import schema_name_for
 from tests.conftest import FakeStorage
+from tests.test_pooled_viewer import _create_document
 
 PASSWORD = "correct-horse-battery"
 
@@ -95,6 +97,16 @@ async def _add_org(session: AsyncSession, user: User) -> None:
 
 async def _create_project(client: AsyncClient, token: str, name: str = "House") -> object:
     return await client.post("/pooled/projects", json={"name": name}, headers=_auth(token))
+
+
+async def _create_finding(
+    client: AsyncClient, token: str, document_id: str, *, title: str = "Snag", severity: str = "low"
+) -> object:
+    return await client.post(
+        f"/pooled/documents/{document_id}/findings",
+        json={"title": title, "severity": severity},
+        headers=_auth(token),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -341,6 +353,85 @@ async def test_patch_limits_validation_and_org_guard(
         headers=_auth(admin_token),
     )
     assert not_free.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Findings cap (POOL-FIND-CAP-2) — the only pooled write with no storage bytes,
+# bounded by its own per-owner count cap + a write rate limiter.
+# ---------------------------------------------------------------------------
+
+
+async def test_pooled_finding_cap_respected(
+    free_tier_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _ = free_tier_storage_client
+    async with session_maker() as session:
+        await _make_user(session, "findcap@example.com")
+    token = await _login(client, "findcap@example.com")
+    pid = (await _create_project(client, token, "Findings")).json()["id"]  # type: ignore[attr-defined]
+    did = await _create_document(client, token, pid)
+
+    monkeypatch.setenv("FREE_MAX_FINDINGS_PER_USER", "2")
+    get_settings.cache_clear()
+    try:
+        for i in range(2):
+            r = await _create_finding(client, token, did, title=f"f{i}")
+            assert r.status_code == 201, r.text  # type: ignore[attr-defined]
+        blocked = await _create_finding(client, token, did, title="overflow")
+        assert blocked.status_code == 403  # type: ignore[attr-defined]
+        assert blocked.json()["detail"] == "FREE_FINDING_CAP_REACHED"  # type: ignore[attr-defined]
+    finally:
+        monkeypatch.delenv("FREE_MAX_FINDINGS_PER_USER", raising=False)
+        get_settings.cache_clear()
+
+
+async def test_pooled_finding_cap_counts_owner_wide_for_a_member(
+    free_tier_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A member filing a snag counts against the project OWNER's cap, including the
+    owner's findings in projects the member can't see — the count runs on a SUPERUSER
+    probe (owner-wide), not the member's RLS-scoped view (the undercount regression)."""
+    client, _ = free_tier_storage_client
+    async with session_maker() as session:
+        await _make_user(session, "owner-wide@example.com")
+        member = await _make_user(session, "member-wide@example.com")
+    owner_token = await _login(client, "owner-wide@example.com")
+    member_token = await _login(client, "member-wide@example.com")
+
+    pid_a = (await _create_project(client, owner_token, "A")).json()["id"]  # type: ignore[attr-defined]
+    pid_b = (await _create_project(client, owner_token, "B")).json()["id"]  # type: ignore[attr-defined]
+    did_a = await _create_document(client, owner_token, pid_a)
+    did_b = await _create_document(client, owner_token, pid_b)
+
+    monkeypatch.setenv("FREE_MAX_FINDINGS_PER_USER", "2")
+    get_settings.cache_clear()
+    try:
+        # Owner fills the cap entirely in project A (member is NOT in A).
+        for i in range(2):
+            r = await _create_finding(client, owner_token, did_a, title=f"a{i}")
+            assert r.status_code == 201, r.text  # type: ignore[attr-defined]
+
+        # Add the member to project B as an editor (may file snags).
+        async with session_maker() as session:
+            session.add(
+                PooledProjectMember(
+                    pooled_project_id=UUID(pid_b), user_id=member.id, role="editor"
+                )
+            )
+            await session.commit()
+
+        # The member's create in B is blocked: the owner is already at cap, even
+        # though the member's RLS scope can't see project A's snags.
+        blocked = await _create_finding(client, member_token, did_b, title="by-member")
+        assert blocked.status_code == 403, blocked.text  # type: ignore[attr-defined]
+        assert blocked.json()["detail"] == "FREE_FINDING_CAP_REACHED"  # type: ignore[attr-defined]
+    finally:
+        monkeypatch.delenv("FREE_MAX_FINDINGS_PER_USER", raising=False)
+        get_settings.cache_clear()
 
 
 # ---------------------------------------------------------------------------

@@ -299,6 +299,7 @@ nl_messages: Catalog = {
     "errors.FREE_CREATE_FORBIDDEN": "Accounts die bij een werkruimte horen, kunnen geen gratis projecten aanmaken.",
     "errors.FREE_STORAGE_CAP_REACHED": "Je hebt de gratis opslaglimiet bereikt. Verwijder een bestand of foto, of upgrade voor meer ruimte.",
     "errors.FREE_MEMBER_CAP_REACHED": "Dit gratis project heeft al het maximale aantal leden.",
+    "errors.FREE_FINDING_CAP_REACHED": "Je hebt de limiet voor gratis bevindingen bereikt. Los een bevinding op of verwijder er een, of upgrade om er meer toe te voegen.",
     "errors.FREE_ACCOUNT_EXPIRED": "Je gratis proefperiode is afgelopen. Je projecten zijn alleen-lezen — upgrade om te blijven aanmaken en bewerken.",
     "errors.FREE_FORBIDDEN": "Je hebt geen toestemming om dit te doen.",
     "errors.FREE_MEMBER_NOT_FOUND": "Dat lid kon niet worden gevonden.",

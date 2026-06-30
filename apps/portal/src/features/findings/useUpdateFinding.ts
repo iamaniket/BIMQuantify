@@ -35,6 +35,10 @@ export function useUpdateFinding(projectId: string): UseMutationResult<Finding, 
           ...(input.deadline_date !== undefined
             ? { deadline_date: input.deadline_date }
             : {}),
+          ...(input.photo_ids !== undefined ? { photo_ids: input.photo_ids } : {}),
+          ...(input.resolution_evidence_ids !== undefined
+            ? { resolution_evidence_ids: input.resolution_evidence_ids }
+            : {}),
         });
       }
       return updateFinding(accessToken, projectId, findingId, input);

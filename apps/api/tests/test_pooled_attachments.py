@@ -206,6 +206,50 @@ async def test_free_finding_create_with_unknown_photo_id_422(
     assert resp.json()["detail"] == "FREE_ATTACHMENT_NOT_FOUND"
 
 
+async def test_pooled_attachment_download_neutralizes_spoofed_content_type(
+    free_tier_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """POOL-XSS-1: a `.txt` initiated declaring `text/html` is served back with the
+    canonical `text/plain` and forced to `attachment` even when inline is asked —
+    so uploaded HTML can never execute inline on the shared storage origin."""
+    client, fake = free_tier_storage_client
+    token = await _free_token(client, session_maker, "free-xss@example.com")
+    pid = await _create_project(client, token)
+
+    att = await _upload_attachment(
+        client, fake, token, pid, filename="note.txt", content_type="text/html"
+    )
+    dl = await client.get(
+        f"/pooled/projects/{pid}/attachments/{att['id']}/download?disposition=inline",
+        headers=_auth(token),
+    )
+    assert dl.status_code == 200, dl.text
+    url = dl.json()["download_url"]
+    assert "content_type=text/plain" in url
+    assert "disposition=attachment" in url
+
+
+async def test_pooled_attachment_image_download_stays_inline(
+    free_tier_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """Images keep inline preview (the snag-photo gallery) with a canonical type."""
+    client, fake = free_tier_storage_client
+    token = await _free_token(client, session_maker, "free-img@example.com")
+    pid = await _create_project(client, token)
+
+    att = await _upload_attachment(client, fake, token, pid)  # snag.jpg / image/jpeg
+    dl = await client.get(
+        f"/pooled/projects/{pid}/attachments/{att['id']}/download?disposition=inline",
+        headers=_auth(token),
+    )
+    assert dl.status_code == 200, dl.text
+    url = dl.json()["download_url"]
+    assert "content_type=image/jpeg" in url
+    assert "disposition=inline" in url
+
+
 async def test_free_attachment_cross_owner_isolation(
     free_tier_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],

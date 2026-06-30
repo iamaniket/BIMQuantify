@@ -332,6 +332,7 @@ en_messages: Catalog = {
     "errors.FREE_CREATE_FORBIDDEN": "Accounts that belong to a workspace can't create free projects.",
     "errors.FREE_STORAGE_CAP_REACHED": "You've reached the free storage limit. Delete a file or photo, or upgrade for more space.",
     "errors.FREE_MEMBER_CAP_REACHED": "This free project already has the maximum number of members.",
+    "errors.FREE_FINDING_CAP_REACHED": "You've reached the free findings limit. Resolve or delete a finding, or upgrade to add more.",
     "errors.FREE_ACCOUNT_EXPIRED": "Your free trial has ended. Your projects are read-only — upgrade to keep creating and editing.",
     "errors.FREE_FORBIDDEN": "You don't have permission to do that.",
     "errors.FREE_MEMBER_NOT_FOUND": "That member could not be found.",

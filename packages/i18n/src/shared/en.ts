@@ -6,6 +6,7 @@ export const sharedEnMessages: SharedMessages = {
     // Holding/parent entity is not registered yet — show the plain product name
     // until it is. Set this to the registered entity (e.g. "BimDossier B.V.") then.
     legalEntity: 'BimDossier',
+    strapline: 'Building quality platform',
     tagline: 'The building quality platform for Dutch contractors.',
     productDescription:
       'The building quality platform for Dutch contractors. Track deadlines, manage documents, resolve findings, and file on time.',

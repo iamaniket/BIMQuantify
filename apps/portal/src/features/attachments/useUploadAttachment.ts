@@ -2,6 +2,7 @@
 
 import type { UseMutationResult } from '@tanstack/react-query';
 
+import { useIsPooledContext } from '@/hooks/useIsPooledContext';
 import { uploadAttachmentEnd2End, type AttachmentUploadProgressEvent } from '@/lib/api/attachments';
 import type { Attachment, DossierSlotValue, LinkedFileTypeValue } from '@/lib/api/schemas';
 import { useAuthMutation } from '@/lib/query/useAuthQuery';
@@ -27,6 +28,11 @@ type UploadVars = {
 export function useUploadAttachment(
   projectId: string,
 ): UseMutationResult<Attachment, Error, UploadVars> {
+  // Tier is a property of the user (org-less ⇒ pooled), not the project — mirror
+  // `useAttachmentViewUrl` and self-derive so callers (e.g. FindingPhotos in the
+  // resolve flow) never have to thread a `free` flag and can't pick the wrong
+  // (paid → 409 NO_ACTIVE_ORGANIZATION) attachment surface.
+  const { isPooled } = useIsPooledContext();
   return useAuthMutation({
     mutationFn: (accessToken, vars) => {
       const extra: {
@@ -59,6 +65,7 @@ export function useUploadAttachment(
         vars.file,
         extra,
         vars.onProgress,
+        isPooled,
       );
     },
     invalidateKeys: [attachmentsKey(projectId)],

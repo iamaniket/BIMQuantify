@@ -645,9 +645,16 @@ class FakeStorage:
         return self.last_put_url
 
     async def presigned_get_url(
-        self, key: str, filename: str, *, disposition: str = "attachment", bucket: str | None = None
+        self,
+        key: str,
+        filename: str,
+        *,
+        disposition: str = "attachment",
+        response_content_type: str | None = None,
+        bucket: str | None = None,
     ) -> str:
-        return f"http://fake-storage/{key}?download={filename}&disposition={disposition}"
+        ct = f"&content_type={response_content_type}" if response_content_type is not None else ""
+        return f"http://fake-storage/{key}?download={filename}&disposition={disposition}{ct}"
 
     async def put_object(
         self, key: str, content_type: str, data: bytes, *, bucket: str | None = None
@@ -707,6 +714,7 @@ async def fake_storage_client(
     from bimdossier_api.auth.ratelimit import (
         CAPTURE_INITIATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
+        FREE_FINDING_WRITE_LIMITER,
         FREE_UPLOAD_INITIATE_LIMITER,
         INVITE_LIMITER,
         REPORT_GEN_LIMITER,
@@ -742,6 +750,7 @@ async def fake_storage_client(
         INVITE_LIMITER,
         CAPTURE_INITIATE_LIMITER,
         FREE_UPLOAD_INITIATE_LIMITER,
+        FREE_FINDING_WRITE_LIMITER,
     ):
         app.dependency_overrides[limiter] = lambda: None
 
@@ -1098,6 +1107,7 @@ async def client(
     from bimdossier_api.auth.ratelimit import (
         CAPTURE_INITIATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
+        FREE_FINDING_WRITE_LIMITER,
         FREE_UPLOAD_INITIATE_LIMITER,
         INVITE_LIMITER,
         REPORT_GEN_LIMITER,
@@ -1131,6 +1141,7 @@ async def client(
         INVITE_LIMITER,
         CAPTURE_INITIATE_LIMITER,
         FREE_UPLOAD_INITIATE_LIMITER,
+        FREE_FINDING_WRITE_LIMITER,
     ):
         app.dependency_overrides[limiter] = lambda: None
 
@@ -1155,6 +1166,7 @@ async def free_tier_client(
     from bimdossier_api.auth.ratelimit import (
         CAPTURE_INITIATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
+        FREE_FINDING_WRITE_LIMITER,
         FREE_UPLOAD_INITIATE_LIMITER,
         INVITE_LIMITER,
         REPORT_GEN_LIMITER,
@@ -1193,6 +1205,7 @@ async def free_tier_client(
             INVITE_LIMITER,
             CAPTURE_INITIATE_LIMITER,
             FREE_UPLOAD_INITIATE_LIMITER,
+            FREE_FINDING_WRITE_LIMITER,
         ):
             app.dependency_overrides[limiter] = lambda: None
 
@@ -1217,6 +1230,7 @@ async def free_tier_storage_client(
     from bimdossier_api.auth.ratelimit import (
         CAPTURE_INITIATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
+        FREE_FINDING_WRITE_LIMITER,
         FREE_UPLOAD_INITIATE_LIMITER,
         INVITE_LIMITER,
         REPORT_GEN_LIMITER,
@@ -1258,6 +1272,7 @@ async def free_tier_storage_client(
             INVITE_LIMITER,
             CAPTURE_INITIATE_LIMITER,
             FREE_UPLOAD_INITIATE_LIMITER,
+            FREE_FINDING_WRITE_LIMITER,
         ):
             app.dependency_overrides[limiter] = lambda: None
 

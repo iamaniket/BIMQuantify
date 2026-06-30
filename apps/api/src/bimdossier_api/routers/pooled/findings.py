@@ -2,10 +2,15 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy import text as sql_text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from bimdossier_api.auth.fastapi_users import current_verified_user
+from bimdossier_api.auth.ratelimit import FREE_FINDING_WRITE_LIMITER
+from bimdossier_api.background.locks import lock_id_for
+from bimdossier_api.config import Settings, get_settings
+from bimdossier_api.db import get_session_maker
 from bimdossier_api.models.pooled_document import PooledDocument
 from bimdossier_api.models.pooled_finding import (
     POOLED_FINDING_SEVERITIES,
@@ -16,6 +21,7 @@ from bimdossier_api.models.user import User
 from bimdossier_api.routers.free_access import (
     assert_assignee_is_participant,
     assert_free_account_not_expired,
+    pooled_owner_finding_count,
     require_pooled_write_role,
     resolve_pooled_document_role,
 )
@@ -36,12 +42,14 @@ from bimdossier_api.tenancy import get_pooled_session
     "/documents/{document_id}/findings",
     response_model=FindingRead,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(FREE_FINDING_WRITE_LIMITER)],
 )
 async def create_pooled_finding(
     document_id: UUID,
     payload: PooledFindingCreate,
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_pooled_session),
+    settings: Settings = Depends(get_settings),
 ) -> FindingRead:
     if payload.severity not in POOLED_FINDING_SEVERITIES:
         raise HTTPException(
@@ -50,6 +58,22 @@ async def create_pooled_finding(
     document = await _load_accessible_document_by_id_or_404(session, document_id)
     require_pooled_write_role(await resolve_pooled_document_role(session, document, user.id))
     await assert_free_account_not_expired(user)
+    # FREE_MAX_FINDINGS_PER_USER: snags carry no storage bytes, so they escape the
+    # aggregate cap — bound them with a count cap keyed on the project OWNER.
+    # Serialize this owner's concurrent creates (txn-scoped advisory lock), then count
+    # on a SUPERUSER probe (a member's RLS session can't see the owner's snags in
+    # projects they don't share — it would undercount).
+    owner_id = document.owner_user_id
+    await session.execute(
+        sql_text("SELECT pg_advisory_xact_lock(:k)"),
+        {"k": lock_id_for(f"pooled_finding_create:{owner_id}")},
+    )
+    async with get_session_maker()() as probe, probe.begin():
+        existing = await pooled_owner_finding_count(probe, owner_id)
+    if existing >= settings.free_max_findings_per_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="FREE_FINDING_CAP_REACHED"
+        )
     if payload.assigned_to_user_id is not None:
         await assert_assignee_is_participant(
             document.pooled_project_id, payload.assigned_to_user_id
@@ -125,7 +149,11 @@ async def get_pooled_finding(
     return _pooled_finding_to_finding(snag, project_id, include_photos=True)
 
 
-@router.patch("/findings/{finding_id}", response_model=FindingRead)
+@router.patch(
+    "/findings/{finding_id}",
+    response_model=FindingRead,
+    dependencies=[Depends(FREE_FINDING_WRITE_LIMITER)],
+)
 async def update_pooled_finding(
     finding_id: UUID,
     payload: PooledFindingUpdate,

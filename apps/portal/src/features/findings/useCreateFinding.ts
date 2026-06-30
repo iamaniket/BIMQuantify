@@ -64,6 +64,7 @@ export function useCreateFinding(
           anchor_z: input.anchor_z ?? null,
           anchor_page: input.anchor_page ?? null,
           linked_element_global_id: input.linked_element_global_id ?? null,
+          photo_ids: input.photo_ids ?? null,
         });
       }
       return createFinding(accessToken, projectId, input);

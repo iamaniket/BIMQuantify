@@ -24,6 +24,9 @@ export type PooledFindingCreateInput = {
   assigned_to_user_id?: string | null;
   // ISO calendar date (YYYY-MM-DD), mirrors paid Finding.deadline_date.
   deadline_date?: string | null;
+  // Pooled attachment ids to link as evidence photos at create (the backend
+  // links them via `_attach_links_to_snag`). A present list appends.
+  photo_ids?: string[] | null;
 };
 
 export type PooledFindingUpdateInput = {
@@ -35,6 +38,9 @@ export type PooledFindingUpdateInput = {
   status?: FindingStatusValue;
   assigned_to_user_id?: string | null;
   deadline_date?: string | null;
+  // Photo / resolution-evidence links (append-only; the backend never clears).
+  photo_ids?: string[] | null;
+  resolution_evidence_ids?: string[] | null;
 };
 
 export async function listPooledFindings(

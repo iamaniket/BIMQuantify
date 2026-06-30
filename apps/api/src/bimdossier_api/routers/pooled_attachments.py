@@ -30,6 +30,7 @@ from bimdossier_api.auth.fastapi_users import current_verified_user
 from bimdossier_api.auth.ratelimit import FREE_UPLOAD_INITIATE_LIMITER
 from bimdossier_api.background.locks import lock_id_for
 from bimdossier_api.config import Settings, get_settings
+from bimdossier_api.content_disposition import resolve_attachment_download
 from bimdossier_api.db import get_session_maker
 from bimdossier_api.free_limits import resolve_free_limits
 from bimdossier_api.idempotency import idempotency_key_header, is_idempotency_conflict
@@ -265,7 +266,7 @@ async def complete_pooled_attachment_upload(
 async def download_pooled_attachment(
     project_id: UUID,
     attachment_id: UUID,
-    disposition: Annotated[Literal["attachment", "inline"], Query()] = "inline",
+    disposition: Annotated[Literal["attachment", "inline"], Query()] = "attachment",
     user: User = Depends(current_verified_user),
     session: AsyncSession = Depends(get_pooled_session),
     storage: StorageBackend = Depends(get_storage),
@@ -275,7 +276,14 @@ async def download_pooled_attachment(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="FREE_ATTACHMENT_NOT_READY"
         )
+    # Serve a canonical content-type derived from the extension (never the stored,
+    # caller-controlled type) and force `attachment` for non-inline-safe types — the
+    # stored-XSS choke-point. Images/PDF still preview inline for the photo gallery.
+    content_type, safe_disposition = resolve_attachment_download(att.original_filename, disposition)
     url = await storage.presigned_get_url(
-        att.storage_key, att.original_filename, disposition=disposition
+        att.storage_key,
+        att.original_filename,
+        disposition=safe_disposition,
+        response_content_type=content_type,
     )
     return PooledAttachmentDownloadResponse(download_url=url, expires_in=storage.presign_ttl)

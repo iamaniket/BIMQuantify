@@ -386,6 +386,34 @@ async def test_download_returns_presigned_url(
 
 
 @pytest.mark.asyncio
+async def test_download_neutralizes_spoofed_content_type(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """POOL-XSS-1 (paid mirror): a `.txt` initiated declaring `text/html` is served
+    with the canonical `text/plain` and forced to `attachment` even when inline is
+    requested, so uploaded HTML can't execute inline on the shared storage origin."""
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    att = await _initiate_att(
+        client,
+        org_user["access_token"],
+        project["id"],
+        filename="note.txt",
+        content_type="text/html",
+    )
+    await _complete_att(client, fake, org_user["access_token"], project["id"], att)
+    resp = await client.get(
+        f"/projects/{project['id']}/attachments/{att['attachment_id']}/download?disposition=inline",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    url = resp.json()["download_url"]
+    assert "content_type=text/plain" in url
+    assert "disposition=attachment" in url
+
+
+@pytest.mark.asyncio
 async def test_download_rejects_pending_attachment(
     org_user: dict[str, str],
     fake_storage_client: tuple[AsyncClient, FakeStorage],

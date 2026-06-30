@@ -24,6 +24,13 @@ export const env: Readonly<{
   NEXT_PUBLIC_SOCIAL_LINKEDIN_URL: string | undefined;
   NEXT_PUBLIC_CONTACT_EMAIL: string | undefined;
   NEXT_PUBLIC_CONTACT_BOOKING_URL: string | undefined;
+  /**
+   * The founder/owner behind the product, surfaced as a "real person you can
+   * reach" signal on the contact page and in the footer. Both must be set for
+   * the founder UI to render; either blank and it self-hides.
+   */
+  NEXT_PUBLIC_FOUNDER_NAME: string | undefined;
+  NEXT_PUBLIC_FOUNDER_LINKEDIN_URL: string | undefined;
 }> = Object.freeze({
   NEXT_PUBLIC_API_URL: process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:8000',
   NEXT_PUBLIC_PORTAL_URL: process.env['NEXT_PUBLIC_PORTAL_URL'] ?? 'http://localhost:3001',
@@ -35,4 +42,6 @@ export const env: Readonly<{
   NEXT_PUBLIC_SOCIAL_LINKEDIN_URL: orUndefined(process.env['NEXT_PUBLIC_SOCIAL_LINKEDIN_URL']),
   NEXT_PUBLIC_CONTACT_EMAIL: orUndefined(process.env['NEXT_PUBLIC_CONTACT_EMAIL']),
   NEXT_PUBLIC_CONTACT_BOOKING_URL: orUndefined(process.env['NEXT_PUBLIC_CONTACT_BOOKING_URL']),
+  NEXT_PUBLIC_FOUNDER_NAME: orUndefined(process.env['NEXT_PUBLIC_FOUNDER_NAME']),
+  NEXT_PUBLIC_FOUNDER_LINKEDIN_URL: orUndefined(process.env['NEXT_PUBLIC_FOUNDER_LINKEDIN_URL']),
 });
