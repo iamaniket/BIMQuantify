@@ -25,7 +25,7 @@ export async function listFreeProjectSnags(
   id: string,
 ): Promise<Finding[]> {
   return apiClient.get<Finding[]>(
-    `/free/projects/${id}/findings`,
+    `/pooled/projects/${id}/findings`,
     FindingListSchema,
     accessToken,
   );
@@ -42,7 +42,7 @@ export async function inviteFreeProjectMember(
   input: FreeMemberInviteInput,
 ): Promise<ProjectMember> {
   return apiClient.post<ProjectMember>(
-    `/free/projects/${id}/members`,
+    `/pooled/projects/${id}/members`,
     input,
     ProjectMemberSchema,
     accessToken,

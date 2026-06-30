@@ -19,7 +19,7 @@ import { useAuthMutation, useAuthQuery } from '@/lib/query/useAuthQuery';
 
 import { levelsKey } from './queryKeys';
 
-/** Free-aware: free projects now have their own pooled Levels (`/free/projects/
+/** Free-aware: free projects now have their own pooled Levels (`/pooled/projects/
  * {id}/levels`, identical paid schema), so both tiers fetch the real list. */
 export function useProjectLevels(projectId: string): UseQueryResult<LevelList> {
   const { isFreeUser, ready } = useIsFreeUser();

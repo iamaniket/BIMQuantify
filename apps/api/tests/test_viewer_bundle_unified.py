@@ -61,11 +61,11 @@ async def test_free_viewer_bundles_via_unified_paths(
 
     # Legacy /free routes still serve the same logic (backward compat).
     legacy_perfile = await client.get(
-        f"/free/projects/{pid}/documents/{did}/files/{fid}/viewer-bundle",
+        f"/pooled/projects/{pid}/documents/{did}/files/{fid}/viewer-bundle",
         headers=_auth(token),
     )
     assert legacy_perfile.status_code == 200, legacy_perfile.text
-    legacy_fed = await client.get(f"/free/projects/{pid}/viewer-bundle", headers=_auth(token))
+    legacy_fed = await client.get(f"/pooled/projects/{pid}/viewer-bundle", headers=_auth(token))
     assert legacy_fed.status_code == 200
     assert len(legacy_fed.json()["models"]) == 1
 

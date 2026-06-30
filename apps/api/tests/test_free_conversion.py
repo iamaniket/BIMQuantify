@@ -1,4 +1,4 @@
-"""Tests for free → paid conversion: POST /projects/{id}/import-free-model.
+"""Tests for free → paid conversion: POST /projects/{id}/import-pooled-model.
 
 Covers the HEAD-version copy + Document/ProjectFile creation + tenant extraction
 dispatch, the snag → finding mapping (v1), idempotency via the head file's
@@ -129,7 +129,7 @@ async def test_import_free_container_copies_and_maps_snags(
     )
 
     resp = await client.post(
-        f"/projects/{project['id']}/import-free-model",
+        f"/projects/{project['id']}/import-pooled-model",
         json={"pooled_document_id": str(document_id)},
         headers=_auth(token),
     )
@@ -173,14 +173,14 @@ async def test_import_free_container_is_idempotent(
     )
 
     first = await client.post(
-        f"/projects/{project['id']}/import-free-model",
+        f"/projects/{project['id']}/import-pooled-model",
         json={"pooled_document_id": str(document_id)},
         headers=_auth(token),
     )
     assert first.status_code == 200, first.text
 
     second = await client.post(
-        f"/projects/{project['id']}/import-free-model",
+        f"/projects/{project['id']}/import-pooled-model",
         json={"pooled_document_id": str(document_id)},
         headers=_auth(token),
     )
@@ -216,7 +216,7 @@ async def test_import_other_users_free_container_404(
     )
 
     resp = await client.post(
-        f"/projects/{project['id']}/import-free-model",
+        f"/projects/{project['id']}/import-pooled-model",
         json={"pooled_document_id": str(document_id)},
         headers=_auth(token),
     )
@@ -239,7 +239,7 @@ async def test_import_maps_snag_status_one_to_one(
     )
 
     resp = await client.post(
-        f"/projects/{project['id']}/import-free-model",
+        f"/projects/{project['id']}/import-pooled-model",
         json={"pooled_document_id": str(document_id)},
         headers=_auth(token),
     )
@@ -275,7 +275,7 @@ async def test_import_carries_assignee_and_deadline(
     )
 
     resp = await client.post(
-        f"/projects/{project['id']}/import-free-model",
+        f"/projects/{project['id']}/import-pooled-model",
         json={"pooled_document_id": str(document_id)},
         headers=_auth(token),
     )

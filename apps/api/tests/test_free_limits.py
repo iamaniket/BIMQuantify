@@ -6,7 +6,7 @@ Covers the new surface added alongside the pooled free tier:
     FREE_ACCOUNT_EXPIRED; reads still 200; deletes still allowed).
   * Per-user cap overrides letting a single account exceed the global cap.
   * `PATCH /admin/users/free/{id}/limits` (super-admin only) set / clear / exempt.
-  * `GET /free/account/limits` — the caller's own caps + days-left for the banner.
+  * `GET /pooled/account/limits` — the caller's own caps + days-left for the banner.
 
 Free users are created directly via the master session (the shortcut the other
 free/admin tests use), so we can stamp `created_at` to simulate an aged trial.
@@ -94,7 +94,7 @@ async def _add_org(session: AsyncSession, user: User) -> None:
 
 
 async def _create_project(client: AsyncClient, token: str, name: str = "House") -> object:
-    return await client.post("/free/projects", json={"name": name}, headers=_auth(token))
+    return await client.post("/pooled/projects", json={"name": name}, headers=_auth(token))
 
 
 # ---------------------------------------------------------------------------
@@ -175,9 +175,9 @@ async def test_expired_account_is_read_only(
         await session.commit()
 
     # Reads still work (read-only, not locked out).
-    listed = await client.get("/free/projects", headers=_auth(token))
+    listed = await client.get("/pooled/projects", headers=_auth(token))
     assert listed.status_code == 200
-    detail = await client.get(f"/free/projects/{pid}", headers=_auth(token))
+    detail = await client.get(f"/pooled/projects/{pid}", headers=_auth(token))
     assert detail.status_code == 200
 
     # Writes are blocked with the dedicated code.
@@ -186,13 +186,13 @@ async def test_expired_account_is_read_only(
     assert blocked.json()["detail"] == "FREE_ACCOUNT_EXPIRED"
 
     rename = await client.patch(
-        f"/free/projects/{pid}", json={"name": "Renamed"}, headers=_auth(token)
+        f"/pooled/projects/{pid}", json={"name": "Renamed"}, headers=_auth(token)
     )
     assert rename.status_code == 403
     assert rename.json()["detail"] == "FREE_ACCOUNT_EXPIRED"
 
     # Deletes are still allowed (cleanup is never blocked).
-    removed = await client.delete(f"/free/projects/{pid}", headers=_auth(token))
+    removed = await client.delete(f"/pooled/projects/{pid}", headers=_auth(token))
     assert removed.status_code == 204
 
 
@@ -357,7 +357,7 @@ async def test_account_limits_self_endpoint(
         await _make_user(session, "self@example.com")
     token = await _login(client, "self@example.com")
 
-    resp = await client.get("/free/account/limits", headers=_auth(token))
+    resp = await client.get("/pooled/account/limits", headers=_auth(token))
     assert resp.status_code == 200, resp.text
     body = resp.json()
     s = get_settings()

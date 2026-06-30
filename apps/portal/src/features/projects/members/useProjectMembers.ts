@@ -11,7 +11,7 @@ import { projectMembersKey } from '../queryKeys';
 
 /**
  * Free-aware: in the free workspace, members come from the pooled
- * `/free/projects/{id}/members` endpoint (owner + up to 3 invited). In org
+ * `/pooled/projects/{id}/members` endpoint (owner + up to 3 invited). In org
  * context the org-scoped paid endpoint is used. `ready` defers the fetch until
  * /auth/me resolves so the free/paid branch isn't chosen prematurely.
  */

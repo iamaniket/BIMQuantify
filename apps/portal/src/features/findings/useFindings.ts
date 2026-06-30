@@ -14,7 +14,7 @@ import { useAuthInfiniteQuery, totalFromPages } from '@/lib/query/useAuthInfinit
 import { findingsKey, projectFindingsKey } from './queryKeys';
 
 /**
- * Free-aware: the free board feed (`/free/projects/{id}/findings`) returns every
+ * Free-aware: the free board feed (`/pooled/projects/{id}/findings`) returns every
  * snag as a single un-paginated `Finding[]`, so we wrap it as one page. The
  * paid path keeps its real offset/limit pagination.
  */
@@ -66,11 +66,11 @@ export function useProjectFindings(
 /** File-scoped findings — those linked to a given file (e.g. a PDF document).
  * Shown in the viewer inspector when a PDF is open (no element to anchor to).
  * Free-aware: free snags are CONTAINER-scoped (the pooled endpoint is
- * `/free/documents/{containerId}/findings`), NOT file-scoped. In the free viewer
+ * `/pooled/documents/{containerId}/findings`), NOT file-scoped. In the free viewer
  * the container is the single-mode selection target's `modelId` (the `fileId`
  * arg is the head file — used for 3D marker scene ids, not the findings query),
  * so we resolve it from the same selection store the viewer scope reads. Without
- * this the request would hit `/free/documents/{fileId}/findings` → 404 and the
+ * this the request would hit `/pooled/documents/{fileId}/findings` → 404 and the
  * free viewer's markers never render. */
 export function useFileFindings(
   projectId: string,

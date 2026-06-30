@@ -34,15 +34,15 @@ FREE_TIER_SENTINEL_ORG = UUID(int=0)
 # Path the processor calls back to for free extractions. Threaded through the
 # job payload (the processor reads `payload.callback_path`); distinct from the
 # hardcoded tenant `/internal/jobs/callback`.
-FREE_CALLBACK_PATH = "/internal/jobs/free-callback"
+POOLED_CALLBACK_PATH = "/internal/jobs/pooled-callback"
 
 # Path the processor calls back to for free PDF page rasterization. Mirrors
-# FREE_CALLBACK_PATH for the `pdf_pages_rasterization` job: the processor's
+# POOLED_CALLBACK_PATH for the `pdf_pages_rasterization` job: the processor's
 # pages-callback honors `payload.callback_path` (falling back to the tenant
 # `/internal/jobs/pages/callback`), so a free PDF's page-image manifest lands on
 # the free-specific (pooled, RLS-bypassing) callback instead of the tenant one
 # (which would try to resolve a schema for the all-zeros sentinel org and 404).
-FREE_PAGES_CALLBACK_PATH = "/internal/jobs/free-pages-callback"
+POOLED_PAGES_CALLBACK_PATH = "/internal/jobs/pooled-pages-callback"
 
 
 class JobTier(StrEnum):

@@ -55,7 +55,7 @@ from bimdossier_api.storage.scoping import pooled_key_prefix
 from bimdossier_api.tenancy import get_pooled_session, open_pooled_session
 
 router = APIRouter(
-    prefix="/free/projects/{project_id}/attachments",
+    prefix="/pooled/projects/{project_id}/attachments",
     tags=["free-viewer"],
     dependencies=[Depends(require_free_tier_enabled)],
 )

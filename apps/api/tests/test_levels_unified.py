@@ -5,7 +5,7 @@ picks `/free/*` vs `/projects/*`):
 
 - a free (org-less) user hitting the canonical `/projects/{id}/levels` gets the
   pooled PooledLevel path, returning the SAME `LevelRead` shape as paid;
-- the legacy `/free/projects/{id}/levels` alias still works (backward compat for
+- the legacy `/pooled/projects/{id}/levels` alias still works (backward compat for
   un-migrated clients) and is byte-identical;
 - a paid user is unchanged.
 
@@ -76,14 +76,14 @@ async def test_pooled_levels_alias_still_works(
     free_tier_storage_client: tuple[AsyncClient, FakeStorage],
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
-    """The legacy /free/projects/{id}/levels alias keeps serving the same handler
+    """The legacy /pooled/projects/{id}/levels alias keeps serving the same handler
     (so un-migrated free clients don't break during the migration)."""
     client, _ = free_tier_storage_client
     token = await _free_token(client, session_maker, "lvl-alias@example.com")
     pid = await _create_project(client, token)
 
     created = await client.post(
-        f"/free/projects/{pid}/levels",
+        f"/pooled/projects/{pid}/levels",
         json={"name": "Roof", "ordering": 9},
         headers=_auth(token),
     )

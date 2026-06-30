@@ -8,10 +8,10 @@ import {
   type LevelUpdateInput,
 } from './schemas';
 
-// Free (org-less) users hit the pooled `/free/projects/...` levels surface, which
+// Free (org-less) users hit the pooled `/pooled/projects/...` levels surface, which
 // returns the IDENTICAL paid Level schema; paid hit the org endpoints.
 const base = (projectId: string, free: boolean): string =>
-  `${free ? '/free/projects' : '/projects'}/${projectId}/levels`;
+  `${free ? '/pooled/projects' : '/projects'}/${projectId}/levels`;
 
 export async function listLevels(
   accessToken: string,

@@ -11,13 +11,13 @@ import {
  * projects, containers, snags) vs. the configured caps. Powers the account
  * page's "Plan & usage" card for org-less users.
  *
- * Backed by `GET /free/account/usage` (FREE_TIER gated). Reuses the same
+ * Backed by `GET /pooled/account/usage` (FREE_TIER gated). Reuses the same
  * `FreeUserUsage` contract the super-admin Free-users table consumes, so there
  * is a single source of truth for the usage shape.
  */
 export async function getFreeUsage(accessToken: string): Promise<FreeUserUsage> {
   return apiClient.get<FreeUserUsage>(
-    '/free/account/usage',
+    '/pooled/account/usage',
     FreeUserUsageSchema,
     accessToken,
   );
@@ -26,11 +26,11 @@ export async function getFreeUsage(accessToken: string): Promise<FreeUserUsage> 
 /**
  * The calling user's own effective free caps + trial countdown
  * (`account_expires_at` / `days_remaining` / `expired`). Powers the trial banner.
- * Backed by `GET /free/account/limits` (FREE_TIER gated).
+ * Backed by `GET /pooled/account/limits` (FREE_TIER gated).
  */
 export async function getFreeLimits(accessToken: string): Promise<FreeAccountLimits> {
   return apiClient.get<FreeAccountLimits>(
-    '/free/account/limits',
+    '/pooled/account/limits',
     FreeAccountLimitsSchema,
     accessToken,
   );

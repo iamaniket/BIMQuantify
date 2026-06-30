@@ -32,7 +32,7 @@ export async function getFreeViewerBundle(
   fileId: string,
 ): Promise<ViewerBundleResponse> {
   return apiClient.get<ViewerBundleResponse>(
-    `/free/projects/${projectId}/documents/${documentId}/files/${fileId}/viewer-bundle`,
+    `/pooled/projects/${projectId}/documents/${documentId}/files/${fileId}/viewer-bundle`,
     ViewerBundleResponseSchema,
     accessToken,
   );

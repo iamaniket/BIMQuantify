@@ -26,7 +26,7 @@ async def _seed_two_snags(client: AsyncClient, token: str, owner_id: str) -> str
     did = await _create_document(client, token, pid)
 
     assigned = await client.post(
-        f"/free/documents/{did}/findings",
+        f"/pooled/documents/{did}/findings",
         json={
             "title": "Assigned beam",
             "note": "grid C3",
@@ -38,7 +38,7 @@ async def _seed_two_snags(client: AsyncClient, token: str, owner_id: str) -> str
     )
     assert assigned.status_code == 201, assigned.text
     plain = await client.post(
-        f"/free/documents/{did}/findings",
+        f"/pooled/documents/{did}/findings",
         json={"title": "Plain crack", "severity": "low"},
         headers=_auth(token),
     )
@@ -58,7 +58,7 @@ async def test_pooled_findings_export_csv(
     pid = await _seed_two_snags(client, token, owner_id)
 
     resp = await client.get(
-        f"/free/projects/{pid}/findings/export.csv", headers=_auth(token)
+        f"/pooled/projects/{pid}/findings/export.csv", headers=_auth(token)
     )
     assert resp.status_code == 200, resp.text
     assert resp.headers["content-type"].startswith("text/csv")
@@ -91,7 +91,7 @@ async def test_pooled_findings_export_xlsx(
     pid = await _seed_two_snags(client, token, created["owner_id"])
 
     resp = await client.get(
-        f"/free/projects/{pid}/findings/export.xlsx", headers=_auth(token)
+        f"/pooled/projects/{pid}/findings/export.xlsx", headers=_auth(token)
     )
     assert resp.status_code == 200, resp.text
     assert "spreadsheetml" in resp.headers["content-type"]
@@ -108,7 +108,7 @@ async def test_pooled_findings_export_json(
     pid = await _seed_two_snags(client, token, created["owner_id"])
 
     resp = await client.get(
-        f"/free/projects/{pid}/findings/export.json", headers=_auth(token)
+        f"/pooled/projects/{pid}/findings/export.json", headers=_auth(token)
     )
     assert resp.status_code == 200, resp.text
     body = resp.json()
@@ -129,6 +129,6 @@ async def test_pooled_findings_export_non_participant_404(
     stranger = await _free_token(client, session_maker, "free-export-stranger@example.com")
     for fmt in ("csv", "xlsx", "json"):
         resp = await client.get(
-            f"/free/projects/{pid}/findings/export.{fmt}", headers=_auth(stranger)
+            f"/pooled/projects/{pid}/findings/export.{fmt}", headers=_auth(stranger)
         )
         assert resp.status_code == 404, f"{fmt}: {resp.text}"

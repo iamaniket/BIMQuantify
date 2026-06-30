@@ -95,7 +95,7 @@ async def _paid_token(
 
 
 async def _create_project(client: AsyncClient, token: str, *, name: str = "House") -> str:
-    resp = await client.post("/free/projects", json={"name": name}, headers=_auth(token))
+    resp = await client.post("/pooled/projects", json={"name": name}, headers=_auth(token))
     assert resp.status_code == 201, resp.text
     return resp.json()["id"]
 
@@ -112,14 +112,14 @@ async def test_paid_user_cannot_create_free_content(
     client, _ = free_tier_storage_client
     paid, _ = await _paid_token(client, session_maker, "cg-paid@example.com")
 
-    proj = await client.post("/free/projects", json={"name": "x"}, headers=_auth(paid))
+    proj = await client.post("/pooled/projects", json={"name": "x"}, headers=_auth(paid))
     assert proj.status_code == 403, proj.text
     assert proj.json()["detail"] == "FREE_CREATE_FORBIDDEN"
 
     # A genuinely org-less user still can.
     free, _ = await _free_user(client, session_maker, "cg-free@example.com")
     assert (
-        await client.post("/free/projects", json={"name": "ok"}, headers=_auth(free))
+        await client.post("/pooled/projects", json={"name": "ok"}, headers=_auth(free))
     ).status_code == 201
 
 
@@ -136,11 +136,11 @@ async def test_free_user_who_joins_org_loses_create_keeps_manage(
     await _grant_org_membership(session_maker, uid)
 
     assert (
-        await client.post("/free/projects", json={"name": "new"}, headers=_auth(token))
+        await client.post("/pooled/projects", json={"name": "new"}, headers=_auth(token))
     ).status_code == 403
     # …but they still manage their existing project.
     patched = await client.patch(
-        f"/free/projects/{pid}", json={"name": "Renamed"}, headers=_auth(token)
+        f"/pooled/projects/{pid}", json={"name": "Renamed"}, headers=_auth(token)
     )
     assert patched.status_code == 200, patched.text
     assert patched.json()["name"] == "Renamed"
@@ -163,7 +163,7 @@ async def test_complete_blocked_after_joining_org(
     await _grant_org_membership(session_maker, uid)
 
     resp = await client.post(
-        f"/free/projects/{pid}/documents/{did}/files/{init['file_id']}/complete",
+        f"/pooled/projects/{pid}/documents/{did}/files/{init['file_id']}/complete",
         headers=_auth(token),
     )
     assert resp.status_code == 403, resp.text
@@ -189,7 +189,7 @@ async def test_invite_member_shared_access_and_role_gating(
 
     # Invite Bob as viewer.
     inv = await client.post(
-        f"/free/projects/{pid}/members",
+        f"/pooled/projects/{pid}/members",
         json={"email": "m-bob@example.com", "role": "viewer"},
         headers=_auth(owner),
     )
@@ -198,7 +198,7 @@ async def test_invite_member_shared_access_and_role_gating(
     assert inv.json()["user_id"] == bob_id
 
     # Bob sees it under his projects list, badged with his role + the real owner.
-    listed = await client.get("/free/projects", headers=_auth(bob))
+    listed = await client.get("/pooled/projects", headers=_auth(bob))
     assert listed.status_code == 200
     shared = [p for p in listed.json() if p["id"] == pid]
     assert len(shared) == 1
@@ -207,12 +207,12 @@ async def test_invite_member_shared_access_and_role_gating(
 
     # Bob can read the project, its documents/findings/overview, and the container.
     for path in (
-        f"/free/projects/{pid}",
-        f"/free/projects/{pid}/documents",
-        f"/free/projects/{pid}/findings",
-        f"/free/projects/{pid}/overview",
-        f"/free/projects/{pid}/documents/{did}",
-        f"/free/documents/{did}/findings",
+        f"/pooled/projects/{pid}",
+        f"/pooled/projects/{pid}/documents",
+        f"/pooled/projects/{pid}/findings",
+        f"/pooled/projects/{pid}/overview",
+        f"/pooled/projects/{pid}/documents/{did}",
+        f"/pooled/documents/{did}/findings",
     ):
         assert (await client.get(path, headers=_auth(bob))).status_code == 200, path
 
@@ -220,12 +220,12 @@ async def test_invite_member_shared_access_and_role_gating(
     # or create a container in it.
     assert (
         await client.post(
-            f"/free/documents/{did}/findings", json={"title": "no"}, headers=_auth(bob)
+            f"/pooled/documents/{did}/findings", json={"title": "no"}, headers=_auth(bob)
         )
     ).status_code == 403
     assert (
         await client.post(
-            f"/free/projects/{pid}/members",
+            f"/pooled/projects/{pid}/members",
             json={"email": "x@example.com"},
             headers=_auth(bob),
         )
@@ -233,20 +233,20 @@ async def test_invite_member_shared_access_and_role_gating(
     # PATCH/DELETE project are owner-only → 404 (hidden) for a member.
     assert (
         await client.patch(
-            f"/free/projects/{pid}", json={"name": "hax"}, headers=_auth(bob)
+            f"/pooled/projects/{pid}", json={"name": "hax"}, headers=_auth(bob)
         )
     ).status_code == 404
     # Bob (org-less) passes the create-gate but can't create a container in a
     # project he doesn't own.
     assert (
         await client.post(
-            f"/free/projects/{pid}/documents", json={"name": "z"}, headers=_auth(bob)
+            f"/pooled/projects/{pid}/documents", json={"name": "z"}, headers=_auth(bob)
         )
     ).status_code == 404
 
     # Promote Bob to editor → he can now file a snag, attributed to him.
     up = await client.patch(
-        f"/free/projects/{pid}/members/{bob_id}",
+        f"/pooled/projects/{pid}/members/{bob_id}",
         json={"role": "editor"},
         headers=_auth(owner),
     )
@@ -254,15 +254,15 @@ async def test_invite_member_shared_access_and_role_gating(
     assert up.json()["role"] == "editor"
 
     snag = await client.post(
-        f"/free/documents/{did}/findings", json={"title": "by bob"}, headers=_auth(bob)
+        f"/pooled/documents/{did}/findings", json={"title": "by bob"}, headers=_auth(bob)
     )
     assert snag.status_code == 201, snag.text
-    board = await client.get(f"/free/projects/{pid}/findings", headers=_auth(owner))
+    board = await client.get(f"/pooled/projects/{pid}/findings", headers=_auth(owner))
     feed = {f["id"]: f for f in board.json()}
     assert feed[snag.json()["id"]]["created_by_user_id"] == bob_id
 
     # Members list (owner-synthesized + Bob).
-    members = await client.get(f"/free/projects/{pid}/members", headers=_auth(owner))
+    members = await client.get(f"/pooled/projects/{pid}/members", headers=_auth(owner))
     assert members.status_code == 200
     roles = {m["user_id"]: m["role"] for m in members.json()}
     assert roles[owner_id] == "owner"
@@ -285,7 +285,7 @@ async def test_snag_assignment_to_member_and_board_feed(
     did = await _create_document(client, owner, pid, name="Arch")
 
     inv = await client.post(
-        f"/free/projects/{pid}/members",
+        f"/pooled/projects/{pid}/members",
         json={"email": "a-bob@example.com", "role": "editor"},
         headers=_auth(owner),
     )
@@ -293,7 +293,7 @@ async def test_snag_assignment_to_member_and_board_feed(
 
     # Owner assigns a snag to Bob with a deadline.
     snag = await client.post(
-        f"/free/documents/{did}/findings",
+        f"/pooled/documents/{did}/findings",
         json={
             "title": "Fix beam",
             "assigned_to_user_id": bob_id,
@@ -305,7 +305,7 @@ async def test_snag_assignment_to_member_and_board_feed(
     snag_id = snag.json()["id"]
 
     # The board feed (paid FindingRead shape) carries assignee + deadline.
-    board = await client.get(f"/free/projects/{pid}/findings", headers=_auth(owner))
+    board = await client.get(f"/pooled/projects/{pid}/findings", headers=_auth(owner))
     assert board.status_code == 200
     feed = {f["id"]: f for f in board.json()}
     assert feed[snag_id]["assignee_user_id"] == bob_id
@@ -313,7 +313,7 @@ async def test_snag_assignment_to_member_and_board_feed(
 
     # Bob (editor) can re-assign to the owner (also a participant).
     reassign = await client.patch(
-        f"/free/findings/{snag_id}",
+        f"/pooled/findings/{snag_id}",
         json={"assigned_to_user_id": owner_id},
         headers=_auth(bob),
     )
@@ -323,7 +323,7 @@ async def test_snag_assignment_to_member_and_board_feed(
     # Assigning to a non-participant (Charlie) is a 422, from either writer.
     for writer in (owner, bob):
         bad = await client.patch(
-            f"/free/findings/{snag_id}",
+            f"/pooled/findings/{snag_id}",
             json={"assigned_to_user_id": charlie_id},
             headers=_auth(writer),
         )
@@ -345,15 +345,15 @@ async def test_non_member_cannot_read_container_by_id(
 
     assert (
         await client.get(
-            f"/free/projects/{pid}/documents/{did}", headers=_auth(stranger)
+            f"/pooled/projects/{pid}/documents/{did}", headers=_auth(stranger)
         )
     ).status_code == 404
     assert (
-        await client.get(f"/free/documents/{did}/findings", headers=_auth(stranger))
+        await client.get(f"/pooled/documents/{did}/findings", headers=_auth(stranger))
     ).status_code == 404
     assert (
         await client.get(
-            f"/free/projects/{pid}/documents/{did}", headers=_auth(owner)
+            f"/pooled/projects/{pid}/documents/{did}", headers=_auth(owner)
         )
     ).status_code == 200
 
@@ -371,7 +371,7 @@ async def test_member_cap(
     for i in range(cap):
         await make_test_user(session_maker, email=f"cap-m{i}@example.com", is_verified=True)
         r = await client.post(
-            f"/free/projects/{pid}/members",
+            f"/pooled/projects/{pid}/members",
             json={"email": f"cap-m{i}@example.com", "role": "viewer"},
             headers=_auth(owner),
         )
@@ -379,7 +379,7 @@ async def test_member_cap(
     # One past the cap.
     await make_test_user(session_maker, email="cap-extra@example.com", is_verified=True)
     over = await client.post(
-        f"/free/projects/{pid}/members",
+        f"/pooled/projects/{pid}/members",
         json={"email": "cap-extra@example.com"},
         headers=_auth(owner),
     )
@@ -402,14 +402,14 @@ async def test_member_cap_is_configurable(
     try:
         await make_test_user(session_maker, email="cfg-m0@example.com", is_verified=True)
         first = await client.post(
-            f"/free/projects/{pid}/members",
+            f"/pooled/projects/{pid}/members",
             json={"email": "cfg-m0@example.com", "role": "viewer"},
             headers=_auth(owner),
         )
         assert first.status_code == 201, first.text
         await make_test_user(session_maker, email="cfg-m1@example.com", is_verified=True)
         over = await client.post(
-            f"/free/projects/{pid}/members",
+            f"/pooled/projects/{pid}/members",
             json={"email": "cfg-m1@example.com", "role": "viewer"},
             headers=_auth(owner),
         )
@@ -431,13 +431,13 @@ async def test_invite_dedup_and_self(
 
     assert (
         await client.post(
-            f"/free/projects/{pid}/members",
+            f"/pooled/projects/{pid}/members",
             json={"email": "dd-bob@example.com"},
             headers=_auth(owner),
         )
     ).status_code == 201
     dup = await client.post(
-        f"/free/projects/{pid}/members",
+        f"/pooled/projects/{pid}/members",
         json={"email": "dd-bob@example.com"},
         headers=_auth(owner),
     )
@@ -445,7 +445,7 @@ async def test_invite_dedup_and_self(
     assert dup.json()["detail"] == "FREE_MEMBER_ALREADY_EXISTS"
 
     me = await client.post(
-        f"/free/projects/{pid}/members",
+        f"/pooled/projects/{pid}/members",
         json={"email": "dd-owner@example.com"},
         headers=_auth(owner),
     )
@@ -462,7 +462,7 @@ async def test_member_remove_and_leave(
     bob, bob_id = await _free_user(client, session_maker, "rm-bob@example.com")
     pid = await _create_project(client, owner)
     await client.post(
-        f"/free/projects/{pid}/members",
+        f"/pooled/projects/{pid}/members",
         json={"email": "rm-bob@example.com"},
         headers=_auth(owner),
     )
@@ -470,27 +470,27 @@ async def test_member_remove_and_leave(
     # Bob can leave (remove self).
     assert (
         await client.delete(
-            f"/free/projects/{pid}/members/{bob_id}", headers=_auth(bob)
+            f"/pooled/projects/{pid}/members/{bob_id}", headers=_auth(bob)
         )
     ).status_code == 204
     # Gone — he no longer sees it.
-    assert (await client.get(f"/free/projects/{pid}", headers=_auth(bob))).status_code == 404
+    assert (await client.get(f"/pooled/projects/{pid}", headers=_auth(bob))).status_code == 404
 
     # Re-invite; owner removes him.
     await client.post(
-        f"/free/projects/{pid}/members",
+        f"/pooled/projects/{pid}/members",
         json={"email": "rm-bob@example.com"},
         headers=_auth(owner),
     )
     assert (
         await client.delete(
-            f"/free/projects/{pid}/members/{bob_id}", headers=_auth(owner)
+            f"/pooled/projects/{pid}/members/{bob_id}", headers=_auth(owner)
         )
     ).status_code == 204
     # Removing a non-member → 404.
     assert (
         await client.delete(
-            f"/free/projects/{pid}/members/{bob_id}", headers=_auth(owner)
+            f"/pooled/projects/{pid}/members/{bob_id}", headers=_auth(owner)
         )
     ).status_code == 404
 
@@ -519,7 +519,7 @@ async def test_aggregate_storage_cap(
             client, token, pid, did, filename=f"m{i}.ifc", size=per
         )
     over = await client.post(
-        f"/free/projects/{pid}/documents/{did}/files/initiate",
+        f"/pooled/projects/{pid}/documents/{did}/files/initiate",
         json={
             "filename": "over.ifc",
             "size_bytes": per,
@@ -560,7 +560,7 @@ async def test_has_free_workspace_and_switch_to_free(
     # token, and they can then see the shared project — but still can't create.
     paid, _ = await _paid_token(client, session_maker, "ws-paid@example.com")
     await client.post(
-        f"/free/projects/{pid}/members",
+        f"/pooled/projects/{pid}/members",
         json={"email": "ws-paid@example.com", "role": "viewer"},
         headers=_auth(owner),
     )
@@ -573,10 +573,10 @@ async def test_has_free_workspace_and_switch_to_free(
     free_token = switched.json()["access_token"]
     me_free = await client.get("/auth/me", headers=_auth(free_token))
     assert me_free.json()["active_organization_id"] is None
-    shared = await client.get(f"/free/projects/{pid}", headers=_auth(free_token))
+    shared = await client.get(f"/pooled/projects/{pid}", headers=_auth(free_token))
     assert shared.status_code == 200
     assert shared.json()["my_role"] == "viewer"
     # Still gated from creating, even inside the free workspace.
     assert (
-        await client.post("/free/projects", json={"name": "no"}, headers=_auth(free_token))
+        await client.post("/pooled/projects", json={"name": "no"}, headers=_auth(free_token))
     ).status_code == 403

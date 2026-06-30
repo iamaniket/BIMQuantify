@@ -10,7 +10,7 @@ import { useAuthQuery } from '@/lib/query/useAuthQuery';
 import { documentsKey } from './queryKeys';
 
 /** Free-aware: a free project's containers are its pooled models, served as the
- * same `Document` shape from `/free/projects/{id}/documents`. */
+ * same `Document` shape from `/pooled/projects/{id}/documents`. */
 export function useDocuments(projectId: string): UseQueryResult<DocumentList> {
   const { isFreeUser, ready } = useIsFreeUser();
   return useAuthQuery({

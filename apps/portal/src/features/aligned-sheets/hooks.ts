@@ -23,7 +23,7 @@ import { useAuthMutation, useAuthQuery } from '@/lib/query/useAuthQuery';
 import { alignedSheetsKey } from './queryKeys';
 
 /** Free-aware: free projects now have their own pooled aligned sheets
- * (`/free/projects/{id}/aligned-sheets`, same schema with a null page_id), so
+ * (`/pooled/projects/{id}/aligned-sheets`, same schema with a null page_id), so
  * both tiers fetch the real list. The free list is unfiltered (small; the caller
  * filters client-side). */
 export function useAlignedSheets(

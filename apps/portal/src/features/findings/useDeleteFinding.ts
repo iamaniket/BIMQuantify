@@ -9,7 +9,7 @@ import { useAuthMutation } from '@/lib/query/useAuthQuery';
 
 import { findingsKey } from './queryKeys';
 
-/** Free-aware: a free "finding" is a pooled snag → `DELETE /free/findings/{id}`. */
+/** Free-aware: a free "finding" is a pooled snag → `DELETE /pooled/findings/{id}`. */
 export function useDeleteFinding(projectId: string): UseMutationResult<void, Error, string> {
   const { isFreeUser } = useIsFreeUser();
   return useAuthMutation({

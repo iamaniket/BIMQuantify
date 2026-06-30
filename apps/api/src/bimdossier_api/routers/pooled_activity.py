@@ -46,7 +46,7 @@ from bimdossier_api.schemas.activity import ActivityTimelineBucket
 from bimdossier_api.tenancy import get_pooled_session
 
 router = APIRouter(
-    prefix="/free/projects/{project_id}/activity",
+    prefix="/pooled/projects/{project_id}/activity",
     tags=["free", "activity"],
     dependencies=[Depends(require_free_tier_enabled)],
 )

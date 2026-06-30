@@ -125,7 +125,7 @@ describe('useFileFindings free-context gating', () => {
 
   it('lists by the CONTAINER id (free_document_id), not the file id', async () => {
     // Regression for the free-viewer marker 404: free snags are container-scoped
-    // (`/free/documents/{container}/findings`), so the hook must resolve the open
+    // (`/pooled/documents/{container}/findings`), so the hook must resolve the open
     // single-mode container (modelId), NOT pass the file id into the document slot.
     h.me = { active_organization_id: null };
     setViewerTarget('p1', { kind: 'single', modelId: 'container1', fileId: 'file1' });

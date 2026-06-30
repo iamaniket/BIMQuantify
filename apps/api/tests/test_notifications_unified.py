@@ -1,7 +1,7 @@
 """Phase C — notifications unified onto get_scoped_session.
 
 A free user reads/marks/dismisses notifications on the CANONICAL `/notifications`
-path (no `/free` prefix); the legacy `/free/notifications` alias still works; the
+path (no `/free` prefix); the legacy `/pooled/notifications` alias still works; the
 paid behaviour is unchanged (covered by test_notifications.py). The free branch
 maps the pooled per-recipient `PooledNotification` onto the same `NotificationOut`.
 """
@@ -68,7 +68,7 @@ async def test_pooled_notifications_alias_still_works(
     await _seed_succeeded_model(client, fake, owner)
 
     # The legacy alias returns the same feed as the canonical path.
-    alias = await client.get("/free/notifications", headers=_auth(owner))
+    alias = await client.get("/pooled/notifications", headers=_auth(owner))
     canonical = await client.get("/notifications", headers=_auth(owner))
     assert alias.status_code == 200 and canonical.status_code == 200
     assert alias.json()["total"] == canonical.json()["total"] == 1

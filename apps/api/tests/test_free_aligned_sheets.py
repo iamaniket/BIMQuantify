@@ -53,7 +53,7 @@ async def test_free_aligned_sheet_create_calibrate_and_drift(
 
     # Create an uncalibrated sheet.
     created = await client.post(
-        f"/free/projects/{pid}/aligned-sheets",
+        f"/pooled/projects/{pid}/aligned-sheets",
         json={
             "document_id": model3d,
             "level_id": level["id"],
@@ -69,7 +69,7 @@ async def test_free_aligned_sheet_create_calibrate_and_drift(
 
     # A second sheet on the same (level, page) conflicts.
     dup = await client.post(
-        f"/free/projects/{pid}/aligned-sheets",
+        f"/pooled/projects/{pid}/aligned-sheets",
         json={
             "document_id": model3d,
             "level_id": level["id"],
@@ -83,7 +83,7 @@ async def test_free_aligned_sheet_create_calibrate_and_drift(
 
     # Calibrate with two distinct points → solves a similarity (scale 2).
     cal = await client.post(
-        f"/free/projects/{pid}/aligned-sheets/{sheet['id']}/calibrate",
+        f"/pooled/projects/{pid}/aligned-sheets/{sheet['id']}/calibrate",
         json={
             "pdf_points": [[0, 0], [10, 0]],
             "plan_points": [[0, 0], [20, 0]],
@@ -99,7 +99,7 @@ async def test_free_aligned_sheet_create_calibrate_and_drift(
 
     # Re-pin (PATCH) to a different page; the transform is preserved.
     repinned = await client.patch(
-        f"/free/projects/{pid}/aligned-sheets/{sheet['id']}",
+        f"/pooled/projects/{pid}/aligned-sheets/{sheet['id']}",
         json={"page_number": 2},
         headers=_auth(token),
     )
@@ -110,7 +110,7 @@ async def test_free_aligned_sheet_create_calibrate_and_drift(
 
     # Degenerate (coincident) points → 422.
     degenerate = await client.post(
-        f"/free/projects/{pid}/aligned-sheets/{sheet['id']}/calibrate",
+        f"/pooled/projects/{pid}/aligned-sheets/{sheet['id']}/calibrate",
         json={"pdf_points": [[0, 0], [0, 0]], "plan_points": [[0, 0], [1, 0]]},
         headers=_auth(token),
     )
@@ -120,7 +120,7 @@ async def test_free_aligned_sheet_create_calibrate_and_drift(
     # A newer PDF version reclaims the head → the sheet (calibrated on v1) is stale.
     await _upload_pdf_version(client, fake, token, pid, pdfdoc, filename="p2.pdf")
     listed = await client.get(
-        f"/free/projects/{pid}/aligned-sheets", headers=_auth(token)
+        f"/pooled/projects/{pid}/aligned-sheets", headers=_auth(token)
     )
     assert listed.status_code == 200
     assert listed.json()[0]["is_stale"] is True
@@ -136,11 +136,11 @@ async def test_pooled_aligned_sheets_rls_isolation(
     pid = await _create_project(client, token_a)
 
     assert (
-        await client.get(f"/free/projects/{pid}/aligned-sheets", headers=_auth(token_b))
+        await client.get(f"/pooled/projects/{pid}/aligned-sheets", headers=_auth(token_b))
     ).status_code == 404
     assert (
         await client.post(
-            f"/free/projects/{pid}/aligned-sheets",
+            f"/pooled/projects/{pid}/aligned-sheets",
             json={
                 "document_id": pid,
                 "level_id": pid,

@@ -32,7 +32,7 @@ Surface (all under `/free`):
   GET    /documents/{did}/findings                                 list snags
   PATCH  /findings/{sid}                                           edit / close snag
   DELETE /findings/{sid}                                           delete snag
-  POST   /internal/jobs/free-callback                           worker → write artifacts
+  POST   /internal/jobs/pooled-callback                           worker → write artifacts
 """
 
 import logging
@@ -56,8 +56,8 @@ from bimdossier_api.config import Settings, get_settings
 from bimdossier_api.db import get_session_maker
 from bimdossier_api.ifc.header import looks_like_zip, parse_ifc_header
 from bimdossier_api.jobs import (
-    FREE_CALLBACK_PATH,
-    FREE_PAGES_CALLBACK_PATH,
+    POOLED_CALLBACK_PATH,
+    POOLED_PAGES_CALLBACK_PATH,
     FREE_TIER_SENTINEL_ORG,
     DispatchJobError,
     JobTier,
@@ -127,7 +127,7 @@ _IFC_SCHEMA_VALUES = frozenset(s.value for s in IfcSchema)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/free",
+    prefix="/pooled",
     tags=["free-viewer"],
     dependencies=[Depends(require_free_tier_enabled)],
 )
@@ -533,7 +533,7 @@ def _build_pooled_extraction_job(
                 "file_id": str(file_id),
                 "project_id": str(document_id),
                 "storage_key": storage_key,
-                "callback_path": FREE_CALLBACK_PATH,
+                "callback_path": POOLED_CALLBACK_PATH,
             },
         )
     return Job(
@@ -544,7 +544,7 @@ def _build_pooled_extraction_job(
             "file_id": str(file_id),
             "project_id": str(document_id),
             "storage_key": storage_key,
-            "callback_path": FREE_CALLBACK_PATH,
+            "callback_path": POOLED_CALLBACK_PATH,
             "geometry_threshold": settings.pooled_job_geometry_threshold,
             "compressed": ext == ".ifczip",
             "discipline": doc_discipline,
@@ -571,7 +571,7 @@ async def _dispatch_pooled_pages_rasterization(
             "file_id": str(file_id),
             "project_id": str(document_id),
             "storage_key": storage_key,
-            "callback_path": FREE_PAGES_CALLBACK_PATH,
+            "callback_path": POOLED_PAGES_CALLBACK_PATH,
         },
     )
     try:
@@ -1335,7 +1335,7 @@ async def delete_pooled_finding(
 # ---------------------------------------------------------------------------
 
 
-@internal_router.post("/free-callback", status_code=status.HTTP_200_OK)
+@internal_router.post("/pooled-callback", status_code=status.HTTP_200_OK)
 async def pooled_extraction_callback(
     payload: PooledCallbackRequest,
     _: None = Depends(require_worker_secret),
@@ -1438,7 +1438,7 @@ async def pooled_extraction_callback(
     return {"ok": True}
 
 
-@internal_router.post("/free-pages-callback", status_code=status.HTTP_200_OK)
+@internal_router.post("/pooled-pages-callback", status_code=status.HTTP_200_OK)
 async def pooled_pages_rasterization_callback(
     payload: PooledPagesCallbackRequest,
     _: None = Depends(require_worker_secret),

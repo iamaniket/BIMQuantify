@@ -37,7 +37,7 @@ async def _pdf_callback_succeeded(
     secret = get_settings().processor_shared_secret
     prefix = storage_key.rsplit("/", 1)[0]  # free/<uid>/<doc>/<file>
     resp = await client.post(
-        "/internal/jobs/free-callback",
+        "/internal/jobs/pooled-callback",
         json={
             "file_id": file_id,
             "status": "succeeded",
@@ -81,7 +81,7 @@ async def _pages_callback_succeeded(
         }
     ).encode()
     resp = await client.post(
-        "/internal/jobs/free-pages-callback",
+        "/internal/jobs/pooled-pages-callback",
         json={
             "file_id": file_id,
             "status": "succeeded",
@@ -120,12 +120,12 @@ async def test_free_pdf_upload_dispatches_pdf_extraction_and_views(
     by_type = {c["job_type"]: c for c in job_dispatch_calls}
     extraction = by_type["pdf_extraction"]
     assert extraction["priority"] == get_settings().job_priority_free
-    assert extraction["payload"]["callback_path"] == "/internal/jobs/free-callback"
+    assert extraction["payload"]["callback_path"] == "/internal/jobs/pooled-callback"
     assert extraction["payload"]["file_id"] == init["file_id"]
     assert "geometry_threshold" not in extraction["payload"]
     pages = by_type["pdf_pages_rasterization"]
     assert pages["priority"] == get_settings().job_priority_free
-    assert pages["payload"]["callback_path"] == "/internal/jobs/free-pages-callback"
+    assert pages["payload"]["callback_path"] == "/internal/jobs/pooled-pages-callback"
     assert pages["payload"]["file_id"] == init["file_id"]
 
     # Worker finishes extraction → geometry + page_count stamped.
@@ -133,7 +133,7 @@ async def test_free_pdf_upload_dispatches_pdf_extraction_and_views(
 
     # The viewer-bundle serves it as a PDF the shared desktop viewer can render.
     bundle = await client.get(
-        f"/free/projects/{pid}/documents/{did}/files/{init['file_id']}/viewer-bundle",
+        f"/pooled/projects/{pid}/documents/{did}/files/{init['file_id']}/viewer-bundle",
         headers=_auth(token),
     )
     assert bundle.status_code == 200, bundle.text
@@ -148,7 +148,7 @@ async def test_free_pdf_upload_dispatches_pdf_extraction_and_views(
     # bundle now carries a fetchable pdf_pages_url (inlined data: manifest).
     await _pages_callback_succeeded(client, fake, init["file_id"], init["storage_key"])
     bundle2 = await client.get(
-        f"/free/projects/{pid}/documents/{did}/files/{init['file_id']}/viewer-bundle",
+        f"/pooled/projects/{pid}/documents/{did}/files/{init['file_id']}/viewer-bundle",
         headers=_auth(token),
     )
     assert bundle2.status_code == 200, bundle2.text
@@ -192,7 +192,7 @@ async def test_free_pages_callback_rejects_cross_owner_key(
 
     secret = get_settings().processor_shared_secret
     resp = await client.post(
-        "/internal/jobs/free-pages-callback",
+        "/internal/jobs/pooled-pages-callback",
         json={
             "file_id": init["file_id"],
             "status": "succeeded",

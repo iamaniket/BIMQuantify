@@ -26,7 +26,7 @@ export type UploadProgressEvent =
   | { phase: 'completing' };
 
 // Free (org-less) and paid callers share these fetchers; `free` swaps the
-// `/free/projects` vs `/projects` prefix. The free two-phase upload + viewer
+// `/pooled/projects` vs `/projects` prefix. The free two-phase upload + viewer
 // bundles are byte-identical to paid (same schemas). `listProjectFiles`,
 // `deleteProjectFile`, and `getDownloadUrl` are paid-only (no free endpoint).
 const filesBase = (projectId: string, modelId: string, free: boolean): string =>

@@ -7,7 +7,7 @@ import {
   type UnreadCountResponse,
 } from './schemas';
 
-// Free (org-less) callers route to `/free/notifications`, paid to `/notifications`.
+// Free (org-less) callers route to `/pooled/notifications`, paid to `/notifications`.
 // Both return the IDENTICAL paid schema — the backend emits the paid shape for free
 // (sentinel org, free ids as project/file, null job_id) — so the bell renders
 // unchanged. Pass `free` from `useIsFreeContext`.

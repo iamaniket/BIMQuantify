@@ -30,7 +30,7 @@ _SENTINEL_ORG = "00000000-0000-0000-0000-000000000000"
 async def _callback_failed(client: AsyncClient, file_id: str, error: str = "boom") -> None:
     secret = get_settings().processor_shared_secret
     resp = await client.post(
-        "/internal/jobs/free-callback",
+        "/internal/jobs/pooled-callback",
         json={"file_id": file_id, "status": "failed", "error": error},
         headers={"Authorization": f"Bearer {secret}"},
     )
@@ -40,7 +40,7 @@ async def _callback_failed(client: AsyncClient, file_id: str, error: str = "boom
 async def _callback_running(client: AsyncClient, file_id: str) -> None:
     secret = get_settings().processor_shared_secret
     resp = await client.post(
-        "/internal/jobs/free-callback",
+        "/internal/jobs/pooled-callback",
         json={"file_id": file_id, "status": "running"},
         headers={"Authorization": f"Bearer {secret}"},
     )
@@ -61,7 +61,7 @@ async def _invite_member(
     client: AsyncClient, owner: str, pid: str, email: str, role: str = "editor"
 ) -> None:
     resp = await client.post(
-        f"/free/projects/{pid}/members",
+        f"/pooled/projects/{pid}/members",
         json={"email": email, "role": role},
         headers=_auth(owner),
     )
@@ -69,7 +69,7 @@ async def _invite_member(
 
 
 async def _list(client: AsyncClient, token: str) -> dict:
-    resp = await client.get("/free/notifications", headers=_auth(token))
+    resp = await client.get("/pooled/notifications", headers=_auth(token))
     assert resp.status_code == 200, resp.text
     return resp.json()
 
@@ -171,11 +171,11 @@ async def test_read_dismiss_clear_flow(
     notif_id = (await _list(client, owner))["items"][0]["id"]
 
     # unread-count reflects the new row.
-    count = await client.get("/free/notifications/unread-count", headers=_auth(owner))
+    count = await client.get("/pooled/notifications/unread-count", headers=_auth(owner))
     assert count.json()["count"] == 1
 
     # mark-read drops the unread count but keeps the row.
-    r = await client.patch(f"/free/notifications/{notif_id}/read", headers=_auth(owner))
+    r = await client.patch(f"/pooled/notifications/{notif_id}/read", headers=_auth(owner))
     assert r.status_code == 204
     feed = await _list(client, owner)
     assert feed["unread_count"] == 0
@@ -183,7 +183,7 @@ async def test_read_dismiss_clear_flow(
     assert feed["items"][0]["is_read"] is True
 
     # dismiss removes it from the feed.
-    d = await client.post(f"/free/notifications/{notif_id}/dismiss", headers=_auth(owner))
+    d = await client.post(f"/pooled/notifications/{notif_id}/dismiss", headers=_auth(owner))
     assert d.status_code == 204
     assert (await _list(client, owner))["total"] == 0
 
@@ -199,11 +199,11 @@ async def test_mark_all_read_and_clear(
     await _seed_succeeded_model(client, fake, owner)
     assert (await _list(client, owner))["unread_count"] == 2
 
-    r = await client.post("/free/notifications/mark-all-read", headers=_auth(owner))
+    r = await client.post("/pooled/notifications/mark-all-read", headers=_auth(owner))
     assert r.status_code == 204
     assert (await _list(client, owner))["unread_count"] == 0
 
-    c = await client.post("/free/notifications/clear", headers=_auth(owner))
+    c = await client.post("/pooled/notifications/clear", headers=_auth(owner))
     assert c.status_code == 204
     assert (await _list(client, owner))["total"] == 0
 
@@ -220,9 +220,9 @@ async def test_rls_isolation_between_users(
 
     # The intruder can neither read nor mutate the owner's notification.
     assert (await _list(client, intruder))["total"] == 0
-    r = await client.patch(f"/free/notifications/{notif_id}/read", headers=_auth(intruder))
+    r = await client.patch(f"/pooled/notifications/{notif_id}/read", headers=_auth(intruder))
     assert r.status_code == 404
-    d = await client.post(f"/free/notifications/{notif_id}/dismiss", headers=_auth(intruder))
+    d = await client.post(f"/pooled/notifications/{notif_id}/dismiss", headers=_auth(intruder))
     assert d.status_code == 404
 
 
@@ -232,7 +232,7 @@ async def test_unknown_notification_404(
 ) -> None:
     client, _ = free_tier_storage_client
     owner = await _free_token(client, session_maker, "notif-404@example.com")
-    r = await client.patch(f"/free/notifications/{uuid4()}/read", headers=_auth(owner))
+    r = await client.patch(f"/pooled/notifications/{uuid4()}/read", headers=_auth(owner))
     assert r.status_code == 404
 
 
@@ -254,12 +254,12 @@ async def test_retry_dedups_into_one_row(
 
     # Read it so we can prove the retry resurfaces it as unread.
     notif_id = feed["items"][0]["id"]
-    await client.patch(f"/free/notifications/{notif_id}/read", headers=_auth(owner))
+    await client.patch(f"/pooled/notifications/{notif_id}/read", headers=_auth(owner))
 
     # Retry → re-dispatch → succeeded callback. Same (recipient, file) → upsert, not
     # a second row; resurfaced as unread + flipped to job_succeeded.
     retry = await client.post(
-        f"/free/projects/{pid}/documents/{did}/files/{file['id']}/retry-extraction",
+        f"/pooled/projects/{pid}/documents/{did}/files/{file['id']}/retry-extraction",
         headers=_auth(owner),
     )
     assert retry.status_code == 200, retry.text

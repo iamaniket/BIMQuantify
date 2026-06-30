@@ -60,7 +60,7 @@ async def _free_token(
 
 
 async def _create_project(client: AsyncClient, token: str, *, name: str = "My House") -> str:
-    resp = await client.post("/free/projects", json={"name": name}, headers=_auth(token))
+    resp = await client.post("/pooled/projects", json={"name": name}, headers=_auth(token))
     assert resp.status_code == 201, resp.text
     return resp.json()["id"]
 
@@ -77,7 +77,7 @@ async def _create_document(
     if discipline is not None:
         body["discipline"] = discipline
     resp = await client.post(
-        f"/free/projects/{project_id}/documents", json=body, headers=_auth(token)
+        f"/pooled/projects/{project_id}/documents", json=body, headers=_auth(token)
     )
     assert resp.status_code == 201, resp.text
     return resp.json()["id"]
@@ -94,7 +94,7 @@ async def _initiate_file(
     sha: str | None = None,
 ) -> dict:
     resp = await client.post(
-        f"/free/projects/{project_id}/documents/{document_id}/files/initiate",
+        f"/pooled/projects/{project_id}/documents/{document_id}/files/initiate",
         json={
             "filename": filename,
             "size_bytes": size,
@@ -111,7 +111,7 @@ async def _complete_file(
     client: AsyncClient, token: str, project_id: str, document_id: str, file_id: str
 ) -> dict:
     resp = await client.post(
-        f"/free/projects/{project_id}/documents/{document_id}/files/{file_id}/complete",
+        f"/pooled/projects/{project_id}/documents/{document_id}/files/{file_id}/complete",
         headers=_auth(token),
     )
     assert resp.status_code == 200, resp.text
@@ -144,7 +144,7 @@ async def _callback_succeeded(
     secret = get_settings().processor_shared_secret
     prefix = storage_key.rsplit("/", 1)[0]  # free/<uid>/<doc>/<file>
     resp = await client.post(
-        "/internal/jobs/free-callback",
+        "/internal/jobs/pooled-callback",
         json={
             "file_id": file_id,
             "status": "succeeded",
@@ -188,7 +188,7 @@ async def test_create_document_and_complete_dispatches_free_extraction(
     call = job_dispatch_calls[0]
     assert call["job_type"] == "ifc_extraction"
     assert call["priority"] == get_settings().job_priority_free  # 100 (free)
-    assert call["payload"]["callback_path"] == "/internal/jobs/free-callback"
+    assert call["payload"]["callback_path"] == "/internal/jobs/pooled-callback"
     assert call["payload"]["geometry_threshold"] == get_settings().pooled_job_geometry_threshold
     assert call["payload"]["file_id"] == init["file_id"]
 
@@ -203,7 +203,7 @@ async def test_create_document_requires_project_ownership(
     pid = await _create_project(client, token_a)
     # B is not the owner → 404 (RLS hides the project).
     resp = await client.post(
-        f"/free/projects/{pid}/documents", json={"name": "x"}, headers=_auth(token_b)
+        f"/pooled/projects/{pid}/documents", json={"name": "x"}, headers=_auth(token_b)
     )
     assert resp.status_code == 404
 
@@ -217,7 +217,7 @@ async def test_duplicate_name_conflicts(
     pid = await _create_project(client, token)
     await _create_document(client, token, pid, name="Same")
     resp = await client.post(
-        f"/free/projects/{pid}/documents", json={"name": "Same"}, headers=_auth(token)
+        f"/pooled/projects/{pid}/documents", json={"name": "Same"}, headers=_auth(token)
     )
     assert resp.status_code == 409
     assert resp.json()["detail"] == "DOCUMENT_NAME_CONFLICT"
@@ -232,7 +232,7 @@ async def test_initiate_rejects_bad_extension(
     pid = await _create_project(client, token)
     did = await _create_document(client, token, pid)
     resp = await client.post(
-        f"/free/projects/{pid}/documents/{did}/files/initiate",
+        f"/pooled/projects/{pid}/documents/{did}/files/initiate",
         json={
             "filename": "notes.txt",
             "size_bytes": 10,
@@ -255,7 +255,7 @@ async def test_initiate_rejects_oversized(
     did = await _create_document(client, token, pid)
     too_big = get_settings().free_upload_max_bytes + 1
     resp = await client.post(
-        f"/free/projects/{pid}/documents/{did}/files/initiate",
+        f"/pooled/projects/{pid}/documents/{did}/files/initiate",
         json={
             "filename": "huge.ifc",
             "size_bytes": too_big,
@@ -279,7 +279,7 @@ async def test_initiate_dedups_identical_content(
     sha = _sha("identical")
     await _initiate_file(client, token, pid, did, filename="a.ifc", sha=sha)
     resp = await client.post(
-        f"/free/projects/{pid}/documents/{did}/files/initiate",
+        f"/pooled/projects/{pid}/documents/{did}/files/initiate",
         json={
             "filename": "a-copy.ifc",
             "size_bytes": 1000,
@@ -306,7 +306,7 @@ async def test_document_cap_enforced(
         await _create_document(client, token, pid, name="a")
         await _create_document(client, token, pid, name="b")
         resp = await client.post(
-            f"/free/projects/{pid}/documents", json={"name": "c"}, headers=_auth(token)
+            f"/pooled/projects/{pid}/documents", json={"name": "c"}, headers=_auth(token)
         )
         assert resp.status_code == 403
         assert resp.json()["detail"] == "FREE_MODEL_CAP_REACHED"
@@ -330,11 +330,11 @@ async def test_rls_isolation_between_free_users(
     # B cannot read A's container, nor list its files.
     assert (
         await client.get(
-            f"/free/projects/{pid}/documents/{did}", headers=_auth(token_b)
+            f"/pooled/projects/{pid}/documents/{did}", headers=_auth(token_b)
         )
     ).status_code == 404
     list_b = await client.get(
-        f"/free/projects/{pid}/documents", headers=_auth(token_b)
+        f"/pooled/projects/{pid}/documents", headers=_auth(token_b)
     )
     # RLS hides the project's containers from a non-participant.
     assert list_b.status_code == 200
@@ -342,7 +342,7 @@ async def test_rls_isolation_between_free_users(
 
     # B cannot snag on A's container.
     snag_b = await client.post(
-        f"/free/documents/{did}/findings",
+        f"/pooled/documents/{did}/findings",
         json={"title": "intrusion", "severity": "high"},
         headers=_auth(token_b),
     )
@@ -351,7 +351,7 @@ async def test_rls_isolation_between_free_users(
     # A still sees their own container.
     assert (
         await client.get(
-            f"/free/projects/{pid}/documents/{did}", headers=_auth(token_a)
+            f"/pooled/projects/{pid}/documents/{did}", headers=_auth(token_a)
         )
     ).status_code == 200
 
@@ -375,7 +375,7 @@ async def test_free_callback_scoping_and_idempotency(
 
     # A key under another user's prefix is rejected (load-bearing on the no-RLS path).
     bad = await client.post(
-        "/internal/jobs/free-callback",
+        "/internal/jobs/pooled-callback",
         json={
             "file_id": file_id,
             "status": "succeeded",
@@ -389,7 +389,7 @@ async def test_free_callback_scoping_and_idempotency(
     # Correctly-scoped success stamps the artifact keys (incl. the 2D floor-plan
     # artifact the processor generates for architectural/mixed free models).
     ok = await client.post(
-        "/internal/jobs/free-callback",
+        "/internal/jobs/pooled-callback",
         json={
             "file_id": file_id,
             "status": "succeeded",
@@ -405,7 +405,7 @@ async def test_free_callback_scoping_and_idempotency(
     # Per-file viewer-bundle is now available, including the 2D floor-plan URL so
     # the unified viewer's 2D pane works for free models.
     bundle = await client.get(
-        f"/free/projects/{pid}/documents/{did}/files/{file_id}/viewer-bundle",
+        f"/pooled/projects/{pid}/documents/{did}/files/{file_id}/viewer-bundle",
         headers=_auth(token),
     )
     assert bundle.status_code == 200, bundle.text
@@ -415,13 +415,13 @@ async def test_free_callback_scoping_and_idempotency(
 
     # Terminal state is idempotent — a replayed callback is a no-op 200.
     replay = await client.post(
-        "/internal/jobs/free-callback",
+        "/internal/jobs/pooled-callback",
         json={"file_id": file_id, "status": "failed", "error": "late"},
         headers=worker_auth,
     )
     assert replay.status_code == 200
     detail = await client.get(
-        f"/free/projects/{pid}/documents/{did}", headers=_auth(token)
+        f"/pooled/projects/{pid}/documents/{did}", headers=_auth(token)
     )
     assert detail.json()["versions"][0]["extraction_status"] == "succeeded"
 
@@ -436,7 +436,7 @@ async def test_viewer_bundle_not_ready(
     did = await _create_document(client, token, pid)
     init = await _initiate_file(client, token, pid, did)
     resp = await client.get(
-        f"/free/projects/{pid}/documents/{did}/files/{init['file_id']}/viewer-bundle",
+        f"/pooled/projects/{pid}/documents/{did}/files/{init['file_id']}/viewer-bundle",
         headers=_auth(token),
     )
     assert resp.status_code == 409
@@ -453,7 +453,7 @@ async def test_snag_crud(
     did = await _create_document(client, token, pid)
 
     created = await client.post(
-        f"/free/documents/{did}/findings",
+        f"/pooled/documents/{did}/findings",
         json={
             "title": "Crack in wall",
             "note": "near grid B2",
@@ -472,12 +472,12 @@ async def test_snag_crud(
     # the container) — the single server-side shape, no client adapter.
     assert created.json()["linked_document_id"] == did
 
-    listed = await client.get(f"/free/documents/{did}/findings", headers=_auth(token))
+    listed = await client.get(f"/pooled/documents/{did}/findings", headers=_auth(token))
     assert listed.status_code == 200
     assert len(listed.json()) == 1
 
     patched = await client.patch(
-        f"/free/findings/{snag_id}",
+        f"/pooled/findings/{snag_id}",
         json={"status": "resolved", "severity": "low"},
         headers=_auth(token),
     )
@@ -485,9 +485,9 @@ async def test_snag_crud(
     assert patched.json()["status"] == "resolved"
     assert patched.json()["severity"] == "low"
 
-    deleted = await client.delete(f"/free/findings/{snag_id}", headers=_auth(token))
+    deleted = await client.delete(f"/pooled/findings/{snag_id}", headers=_auth(token))
     assert deleted.status_code == 204
-    listed2 = await client.get(f"/free/documents/{did}/findings", headers=_auth(token))
+    listed2 = await client.get(f"/pooled/documents/{did}/findings", headers=_auth(token))
     assert listed2.json() == []
 
 
@@ -504,13 +504,13 @@ async def test_snag_assignee_and_deadline(
     did = await _create_document(client, token, pid)
 
     # The owner is a participant (synthesized into the members list).
-    members = await client.get(f"/free/projects/{pid}/members", headers=_auth(token))
+    members = await client.get(f"/pooled/projects/{pid}/members", headers=_auth(token))
     assert members.status_code == 200
     owner_id = next(m["user_id"] for m in members.json() if m["role"] == "owner")
 
     # Create assigned to the owner, with a deadline.
     created = await client.post(
-        f"/free/documents/{did}/findings",
+        f"/pooled/documents/{did}/findings",
         json={
             "title": "Assign me",
             "severity": "medium",
@@ -525,7 +525,7 @@ async def test_snag_assignee_and_deadline(
 
     # Assigning to a non-participant is rejected.
     bad = await client.post(
-        f"/free/documents/{did}/findings",
+        f"/pooled/documents/{did}/findings",
         json={"title": "Bad assignee", "assigned_to_user_id": str(uuid4())},
         headers=_auth(token),
     )
@@ -534,12 +534,12 @@ async def test_snag_assignee_and_deadline(
 
     # PATCH assignment + deadline onto a plain snag.
     plain = await client.post(
-        f"/free/documents/{did}/findings", json={"title": "Plain"}, headers=_auth(token)
+        f"/pooled/documents/{did}/findings", json={"title": "Plain"}, headers=_auth(token)
     )
     assert plain.status_code == 201
     assert plain.json()["assignee_user_id"] is None
     patched = await client.patch(
-        f"/free/findings/{plain.json()['id']}",
+        f"/pooled/findings/{plain.json()['id']}",
         json={"assigned_to_user_id": owner_id, "deadline_date": "2027-01-15"},
         headers=_auth(token),
     )
@@ -549,7 +549,7 @@ async def test_snag_assignee_and_deadline(
 
     # PATCH assigning to a non-participant is still rejected.
     bad_patch = await client.patch(
-        f"/free/findings/{plain.json()['id']}",
+        f"/pooled/findings/{plain.json()['id']}",
         json={"assigned_to_user_id": str(uuid4())},
         headers=_auth(token),
     )
@@ -569,11 +569,11 @@ async def test_snag_patch_clears_and_preserves_assignment(
     pid = await _create_project(client, token)
     did = await _create_document(client, token, pid)
 
-    members = await client.get(f"/free/projects/{pid}/members", headers=_auth(token))
+    members = await client.get(f"/pooled/projects/{pid}/members", headers=_auth(token))
     owner_id = next(m["user_id"] for m in members.json() if m["role"] == "owner")
 
     created = await client.post(
-        f"/free/documents/{did}/findings",
+        f"/pooled/documents/{did}/findings",
         json={
             "title": "Clearable",
             "assigned_to_user_id": owner_id,
@@ -586,7 +586,7 @@ async def test_snag_patch_clears_and_preserves_assignment(
 
     # Omitting assignee/deadline leaves them untouched.
     only_title = await client.patch(
-        f"/free/findings/{fid}", json={"title": "Renamed"}, headers=_auth(token)
+        f"/pooled/findings/{fid}", json={"title": "Renamed"}, headers=_auth(token)
     )
     assert only_title.status_code == 200, only_title.text
     assert only_title.json()["title"] == "Renamed"
@@ -595,7 +595,7 @@ async def test_snag_patch_clears_and_preserves_assignment(
 
     # An explicit null clears both nullable columns.
     cleared = await client.patch(
-        f"/free/findings/{fid}",
+        f"/pooled/findings/{fid}",
         json={"assigned_to_user_id": None, "deadline_date": None},
         headers=_auth(token),
     )
@@ -605,7 +605,7 @@ async def test_snag_patch_clears_and_preserves_assignment(
 
     # A null on the NOT-NULL title column is ignored (value preserved).
     keep_title = await client.patch(
-        f"/free/findings/{fid}", json={"title": None}, headers=_auth(token)
+        f"/pooled/findings/{fid}", json={"title": None}, headers=_auth(token)
     )
     assert keep_title.status_code == 200, keep_title.text
     assert keep_title.json()["title"] == "Renamed"
@@ -627,7 +627,7 @@ async def test_versioning_and_restore(
     await _callback_succeeded(client, v2["id"], v2["storage_key"])
 
     doc = await client.get(
-        f"/free/projects/{pid}/documents/{did}", headers=_auth(token)
+        f"/pooled/projects/{pid}/documents/{did}", headers=_auth(token)
     )
     assert doc.status_code == 200
     body = doc.json()
@@ -636,7 +636,7 @@ async def test_versioning_and_restore(
     assert {v["version_number"] for v in body["versions"]} == {1, 2}
 
     restore = await client.post(
-        f"/free/projects/{pid}/documents/{did}/files/{v1['id']}/restore",
+        f"/pooled/projects/{pid}/documents/{did}/files/{v1['id']}/restore",
         headers=_auth(token),
     )
     assert restore.status_code == 200, restore.text
@@ -644,7 +644,7 @@ async def test_versioning_and_restore(
 
     # Restoring the current head again is a no-op 409.
     again = await client.post(
-        f"/free/projects/{pid}/documents/{did}/files/{v1['id']}/restore",
+        f"/pooled/projects/{pid}/documents/{did}/files/{v1['id']}/restore",
         headers=_auth(token),
     )
     assert again.status_code == 409
@@ -671,7 +671,7 @@ async def test_global_extraction_cap(
     i2 = await _initiate_file(client, token, pid, d2, filename="m2.ifc")
     fake.objects[i2["storage_key"]] = _IFC_HEADER
     resp = await client.post(
-        f"/free/projects/{pid}/documents/{d2}/files/{i2['file_id']}/complete",
+        f"/pooled/projects/{pid}/documents/{d2}/files/{i2['file_id']}/complete",
         headers=_auth(token),
     )
     assert resp.status_code == 503
@@ -706,7 +706,7 @@ async def test_free_stuck_extraction_reaper(
     failed = await sweep_stuck_pooled_extractions(60)
     assert failed >= 1
     doc = await client.get(
-        f"/free/projects/{pid}/documents/{did}", headers=_auth(token)
+        f"/pooled/projects/{pid}/documents/{did}", headers=_auth(token)
     )
     assert doc.json()["versions"][0]["extraction_status"] == "failed"
 
@@ -739,7 +739,7 @@ async def test_idle_free_container_reaper(
     reaped = await sweep_idle_pooled_containers(30, storage=fake)
     assert reaped >= 1
     detail = await client.get(
-        f"/free/projects/{pid}/documents/{did}", headers=_auth(token)
+        f"/pooled/projects/{pid}/documents/{did}", headers=_auth(token)
     )
     assert detail.status_code == 404
     async with session_maker() as s:
@@ -800,7 +800,7 @@ async def test_free_endpoints_403_when_disabled(
     get_settings.cache_clear()
     try:
         token = await _free_token(client, session_maker, "free-disabled@example.com")
-        resp = await client.get("/free/projects", headers=_auth(token))
+        resp = await client.get("/pooled/projects", headers=_auth(token))
         assert resp.status_code == 403
         assert resp.json()["detail"] == "FREE_TIER_DISABLED"
     finally:

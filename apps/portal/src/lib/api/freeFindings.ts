@@ -42,7 +42,7 @@ export async function listFreeFindings(
   documentId: string,
 ): Promise<Finding[]> {
   return apiClient.get<Finding[]>(
-    `/free/documents/${documentId}/findings`,
+    `/pooled/documents/${documentId}/findings`,
     FindingListSchema,
     accessToken,
   );
@@ -54,7 +54,7 @@ export async function createFreeFinding(
   input: FreeFindingCreateInput,
 ): Promise<Finding> {
   return apiClient.post<Finding>(
-    `/free/documents/${documentId}/findings`,
+    `/pooled/documents/${documentId}/findings`,
     input,
     FindingSchema,
     accessToken,
@@ -67,7 +67,7 @@ export async function updateFreeFinding(
   input: FreeFindingUpdateInput,
 ): Promise<Finding> {
   return apiClient.patch<Finding>(
-    `/free/findings/${snagId}`,
+    `/pooled/findings/${snagId}`,
     input,
     FindingSchema,
     accessToken,
@@ -80,12 +80,12 @@ export async function downloadFreeFindingsCsv(
   accessToken: string,
   projectId: string,
 ): Promise<{ blob: Blob; filename: string | null }> {
-  return apiClient.getBlob(`/free/projects/${projectId}/findings/export.csv`, accessToken);
+  return apiClient.getBlob(`/pooled/projects/${projectId}/findings/export.csv`, accessToken);
 }
 
 export async function deleteFreeFinding(
   accessToken: string,
   snagId: string,
 ): Promise<void> {
-  return apiClient.delete(`/free/findings/${snagId}`, accessToken);
+  return apiClient.delete(`/pooled/findings/${snagId}`, accessToken);
 }

@@ -13,7 +13,7 @@ import {
 
 export type { ProjectInvitationResponse } from './schemas';
 
-// `free` swaps the `/free/projects` vs `/projects` prefix for the shared member
+// `free` swaps the `/pooled/projects` vs `/projects` prefix for the shared member
 // ops (list/update-role/remove). Adding a member differs by tier: paid invites an
 // existing org member by user_id (`addProjectMember`) or by email via
 // `/invitations` (`inviteToProject`); free invites by email straight to `/members`

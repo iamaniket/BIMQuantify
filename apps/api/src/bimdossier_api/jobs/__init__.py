@@ -20,16 +20,16 @@ from bimdossier_api.jobs.dispatcher import (
     set_job_dispatcher,
 )
 from bimdossier_api.jobs.priority import (
-    FREE_CALLBACK_PATH,
-    FREE_PAGES_CALLBACK_PATH,
+    POOLED_CALLBACK_PATH,
+    POOLED_PAGES_CALLBACK_PATH,
     FREE_TIER_SENTINEL_ORG,
     JobTier,
     resolve_priority,
 )
 
 __all__ = [
-    "FREE_CALLBACK_PATH",
-    "FREE_PAGES_CALLBACK_PATH",
+    "POOLED_CALLBACK_PATH",
+    "POOLED_PAGES_CALLBACK_PATH",
     "FREE_TIER_SENTINEL_ORG",
     "CancelResult",
     "DispatchJobError",

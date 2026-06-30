@@ -47,7 +47,7 @@ async def _upload_attachment(
     if idempotency_key is not None:
         headers = {**headers, "Idempotency-Key": idempotency_key}
     init = await client.post(
-        f"/free/projects/{project_id}/attachments/initiate",
+        f"/pooled/projects/{project_id}/attachments/initiate",
         json={
             "filename": filename,
             "size_bytes": len(_PHOTO_BYTES),
@@ -60,7 +60,7 @@ async def _upload_attachment(
     body = init.json()
     fake.objects[body["storage_key"]] = _PHOTO_BYTES
     done = await client.post(
-        f"/free/projects/{project_id}/attachments/{body['attachment_id']}/complete",
+        f"/pooled/projects/{project_id}/attachments/{body['attachment_id']}/complete",
         headers=_auth(token),
     )
     assert done.status_code == 200, done.text
@@ -74,7 +74,7 @@ async def _create_finding(
     if photo_ids is not None:
         payload["photo_ids"] = photo_ids
     resp = await client.post(
-        f"/free/documents/{document_id}/findings", json=payload, headers=_auth(token)
+        f"/pooled/documents/{document_id}/findings", json=payload, headers=_auth(token)
     )
     assert resp.status_code == 201, resp.text
     return resp.json()
@@ -97,7 +97,7 @@ async def test_free_attachment_upload_and_download(
     assert "/attachments/" in att["storage_key"]
 
     dl = await client.get(
-        f"/free/projects/{pid}/attachments/{att['id']}/download", headers=_auth(token)
+        f"/pooled/projects/{pid}/attachments/{att['id']}/download", headers=_auth(token)
     )
     assert dl.status_code == 200, dl.text
     assert dl.json()["download_url"]
@@ -113,7 +113,7 @@ async def test_pooled_attachment_idempotent_replay_returns_same_row(
 
     key = str(uuid4())
     first = await client.post(
-        f"/free/projects/{pid}/attachments/initiate",
+        f"/pooled/projects/{pid}/attachments/initiate",
         json={
             "filename": "p.jpg",
             "size_bytes": len(_PHOTO_BYTES),
@@ -124,7 +124,7 @@ async def test_pooled_attachment_idempotent_replay_returns_same_row(
     )
     assert first.status_code == 201, first.text
     second = await client.post(
-        f"/free/projects/{pid}/attachments/initiate",
+        f"/pooled/projects/{pid}/attachments/initiate",
         json={
             "filename": "p.jpg",
             "size_bytes": len(_PHOTO_BYTES),
@@ -152,12 +152,12 @@ async def test_free_finding_create_with_photo_then_get_and_list(
     assert finding["photo_ids"] == [att["id"]]
 
     # Single GET (mobile useFinding / offline conflict refetch) surfaces it.
-    got = await client.get(f"/free/findings/{finding['id']}", headers=_auth(token))
+    got = await client.get(f"/pooled/findings/{finding['id']}", headers=_auth(token))
     assert got.status_code == 200, got.text
     assert got.json()["photo_ids"] == [att["id"]]
 
     # The document findings list also carries the photo link.
-    listed = await client.get(f"/free/documents/{did}/findings", headers=_auth(token))
+    listed = await client.get(f"/pooled/documents/{did}/findings", headers=_auth(token))
     assert listed.status_code == 200, listed.text
     rows = listed.json()
     assert len(rows) == 1
@@ -178,7 +178,7 @@ async def test_free_finding_update_adds_resolution_evidence(
     assert finding["resolution_evidence_ids"] is None
 
     patched = await client.patch(
-        f"/free/findings/{finding['id']}",
+        f"/pooled/findings/{finding['id']}",
         json={"status": "resolved", "resolution_evidence_ids": [att["id"]]},
         headers=_auth(token),
     )
@@ -198,7 +198,7 @@ async def test_free_finding_create_with_unknown_photo_id_422(
     did = await _create_document(client, token, pid)
 
     resp = await client.post(
-        f"/free/documents/{did}/findings",
+        f"/pooled/documents/{did}/findings",
         json={"title": "x", "severity": "low", "photo_ids": [str(uuid4())]},
         headers=_auth(token),
     )
@@ -219,7 +219,7 @@ async def test_free_attachment_cross_owner_isolation(
 
     token_b = await _free_token(client, session_maker, "free-att-b@example.com")
     dl = await client.get(
-        f"/free/projects/{pid_a}/attachments/{att['id']}/download",
+        f"/pooled/projects/{pid_a}/attachments/{att['id']}/download",
         headers=_auth(token_b),
     )
     assert dl.status_code == 404, dl.text
@@ -247,7 +247,7 @@ async def test_free_attachment_initiate_respects_storage_cap(
     get_settings.cache_clear()
 
     init = await client.post(
-        f"/free/projects/{pid}/attachments/initiate",
+        f"/pooled/projects/{pid}/attachments/initiate",
         json={
             "filename": "snag.jpg",
             "size_bytes": len(_PHOTO_BYTES),
@@ -269,6 +269,6 @@ async def test_free_usage_includes_attachment_bytes(
     pid = await _create_project(client, token)
     await _upload_attachment(client, fake, token, pid)
 
-    usage = await client.get("/free/account/usage", headers=_auth(token))
+    usage = await client.get("/pooled/account/usage", headers=_auth(token))
     assert usage.status_code == 200, usage.text
     assert usage.json()["storage_bytes_used"] >= len(_PHOTO_BYTES)

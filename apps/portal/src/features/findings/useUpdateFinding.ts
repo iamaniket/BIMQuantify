@@ -14,7 +14,7 @@ type Vars = { findingId: string; input: FindingUpdateInput };
 
 /**
  * Free-aware: on the free board a "finding" is a pooled snag, so updates go to
- * `PATCH /free/findings/{id}` (title/note/severity/status + assignee/deadline). The
+ * `PATCH /pooled/findings/{id}` (title/note/severity/status + assignee/deadline). The
  * result is adapted back to the paid `Finding` shape so the kanban (which
  * refetches from the board feed) is unchanged.
  */

@@ -15,7 +15,7 @@ import { useAuth } from '@/providers/AuthProvider';
  * Free-tier board CSV export. The paid `FindingsExportActions` pulls org-only
  * hooks (report generation, project permissions), so the free branch uses this
  * minimal button instead — it reuses the same `findingsBoard.export.*` strings
- * and hits the org-less `/free/projects/{id}/findings/export.csv` endpoint.
+ * and hits the org-less `/pooled/projects/{id}/findings/export.csv` endpoint.
  */
 export function FreeFindingsExportButton({ projectId }: { projectId: string }): JSX.Element {
   const t = useTranslations('findingsBoard.export');

@@ -149,7 +149,7 @@ export const FreeUserReadSchema = AdminUserReadSchema.extend({
   limits: FreeUserLimitsSchema,
 });
 
-// The caller's OWN free caps + trial countdown (GET /free/account/limits) —
+// The caller's OWN free caps + trial countdown (GET /pooled/account/limits) —
 // drives the portal trial banner. No override/default internals (admin-only).
 export const FreeAccountLimitsSchema = z.object({
   max_projects: z.number().int(),

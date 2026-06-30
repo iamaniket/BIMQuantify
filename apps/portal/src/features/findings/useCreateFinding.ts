@@ -23,7 +23,7 @@ export class FreeFindingNoContainerError extends Error {
 
 /**
  * Free-aware: on the free tier a "finding" is a pooled snag created against a
- * container via `POST /free/documents/{containerId}/findings`. We map the container
+ * container via `POST /pooled/documents/{containerId}/findings`. We map the container
  * from `input.linked_document_id` (the viewer/board supplies it) and translate
  * the paid create payload to the free snag shape. Assignment + deadline are NOT
  * part of the create contract (mirrors paid — set them afterwards via the detail

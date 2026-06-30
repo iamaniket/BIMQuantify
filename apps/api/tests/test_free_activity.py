@@ -56,23 +56,23 @@ async def test_free_activity_timeline_reflects_events(
     # Two findings (create), then edit one (change via updated_at > created_at).
     sid = (
         await client.post(
-            f"/free/documents/{did}/findings",
+            f"/pooled/documents/{did}/findings",
             json={"title": "crack", "severity": "high"},
             headers=_auth(token),
         )
     ).json()["id"]
     await client.post(
-        f"/free/documents/{did}/findings",
+        f"/pooled/documents/{did}/findings",
         json={"title": "leak", "severity": "low"},
         headers=_auth(token),
     )
     patched = await client.patch(
-        f"/free/findings/{sid}", json={"status": "resolved"}, headers=_auth(token)
+        f"/pooled/findings/{sid}", json={"status": "resolved"}, headers=_auth(token)
     )
     assert patched.status_code == 200, patched.text
 
     resp = await client.get(
-        f"/free/projects/{pid}/activity/timeline?bucket=week", headers=_auth(token)
+        f"/pooled/projects/{pid}/activity/timeline?bucket=week", headers=_auth(token)
     )
     assert resp.status_code == 200, resp.text
     by_category, by_resource, total = _aggregate(resp.json())
@@ -94,7 +94,7 @@ async def test_free_activity_timeline_empty_project(
     pid = await _create_project(client, token, name="Empty")
 
     resp = await client.get(
-        f"/free/projects/{pid}/activity/timeline?bucket=week", headers=_auth(token)
+        f"/pooled/projects/{pid}/activity/timeline?bucket=week", headers=_auth(token)
     )
     assert resp.status_code == 200, resp.text
     assert resp.json() == []
@@ -111,7 +111,7 @@ async def test_free_activity_timeline_non_participant_404(
     token_b = await _free_token(client, session_maker, "fa-iso-b@example.com")
     pid = await _create_project(client, token_a, name="A only")
 
-    resp = await client.get(f"/free/projects/{pid}/activity/timeline", headers=_auth(token_b))
+    resp = await client.get(f"/pooled/projects/{pid}/activity/timeline", headers=_auth(token_b))
     assert resp.status_code == 404
     assert resp.json()["detail"] == "FREE_PROJECT_NOT_FOUND"
 
@@ -127,7 +127,7 @@ async def test_free_activity_timeline_403_when_disabled(
     try:
         token = await _free_token(client, session_maker, "fa-disabled@example.com")
         resp = await client.get(
-            "/free/projects/00000000-0000-0000-0000-000000000000/activity/timeline",
+            "/pooled/projects/00000000-0000-0000-0000-000000000000/activity/timeline",
             headers=_auth(token),
         )
         assert resp.status_code == 403

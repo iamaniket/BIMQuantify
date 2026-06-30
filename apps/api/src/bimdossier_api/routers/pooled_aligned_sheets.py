@@ -38,7 +38,7 @@ from bimdossier_api.schemas.aligned_sheet import CalibrateRequest
 from bimdossier_api.tenancy import get_pooled_session
 
 router = APIRouter(
-    prefix="/free/projects/{project_id}/aligned-sheets",
+    prefix="/pooled/projects/{project_id}/aligned-sheets",
     tags=["free-viewer"],
     dependencies=[Depends(require_free_tier_enabled)],
 )

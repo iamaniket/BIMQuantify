@@ -22,7 +22,7 @@ export async function listFreeProjectFindings(
   projectId: string,
 ): Promise<FindingList> {
   return apiClient.get<FindingList>(
-    `/free/projects/${projectId}/findings`,
+    `/pooled/projects/${projectId}/findings`,
     FindingListSchema,
     token,
   );
@@ -34,7 +34,7 @@ export async function getFreeFinding(
   findingId: string,
 ): Promise<Finding> {
   void projectId;
-  return apiClient.get<Finding>(`/free/findings/${findingId}`, FindingSchema, token);
+  return apiClient.get<Finding>(`/pooled/findings/${findingId}`, FindingSchema, token);
 }
 
 export async function createFreeFinding(
@@ -62,7 +62,7 @@ export async function createFreeFinding(
     photo_ids: input.photo_ids ?? undefined,
   };
   return apiClient.post<Finding>(
-    `/free/documents/${documentId}/findings`,
+    `/pooled/documents/${documentId}/findings`,
     body,
     FindingSchema,
     token,
@@ -87,5 +87,5 @@ export async function updateFreeFinding(
   if (input.resolution_evidence_ids !== undefined) {
     body['resolution_evidence_ids'] = input.resolution_evidence_ids;
   }
-  return apiClient.patch<Finding>(`/free/findings/${findingId}`, body, FindingSchema, token);
+  return apiClient.patch<Finding>(`/pooled/findings/${findingId}`, body, FindingSchema, token);
 }

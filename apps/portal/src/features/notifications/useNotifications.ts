@@ -21,7 +21,7 @@ import { notificationsKey, unreadCountKey } from './queryKeys';
 const POLL_FALLBACK_MS = 30_000;
 
 // The bell mounts for everyone; each hook passes the free flag so an org-less
-// caller routes to `/free/notifications` (vs the org-scoped paid feed). Same query
+// caller routes to `/pooled/notifications` (vs the org-scoped paid feed). Same query
 // keys for both → the WS invalidation in useNotificationSocket is unchanged.
 // Queries wait on `ready` so a free user never briefly hits the org-only paid
 // endpoint before /auth/me resolves.

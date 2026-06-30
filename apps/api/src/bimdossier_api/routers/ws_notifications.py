@@ -300,7 +300,7 @@ async def authenticate_ws_pooled_token(
     return user
 
 
-@router.websocket("/ws/free-notifications")
+@router.websocket("/ws/pooled-notifications")
 async def ws_pooled_notifications(ws: WebSocket, token: str | None = Query(default=None)) -> None:
     """Free-tier notification stream — per-user channel, no org.
 

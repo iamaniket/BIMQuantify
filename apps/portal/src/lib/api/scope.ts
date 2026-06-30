@@ -9,11 +9,11 @@
  */
 
 /** Prefix for top-level mirrored collections, e.g. `${freePrefix(free)}/notifications`. */
-export const freePrefix = (free: boolean): string => (free ? '/free' : '');
+export const freePrefix = (free: boolean): string => (free ? '/pooled' : '');
 
 /** Base path for a project's resources, e.g. `${projectScope(id, free)}/levels`. */
 export const projectScope = (projectId: string, free: boolean): string =>
-  `${free ? '/free/projects' : '/projects'}/${projectId}`;
+  `${free ? '/pooled/projects' : '/projects'}/${projectId}`;
 
 /** Base path for the projects collection itself. */
-export const projectsScope = (free: boolean): string => (free ? '/free/projects' : '/projects');
+export const projectsScope = (free: boolean): string => (free ? '/pooled/projects' : '/projects');

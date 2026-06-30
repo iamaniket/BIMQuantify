@@ -1,7 +1,7 @@
 """Phase C — Document CRUD unified onto get_scoped_session.
 
 A free user does container (Document) CRUD on the CANONICAL
-`/projects/{id}/documents` path; the legacy `/free/projects/{id}/documents`
+`/projects/{id}/documents` path; the legacy `/pooled/projects/{id}/documents`
 alias still works (the file-upload flow + viewer bundles + free findings remain
 on pooled_documents.router for now); paid is unchanged.
 """
@@ -77,7 +77,7 @@ async def test_pooled_documents_alias_still_works(
 
     # Create via the legacy alias, read back via the canonical path — same row.
     created = await client.post(
-        f"/free/projects/{pid}/documents",
+        f"/pooled/projects/{pid}/documents",
         json={"name": "Garage", "discipline": "architectural"},
         headers=_auth(token),
     )

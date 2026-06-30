@@ -24,7 +24,7 @@ async def _create_level(
     ordering: int | None = 0,
 ) -> dict:
     resp = await client.post(
-        f"/free/projects/{pid}/levels",
+        f"/pooled/projects/{pid}/levels",
         json={"name": name, "elevation_m": elevation, "ordering": ordering},
         headers=_auth(token),
     )
@@ -47,19 +47,19 @@ async def test_free_level_crud_and_drawing_assignment(
     assert l1["project_id"] == pid
 
     # Ordered by floor (ground before first).
-    lst = await client.get(f"/free/projects/{pid}/levels", headers=_auth(token))
+    lst = await client.get(f"/pooled/projects/{pid}/levels", headers=_auth(token))
     assert lst.status_code == 200
     assert [x["name"] for x in lst.json()] == ["Ground", "First"]
 
     # Duplicate name conflicts.
     dup = await client.post(
-        f"/free/projects/{pid}/levels", json={"name": "Ground"}, headers=_auth(token)
+        f"/pooled/projects/{pid}/levels", json={"name": "Ground"}, headers=_auth(token)
     )
     assert dup.status_code == 409
 
     # Rename a level.
     upd = await client.patch(
-        f"/free/projects/{pid}/levels/{l2['id']}",
+        f"/pooled/projects/{pid}/levels/{l2['id']}",
         json={"name": "Level 1"},
         headers=_auth(token),
     )
@@ -68,7 +68,7 @@ async def test_free_level_crud_and_drawing_assignment(
 
     # Assign the drawing to a level.
     assigned = await client.patch(
-        f"/free/projects/{pid}/documents/{did}",
+        f"/pooled/projects/{pid}/documents/{did}",
         json={"level_id": l1["id"]},
         headers=_auth(token),
     )
@@ -77,7 +77,7 @@ async def test_free_level_crud_and_drawing_assignment(
 
     # A bogus level id → 404 (not an FK 500).
     bad = await client.patch(
-        f"/free/projects/{pid}/documents/{did}",
+        f"/pooled/projects/{pid}/documents/{did}",
         json={"level_id": str(uuid4())},
         headers=_auth(token),
     )
@@ -85,11 +85,11 @@ async def test_free_level_crud_and_drawing_assignment(
 
     # Deleting the level reverts the drawing to Unassigned (SET NULL).
     deleted = await client.delete(
-        f"/free/projects/{pid}/levels/{l1['id']}", headers=_auth(token)
+        f"/pooled/projects/{pid}/levels/{l1['id']}", headers=_auth(token)
     )
     assert deleted.status_code == 204
     doc = await client.get(
-        f"/free/projects/{pid}/documents/{did}", headers=_auth(token)
+        f"/pooled/projects/{pid}/documents/{did}", headers=_auth(token)
     )
     assert doc.status_code == 200
     assert doc.json()["level_id"] is None
@@ -107,10 +107,10 @@ async def test_pooled_levels_rls_isolation(
     await _create_level(client, token_a, pid, name="Ground")
 
     assert (
-        await client.get(f"/free/projects/{pid}/levels", headers=_auth(token_b))
+        await client.get(f"/pooled/projects/{pid}/levels", headers=_auth(token_b))
     ).status_code == 404
     assert (
         await client.post(
-            f"/free/projects/{pid}/levels", json={"name": "x"}, headers=_auth(token_b)
+            f"/pooled/projects/{pid}/levels", json={"name": "x"}, headers=_auth(token_b)
         )
     ).status_code == 404

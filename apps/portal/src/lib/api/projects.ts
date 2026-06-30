@@ -12,7 +12,7 @@ import {
 } from './schemas';
 
 // Free (org-less) and paid callers share these fetchers; `free` swaps the
-// `/free/projects` vs `/projects` prefix. Both surfaces return the IDENTICAL paid
+// `/pooled/projects` vs `/projects` prefix. Both surfaces return the IDENTICAL paid
 // schema (the API zeroes the org-only blocks for free). `createProjectWithThumbnail`
 // is paid-only (free uploads the cover separately via `uploadProjectThumbnail`).
 

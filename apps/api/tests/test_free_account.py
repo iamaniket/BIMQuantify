@@ -1,6 +1,6 @@
 """Tests for the self-serve free-tier account usage endpoint.
 
-`GET /free/account/usage` exposes the calling free user's own data footprint
+`GET /pooled/account/usage` exposes the calling free user's own data footprint
 (storage / projects / containers / snags) vs. the configured caps, so the portal
 account page can render a usage card. Mirrors the super-admin `/admin/users/free`
 computation but scoped to the caller via the pooled free session.
@@ -35,13 +35,13 @@ async def test_free_account_usage_reflects_owned_content(
     await _upload(client, fake, token, pid, did, size=4096)
 
     snag = await client.post(
-        f"/free/documents/{did}/findings",
+        f"/pooled/documents/{did}/findings",
         json={"title": "crack", "severity": "high"},
         headers=_auth(token),
     )
     assert snag.status_code == 201, snag.text
 
-    resp = await client.get("/free/account/usage", headers=_auth(token))
+    resp = await client.get("/pooled/account/usage", headers=_auth(token))
     assert resp.status_code == 200, resp.text
     body = resp.json()
 
@@ -64,7 +64,7 @@ async def test_free_account_usage_zero_for_new_user(
     client, _ = free_tier_storage_client
     token = await _free_token(client, session_maker, "fa-empty@example.com")
 
-    resp = await client.get("/free/account/usage", headers=_auth(token))
+    resp = await client.get("/pooled/account/usage", headers=_auth(token))
     assert resp.status_code == 200, resp.text
     body = resp.json()
 
@@ -94,7 +94,7 @@ async def test_free_account_usage_isolated_per_user(
     did = await _create_document(client, token_a, pid)
     await _upload(client, fake, token_a, pid, did, size=2048)
 
-    usage_b = await client.get("/free/account/usage", headers=_auth(token_b))
+    usage_b = await client.get("/pooled/account/usage", headers=_auth(token_b))
     assert usage_b.status_code == 200, usage_b.text
     body_b = usage_b.json()
     assert body_b["project_count"] == 0
@@ -114,7 +114,7 @@ async def test_free_account_usage_flag_off_returns_403(
     monkeypatch.setenv("FREE_TIER_ENABLED", "false")
     get_settings.cache_clear()
     try:
-        resp = await client.get("/free/account/usage", headers=_auth(token))
+        resp = await client.get("/pooled/account/usage", headers=_auth(token))
         assert resp.status_code == 403
         assert resp.json()["detail"] == "FREE_TIER_DISABLED"
     finally:

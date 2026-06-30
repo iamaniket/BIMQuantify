@@ -24,7 +24,7 @@ from bimdossier_api.schemas.admin import FreeAccountLimits, FreeUserUsage
 from bimdossier_api.tenancy import get_pooled_session
 
 router = APIRouter(
-    prefix="/free",
+    prefix="/pooled",
     tags=["free"],
     dependencies=[Depends(require_free_tier_enabled)],
 )

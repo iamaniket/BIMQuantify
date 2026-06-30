@@ -71,7 +71,7 @@ export function useNotificationSocket(
       // logged by proxies, the uvicorn access log, and browser history (M-ws).
       // The server reads the token off the subprotocol and echoes 'bearer'.
       // Free (org-less) users use the per-user free channel; paid use the org one.
-      const path = free ? '/ws/free-notifications' : '/ws/notifications';
+      const path = free ? '/ws/pooled-notifications' : '/ws/notifications';
       const ws = new WebSocket(`${wsUrl}${path}`, ['bearer', token]);
       wsRef.current = ws;
 

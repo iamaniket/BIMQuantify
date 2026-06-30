@@ -123,7 +123,7 @@ def _map_pooled_finding_to_finding(
 
 
 @router.post(
-    "/projects/{project_id}/import-free-model",
+    "/projects/{project_id}/import-pooled-model",
     response_model=ImportPooledModelResponse,
 )
 async def import_pooled_model(

@@ -14,7 +14,7 @@ import {
 } from './schemas';
 
 // Free (org-less) and paid callers share these fetchers; `free` swaps the
-// `/free/projects` vs `/projects` prefix. Both surfaces return identical schemas.
+// `/pooled/projects` vs `/projects` prefix. Both surfaces return identical schemas.
 // `listDocuments` (the light, no-versions list) is paid-only — the free list
 // endpoint always returns the with-versions shape.
 const docsBase = (projectId: string, free: boolean): string =>

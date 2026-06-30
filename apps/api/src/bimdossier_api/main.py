@@ -434,12 +434,12 @@ def create_app() -> FastAPI:
     # Tier-unified: the same documents router serves free container CRUD under the
     # legacy /free alias (tier resolved from the JWT). The free file-upload flow +
     # viewer bundles + free findings still live on pooled_documents_router for now.
-    app.include_router(documents_router, prefix="/free")
+    app.include_router(documents_router, prefix="/pooled")
     app.include_router(levels_router)
     # Tier-unified: the same levels router serves free callers under the legacy
     # /free alias (the handler resolves the tier from the JWT, not the prefix).
     # Replaces the deleted pooled_levels_router.
-    app.include_router(levels_router, prefix="/free")
+    app.include_router(levels_router, prefix="/pooled")
     app.include_router(storeys_router)
     app.include_router(aligned_sheets_router)
     app.include_router(project_files_router)
@@ -479,7 +479,7 @@ def create_app() -> FastAPI:
     app.include_router(notifications_router)
     # Tier-unified: the same notifications router serves free callers under the
     # legacy /free alias (tier resolved from the JWT). Replaces pooled_notifications.
-    app.include_router(notifications_router, prefix="/free")
+    app.include_router(notifications_router, prefix="/pooled")
     app.include_router(ws_notifications_router)
     return app
 

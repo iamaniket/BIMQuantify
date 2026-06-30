@@ -108,7 +108,7 @@ async def test_free_session_cannot_read_other_free_users_pooled_rows(
     pid_b = await _create_project(fclient, token_b)
     did_b = await _create_document(fclient, token_b, pid_b)
     snag = await fclient.post(
-        f"/free/documents/{did_b}/findings",
+        f"/pooled/documents/{did_b}/findings",
         json={"title": "B-secret", "severity": "high"},
         headers=_auth(token_b),
     )
@@ -136,7 +136,7 @@ async def test_org_token_cannot_read_pooled_free_rows(
     pid_b = await _create_project(fclient, token_b)
     did_b = await _create_document(fclient, token_b, pid_b)
     snag = await fclient.post(
-        f"/free/documents/{did_b}/findings",
+        f"/pooled/documents/{did_b}/findings",
         json={"title": "B-secret", "severity": "high"},
         headers=_auth(token_b),
     )
@@ -274,7 +274,7 @@ async def test_free_finding_owner_is_server_derived_not_client_supplied(
     pid = await _create_project(fclient, token_a)
     did = await _create_document(fclient, token_a, pid)
     resp = await fclient.post(
-        f"/free/documents/{did}/findings",
+        f"/pooled/documents/{did}/findings",
         json={"title": "x", "severity": "high"},
         headers=_auth(token_a),
     )
