@@ -34,12 +34,12 @@ from bimdossier_api.config import get_settings
 from bimdossier_api.db import get_admin_engine, get_session_maker
 from bimdossier_api.entitlements import PLAN_PAID
 from bimdossier_api.models.organization import Organization, OrganizationStatus
-from bimdossier_api.storage import StorageBackend, get_storage
 from bimdossier_api.models.organization_member import (
     OrganizationMember,
     OrganizationMemberStatus,
 )
 from bimdossier_api.models.user import User
+from bimdossier_api.storage import StorageBackend, get_storage
 from bimdossier_api.tenancy import schema_name_for
 
 logger = logging.getLogger(__name__)

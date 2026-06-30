@@ -71,6 +71,20 @@ class ImportPooledModelResponse(BaseModel):
     findings_created: int
 
 
+def _coerce_discipline(value: str | None) -> DocumentDiscipline:
+    """Map a pooled container's discipline (String+CHECK) onto the paid enum,
+    falling back to architectural for an unknown/blank value. Preserves the free
+    container's real discipline through conversion (POOL-CONV-DISCIPLINE-1) so the
+    floor-plan gate + labels match what the user built, instead of forcing
+    everything to architectural."""
+    if not value:
+        return DocumentDiscipline.architectural
+    try:
+        return DocumentDiscipline(value)
+    except ValueError:
+        return DocumentDiscipline.architectural
+
+
 def _map_pooled_finding_to_finding(
     snag: PooledFinding,
     *,
@@ -104,7 +118,9 @@ def _map_pooled_finding_to_finding(
         description=snag.note or snag.title,
         severity=severity,
         status=finding_status,
-        created_by_user_id=user_id,
+        # Preserve the ORIGINAL author (global public.users id, FK-valid in the
+        # tenant schema); fall back to the importer only if it's somehow unset.
+        created_by_user_id=snag.created_by_user_id or user_id,
         # Carry assignment as-is: assigned_to_user_id references public.users
         # (global), so the FK is valid in the tenant schema. The assignee may not
         # yet be a member of the destination paid org/project — that's acceptable
@@ -213,12 +229,13 @@ async def import_pooled_model(
             except ValueError:
                 ifc_schema = None
 
+        imported_discipline = _coerce_discipline(document.discipline)
         session.add(
             Document(
                 id=document_id,
                 project_id=project.id,
                 name=document.name,
-                discipline=DocumentDiscipline.architectural,
+                discipline=imported_discipline,
                 status=DocumentStatus.active,
                 primary_file_type=FileType.ifc,
             )
@@ -256,7 +273,7 @@ async def import_pooled_model(
                 "project_id": str(project.id),
                 "storage_key": new_key,
                 "compressed": ext == ".ifczip",
-                "discipline": DocumentDiscipline.architectural.value,
+                "discipline": imported_discipline.value,
             },
             created_by_user_id=user.id,
         )

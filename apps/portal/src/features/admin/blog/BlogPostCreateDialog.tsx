@@ -28,6 +28,8 @@ import {
 import { Wizard } from '@/components/shared/wizard/Wizard';
 
 import {
+  BLOG_COVER_MAX_DIM,
+  BLOG_COVER_QUALITY,
   THUMBNAIL_ACCEPT,
   compressImage,
 } from '@/lib/images/compressImage';
@@ -155,12 +157,13 @@ export function BlogPostCreateDialog({ open, onOpenChange }: Props): JSX.Element
       setCoverError(t('errors.coverType'));
       return;
     }
-    // Drop the hard size cap on the input. `compressImage` rescales to 800px
-    // max and re-encodes to JPEG 0.82 — output is typically <300 KB regardless
-    // of input. Capping at 2 MB here was inherited from the project-thumbnail
-    // flow but rejects perfectly-valid blog-cover photography from phones /
-    // mirrorless. The API still enforces a 5 MB ceiling on the (compressed)
-    // upload itself.
+    // Drop the hard size cap on the input. `compressImage` rescales to the
+    // blog-cover dimension (2048px max) and re-encodes to JPEG 0.9 — high
+    // enough to stay sharp in the full-bleed 1152px cover slot (2304px @2×)
+    // without 800px-thumbnail upscaling mush. Capping at 2 MB here was inherited
+    // from the project-thumbnail flow but rejects perfectly-valid blog-cover
+    // photography from phones / mirrorless. The API still enforces a 5 MB
+    // ceiling on the (compressed) upload itself.
     setCoverError(null);
     // Set the file + preview SYNCHRONOUSLY so the user can advance to step 2
     // immediately without racing the compression. The compressed version
@@ -172,7 +175,7 @@ export function BlogPostCreateDialog({ open, onOpenChange }: Props): JSX.Element
     });
     setCoverFile(file);
     coverFileRef.current = file;
-    compressImage(file)
+    compressImage(file, { maxDim: BLOG_COVER_MAX_DIM, quality: BLOG_COVER_QUALITY })
       .then((compressed) => {
         const preview = URL.createObjectURL(compressed);
         setCoverPreviewUrl((prev) => {

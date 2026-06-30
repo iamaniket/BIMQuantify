@@ -21,6 +21,7 @@ from bimdossier_api.models.pooled_project import PooledProject
 from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.tenancy import schema_name_for
 from tests.conftest import FakeStorage, _create_project
+from tests.test_free_limits import _make_user
 
 
 def _auth(token: str) -> dict[str, str]:
@@ -36,6 +37,8 @@ async def _seed_free_container(
     snag_status: str = "open",
     assignee_id: str | None = None,
     deadline: str | None = None,
+    discipline: str = "other",
+    snag_creator_id: str | None = None,
 ) -> tuple[UUID, UUID, str]:
     """Insert a free project + container + ready/succeeded head file (+ optional
     snag) for `owner_id`, seeding the head source object in fake storage. Returns
@@ -55,7 +58,7 @@ async def _seed_free_container(
                 owner_user_id=UUID(owner_id),
                 pooled_project_id=project_id,
                 name="MyHouse",
-                discipline="other",
+                discipline=discipline,
                 status="active",
                 primary_file_type="ifc",
             )
@@ -97,6 +100,7 @@ async def _seed_free_container(
                     linked_element_global_id="2O2Fr$t4X7Zf8NOew3FNld",
                     assigned_to_user_id=UUID(assignee_id) if assignee_id else None,
                     deadline_date=date.fromisoformat(deadline) if deadline else None,
+                    created_by_user_id=UUID(snag_creator_id) if snag_creator_id else None,
                 )
             )
         await s.commit()
@@ -290,3 +294,46 @@ async def test_import_carries_assignee_and_deadline(
         ).one()
     assert str(row[0]) == org_user["id"]
     assert row[1] == date(2026, 10, 1)
+
+
+async def test_import_carries_discipline_and_original_author(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+    job_dispatch_calls: list[dict],
+) -> None:
+    """POOL-CONV-DISCIPLINE-1 + author preservation: conversion carries the free
+    container's real discipline (not hard-coded architectural) onto the new
+    Document AND the extraction job payload, and preserves the snag's original
+    author rather than stamping the importer."""
+    client, fake = fake_storage_client
+    token = org_user["access_token"]
+    project = await _create_project(client, token, name="DiscProj")
+    # A distinct snag author (the importer is org_user); preservation must keep it.
+    async with session_maker() as s:
+        author = await _make_user(s, "snag-author@example.com")
+    document_id, _file_id, _ = await _seed_free_container(
+        session_maker,
+        fake,
+        org_user["id"],
+        discipline="structural",
+        snag_creator_id=str(author.id),
+    )
+
+    resp = await client.post(
+        f"/projects/{project['id']}/import-pooled-model",
+        json={"pooled_document_id": str(document_id)},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200, resp.text
+
+    # Job payload carries the real discipline, not architectural.
+    assert job_dispatch_calls[0]["payload"]["discipline"] == "structural"
+
+    schema = schema_name_for(UUID(org_user["organization_id"]))
+    async with session_maker() as s:
+        await s.execute(text(f'SET search_path = "{schema}", public'))
+        doc_discipline = await s.scalar(select(Document.discipline))
+        finding_author = await s.scalar(select(Finding.created_by_user_id))
+    assert doc_discipline is not None and doc_discipline.value == "structural"
+    assert str(finding_author) == str(author.id)

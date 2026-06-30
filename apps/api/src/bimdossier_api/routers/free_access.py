@@ -40,16 +40,16 @@ from bimdossier_api.db import get_session_maker
 from bimdossier_api.entitlements import PLAN_FREE, PLAN_PAID, resolve_plan
 from bimdossier_api.free_limits import FreeLimits, resolve_free_limits
 from bimdossier_api.models.organization import Organization
+from bimdossier_api.models.organization_member import (
+    OrganizationMember,
+    OrganizationMemberStatus,
+)
 from bimdossier_api.models.pooled_attachment import PooledAttachment
 from bimdossier_api.models.pooled_document import PooledDocument
 from bimdossier_api.models.pooled_finding import PooledFinding
 from bimdossier_api.models.pooled_project import PooledProject
 from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.models.pooled_project_member import PooledProjectMember
-from bimdossier_api.models.organization_member import (
-    OrganizationMember,
-    OrganizationMemberStatus,
-)
 from bimdossier_api.models.project_member import ProjectRole
 from bimdossier_api.models.user import User
 
