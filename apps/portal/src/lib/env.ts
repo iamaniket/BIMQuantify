@@ -19,7 +19,11 @@ const isDev = process.env.NODE_ENV !== 'production';
 const parsed = EnvSchema.safeParse({
   NEXT_PUBLIC_API_URL:
     process.env['NEXT_PUBLIC_API_URL'] ?? (isDev ? 'http://localhost:8000' : undefined),
-  NEXT_PUBLIC_POSTHOG_KEY: process.env['NEXT_PUBLIC_POSTHOG_KEY'],
+  // Coerce empty string → undefined: the key is optional (min(1) when present),
+  // but container/CI env often passes an empty value for "unset". An empty
+  // analytics key means "no analytics", so normalise it to undefined rather
+  // than failing the build.
+  NEXT_PUBLIC_POSTHOG_KEY: process.env['NEXT_PUBLIC_POSTHOG_KEY'] || undefined,
   NEXT_PUBLIC_POSTHOG_HOST: process.env['NEXT_PUBLIC_POSTHOG_HOST'] ?? 'https://eu.i.posthog.com',
   NEXT_PUBLIC_E2E: process.env['NEXT_PUBLIC_E2E'],
 });

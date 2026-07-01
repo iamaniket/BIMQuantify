@@ -5,6 +5,17 @@
 const orUndefined = (value: string | undefined): string | undefined =>
   value && value.length > 0 ? value : undefined;
 
+/**
+ * Pre-launch lock. While `true`, the site NEVER exposes an account/registration
+ * funnel (login, signup, request-access) regardless of the per-flow
+ * `NEXT_PUBLIC_ENABLE_*` env vars below — so no deploy can accidentally push a
+ * visitor to create an account at this stage. Flip to `false` at launch; the
+ * individual env flags then resume per-flow control. Typed `boolean` so the
+ * `!PRELAUNCH_LOCK` branches don't read as constant conditions to linters.
+ * See also `LAUNCHED` in components/sections/featureCatalog.ts (feature pages).
+ */
+const PRELAUNCH_LOCK: boolean = true;
+
 export const env: Readonly<{
   NEXT_PUBLIC_API_URL: string;
   NEXT_PUBLIC_PORTAL_URL: string;
@@ -27,13 +38,15 @@ export const env: Readonly<{
    *   - SIGNUP         → every "Start for free" CTA (header, hero, showcase, CTA band).
    *   - REQUEST_ACCESS → "Become a partner" links (footer, contact fallback).
    * Independent of `NEXT_PUBLIC_STANDALONE`, which stays the fetcher/backend switch.
+   * NOTE: while the code-level `PRELAUNCH_LOCK` above is `true`, all three are
+   * forced `false` here regardless of the env var — pre-launch, no account funnel
+   * is exposed even if a deploy sets one of these to `true`.
    */
   NEXT_PUBLIC_ENABLE_LOGIN: boolean;
   NEXT_PUBLIC_ENABLE_SIGNUP: boolean;
   NEXT_PUBLIC_ENABLE_REQUEST_ACCESS: boolean;
   NEXT_PUBLIC_POSTHOG_KEY: string | undefined;
   NEXT_PUBLIC_POSTHOG_HOST: string;
-  NEXT_PUBLIC_SOCIAL_YOUTUBE_URL: string | undefined;
   NEXT_PUBLIC_SOCIAL_LINKEDIN_URL: string | undefined;
   NEXT_PUBLIC_CONTACT_EMAIL: string | undefined;
   NEXT_PUBLIC_CONTACT_BOOKING_URL: string | undefined;
@@ -49,12 +62,12 @@ export const env: Readonly<{
   NEXT_PUBLIC_PORTAL_URL: process.env['NEXT_PUBLIC_PORTAL_URL'] ?? 'http://localhost:3001',
   NEXT_PUBLIC_SITE_URL: process.env['NEXT_PUBLIC_SITE_URL'] ?? 'https://bimdossier.nl',
   NEXT_PUBLIC_STANDALONE: process.env['NEXT_PUBLIC_STANDALONE'] === 'true',
-  NEXT_PUBLIC_ENABLE_LOGIN: process.env['NEXT_PUBLIC_ENABLE_LOGIN'] === 'true',
-  NEXT_PUBLIC_ENABLE_SIGNUP: process.env['NEXT_PUBLIC_ENABLE_SIGNUP'] === 'true',
-  NEXT_PUBLIC_ENABLE_REQUEST_ACCESS: process.env['NEXT_PUBLIC_ENABLE_REQUEST_ACCESS'] === 'true',
+  NEXT_PUBLIC_ENABLE_LOGIN: !PRELAUNCH_LOCK && process.env['NEXT_PUBLIC_ENABLE_LOGIN'] === 'true',
+  NEXT_PUBLIC_ENABLE_SIGNUP: !PRELAUNCH_LOCK && process.env['NEXT_PUBLIC_ENABLE_SIGNUP'] === 'true',
+  NEXT_PUBLIC_ENABLE_REQUEST_ACCESS:
+    !PRELAUNCH_LOCK && process.env['NEXT_PUBLIC_ENABLE_REQUEST_ACCESS'] === 'true',
   NEXT_PUBLIC_POSTHOG_KEY: process.env['NEXT_PUBLIC_POSTHOG_KEY'],
   NEXT_PUBLIC_POSTHOG_HOST: process.env['NEXT_PUBLIC_POSTHOG_HOST'] ?? 'https://eu.i.posthog.com',
-  NEXT_PUBLIC_SOCIAL_YOUTUBE_URL: orUndefined(process.env['NEXT_PUBLIC_SOCIAL_YOUTUBE_URL']),
   NEXT_PUBLIC_SOCIAL_LINKEDIN_URL: orUndefined(process.env['NEXT_PUBLIC_SOCIAL_LINKEDIN_URL']),
   NEXT_PUBLIC_CONTACT_EMAIL: orUndefined(process.env['NEXT_PUBLIC_CONTACT_EMAIL']),
   NEXT_PUBLIC_CONTACT_BOOKING_URL: orUndefined(process.env['NEXT_PUBLIC_CONTACT_BOOKING_URL']),

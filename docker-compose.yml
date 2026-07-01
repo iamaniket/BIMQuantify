@@ -147,6 +147,77 @@ services:
       # boundary).
       - "127.0.0.1:8090:8090"
 
+  # --- Front-end apps (opt-in) ----------------------------------------------
+  # web + portal are Next.js apps built to a standalone server (see their
+  # Dockerfiles). They are gated behind the `frontend` profile so the default
+  # dev flow (`docker compose up -d`) stays fast — during local dev you normally
+  # run `pnpm --filter=web dev` / `--filter=portal dev` on the host instead.
+  # Bring the containerised front-ends up with:
+  #     docker compose --profile frontend up -d --build web portal
+  #
+  # NEXT_PUBLIC_* are BROWSER-facing and inlined at BUILD time, so they are
+  # passed as `build.args`. The subset that next.config also evaluates at server
+  # start (CSP headers, redirects) is repeated under `environment`. These are the
+  # URLs the USER'S BROWSER uses — host/public origins, NOT docker service names.
+  # For a real deploy, override every value to your public hostnames and rebuild.
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_STANDALONE: ${NEXT_PUBLIC_STANDALONE:-false}
+        NEXT_PUBLIC_PORTAL_URL: ${NEXT_PUBLIC_PORTAL_URL:-http://localhost:3001}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_STORAGE_URL: ${NEXT_PUBLIC_STORAGE_URL:-http://localhost:9000}
+        NEXT_PUBLIC_ENABLE_LOGIN: ${NEXT_PUBLIC_ENABLE_LOGIN:-false}
+        NEXT_PUBLIC_ENABLE_SIGNUP: ${NEXT_PUBLIC_ENABLE_SIGNUP:-false}
+        NEXT_PUBLIC_ENABLE_REQUEST_ACCESS: ${NEXT_PUBLIC_ENABLE_REQUEST_ACCESS:-false}
+        NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
+        NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-https://eu.i.posthog.com}
+    image: bimdossier-web
+    container_name: bimdossier-web
+    profiles: ["frontend"]
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # Re-read by next.config's redirects()/headers() at server start.
+      NEXT_PUBLIC_STANDALONE: ${NEXT_PUBLIC_STANDALONE:-false}
+      NEXT_PUBLIC_PORTAL_URL: ${NEXT_PUBLIC_PORTAL_URL:-http://localhost:3001}
+      NEXT_PUBLIC_STORAGE_URL: ${NEXT_PUBLIC_STORAGE_URL:-http://localhost:9000}
+      NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-https://eu.i.posthog.com}
+    # So server-side blog SSR (fetch to NEXT_PUBLIC_API_URL) can reach a host-run
+    # API during local dev if pointed at host.docker.internal. Failures degrade
+    # to in-repo MDX, so this is best-effort.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "3000:3000"
+
+  portal:
+    build:
+      context: .
+      dockerfile: apps/portal/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_STORAGE_URL: ${NEXT_PUBLIC_STORAGE_URL:-http://localhost:9000}
+        NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
+        NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-https://eu.i.posthog.com}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+    image: bimdossier-portal
+    container_name: bimdossier-portal
+    profiles: ["frontend"]
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # Re-read by next.config's headers() (CSP connect-src/img-src) at server start.
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      NEXT_PUBLIC_STORAGE_URL: ${NEXT_PUBLIC_STORAGE_URL:-http://localhost:9000}
+      NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-https://eu.i.posthog.com}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "3001:3001"
+
 volumes:
   pgdata:
   redisdata:

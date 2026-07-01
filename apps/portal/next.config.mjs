@@ -1,7 +1,15 @@
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
 import createNextIntlPlugin from 'next-intl/plugin';
 import { withSentryConfig } from '@sentry/nextjs';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
+// Monorepo root. `output: 'standalone'` (below) traces the runtime file set
+// from here so pnpm workspace deps (@bimdossier/*) are bundled into
+// .next/standalone for containerised hosting (see apps/portal/Dockerfile).
+const workspaceRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // --- Security-response headers (finding B5) -------------------------------
 // CSP origins are derived from env so the dynamic hosts (API, WebSocket,
@@ -88,6 +96,11 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Emit a self-contained server bundle (node .next/standalone/apps/portal/server.js)
+  // for Docker/container hosting. `outputFileTracingRoot` = the monorepo root so
+  // workspace deps are traced correctly. See apps/portal/Dockerfile.
+  output: 'standalone',
+  outputFileTracingRoot: workspaceRoot,
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

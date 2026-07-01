@@ -1,6 +1,14 @@
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
 import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
+// Monorepo root. `output: 'standalone'` (below) traces the runtime file set
+// from here so pnpm workspace deps (@bimdossier/*) are bundled into
+// .next/standalone for containerised hosting (see apps/web/Dockerfile).
+const workspaceRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // Registration (request-access) and legal pages live only in the portal. Old
 // web URLs are forwarded there so bookmarks, search results, and any stray
@@ -67,6 +75,11 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Emit a self-contained server bundle (node .next/standalone/apps/web/server.js)
+  // for Docker/container hosting. `outputFileTracingRoot` = the monorepo root so
+  // workspace deps are traced correctly. See apps/web/Dockerfile.
+  output: 'standalone',
+  outputFileTracingRoot: workspaceRoot,
   typescript: {
     ignoreBuildErrors: false,
   },

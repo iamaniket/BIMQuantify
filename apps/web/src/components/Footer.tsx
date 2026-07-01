@@ -28,13 +28,6 @@ export function Footer(): JSX.Element {
   const locale = useLocale();
 
   const connectLinks: FooterLink[] = [];
-  if (env.NEXT_PUBLIC_SOCIAL_YOUTUBE_URL) {
-    connectLinks.push({
-      label: tFooter('youtube'),
-      href: env.NEXT_PUBLIC_SOCIAL_YOUTUBE_URL,
-      external: true,
-    });
-  }
   if (env.NEXT_PUBLIC_SOCIAL_LINKEDIN_URL) {
     connectLinks.push({
       label: tFooter('linkedin'),
