@@ -7,6 +7,7 @@ import type { JSX } from 'react';
 
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { Link, usePathname } from '@/i18n/navigation';
+import { env } from '@/lib/env';
 import { portalHref } from '@/lib/portalLinks';
 
 type NavItem = { label: string; href: string; activeMatch?: string; external?: boolean };
@@ -63,17 +64,23 @@ export function MarketingHeader(): JSX.Element {
         </nav>
 
         <div className="flex items-center gap-2">
-          <a
-            href={portalHref(locale, '/login')}
-            className="hidden text-body2 font-medium text-foreground-secondary transition-colors hover:text-primary sm:inline"
-          >
-            {t('login')}
-          </a>
-          <a href={portalHref(locale, '/signup')}>
-            <Button variant="primary" size="md">
-              {t('startFree')}
-            </Button>
-          </a>
+          {/* Front-door auth CTAs are env-gated: hidden pre-launch so the site
+              doesn't imply the product is usable yet. Flip the flag when live. */}
+          {env.NEXT_PUBLIC_ENABLE_LOGIN ? (
+            <a
+              href={portalHref(locale, '/login')}
+              className="hidden text-body2 font-medium text-foreground-secondary transition-colors hover:text-primary sm:inline"
+            >
+              {t('login')}
+            </a>
+          ) : null}
+          {env.NEXT_PUBLIC_ENABLE_SIGNUP ? (
+            <a href={portalHref(locale, '/signup')}>
+              <Button variant="primary" size="md">
+                {t('startFree')}
+              </Button>
+            </a>
+          ) : null}
           <LanguageToggle />
           <ThemeToggle ariaLabel={t('themeToggle')} />
         </div>

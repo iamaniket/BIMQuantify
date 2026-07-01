@@ -14,6 +14,7 @@
     "login": "Inloggen",
     "startFree": "Begin gratis",
     "contactSales": "Neem contact op",
+    "getInTouch": "Neem contact op",
     "themeToggle": "Thema wisselen"
   },
   "comingSoon": {
@@ -27,7 +28,7 @@
     "backHome": "Terug naar home"
   },
   "hero": {
-    "badge": "Gratis te proberen · we nemen nog founding partners aan in Nederland",
+    "badge": "In ontwikkeling · we nemen founding partners aan in Nederland",
     "headline": "Het bouwkwaliteitsplatform, gebouwd op uw model. Van eerste opleverpunt tot definitief dossier.",
     "subtitle": "Zet elke bevinding vast op uw 3D-model, of op een PDF-plattegrond als u nog geen model heeft. Voeg foto's toe, wijs de oplossing toe en volg hem tot hij klaar is. Deadlines bewaken zichzelf, zodat uw Wkb-dossier klaarligt van bouwmelding tot gereedmelding.",
     "trust": "Samen met founding partners in Nederland gebouwd · EU-gehost, AVG-conform, inclusief verwerkersovereenkomst · Werkt naast elke kwaliteitsborger en elk instrument",
@@ -147,7 +148,7 @@
   },
   "cta": {
     "headline": "Stop met achter papierwerk aan jagen. Laat zien dat het werk goed is gedaan.",
-    "subtitle": "Upload uw model, zet uw eerste opleverpunten en zie uw project samenkomen. Gratis te beginnen, geen creditcard nodig.",
+    "subtitle": "Upload uw model, zet uw eerste opleverpunten en zie uw project samenkomen.",
     "button": "Begin gratis"
   },
   "footer": {
@@ -176,11 +177,11 @@
     "ariaLabel": "Schakel naar {language}"
   },
   "contactPage": {
-    "eyebrow": "Prijzen & abonnementen",
-    "headline": "Laten we het juiste abonnement vinden voor uw team",
-    "subtitle": "We laten u BimDossier zien, beantwoorden uw vragen en helpen u het abonnement te kiezen dat bij uw projecten past.",
+    "eyebrow": "Neem contact op",
+    "headline": "Laten we het over uw projecten hebben",
+    "subtitle": "We laten u BimDossier zien, beantwoorden uw vragen en kijken hoe het bij uw projecten past.",
     "bookCall": "Plan een gesprek",
-    "bookCallDescription": "Plan een demo van 30 minuten met ons team. We laten u het platform zien en bespreken prijzen op maat.",
+    "bookCallDescription": "Plan een demo van 30 minuten met ons team. We laten u het platform zien en bespreken hoe het voor u zou kunnen werken.",
     "orEmail": "Of stuur ons een e-mail",
     "emailDescription": "Liever e-mailen? Neem contact op en we reageren zo snel mogelijk.",
     "emailButton": "Mail ons",
@@ -273,12 +274,12 @@
     "headline": "Wat aannemers ons als eerste vragen",
     "items": [
       {
-        "q": "Is het echt gratis om te beginnen?",
-        "a": "Ja. Maak een account, upload een IFC-model, bekijk het in 3D en zet opleverpunten, gratis. Het gratis plan dekt een paar projecten en een gigabyte opslag. Het Wkb-dossier, compliancerapporten en certificaten horen bij het betaalde plan. Geen creditcard nodig om te beginnen."
+        "q": "Komt er een gratis plan?",
+        "a": "Ja. Uw model in 3D bekijken en opleverpunten zetten wordt gratis. Het Wkb-dossier, compliancerapporten en certificaten horen bij het betaalde plan."
       },
       {
         "q": "Wat betekent founding partner worden voor mij?",
-        "a": "U kunt gratis beginnen, zonder aanvraag. Founding partners gaan een stap verder: we nemen een kleine groep Nederlandse aannemers persoonlijk aan boord, met een directe lijn naar het team en echte inspraak in wat we hierna bouwen. In ruil vragen we om eerlijke feedback uit de praktijk."
+        "a": "We nemen een kleine groep Nederlandse aannemers persoonlijk aan boord, met een directe lijn naar het team en echte inspraak in wat we hierna bouwen. In ruil vragen we om eerlijke feedback uit de praktijk."
       },
       {
         "q": "Waar staan mijn gegevens, en is er een verwerkersovereenkomst?",

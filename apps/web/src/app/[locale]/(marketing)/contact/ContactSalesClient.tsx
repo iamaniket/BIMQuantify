@@ -73,14 +73,16 @@ export function ContactSalesClient(): JSX.Element {
                   <Mail className="ml-1.5 h-4 w-4" />
                 </Button>
               </a>
-            ) : (
+            ) : env.NEXT_PUBLIC_ENABLE_REQUEST_ACCESS ? (
+              // Request-access is env-gated (hidden pre-launch). When there's no
+              // contact email either, the card just reads as description-only.
               <a href={portalHref(locale, '/request-access')} className="mt-auto">
                 <Button variant="border" size="md" className="w-full">
                   {tHeader('requestAccess')}
                   <ArrowRight className="ml-1.5 h-4 w-4" />
                 </Button>
               </a>
-            )}
+            ) : null}
           </div>
         </div>
 

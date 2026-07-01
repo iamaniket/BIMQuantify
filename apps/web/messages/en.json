@@ -14,6 +14,7 @@
     "login": "Log in",
     "startFree": "Start for free",
     "contactSales": "Contact sales",
+    "getInTouch": "Get in touch",
     "themeToggle": "Toggle theme"
   },
   "comingSoon": {
@@ -27,7 +28,7 @@
     "backHome": "Back to home"
   },
   "hero": {
-    "badge": "Free to try · still onboarding founding partners in the Netherlands",
+    "badge": "In development · onboarding founding partners in the Netherlands",
     "headline": "The building quality platform, built on your model. From first snag to final dossier.",
     "subtitle": "Pin every snag on your 3D model, or on a PDF floor plan if you don't have a model yet. Add photos, assign the fix, and follow it through to done. Deadlines track themselves, so your Wkb dossier stays ready from bouwmelding to gereedmelding.",
     "trust": "Building it with founding partners in the Netherlands · EU-hosted, GDPR-ready, DPA included · Works alongside any kwaliteitsborger and instrument",
@@ -147,7 +148,7 @@
   },
   "cta": {
     "headline": "Stop chasing paperwork. Prove the work was done right.",
-    "subtitle": "Upload your model, place your first snags, and watch your project come together. Free to start, no credit card.",
+    "subtitle": "Upload your model, place your first snags, and watch your project come together.",
     "button": "Start for free"
   },
   "footer": {
@@ -176,11 +177,11 @@
     "ariaLabel": "Switch to {language}"
   },
   "contactPage": {
-    "eyebrow": "Pricing & plans",
-    "headline": "Let's find the right plan for your team",
-    "subtitle": "We'll walk you through BimDossier, answer your questions, and help you choose the plan that fits your projects.",
+    "eyebrow": "Get in touch",
+    "headline": "Let's talk about your projects",
+    "subtitle": "We'll walk you through BimDossier, answer your questions, and see how it could fit your projects.",
     "bookCall": "Book a call",
-    "bookCallDescription": "Schedule a 30-minute demo with our team. We'll show you the platform and talk through pricing that fits your situation.",
+    "bookCallDescription": "Schedule a 30-minute demo with our team. We'll show you the platform and talk through how it could work for you.",
     "orEmail": "Or send us an email",
     "emailDescription": "Prefer email? Reach out and we'll get back to you as soon as we can.",
     "emailButton": "Email us",
@@ -273,12 +274,12 @@
     "headline": "What contractors ask us first",
     "items": [
       {
-        "q": "Is it really free to start?",
-        "a": "Yes. Create an account, upload an IFC model, view it in 3D and place snags, free. The free plan covers a few projects and a gigabyte of storage. The Wkb dossier, compliance reports and certificates are part of the paid plan. No credit card to start."
+        "q": "Will there be a free plan?",
+        "a": "Yes. Viewing your model in 3D and placing snags will be free. The Wkb dossier, compliance reports and certificates are part of the paid plan."
       },
       {
         "q": "What does becoming a founding partner mean for me?",
-        "a": "You can start free without applying. Founding partners go a step further: we onboard a small group of Dutch aannemers by hand, with a direct line to the team and a real say in what we build next. In exchange, we ask for honest real-world feedback."
+        "a": "We onboard a small group of Dutch aannemers by hand, with a direct line to the team and a real say in what we build next. In exchange, we ask for honest real-world feedback."
       },
       {
         "q": "Where does my data live, and is there a DPA?",

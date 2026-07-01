@@ -4,14 +4,18 @@ import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { HeroGrid } from '@bimdossier/brand';
+import { Button } from '@bimdossier/ui';
 
 import { Reveal } from '@/components/shared/Reveal';
+import { Link } from '@/i18n/navigation';
+import { env } from '@/lib/env';
 import { portalHref } from '@/lib/portalLinks';
 
 import { BrandAccentCta } from './BrandAccentCta';
 
 export function CtaSection(): JSX.Element {
   const t = useTranslations('cta');
+  const tHeader = useTranslations('header');
   const locale = useLocale();
 
   return (
@@ -26,7 +30,21 @@ export function CtaSection(): JSX.Element {
             {t('subtitle')}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <BrandAccentCta href={portalHref(locale, '/signup')}>{t('button')}</BrandAccentCta>
+            {/* Signup CTA is env-gated. Pre-launch it falls back to a soft
+                "Get in touch" so the closing band still has a next step. */}
+            {env.NEXT_PUBLIC_ENABLE_SIGNUP ? (
+              <BrandAccentCta href={portalHref(locale, '/signup')}>{t('button')}</BrandAccentCta>
+            ) : (
+              <Link href="/contact">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="bg-[var(--brand-accent)] text-[var(--brand-gradient-start)] hover:bg-[var(--brand-accent-soft)]"
+                >
+                  {tHeader('getInTouch')}
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </Reveal>

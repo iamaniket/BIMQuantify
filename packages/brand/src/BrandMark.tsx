@@ -2,15 +2,25 @@ import type { CSSProperties, JSX } from 'react';
 
 import { cn } from '@bimdossier/ui';
 
-import { BrandMarkArt } from './BrandMarkArt.js';
-
 /**
  * The logo variants. Picks the colour treatment for the surface the mark sits
- * on. The art is a detailed inline SVG (see `BrandMarkArt`) — resolution
- * independent, so it stays crisp at every size and pixel density. No
- * `/brand/*.png` fetch is involved anymore.
+ * on.
  */
 export type BrandMarkVariant = 'primary' | 'white';
+
+/**
+ * Public-path (per-app `public/brand/`) raster logo for each variant. Both
+ * `apps/web` and `apps/portal` ship these PNGs, so a bare `/brand/*.png` src
+ * resolves in every consumer.
+ *
+ * NOTE (temporary): the mark is rendered from these PNGs instead of the inline
+ * SVG twin (`BrandMarkArt`). The vector art is kept in the package for an easy
+ * switch back later — flip the render below to `<BrandMarkArt />` to restore it.
+ */
+const BRAND_PNG: Record<BrandMarkVariant, string> = {
+  primary: '/brand/brand-primary.png',
+  white: '/brand/brand-white.png',
+};
 
 export interface BrandMarkProps {
   size?: number;
@@ -40,15 +50,25 @@ export function BrandMark({
   variant = 'primary',
   plate = false,
 }: BrandMarkProps): JSX.Element {
+  const img = (
+    <img
+      src={BRAND_PNG[variant]}
+      alt=""
+      aria-hidden
+      draggable={false}
+      className={cn('select-none', plate ? undefined : className)}
+      style={{
+        width: size,
+        height: size,
+        objectFit: 'contain',
+        flexShrink: 0,
+        ...(plate ? {} : style),
+      }}
+    />
+  );
+
   if (!plate) {
-    return (
-      <BrandMarkArt
-        size={size}
-        variant={variant}
-        className={className}
-        style={style}
-      />
-    );
+    return img;
   }
 
   return (
@@ -65,7 +85,7 @@ export function BrandMark({
         ...style,
       }}
     >
-      <BrandMarkArt size={size} variant={variant} />
+      {img}
     </span>
   );
 }

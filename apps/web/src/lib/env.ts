@@ -18,6 +18,19 @@ export const env: Readonly<{
    * product is live to reconnect the API and point CTAs at the portal.
    */
   NEXT_PUBLIC_STANDALONE: boolean;
+  /**
+   * Pre-launch capability gates for the front-door auth CTAs. Each defaults to
+   * `false` (hidden) so the marketing site reads as "in development" rather than
+   * "ready to use" until the matching flow actually goes live — flip one to
+   * `true` the day that flow opens (they can be enabled one at a time):
+   *   - LOGIN          → header "Log in" link.
+   *   - SIGNUP         → every "Start for free" CTA (header, hero, showcase, CTA band).
+   *   - REQUEST_ACCESS → "Become a partner" links (footer, contact fallback).
+   * Independent of `NEXT_PUBLIC_STANDALONE`, which stays the fetcher/backend switch.
+   */
+  NEXT_PUBLIC_ENABLE_LOGIN: boolean;
+  NEXT_PUBLIC_ENABLE_SIGNUP: boolean;
+  NEXT_PUBLIC_ENABLE_REQUEST_ACCESS: boolean;
   NEXT_PUBLIC_POSTHOG_KEY: string | undefined;
   NEXT_PUBLIC_POSTHOG_HOST: string;
   NEXT_PUBLIC_SOCIAL_YOUTUBE_URL: string | undefined;
@@ -36,6 +49,9 @@ export const env: Readonly<{
   NEXT_PUBLIC_PORTAL_URL: process.env['NEXT_PUBLIC_PORTAL_URL'] ?? 'http://localhost:3001',
   NEXT_PUBLIC_SITE_URL: process.env['NEXT_PUBLIC_SITE_URL'] ?? 'https://bimdossier.nl',
   NEXT_PUBLIC_STANDALONE: process.env['NEXT_PUBLIC_STANDALONE'] === 'true',
+  NEXT_PUBLIC_ENABLE_LOGIN: process.env['NEXT_PUBLIC_ENABLE_LOGIN'] === 'true',
+  NEXT_PUBLIC_ENABLE_SIGNUP: process.env['NEXT_PUBLIC_ENABLE_SIGNUP'] === 'true',
+  NEXT_PUBLIC_ENABLE_REQUEST_ACCESS: process.env['NEXT_PUBLIC_ENABLE_REQUEST_ACCESS'] === 'true',
   NEXT_PUBLIC_POSTHOG_KEY: process.env['NEXT_PUBLIC_POSTHOG_KEY'],
   NEXT_PUBLIC_POSTHOG_HOST: process.env['NEXT_PUBLIC_POSTHOG_HOST'] ?? 'https://eu.i.posthog.com',
   NEXT_PUBLIC_SOCIAL_YOUTUBE_URL: orUndefined(process.env['NEXT_PUBLIC_SOCIAL_YOUTUBE_URL']),

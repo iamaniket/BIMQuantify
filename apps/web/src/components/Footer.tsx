@@ -65,8 +65,17 @@ export function Footer(): JSX.Element {
       links: [
         { label: tHeader('features'), href: '/#features', external: undefined },
         { label: tHeader('contactSales'), href: '/contact', external: undefined },
-        // Request access + legal pages live in the portal — link out.
-        { label: tHeader('requestAccess'), href: portalHref(locale, '/request-access'), external: true },
+        // Request access lives in the portal — link out, but only once that
+        // front door is open. Env-gated so it stays hidden pre-launch.
+        ...(env.NEXT_PUBLIC_ENABLE_REQUEST_ACCESS
+          ? [
+              {
+                label: tHeader('requestAccess'),
+                href: portalHref(locale, '/request-access'),
+                external: true,
+              },
+            ]
+          : []),
       ],
     },
     {

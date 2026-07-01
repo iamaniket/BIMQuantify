@@ -17,8 +17,8 @@
 //   apps/mobile/assets/images/splash-icon.png       512² logo, transparent
 //   apps/mobile/assets/images/logo.png              512² logo, transparent (in-app RN <Image>)
 //
-// This is the brand LOGO pipeline. The browser-tab FAVICONs are a separate flat "A"
-// mark, committed under apps/{web,portal}/public/ (regenerate by hand if the mark changes).
+// This is the brand LOGO pipeline. The browser-tab FAVICONs are a separate "building"
+// mark with its own source art + generator — see scripts/generate-favicons.mjs.
 //
 // Run from anywhere: `node scripts/generate-logo-assets.mjs`
 import { createRequire } from 'node:module';

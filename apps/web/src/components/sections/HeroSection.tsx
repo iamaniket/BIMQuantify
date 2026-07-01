@@ -6,6 +6,7 @@ import type { JSX } from 'react';
 import { Button } from '@bimdossier/ui';
 
 import { Link } from '@/i18n/navigation';
+import { env } from '@/lib/env';
 import { portalHref } from '@/lib/portalLinks';
 
 import { BrandAccentCta } from './BrandAccentCta';
@@ -30,7 +31,11 @@ export function HeroSection(): JSX.Element {
       <p className="max-w-2xl text-title3 text-white/80">{t('subtitle')}</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <BrandAccentCta href={portalHref(locale, '/signup')}>{t('ctaPrimary')}</BrandAccentCta>
+        {/* Signup CTA is env-gated (hidden pre-launch). The demo CTA below
+            always shows, so the hero keeps a call to action either way. */}
+        {env.NEXT_PUBLIC_ENABLE_SIGNUP ? (
+          <BrandAccentCta href={portalHref(locale, '/signup')}>{t('ctaPrimary')}</BrandAccentCta>
+        ) : null}
         <Link href="/#showcase">
           <Button
             variant="ghost"
