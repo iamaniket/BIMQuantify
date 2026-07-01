@@ -9,7 +9,6 @@ import { useEffect, useState, type JSX } from 'react';
 
 import { useInView } from '@/hooks/useInView';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { Link } from '@/i18n/navigation';
 import { env } from '@/lib/env';
 import { portalHref } from '@/lib/portalLinks';
 
@@ -92,7 +91,6 @@ function ShowcaseFallback(): JSX.Element {
 
 export function SnagShowcaseSection(): JSX.Element {
   const t = useTranslations('snagShowcase');
-  const tHeader = useTranslations('header');
   const locale = useLocale();
   const reducedMotion = useReducedMotion();
   // Start fetching the viewer chunk slightly before the canvas scrolls in.
@@ -216,29 +214,17 @@ export function SnagShowcaseSection(): JSX.Element {
                   {t('hintWatch')}
                 </li>
               </ul>
-              <div className="pointer-events-auto mt-2 flex flex-wrap items-center gap-4">
-                {/* Signup CTA is env-gated. Pre-launch it falls back to a soft
-                    "Get in touch"; the blog link stays either way. */}
-                {env.NEXT_PUBLIC_ENABLE_SIGNUP ? (
+              {/* Signup CTA is env-gated. Pre-launch the whole button row is
+                  hidden — no fallback button, no blog link. */}
+              {env.NEXT_PUBLIC_ENABLE_SIGNUP && (
+                <div className="pointer-events-auto mt-2 flex flex-wrap items-center gap-4">
                   <a href={portalHref(locale, '/signup')}>
                     <Button variant="primary" size="lg">
                       {t('cta')}
                     </Button>
                   </a>
-                ) : (
-                  <Link href="/contact">
-                    <Button variant="primary" size="lg">
-                      {tHeader('getInTouch')}
-                    </Button>
-                  </Link>
-                )}
-                <Link
-                  href="/blog"
-                  className="text-body2 font-medium text-primary hover:underline"
-                >
-                  {t('learnMoreBlog')}
-                </Link>
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

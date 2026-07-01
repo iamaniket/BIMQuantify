@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import type { JSX } from 'react';
 
 import { supportedLocales } from '@bimdossier/i18n';
@@ -12,14 +12,22 @@ import { FeatureHighlights } from '@/components/features/FeatureHighlights';
 import { FeatureImages } from '@/components/features/FeatureImages';
 import { FeatureRelated } from '@/components/features/FeatureRelated';
 import { FEATURE_SLUGS, getFeatureContent } from '@/components/features/featureContent';
+import { LAUNCHED } from '@/components/sections/featureCatalog';
 
-// The 12 feature slugs are fully known at build time, so anything outside the
-// generated set should hard-404 (no on-demand rendering, unlike the blog).
-export const dynamicParams = false;
+// `dynamicParams` must be a static boolean literal — Next parses it at compile
+// time, so it can't branch on LAUNCHED. Keep it `true`: pre-launch we generate
+// no detail pages (see generateStaticParams) and every `/features/<key>` renders
+// on-demand so `FeaturePage` can redirect it to /coming-soon; launched, the known
+// slugs are pre-rendered by generateStaticParams and any unknown slug renders
+// on-demand then `notFound()`s (still a 404).
+export const dynamicParams = true;
 
 type Params = { locale: string; slug: string };
 
 export function generateStaticParams(): Params[] {
+  if (!LAUNCHED) {
+    return [];
+  }
   return supportedLocales.flatMap((locale) =>
     FEATURE_SLUGS.map((slug) => ({ locale, slug })),
   );
@@ -31,6 +39,11 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { locale, slug } = await params;
+  if (!LAUNCHED) {
+    // Pre-launch the request is about to be redirected to /coming-soon; skip the
+    // per-feature metadata (and don't leak withheld feature copy).
+    return {};
+  }
   const content = getFeatureContent(slug, locale);
   if (content === null) {
     const t = await getTranslations({ locale, namespace: 'featureDetail' });
@@ -63,6 +76,15 @@ export default async function FeaturePage({
   params: Promise<Params>;
 }): Promise<JSX.Element> {
   const { locale, slug } = await params;
+  if (!LAUNCHED) {
+    // Detail pages are withheld until launch. A real feature URL (old links,
+    // search results) redirects to the shared placeholder; a genuinely unknown
+    // slug is a real 404. Flip `LAUNCHED` to restore the pages below.
+    if (FEATURE_SLUGS.includes(slug)) {
+      redirect(`/${locale}/coming-soon`);
+    }
+    notFound();
+  }
   setRequestLocale(locale);
 
   const content = getFeatureContent(slug, locale);

@@ -3,6 +3,7 @@ import type { MetadataRoute } from 'next';
 import { defaultLocale, supportedLocales } from '@bimdossier/i18n';
 
 import { FEATURE_SLUGS } from '@/components/features/featureContent';
+import { LAUNCHED } from '@/components/sections/featureCatalog';
 import { getAllPostsMerged } from '@/lib/blog/mdx';
 import { env } from '@/lib/env';
 
@@ -39,9 +40,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // request-access + legal now live in the portal (see next.config redirects).
   ];
 
-  const featurePages: MetadataRoute.Sitemap = FEATURE_SLUGS.flatMap((slug) =>
-    localizedEntry(`/features/${slug}`, now, 'monthly', 0.7),
-  );
+  // Pre-launch the /features/<slug> pages redirect to /coming-soon, so keep them
+  // out of the sitemap until `LAUNCHED` flips.
+  const featurePages: MetadataRoute.Sitemap = LAUNCHED
+    ? FEATURE_SLUGS.flatMap((slug) => localizedEntry(`/features/${slug}`, now, 'monthly', 0.7))
+    : [];
 
   const blogPages: MetadataRoute.Sitemap = (await getAllPostsMerged(defaultLocale)).flatMap((post) =>
     localizedEntry(`/blog/${post.slug}`, new Date(post.date), 'monthly', 0.6),

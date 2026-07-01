@@ -58,3 +58,13 @@ const FEATURES: FeatureItem[] = [
 
 export const AVAILABLE_FEATURES = FEATURES.filter((f) => f.status === 'available');
 export const ROADMAP_FEATURES = FEATURES.filter((f) => f.status === 'coming_soon');
+
+/**
+ * Pre-launch gate. While `false`, the shipped capabilities are presented as
+ * dimmed "coming soon" cards (no detail-page links) and `/features/<key>`
+ * redirects to /coming-soon. Flip to `true` at launch to restore clickable
+ * cards + detail pages. This is the single toggle for the whole behaviour.
+ * Typed `boolean` (not the `false` literal) so flipping it stays a one-line
+ * change and the `LAUNCHED ? …` branches don't read as constant conditions.
+ */
+export const LAUNCHED: boolean = false;

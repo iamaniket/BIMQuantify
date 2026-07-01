@@ -9,6 +9,9 @@ import { useFeatureContent } from '@/components/features/useFeatureContent';
 import { BlueprintTexture } from '@/components/shared/BlueprintTexture';
 import { Link } from '@/i18n/navigation';
 
+import { ComingSoonCard } from './ComingSoonCard';
+import { LAUNCHED } from './featureCatalog';
+
 type FeatureCardProps = {
   /** Catalog `key`; doubles as the content slug and the `/features/<slug>` URL. */
   featureKey: string;
@@ -31,6 +34,20 @@ export function FeatureCard({ featureKey, icon: Icon }: FeatureCardProps): JSX.E
   const { content } = useFeatureContent(featureKey);
   if (content === null) {
     return null;
+  }
+
+  // Pre-launch: present shipped capabilities as dimmed "coming soon" cards with
+  // no link to the (withheld) detail page. Flip `LAUNCHED` at launch to restore
+  // the clickable card below.
+  if (!LAUNCHED) {
+    return (
+      <ComingSoonCard
+        icon={Icon}
+        title={content.title}
+        body={content.card}
+        badge={t('comingSoonBadge')}
+      />
+    );
   }
 
   return (
