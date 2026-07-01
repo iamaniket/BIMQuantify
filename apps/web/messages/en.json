@@ -14,7 +14,6 @@
     "login": "Log in",
     "startFree": "Start for free",
     "contactSales": "Contact sales",
-    "getInTouch": "Get in touch",
     "themeToggle": "Toggle theme"
   },
   "comingSoon": {
@@ -39,7 +38,11 @@
     "eyebrow": "Capabilities",
     "headline": "Everything you need to run quality on your model",
     "subtitle": "Snagging, inspections, photos, certificates and reports all sit on the same model. When you need it, the full Wkb dossier is there too, from bouwmelding to gereedmelding.",
-    "readMore": "Read more"
+    "readMore": "Read more",
+    "prelaunchEyebrow": "Coming at launch",
+    "prelaunchHeadline": "What you'll get when we launch",
+    "prelaunchSubtitle": "The capabilities we're launching with. Not available yet.",
+    "comingSoonBadge": "Coming soon"
   },
   "useCases": {
     "eyebrow": "Who it's for",
@@ -203,7 +206,6 @@
     "cta": "Start for free",
     "hintDrag": "Drag to rotate",
     "hintWatch": "Each pin flags a real snag",
-    "learnMoreBlog": "See how snagging works on the blog",
     "tab3d": "3D model",
     "tab2d": "Floor plan",
     "plan2dHint": "Same snags, on the floor plan.",

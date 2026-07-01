@@ -14,7 +14,6 @@
     "login": "Inloggen",
     "startFree": "Begin gratis",
     "contactSales": "Neem contact op",
-    "getInTouch": "Neem contact op",
     "themeToggle": "Thema wisselen"
   },
   "comingSoon": {
@@ -39,7 +38,11 @@
     "eyebrow": "Mogelijkheden",
     "headline": "Alles wat u nodig heeft om kwaliteit te draaien op uw model",
     "subtitle": "Opleverpunten, inspecties, foto's, certificaten en rapporten staan allemaal op hetzelfde model. En als u het nodig heeft, ligt ook het volledige Wkb-dossier klaar, van bouwmelding tot gereedmelding.",
-    "readMore": "Lees meer"
+    "readMore": "Lees meer",
+    "prelaunchEyebrow": "Bij de lancering",
+    "prelaunchHeadline": "Wat u krijgt bij de lancering",
+    "prelaunchSubtitle": "De mogelijkheden waarmee we lanceren. Nog niet beschikbaar.",
+    "comingSoonBadge": "Binnenkort"
   },
   "useCases": {
     "eyebrow": "Voor wie",
@@ -203,7 +206,6 @@
     "cta": "Begin gratis",
     "hintDrag": "Sleep om te draaien",
     "hintWatch": "Elke speld markeert een echte bevinding",
-    "learnMoreBlog": "Lees op de blog hoe opleveren werkt",
     "tab3d": "3D-model",
     "tab2d": "Plattegrond",
     "plan2dHint": "Dezelfde snags, op de plattegrond.",
