@@ -90,6 +90,6 @@ jobs:
         with:
           node-version: "24"
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Audit (high + critical, prod deps)
         run: pnpm audit --audit-level=high --prod
