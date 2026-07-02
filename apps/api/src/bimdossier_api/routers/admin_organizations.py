@@ -18,6 +18,7 @@ from sqlalchemy import func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api import audit
+from bimdossier_api.csv_safety import csv_safe_row
 from bimdossier_api.admin.membership_rules import (
     ProposedUserChange,
     assert_last_superuser_invariant,
@@ -814,12 +815,15 @@ async def export_access_requests(
         "created_at", "updated_at",
     ])
     for r in rows:
-        writer.writerow([
+        # Neutralize CSV formula injection — these are attacker-supplied public
+        # access-request fields (name/company/notes) landing in a super-admin's
+        # spreadsheet. See csv_safety.py.
+        writer.writerow(csv_safe_row([
             str(r.id), r.name, r.work_email, r.company, r.role,
             r.company_size, r.country, r.notes or "",
             r.status.value, r.created_at.isoformat(),
             r.updated_at.isoformat(),
-        ])
+        ]))
 
     # This dumps every lead's name/email/company/notes in one request — a mass
     # PII exfiltration surface that must not be silent. Record a forensic row

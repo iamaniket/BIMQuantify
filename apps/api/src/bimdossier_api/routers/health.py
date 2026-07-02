@@ -43,10 +43,12 @@ async def readiness() -> JSONResponse:
         checks["redis"] = "unreachable"
         healthy = False
 
-    # S3 / MinIO
+    # S3 / MinIO — read-only HEAD (A1-READY-1). Bucket provisioning (create +
+    # CORS) happens once at startup; a probe must not perform control-plane writes
+    # or it self-DoSes / flaps under a least-privilege prod IAM role.
     try:
         storage = get_storage()
-        await storage.ensure_bucket()
+        await storage.check_bucket()
         checks["storage"] = "ok"
     except Exception:
         logger.warning("Readiness: storage unreachable", exc_info=True)

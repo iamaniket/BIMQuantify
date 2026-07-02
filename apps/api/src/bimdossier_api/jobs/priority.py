@@ -44,6 +44,12 @@ POOLED_CALLBACK_PATH = "/internal/jobs/pooled-callback"
 # (which would try to resolve a schema for the all-zeros sentinel org and 404).
 POOLED_PAGES_CALLBACK_PATH = "/internal/jobs/pooled-pages-callback"
 
+# Path the processor calls back to for free snag-list PDF reports. Mirrors the
+# extraction/pages pattern: the report callback (pipeline/report/callback.ts)
+# honors `payload.callback_path`, falling back to the tenant
+# `/internal/jobs/reports/callback` for org report jobs.
+POOLED_REPORT_CALLBACK_PATH = "/internal/jobs/pooled-report-callback"
+
 
 class JobTier(StrEnum):
     """Who a job is for, which sets its queue priority."""

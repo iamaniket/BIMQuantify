@@ -50,9 +50,7 @@ export function ProjectCaptureLinksTable({
       sortKey: 'label',
       cell: (link) => (
         <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-high text-foreground-secondary">
-            <LinkIcon className="h-4 w-4" />
-          </div>
+          <LinkIcon className="h-5 w-5 shrink-0 text-foreground-secondary" />
           <span className="min-w-0 truncate font-medium text-foreground">
             {link.label ?? `Link ${link.id.slice(0, 8)}`}
           </span>

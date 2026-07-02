@@ -190,6 +190,9 @@ type Props = {
   onRevert: ((deadlineType: string) => void) | undefined;
   isUpdating: boolean;
   showRevert: boolean;
+  /** Suppress the form's own title/description heading — used when the host
+   * (e.g. the notification-settings dialog) already provides one. */
+  hideHeader?: boolean;
 };
 
 export function DeadlineNotificationForm({
@@ -198,17 +201,22 @@ export function DeadlineNotificationForm({
   onRevert,
   isUpdating,
   showRevert,
+  hideHeader = false,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs.deadlines.notifications');
 
   return (
     <div className="space-y-3">
-      <div className="text-body3 font-semibold text-foreground">
-        {t('title')}
-      </div>
-      <div className="text-caption text-foreground-tertiary">
-        {t('description')}
-      </div>
+      {!hideHeader && (
+        <>
+          <div className="text-body3 font-semibold text-foreground">
+            {t('title')}
+          </div>
+          <div className="text-caption text-foreground-tertiary">
+            {t('description')}
+          </div>
+        </>
+      )}
 
       {settings.map((s) => (
         <SettingRow

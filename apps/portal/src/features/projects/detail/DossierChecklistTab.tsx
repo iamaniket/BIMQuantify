@@ -217,13 +217,11 @@ function DossierRow({
 
   return (
     <li className="flex items-center gap-2.5 rounded-md border border-border bg-background px-3 py-2">
-      <span
-        className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${
-          req.fulfilled ? 'bg-success/15 text-success' : 'bg-background-tertiary text-foreground-tertiary'
-        }`}
-      >
-        {req.fulfilled ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
-      </span>
+      {req.fulfilled ? (
+        <Check className="h-5 w-5 shrink-0 text-success" />
+      ) : (
+        <Icon className="h-5 w-5 shrink-0 text-foreground-tertiary" />
+      )}
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">

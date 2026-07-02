@@ -28,12 +28,42 @@ export function ThemeToggle({ className, ariaLabel }: Props): JSX.Element {
   const nextTheme = isDark ? 'light' : 'dark';
   const label = ariaLabel ?? `Switch to ${nextTheme} theme`;
 
+  const toggleTheme = (): void => {
+    const apply = (): void => setTheme(nextTheme);
+    // Progressive enhancement: cross-fade the theme flip via the View
+    // Transitions API where available. Reduced-motion users and browsers
+    // without the API keep the instant flip (the provider's
+    // `disableTransitionOnChange` hard cut). Typed via a local cast — the API
+    // isn't in every TS DOM lib yet.
+    const doc = document as Document & {
+      startViewTransition?: (cb: () => void) => {
+        ready: Promise<void>;
+        finished: Promise<void>;
+        updateCallbackDone: Promise<void>;
+      };
+    };
+    if (
+      typeof doc.startViewTransition === 'function' &&
+      !doc.hidden &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      // A skipped transition (rapid re-toggle, tab hidden mid-flight) rejects
+      // its promises; the theme still flips, so swallow the rejections.
+      const transition = doc.startViewTransition(apply);
+      transition.ready.catch(() => undefined);
+      transition.finished.catch(() => undefined);
+      transition.updateCallbackDone.catch(() => undefined);
+    } else {
+      apply();
+    }
+  };
+
   return (
     <button
       type="button"
       aria-label={label}
       title={label}
-      onClick={() => setTheme(nextTheme)}
+      onClick={toggleTheme}
       className={cn(
         'inline-flex h-9 w-9 items-center justify-center rounded-md',
         'text-foreground-secondary hover:text-foreground hover:bg-background-hover',

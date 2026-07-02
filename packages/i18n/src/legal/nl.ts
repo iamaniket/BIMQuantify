@@ -7,28 +7,40 @@ export const legalNlContent: LegalContent = {
   },
   privacy: {
     title: 'Privacyverklaring',
-    intro: 'BimDossier verwerkt persoonsgegevens van kwaliteitsborgers, aannemers en projectteams die gebruikmaken van het BimDossier-portaal. Deze verklaring beschrijft welke gegevens we verzamelen, met welk doel, en welke rechten je hebt onder de AVG/GDPR.',
-    lastUpdated: '2026-05-10',
+    intro: 'BimDossier verwerkt persoonsgegevens van kwaliteitsborgers, aannemers en projectteams die gebruikmaken van het BimDossier-portaal. Deze verklaring beschrijft wie we zijn, welke gegevens we verzamelen, met welk doel en op welke grondslag, met wie we ze delen, hoe lang we ze bewaren, en welke rechten je hebt onder de AVG/GDPR.',
+    lastUpdated: '2026-07-02',
     sections: [
       {
+        title: 'Wie we zijn',
+        body: 'BimDossier (handelsnaam) is de verwerkingsverantwoordelijke voor de persoonsgegevens in deze verklaring. Neem contact op via info@bimdossier.nl voor privacyvragen, of security@bimdossier.nl om een beveiligingsprobleem te melden. Onze geregistreerde rechtspersoon en KvK-nummer worden hier vermeld zodra de registratie is afgerond.',
+      },
+      {
         title: 'Welke gegevens we verwerken',
-        body: 'Account- en contactgegevens (naam, e-mailadres, organisatie), projectinhoud die je uploadt (IFC-modellen, foto\'s, documenten), inspectiebevindingen en bijbehorende metadata, en technische loggegevens om de dienst te beveiligen en te verbeteren.',
+        body: 'Account- en contactgegevens (naam, e-mailadres, organisatie, taalvoorkeur), projectinhoud die je uploadt (IFC-modellen, foto\'s, documenten, certificaten — die metadata kunnen bevatten zoals opnametijd en, bij foto\'s, locatie), inspectiebevindingen en bijbehorende metadata, en technische/beveiligingsloggegevens (IP-adres, apparaat/user-agent en audit-gebeurtenissen) om de dienst te beveiligen en te verbeteren.',
       },
       {
         title: 'Doel van de verwerking',
-        body: 'Het uitvoeren van de Wet kwaliteitsborging voor het bouwen (Wkb)-werkprocessen die je bij ons uitvoert: het bijhouden van borgingsplannen, inspecties, bevindingen en dossiervorming voor het bevoegd gezag. Wij verkopen je gegevens niet en gebruiken ze niet voor profiling of geautomatiseerde besluitvorming.',
+        body: 'Het uitvoeren van de Wet kwaliteitsborging voor het bouwen (Wkb)-werkprocessen die je bij ons uitvoert: het bijhouden van borgingsplannen, inspecties, bevindingen en dossiervorming voor het bevoegd gezag. We verwerken gegevens ook om je account te beveiligen, de dienst betrouwbaar te houden en het gebruik van het product te begrijpen. Wij verkopen je gegevens niet en gebruiken ze niet voor profiling of geautomatiseerde besluitvorming.',
+      },
+      {
+        title: 'Grondslag',
+        body: 'We baseren ons op: de uitvoering van onze overeenkomst met jou (art. 6(1)(b)) voor accountbeheer en het leveren van de dienst; een wettelijke verplichting (art. 6(1)(c)) voor Wkb-dossier- en fiscale bewaring; en ons gerechtvaardigd belang (art. 6(1)(f)) voor het beveiligen van de dienst (beveiligingslogging en misbruikpreventie), productanalyse en foutmonitoring. Waar we om toestemming vragen (art. 6(1)(a)) kun je die op elk moment intrekken.',
+      },
+      {
+        title: 'Cookies',
+        body: 'We gebruiken één functionele cookie (NEXT_LOCALE, één jaar geldig) om je taalkeuze te onthouden. We gebruiken geen advertentie- of cross-site-trackingcookies. Onze productanalyse (zie hieronder) werkt zonder cookies.',
       },
       {
         title: 'Bewaartermijn',
-        body: 'Gegevens die deel uitmaken van een Wet kwaliteitsborging voor het bouwen (Wkb)-dossier worden conform de wettelijke bewaarplicht 10 jaar bewaard na oplevering. Account- en factuurgegevens bewaren we zo lang als noodzakelijk voor de uitvoering van de overeenkomst en de geldende fiscale bewaartermijn.',
+        body: 'Gegevens die deel uitmaken van een Wet kwaliteitsborging voor het bouwen (Wkb)-dossier worden conform de wettelijke bewaarplicht 10 jaar bewaard na oplevering. Account- en factuurgegevens bewaren we zo lang als noodzakelijk voor de uitvoering van de overeenkomst en de geldende fiscale bewaartermijn. Beveiligingslogs, notificaties en marketingaanvragen bewaren we alleen zolang nodig en verwijderen we daarna, volgens ons bewaarschema.',
       },
       {
         title: 'Jouw rechten',
-        body: 'Je hebt recht op inzage, correctie, beperking van de verwerking, dataportabiliteit en (binnen de grenzen van de wettelijke bewaarplicht) verwijdering. Verzoeken kun je richten aan info@bimdossier.nl. Klachten kun je ook indienen bij de Autoriteit Persoonsgegevens.',
+        body: 'Je hebt recht op inzage, correctie, beperking van de verwerking, dataportabiliteit, bezwaar tegen verwerking op basis van ons gerechtvaardigd belang (art. 21) en (binnen de grenzen van de wettelijke bewaarplicht) verwijdering. Verzoeken kun je richten aan info@bimdossier.nl. Je kunt ook een klacht indienen bij de Autoriteit Persoonsgegevens.',
       },
       {
-        title: 'Hosting en sub-verwerkers',
-        body: 'Alle persoonsgegevens worden binnen de EU gehost. Een actuele lijst van sub-verwerkers (zoals onze e-mail-, betaal- en opslagleverancier) is opgenomen in de Verwerkersovereenkomst (DPA).',
+        title: 'Hosting, analyse en sub-verwerkers',
+        body: 'Alle persoonsgegevens worden binnen de EU gehost. We gebruiken derden om de dienst te leveren: infrastructuur/hosting en objectopslag (EU), PostHog voor productanalyse (EU-gehost, zonder cookies; voor ingelogde portaalgebruikers gekoppeld aan je account), Sentry voor foutmonitoring (EU; geen request-inhoud, geen persoonsgegevens), en een e-mailprovider voor transactionele berichten. Een actuele, met naam genoemde lijst van sub-verwerkers is op verzoek beschikbaar en gepubliceerd in ons juridisch centrum.',
       },
     ],
   },

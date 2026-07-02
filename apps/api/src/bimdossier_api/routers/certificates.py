@@ -47,6 +47,7 @@ from bimdossier_api.schemas.certificate import (
     CertificateUpdateRequest,
 )
 from bimdossier_api.schemas.org_certificate import LinkFromLibraryRequest
+from bimdossier_api.content_disposition import resolve_attachment_download
 from bimdossier_api.storage import (
     StorageBackend,
     get_attachments_bucket,
@@ -420,8 +421,16 @@ async def download_certificate(
         )
 
     bucket = get_attachments_bucket()
+    # Canonical extension-derived content-type overrides the stored (caller-supplied)
+    # type, and non-inline-safe types are forced to `attachment` — stored-XSS guard
+    # (mirrors attachments.py; the stored content_type is not trusted at serve time).
+    content_type, safe_disposition = resolve_attachment_download(cert.original_filename, disposition)
     url = await storage.presigned_get_url(
-        cert.storage_key, cert.original_filename, disposition=disposition, bucket=bucket
+        cert.storage_key,
+        cert.original_filename,
+        disposition=safe_disposition,
+        response_content_type=content_type,
+        bucket=bucket,
     )
     return CertificateDownloadResponse(download_url=url, expires_in=storage.presign_ttl)
 

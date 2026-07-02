@@ -37,10 +37,7 @@ from bimdossier_api.auth.permissions import Action, Resource, require_permission
 from bimdossier_api.models.pooled_level import PooledLevel
 from bimdossier_api.models.levels import Level, LevelSource
 from bimdossier_api.pagination import set_total_count
-from bimdossier_api.routers.free_access import (
-    assert_free_account_not_expired,
-    require_free_tier_enabled,
-)
+from bimdossier_api.routers.free_access import require_free_tier_enabled
 from bimdossier_api.routers.pooled_projects import (
     _load_accessible_pooled_project_or_404,
     _load_pooled_project_or_404,
@@ -126,7 +123,6 @@ async def create_level(
         pooled_project = await _load_pooled_project_or_404(
             session, project_id, scope.user.id
         )  # owner-only
-        await assert_free_account_not_expired(scope.user)
         pooled_level = PooledLevel(
             owner_user_id=pooled_project.owner_user_id,
             pooled_project_id=pooled_project.id,
@@ -239,7 +235,6 @@ async def update_level(
     if scope.is_free:
         require_free_tier_enabled()
         await _load_pooled_project_or_404(session, project_id, scope.user.id)  # owner-only
-        await assert_free_account_not_expired(scope.user)
         pooled_level = await _load_pooled_level_or_404(session, project_id, level_id)
         for field, value in payload.model_dump(exclude_unset=True).items():
             setattr(pooled_level, field, value)

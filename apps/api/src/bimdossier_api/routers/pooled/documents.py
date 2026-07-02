@@ -14,7 +14,6 @@ from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.free_access import (
     assert_can_create_free_content,
-    assert_free_account_not_expired,
     assert_pooled_project_owned,
 )
 from bimdossier_api.routers.pooled._shared import (
@@ -165,7 +164,6 @@ async def update_pooled_document(
     """Free-tier container update (rename / discipline / status / level). Called
     from the unified documents router's free branch."""
     document = await _load_owned_document_or_404(session, project_id, document_id, user.id)
-    await assert_free_account_not_expired(user)
     data = payload.model_dump(exclude_unset=True)
     if "name" in data and data["name"] is not None:
         document.name = data["name"]

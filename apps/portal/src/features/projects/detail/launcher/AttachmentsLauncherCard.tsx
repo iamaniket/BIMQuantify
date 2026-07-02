@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 
 import type { Locale } from '@bimdossier/i18n';
 import {
-  Badge, Button, IconTile, MediaRow, SplitButton,
+  Badge, Button, MediaRow, SplitButton,
 } from '@bimdossier/ui';
 
 import { UserAvatar } from '@/components/shared/UserAvatar';
@@ -147,7 +147,7 @@ export function AttachmentsLauncherCard({ projectId }: { projectId: string }): J
             <MediaRow
               key={a.id}
               className="min-h-[34px] max-h-[48px] flex-1"
-              media={<IconTile tone="neutral" size="md"><Icon className="h-4 w-4" /></IconTile>}
+              media={<Icon className="h-5 w-5 shrink-0 text-foreground-tertiary" />}
               title={a.original_filename}
               description={a.description ?? a.content_type}
               trailing={(

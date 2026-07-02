@@ -205,7 +205,10 @@ export function FindingsKanbanBoard({ projectId, findings, members }: Props): JS
           </Select>
           {isPooled ? (
             <>
-              <PooledFindingsExportButton projectId={projectId} />
+              <PooledFindingsExportButton
+                projectId={projectId}
+                canGeneratePdf={can('finding', 'create')}
+              />
               {can('finding', 'create') && (
                 <PooledNewFindingButton projectId={projectId} members={members} />
               )}

@@ -1,0 +1,21 @@
+# Code ownership + mandatory review (CC8-REV-1). Every PR that touches a path
+# below requires review from the listed owner before merge (enforced when branch
+# protection has "Require review from Code Owners" enabled on `main`). Replace the
+# @LogicX placeholder with the real GitHub team/handle(s).
+#
+# Default owner for everything.
+*                                   @LogicX
+
+# Security-sensitive surfaces — auth, tenancy, storage scoping, config guards,
+# and the compliance policies — warrant explicit review attention.
+/apps/api/src/bimdossier_api/auth/           @LogicX
+/apps/api/src/bimdossier_api/tenancy.py      @LogicX
+/apps/api/src/bimdossier_api/config.py       @LogicX
+/apps/api/src/bimdossier_api/storage/        @LogicX
+/apps/api/src/bimdossier_api/_rls_sql.py     @LogicX
+/apps/api/src/bimdossier_api/csv_safety.py   @LogicX
+/apps/api/src/bimdossier_api/content_disposition.py  @LogicX
+/apps/arbiter/                               @LogicX
+/.github/                                    @LogicX
+/compliance/                                 @LogicX
+/SECURITY.md                                 @LogicX

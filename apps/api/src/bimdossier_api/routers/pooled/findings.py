@@ -1,8 +1,10 @@
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
+from sqlalchemy import func as sql_func
 from sqlalchemy import select
 from sqlalchemy import text as sql_text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -11,17 +13,18 @@ from bimdossier_api.auth.ratelimit import FREE_FINDING_WRITE_LIMITER
 from bimdossier_api.background.locks import lock_id_for
 from bimdossier_api.config import Settings, get_settings
 from bimdossier_api.db import get_session_maker
+from bimdossier_api.free_limits import resolve_owner_finding_cap
 from bimdossier_api.models.pooled_document import PooledDocument
 from bimdossier_api.models.pooled_finding import (
     POOLED_FINDING_SEVERITIES,
     POOLED_FINDING_STATUSES,
     PooledFinding,
 )
+from bimdossier_api.models.pooled_finding_counter import PooledFindingCounter
 from bimdossier_api.models.user import User
 from bimdossier_api.routers.free_access import (
     assert_assignee_is_participant,
-    assert_free_account_not_expired,
-    pooled_owner_finding_count,
+    pooled_owner_lifetime_finding_count,
     require_pooled_write_role,
     resolve_pooled_document_role,
 )
@@ -57,20 +60,22 @@ async def create_pooled_finding(
         )
     document = await _load_accessible_document_by_id_or_404(session, document_id)
     require_pooled_write_role(await resolve_pooled_document_role(session, document, user.id))
-    await assert_free_account_not_expired(user)
-    # FREE_MAX_FINDINGS_PER_USER: snags carry no storage bytes, so they escape the
-    # aggregate cap — bound them with a count cap keyed on the project OWNER.
-    # Serialize this owner's concurrent creates (txn-scoped advisory lock), then count
-    # on a SUPERUSER probe (a member's RLS session can't see the owner's snags in
-    # projects they don't share — it would undercount).
+    # LIFETIME findings cap: snags carry no storage bytes, so they escape the
+    # aggregate cap — bound them with a monotonic per-OWNER counter that deletes
+    # never decrement (create→delete cycling can't reclaim quota). Serialize this
+    # owner's concurrent creates (txn-scoped advisory lock), then read counter +
+    # the OWNER's effective cap on a SUPERUSER probe (a member's RLS session can't
+    # see the owner's rows in projects they don't share, and the override table
+    # has no bim_app grant).
     owner_id = document.owner_user_id
     await session.execute(
         sql_text("SELECT pg_advisory_xact_lock(:k)"),
         {"k": lock_id_for(f"pooled_finding_create:{owner_id}")},
     )
     async with get_session_maker()() as probe, probe.begin():
-        existing = await pooled_owner_finding_count(probe, owner_id)
-    if existing >= settings.free_max_findings_per_user:
+        existing = await pooled_owner_lifetime_finding_count(probe, owner_id)
+        cap = await resolve_owner_finding_cap(probe, owner_id, settings)
+    if existing >= cap:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="FREE_FINDING_CAP_REACHED"
         )
@@ -99,6 +104,21 @@ async def create_pooled_finding(
         deadline_date=payload.deadline_date,
     )
     session.add(snag)
+    # Spend the owner's lifetime quota in the SAME transaction as the INSERT so
+    # the counter and the row commit (or roll back) together; the advisory lock
+    # above serializes per-owner creates, making read-check + increment race-safe.
+    counter_upsert = (
+        pg_insert(PooledFindingCounter)
+        .values(owner_user_id=owner_id, lifetime_created=1)
+        .on_conflict_do_update(
+            index_elements=[PooledFindingCounter.owner_user_id],
+            set_={
+                "lifetime_created": PooledFindingCounter.lifetime_created + 1,
+                "updated_at": sql_func.now(),
+            },
+        )
+    )
+    await session.execute(counter_upsert)
     await session.flush()  # assign snag.id before linking attachments
     if payload.photo_ids:
         await _attach_links_to_snag(session, snag, document, payload.photo_ids, "photo")
@@ -163,8 +183,6 @@ async def update_pooled_finding(
     snag = await _load_accessible_snag_or_404(session, finding_id)
     document = await _load_accessible_document_by_id_or_404(session, snag.pooled_document_id)
     require_pooled_write_role(await resolve_pooled_document_role(session, document, user.id))
-    await assert_free_account_not_expired(user)
-
     # exclude_unset distinguishes an OMITTED field (leave unchanged) from an
     # explicit null (clear the column), mirroring the paid update_finding.
     updates = payload.model_dump(exclude_unset=True)

@@ -147,6 +147,13 @@
     "step6": {
       "title": "File on time",
       "body": "Email reminders land before every deadline. When it's time, download the complete dossier package and file your gereedmelding at the Omgevingsloket."
+    },
+    "story": {
+      "scrollHint": "Scroll on. The model follows.",
+      "stepLabel": "Step {current} of {total}",
+      "docCertificate": "Certificate",
+      "docPhoto": "Site photo",
+      "canvasLabel": "3D model walkthrough of the six steps"
     }
   },
   "cta": {
@@ -241,6 +248,81 @@
       "bath": "Bathroom",
       "bed": "Bedroom",
       "hall": "Hall"
+    }
+  },
+  "workflowDemo": {
+    "eyebrow": "Try it here",
+    "headline": "Move a finding. The dossier keeps up.",
+    "subtitle": "This is what your team sees on a running project. The board tracks the work, the dashboard tracks the dossier, and they never disagree.",
+    "hintDrag": "Drag a finding to Resolved. The dossier follows.",
+    "demoBadge": "Demo data",
+    "reset": "Reset the demo",
+    "status": {
+      "moved": "Moved to {column}.",
+      "reset": "Demo reset to the starting point."
+    },
+    "columns": {
+      "open": "Open",
+      "in_progress": "In progress",
+      "resolved": "Resolved"
+    },
+    "board": {
+      "ariaLabel": "Demo findings board",
+      "empty": "No findings here."
+    },
+    "card": {
+      "moveNext": "Move {title} to {column}",
+      "moveBack": "Move {title} back to {column}",
+      "moveTo": "Move to {column}",
+      "backTo": "Back to {column}",
+      "bbl": "Bbl {article}",
+      "photos": "{count, plural, =1 {1 photo attached} other {# photos attached}}"
+    },
+    "severity": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
+    "findings": {
+      "kierdichting": "Air sealing missing at frame W-114",
+      "balustrade": "Balustrade anchor not secured",
+      "manchet": "Fire collar missing at duct penetration",
+      "ventilatie": "Ventilation rate below requirement",
+      "hwa": "Rainwater outlet not connected",
+      "dekking": "Concrete cover below minimum"
+    },
+    "disciplines": {
+      "structure": "Structure",
+      "installations": "Installations",
+      "finishing": "Finishing",
+      "facade": "Facade"
+    },
+    "kpis": {
+      "completeness": {
+        "label": "Dossier ready"
+      },
+      "openFindings": {
+        "label": "Open findings"
+      },
+      "deadlines": {
+        "label": "Deadlines met",
+        "value": "{met} of {total}"
+      },
+      "days": {
+        "label": "Days to gereedmelding"
+      }
+    },
+    "donut": {
+      "centerLabel": "Ready",
+      "complete": "Complete",
+      "pending": "Pending",
+      "missing": "Missing"
+    },
+    "barsTitle": "Open findings per discipline",
+    "project": {
+      "metaCity": "Demo project in {city}",
+      "phase": "Finishing phase",
+      "mapLabel": "Map of the Netherlands with the demo project marked in {city}"
     }
   },
   "fromBlog": {

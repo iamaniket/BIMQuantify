@@ -13,7 +13,7 @@ import { logger } from '../../log.js';
 import type { ProgressReporter, WorkerJob } from '../../queue/queue.js';
 import { downloadObject } from '../../storage/s3.js';
 import { runReportJob } from './index.js';
-import { reportProjectSchema, reportTemplateSchema } from './templates/_helpers.js';
+import { reportProjectSchema, reportTemplateSchema, safeImageDataUrl } from './templates/_helpers.js';
 import { renderHtml, type SnagListData } from './templates/snag-list.js';
 import { embedTemplateLogo, mergeTemplateCover } from './templateAssets.js';
 
@@ -73,7 +73,11 @@ async function prepare(payload: SnagListPayload): Promise<SnagListPayload> {
     for (const photo of finding.photos) {
       try {
         const bytes = await downloadObject(photo.storage_key);
-        photo.data_url = `data:${photo.content_type};base64,${Buffer.from(bytes).toString('base64')}`;
+        // SEAM-XSS-SSRF-1: derive the MIME from a server-side image allowlist,
+        // not the caller-supplied content_type. A non-image (e.g. text/html)
+        // yields null → no <img> is rendered for it.
+        const dataUrl = safeImageDataUrl(photo.content_type, bytes);
+        if (dataUrl) photo.data_url = dataUrl;
       } catch (err) {
         logger.warn({ err, key: photo.storage_key }, 'snag-list: photo download failed, skipping');
       }

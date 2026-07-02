@@ -162,3 +162,10 @@ FREE_FINDING_WRITE_LIMITER = ResilientRateLimiter(
     seconds=3600,
     identifier=make_identifier("free_finding_write"),
 )
+# Per-user budget on free snag-list PDF generation (each queues a puppeteer
+# render on the shared processor).
+FREE_REPORT_GEN_LIMITER = ResilientRateLimiter(
+    times=_settings.rate_limit_free_report_per_hour,
+    seconds=3600,
+    identifier=make_identifier("free_report_create"),
+)

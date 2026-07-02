@@ -99,7 +99,12 @@ export const FreeUserUsageSchema = z.object({
   document_cap: z.number().int(),
   // Per-project invited-member cap (effective: override ?? default).
   member_cap: z.number().int(),
+  // LIVE snags currently existing (display) vs LIFETIME created — the cap gate
+  // enforces the lifetime number (deletes don't free quota). Optional keeps the
+  // schema rollout-tolerant (matches the last_activity_at precedent).
   snag_count: z.number().int(),
+  snags_created_lifetime: z.number().int().optional(),
+  snag_cap: z.number().int().optional(),
   member_of_count: z.number().int(),
   last_activity_at: z.union([z.string(), z.null()]).optional(),
   first_activity_at: z.union([z.string(), z.null()]).optional(),
@@ -114,6 +119,8 @@ export const FreeUserLimitsSchema = z.object({
   max_members_per_project: z.number().int(),
   max_documents: z.number().int(),
   storage_max_bytes: z.number().int(),
+  // LIFETIME findings cap (deletes don't free quota). Optional = rollout-tolerant.
+  max_findings: z.number().int().optional(),
   account_max_age_days: z.number().int(),
   expiry_exempt: z.boolean(),
   account_expires_at: z.union([z.string(), z.null()]),
@@ -123,11 +130,13 @@ export const FreeUserLimitsSchema = z.object({
   override_max_members_per_project: z.union([z.number().int(), z.null()]),
   override_max_documents: z.union([z.number().int(), z.null()]),
   override_storage_max_bytes: z.union([z.number().int(), z.null()]),
+  override_max_findings: z.union([z.number().int(), z.null()]).optional(),
   override_account_max_age_days: z.union([z.number().int(), z.null()]),
   default_max_projects: z.number().int(),
   default_max_members_per_project: z.number().int(),
   default_max_documents: z.number().int(),
   default_storage_max_bytes: z.number().int(),
+  default_max_findings: z.number().int().optional(),
   default_account_max_age_days: z.number().int(),
 });
 
@@ -140,6 +149,7 @@ export type FreeUserLimitsUpdate = {
   max_members_per_project: number | null;
   max_documents: number | null;
   storage_max_bytes: number | null;
+  max_findings: number | null;
   account_max_age_days: number | null;
   expiry_exempt: boolean;
 };
@@ -156,6 +166,7 @@ export const FreeAccountLimitsSchema = z.object({
   max_members_per_project: z.number().int(),
   max_documents: z.number().int(),
   storage_max_bytes: z.number().int(),
+  max_findings: z.number().int().optional(),
   account_max_age_days: z.number().int(),
   account_expires_at: z.union([z.string(), z.null()]),
   days_remaining: z.union([z.number().int(), z.null()]),

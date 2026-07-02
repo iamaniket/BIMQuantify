@@ -4,7 +4,7 @@ import { Box, CalendarDays, FileText, Flag, Image as ImageIcon, LinkIcon, Plus, 
 import { useLocale, useTranslations } from 'next-intl';
 import { useMemo, useState, type JSX } from 'react';
 
-import { Badge, Button, IconTile, MediaRow } from '@bimdossier/ui';
+import { Badge, Button, MediaRow } from '@bimdossier/ui';
 
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { useProjectOverview } from '@/features/projects/useProjectOverview';
@@ -139,7 +139,7 @@ export function FindingsLauncherCard({ projectId }: { projectId: string }): JSX.
             <MediaRow
               key={f.id}
               className="min-h-[34px] max-h-[48px] flex-1"
-              media={<IconTile tone="neutral" size="md"><Flag className="h-4 w-4" /></IconTile>}
+              media={<Flag className="h-5 w-5 shrink-0 text-foreground-tertiary" />}
               title={f.title}
               description={f.description}
               // Metadata is no longer a stacked subtitle line: status / location /

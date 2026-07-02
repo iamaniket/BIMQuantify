@@ -8,7 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { Button, Skeleton } from '@bimdossier/ui';
 import {
-  Activity, ArrowRight, Pencil, Settings, Share2,
+  Activity, ArrowRight, Pencil, Share2,
 } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 
@@ -25,7 +25,6 @@ import { ProjectChartsPanel } from '@/features/projects/detail/ProjectChartsPane
 import { ActivityTimelinePanel } from '@/features/projects/detail/ActivityTimelinePanel';
 import { RightColumnTabs } from '@/features/projects/detail/RightColumnTabs';
 import { ProjectFormDialog } from '@/features/projects/ProjectFormDialog';
-import { ProjectSettingsDialog } from '@/features/projects/detail/ProjectSettingsDialog';
 import { RemoveProjectButton } from '@/features/projects/detail/RemoveProjectButton';
 import { isProjectArchived } from '@/lib/formatting/projects';
 import { Link } from '@/i18n/navigation';
@@ -45,7 +44,6 @@ export default function ProjectDetailPage(): JSX.Element {
   const overviewQuery = useProjectOverview(projectId);
   const documentsQuery = useDocuments(projectId);
   const [editOpen, setEditOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     track(PORTAL_EVENTS.PROJECT_OPENED, { project_id: projectId });
@@ -115,24 +113,14 @@ export default function ProjectDetailPage(): JSX.Element {
         <Pencil className="mr-1 h-3.5 w-3.5" />
         {tHero('editProject')}
       </Button>
-      {/* Settings + Project Access are org-scoped (team / org settings) — hidden
+      {/* Project Access is org-scoped (team / org settings) — hidden
           for free projects, which are single-owner. */}
       {!isPooled && (
-        <>
-          <Button
-            variant="border"
-            disabled={isProjectArchived(project)}
-            onClick={() => { setSettingsOpen(true); }}
-          >
-            <Settings className="mr-1 h-3.5 w-3.5" />
-            {tHero('settings')}
-          </Button>
-          <Button variant="border" size="md" asChild>
-            <Link href={`/projects/${project.id}/access`}>
-              <Share2 className="mr-1 h-3.5 w-3.5" /> {tHero('projectAccess')}
-            </Link>
-          </Button>
-        </>
+        <Button variant="border" size="md" asChild>
+          <Link href={`/projects/${project.id}/access`}>
+            <Share2 className="mr-1 h-3.5 w-3.5" /> {tHero('projectAccess')}
+          </Link>
+        </Button>
       )}
       <RemoveProjectButton project={project} />
     </>
@@ -190,6 +178,7 @@ export default function ProjectDetailPage(): JSX.Element {
             deadlinesTotal={overview.deadlines.total}
             dossier={overview.completeness.dossier}
             isFree={isPooled}
+            isArchived={isProjectArchived(project)}
           />
         </div>
       </PageShell>
@@ -198,11 +187,6 @@ export default function ProjectDetailPage(): JSX.Element {
         project={project}
         open={editOpen}
         onOpenChange={setEditOpen}
-      />
-      <ProjectSettingsDialog
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        projectId={projectId}
       />
     </>
   );

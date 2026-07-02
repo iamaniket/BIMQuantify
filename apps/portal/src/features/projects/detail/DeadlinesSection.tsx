@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight, CalendarDays, Clock } from '@bimdossier/ui/icons';
+import { ArrowRight, Bell, CalendarDays, Clock } from '@bimdossier/ui/icons';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
@@ -12,6 +12,7 @@ import type { Deadline, EffectiveDeadlineNotificationSettings } from '@/lib/api/
 
 import { DeadlineRow } from './deadlines/DeadlineRow';
 import { FilingDialog } from './deadlines/FilingDialog';
+import { NotificationSettingsDialog } from './deadlines/NotificationSettingsDialog';
 import { useDeadlines, useFileDeadline } from './deadlines/useDeadlines';
 import {
   useProjectDeadlineSettings,
@@ -19,18 +20,22 @@ import {
 
 type Props = {
   projectId: string;
+  /** Disables the notification-settings trigger for archived projects
+   * (mirrors the removed hero Settings button's behavior). */
+  isArchived?: boolean;
 };
 
 // Rendered inside the project-detail right column's lower-panel "Deadlines" tab
 // (alongside Containers and Readiness): a met/total summary + calendar link above
 // a list of compact DeadlineRow items. The card chrome is provided by the caller
 // (RightColumnTabs).
-export function DeadlinesSection({ projectId }: Props): JSX.Element {
+export function DeadlinesSection({ projectId, isArchived = false }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs');
   const deadlinesQuery = useDeadlines(projectId);
   const settingsQuery = useProjectDeadlineSettings(projectId);
   const fileMutation = useFileDeadline(projectId);
   const [filingDeadline, setFilingDeadline] = useState<{ deadline: Deadline; label: string } | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const deadlines = deadlinesQuery.data ?? [];
   const settings = settingsQuery.data ?? [];
@@ -72,13 +77,24 @@ export function DeadlinesSection({ projectId }: Props): JSX.Element {
         <span className="text-caption tabular-nums text-foreground-tertiary">
           {metCount}/{deadlines.length}
         </span>
-        <Button variant="ghost" size="sm" className="shrink-0" asChild>
-          <Link href="/calendar">
-            <CalendarDays className="mr-1 h-3.5 w-3.5" aria-hidden />
-            {t('deadlines.viewOnCalendar')}
-            <ArrowRight className="ml-1 h-3.5 w-3.5" />
-          </Link>
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={isArchived}
+            onClick={() => { setSettingsOpen(true); }}
+          >
+            <Bell className="mr-1 h-3.5 w-3.5" aria-hidden />
+            {t('deadlines.notificationSettings')}
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/calendar">
+              <CalendarDays className="mr-1 h-3.5 w-3.5" aria-hidden />
+              {t('deadlines.viewOnCalendar')}
+              <ArrowRight className="ml-1 h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <ul className="space-y-1.5">
@@ -112,6 +128,12 @@ export function DeadlinesSection({ projectId }: Props): JSX.Element {
           label={filingDeadline.label}
         />
       )}
+
+      <NotificationSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        projectId={projectId}
+      />
     </section>
   );
 }

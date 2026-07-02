@@ -26,9 +26,7 @@ from bimdossier_api.models.pooled_document import PooledDocument
 from bimdossier_api.models.pooled_level import PooledLevel
 from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.models.user import User
-from bimdossier_api.routers.free_access import (
-    assert_free_account_not_expired,
-    require_free_tier_enabled,
+from bimdossier_api.routers.free_access import (    require_free_tier_enabled,
 )
 from bimdossier_api.routers.pooled_projects import (
     _load_accessible_pooled_project_or_404,
@@ -177,7 +175,6 @@ async def create_pooled_aligned_sheet(
     session: AsyncSession = Depends(get_pooled_session),
 ) -> PooledAlignedSheetRead:
     project = await _load_pooled_project_or_404(session, project_id, user.id)  # owner-only
-    await assert_free_account_not_expired(user)
     # The PDF document must exist in the project and actually be a PDF.
     if await _doc_in_project(session, payload.pdf_document_id, project.id, pdf=True) is None:
         raise HTTPException(
@@ -252,7 +249,6 @@ async def calibrate_pooled_aligned_sheet(
     session: AsyncSession = Depends(get_pooled_session),
 ) -> PooledAlignedSheetRead:
     await _load_pooled_project_or_404(session, project_id, user.id)  # owner-only
-    await assert_free_account_not_expired(user)
     sheet = await _load_sheet_or_404(session, project_id, sheet_id)
 
     try:
@@ -295,7 +291,6 @@ async def update_pooled_aligned_sheet(
 ) -> PooledAlignedSheetRead:
     """Re-pin a sheet to a different level / page (owner-only)."""
     await _load_pooled_project_or_404(session, project_id, user.id)  # owner-only
-    await assert_free_account_not_expired(user)
     sheet = await _load_sheet_or_404(session, project_id, sheet_id)
     updates = payload.model_dump(exclude_unset=True)
     if updates.get("level_id") is not None:

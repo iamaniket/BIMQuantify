@@ -123,3 +123,73 @@ def test_capture_device_over_byte_cap_rejected() -> None:
 def test_exif_string_field_over_length_cap_rejected() -> None:
     with pytest.raises(ValidationError):
         ExifData(make="a" * 256)
+
+
+# --- Report.params / template config / checklist extra_data (JSONB byte caps) --
+
+
+def test_report_params_small_ok() -> None:
+    from bimdossier_api.schemas.report import ReportCreateRequest
+
+    ReportCreateRequest(params={"file_ids": ["a", "b"]})
+
+
+def test_report_params_over_byte_cap_rejected() -> None:
+    from bimdossier_api.schemas.report import ReportCreateRequest
+
+    with pytest.raises(ValidationError):
+        ReportCreateRequest(params={"blob": "x" * (16 * 1024 + 1)})
+
+
+def test_checklist_extra_data_over_byte_cap_rejected() -> None:
+    from bimdossier_api.schemas.borgingsplan import ChecklistItemUpdate
+
+    with pytest.raises(ValidationError):
+        ChecklistItemUpdate(extra_data={"blob": "x" * (64 * 1024 + 1)})
+
+
+def test_org_template_config_over_byte_cap_rejected() -> None:
+    from bimdossier_api.schemas.org_template import OrgTemplateUpdate
+
+    with pytest.raises(ValidationError):
+        OrgTemplateUpdate(config={"blob": "x" * (256 * 1024 + 1)})
+
+
+# --- Org-certificate tags (each fans out to one OrgCertificateTag row) --------
+
+
+def test_org_certificate_tags_at_cap_ok() -> None:
+    from bimdossier_api.schemas.org_certificate import OrgCertificateUpdateRequest
+
+    OrgCertificateUpdateRequest(tags=["x"] * 50)
+
+
+def test_org_certificate_tags_over_count_cap_rejected() -> None:
+    from bimdossier_api.schemas.org_certificate import OrgCertificateUpdateRequest
+
+    with pytest.raises(ValidationError):
+        OrgCertificateUpdateRequest(tags=["x"] * 51)
+
+
+def test_org_certificate_tag_over_length_cap_rejected() -> None:
+    from bimdossier_api.schemas.org_certificate import OrgCertificateUpdateRequest
+
+    with pytest.raises(ValidationError):
+        OrgCertificateUpdateRequest(tags=["a" * 65])
+
+
+# --- Finding attachment-id lists (each id fans out to one link row) -----------
+
+
+def test_finding_photo_ids_over_count_cap_rejected() -> None:
+    from bimdossier_api.schemas.finding import FindingUpdate
+
+    with pytest.raises(ValidationError):
+        FindingUpdate(photo_ids=["a"] * 201)
+
+
+def test_finding_photo_id_over_length_cap_rejected() -> None:
+    from bimdossier_api.schemas.finding import FindingUpdate
+
+    with pytest.raises(ValidationError):
+        FindingUpdate(photo_ids=["a" * 65])

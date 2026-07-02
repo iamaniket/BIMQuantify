@@ -12,6 +12,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from bimdossier_api.schemas._limits import MIME_TYPE_PATTERN
 from bimdossier_api.schemas.attachment import CaptureMetadataInput
 
 _HEX_SHA256 = r"^[a-f0-9]{64}$"
@@ -20,7 +21,7 @@ _HEX_SHA256 = r"^[a-f0-9]{64}$"
 class PooledAttachmentInitiateRequest(BaseModel):
     filename: str = Field(min_length=1, max_length=512)
     size_bytes: int = Field(ge=1)
-    content_type: str = Field(min_length=1, max_length=255)
+    content_type: str = Field(min_length=1, max_length=255, pattern=MIME_TYPE_PATTERN)
     content_sha256: str = Field(pattern=_HEX_SHA256)
     capture_metadata: CaptureMetadataInput | None = None
 

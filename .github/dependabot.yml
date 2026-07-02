@@ -1,0 +1,49 @@
+# Dependency update + vulnerability monitoring (CC8-DEP-1). Dependabot opens PRs
+# for outdated / vulnerable dependencies across every ecosystem in the monorepo.
+# Grouped weekly so the PR volume stays reviewable; security updates are opened
+# out-of-band by GitHub regardless of schedule when the repo has Dependabot
+# security updates enabled.
+version: 2
+updates:
+  # --- Python (uv / pip) ---
+  - package-ecosystem: "pip"
+    directory: "/apps/api"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      python-api:
+        patterns: ["*"]
+  - package-ecosystem: "pip"
+    directory: "/apps/arbiter"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      python-arbiter:
+        patterns: ["*"]
+
+  # --- Node (pnpm workspace root) ---
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      js-prod:
+        dependency-type: "production"
+      js-dev:
+        dependency-type: "development"
+
+  # --- Processor (npm, separate lockfile) ---
+  - package-ecosystem: "npm"
+    directory: "/apps/processor"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # --- GitHub Actions (pin drift + action CVEs) ---
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

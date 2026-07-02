@@ -69,7 +69,9 @@ export function UseCasesSection(): JSX.Element {
             <article
               className={cn(
                 'relative flex h-full flex-col gap-4 rounded-2xl border bg-surface-main p-6 shadow-sm',
-                flagship ? 'border-primary' : 'border-border',
+                // The flagship card gets the blueprint corner ticks (one of
+                // exactly two placements, with the snag-showcase canvas).
+                flagship ? 'blueprint-corners border-primary' : 'border-border',
               )}
             >
               {flagship ? (

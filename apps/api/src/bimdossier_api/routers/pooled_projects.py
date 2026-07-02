@@ -46,6 +46,7 @@ from sqlalchemy import func, select
 from sqlalchemy import text as sql_text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bimdossier_api.csv_safety import csv_safe_mapping
 from bimdossier_api.auth.fastapi_users import current_verified_user
 from bimdossier_api.auth.manager import UserManager, get_user_manager
 from bimdossier_api.auth.ratelimit import INVITE_LIMITER
@@ -74,7 +75,6 @@ from bimdossier_api.routers.finding import (
 )
 from bimdossier_api.routers.free_access import (
     assert_can_create_free_content,
-    assert_free_account_not_expired,
     count_pooled_members,
     require_free_tier_enabled,
     resolve_pooled_role,
@@ -232,7 +232,6 @@ async def update_pooled_project(
     storage: StorageBackend = Depends(get_storage),
 ) -> ProjectRead:
     project = await _load_pooled_project_or_404(session, project_id, user.id)
-    await assert_free_account_not_expired(user)
     data = payload.model_dump(exclude_unset=True)
     if "country" in data:
         _validate_country(data["country"])
@@ -294,8 +293,6 @@ async def update_pooled_project_thumbnail(
     storage scope — NOT the org thumbnail prefix.
     """
     project = await _load_pooled_project_or_404(session, project_id, user.id)
-    await assert_free_account_not_expired(user)
-
     allowed_types = [t.strip() for t in settings.thumbnail_allowed_content_types.split(",")]
     content_type = thumbnail.content_type or ""
     if content_type not in allowed_types:
@@ -367,7 +364,7 @@ async def export_pooled_findings_csv(
     writer = csv.DictWriter(buf, fieldnames=list(_FINDINGS_CSV_COLUMNS), extrasaction="ignore")
     writer.writeheader()
     for s in snags:
-        writer.writerow(_pooled_finding_csv_row(s, names))
+        writer.writerow(csv_safe_mapping(_pooled_finding_csv_row(s, names)))
     return Response(
         content=buf.getvalue().encode("utf-8"),
         media_type="text/csv; charset=utf-8",
@@ -591,13 +588,11 @@ async def add_pooled_project_member(
         sql_text("SELECT pg_advisory_xact_lock(:k)"),
         {"k": lock_id_for(f"pooled_members:{project_id}")},
     )
-    # The owner's effective caps + trial. `session` is the superuser session here,
-    # so it can read the (no-bim_app-grant) free_user_limits override row.
+    # The owner's effective caps. `session` is the superuser session here, so it
+    # can read the (no-bim_app-grant) free_user_limits override row. No expiry
+    # gate: inviting collaborators is part of the forever-free field loop,
+    # bounded by the member cap + INVITE-style limiter, not the trial window.
     limits = await resolve_free_limits(user, session)
-    if limits.is_expired:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="FREE_ACCOUNT_EXPIRED"
-        )
     if await count_pooled_members(session, project_id) >= limits.max_members_per_project:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="FREE_MEMBER_CAP_REACHED"
@@ -691,7 +686,6 @@ async def update_pooled_project_member(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="FREE_MEMBER_NOT_FOUND"
         )
-    await assert_free_account_not_expired(user)
     member.role = payload.role.value
     target = await session.get(User, member_user_id)
     resp = ProjectMemberRead(

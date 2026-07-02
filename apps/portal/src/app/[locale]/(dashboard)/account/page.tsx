@@ -255,10 +255,23 @@ function FreePlanCard({
             )}
           </div>
 
-          {/* Findings (no cap) */}
+          {/* Findings — lifetime created vs the lifetime cap (what the gate
+              enforces; deletes don't free quota). Falls back to the live count
+              while the server rollout hasn't shipped the new fields. */}
           <div className="flex items-center justify-between px-5 py-2.5">
-            <div className="text-body3 font-medium text-foreground-secondary">{t('findingsLabel')}</div>
-            {loading ? <Skeleton className="h-4 w-8" /> : <CountChip>{usage.snag_count}</CountChip>}
+            <div className="text-body3 font-medium text-foreground-secondary">{t('findingsLifetimeLabel')}</div>
+            {loading ? (
+              <Skeleton className="h-4 w-12" />
+            ) : usage.snag_cap !== undefined ? (
+              <CountChip>
+                {t('countOfCap', {
+                  count: usage.snags_created_lifetime ?? usage.snag_count,
+                  cap: usage.snag_cap,
+                })}
+              </CountChip>
+            ) : (
+              <CountChip>{usage.snag_count}</CountChip>
+            )}
           </div>
 
           {/* Account status + verification still apply to the user account. */}

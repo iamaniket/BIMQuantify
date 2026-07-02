@@ -1,39 +1,24 @@
 'use client';
 
 import type {
-  EntityMarkerData, Vec3, ViewerBundle, ViewerHandle,
+  EntityMarkerData, Vec3, ViewerHandle,
 } from '@bimdossier/viewer';
 import { IfcViewer, outlinePlugin } from '@bimdossier/viewer/viewer-3d';
 import { useTranslations } from 'next-intl';
 import {
-  useCallback, useRef, useState, type JSX,
+  useCallback, useEffect, useRef, useState, type JSX,
 } from 'react';
 
 import { autoRotatePlugin } from './autoRotatePlugin';
 import { cameraDebugPlugin } from './cameraDebugPlugin';
 import { cameraZoomPlugin } from './cameraZoomPlugin';
+import { DEMO_BUNDLE } from './demoBundle';
 import { DEMO_MODEL_ID, DEMO_SNAGS, type DemoSnagStatus } from './demoSnags';
 import { monochromeLookPlugin } from './monochromeLookPlugin';
 import { snagPlacementPlugin, type ElementPointsArgs } from './snagPlacementPlugin';
 import {
   snagSpotlightPlugin, type SnagAnchor, type SnagSpotlight,
 } from './snagSpotlightPlugin';
-
-// Self-contained demo model: a static fragments file shipped in apps/web/public,
-// so the marketing site has NO runtime dependency on the API or MinIO. The
-// viewer's WASM + worker are likewise served from apps/web's own /public.
-const DEMO_BUNDLE: ViewerBundle = {
-  fragmentsUrl: '/models/demo.frag',
-  // Precomputed hard-edge outline (BIMOUTL2, gzip — the viewer's codec gunzips
-  // it). Renders the crisp architectural line-drawing look over the monochrome
-  // model. The outline plugin is added below (it's filtered out of the 'minimal'
-  // preset) with drawDuringMotion so the edges stay visible while it spins.
-  outlineUrl: '/models/demo.outline.bin',
-  modelId: DEMO_MODEL_ID,
-  // Bumped (v2→v3) on the model swap so returning visitors drop the
-  // IndexedDB-cached old fragments + its `<cacheKey>.outline` sibling.
-  cacheKey: 'web-demo-frag-v3',
-};
 
 // A snag reads as "broken" while it's open/in-progress, "fixed" once resolved or
 // verified. Drives the status-pill color in the popover (the pin already encodes
@@ -63,7 +48,11 @@ type Props = {
  */
 export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props): JSX.Element {
   const t = useTranslations('snagShowcase');
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const handleRef = useRef<ViewerHandle | null>(null);
+  // Latest offscreen state — read in onReady so a model that finishes loading
+  // while the visitor is already further down the page starts paused.
+  const visibleRef = useRef(true);
   // The popover wrapper; its transform is set imperatively every frame to track
   // the active pin's screen position (no React re-render for the per-frame move).
   const popoverRef = useRef<HTMLDivElement | null>(null);
@@ -83,6 +72,25 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
   // The camera-spotlight reporter: called on every camera move with the frontmost
   // snag + where its pin projects on screen. Stable (refs only) so the plugin,
   // captured once at mount, always drives the latest DOM.
+  // Pause the idle turntable while the showcase is offscreen (the visitor is
+  // down in the scroll story, which mounts its own canvas) so only one canvas
+  // renders at a time. Under reduced motion the auto-rotate plugin isn't
+  // registered at all — the catch swallows the unknown-command rejection.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (el === null || typeof IntersectionObserver === 'undefined') return undefined;
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        visibleRef.current = entry.isIntersecting;
+        handleRef.current?.commands
+          .execute('auto-rotate.setPaused', { paused: !entry.isIntersecting })
+          .catch(() => undefined);
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const onSpotlight = useCallback((spotlight: SnagSpotlight | null): void => {
     if (spotlight === null) {
       activeIdRef.current = null;
@@ -140,6 +148,7 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
 
   return (
     <div
+      ref={containerRef}
       // Full-bleed canvas — NO padding. The desktop right-shift (clearing the
       // text overlaid on the left) is done with the CAMERA in cameraZoomPlugin
       // (`setFocalOffset`, see `panFraction`), not a canvas `padding-left`.
@@ -247,6 +256,12 @@ export default function SnagViewer({ reducedMotion, onError, onLoaded }: Props):
             modelId: m.modelId,
           }));
           await handle.commands.execute('showcase.setSnagAnchors', anchors).catch(() => undefined);
+          // Apply the latest offscreen state — the IntersectionObserver above
+          // may have fired before the handle existed (model loaded while the
+          // visitor was already scrolled past), so re-assert it here.
+          await handle.commands
+            .execute('auto-rotate.setPaused', { paused: !visibleRef.current })
+            .catch(() => undefined);
           // Reveal on the next frame so the final framing is painted before the
           // host fades the canvas in (onLoaded → opacity 0→100).
           requestAnimationFrame(() => onLoaded?.());

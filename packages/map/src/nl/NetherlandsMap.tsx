@@ -163,6 +163,10 @@ export function NetherlandsMap({
             const [x, y] = project(m.lat, m.lng);
             const accent = m.accent ?? DEFAULT_ACCENT;
             const isHovered = hoveredIndex === i;
+            // A marker can opt into a permanent pulse (`m.pulse`) — e.g. a
+            // single point of interest the consumer wants to draw the eye to.
+            // Same halo as the hover pulse, same reduced-motion suppression.
+            const showPulse = animate && (isHovered || m.pulse === true);
             return (
               <g
                 key={`${m.lat}-${m.lng}-${i}`}
@@ -171,7 +175,7 @@ export function NetherlandsMap({
                 onMouseLeave={() => setHoveredIndex((prev) => (prev === i ? null : prev))}
                 style={{ cursor: m.label ? 'pointer' : 'default' }}
               >
-                {animate && isHovered ? (
+                {showPulse ? (
                   <circle r={14} fill={accent} opacity={0.18}>
                     <animate
                       attributeName="r"

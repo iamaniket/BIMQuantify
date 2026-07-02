@@ -1,39 +1,62 @@
 'use client';
 
 import { BrandMark } from '@bimdossier/brand';
-import { Button, ThemeToggle } from '@bimdossier/ui';
+import { Button, ThemeToggle, cn } from '@bimdossier/ui';
 import { useLocale, useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import { LanguageToggle } from '@/components/LanguageToggle';
+import { useScrollSpy } from '@/hooks/useScrollSpy';
+import { useScrollThreshold } from '@/hooks/useScrollThreshold';
 import { Link, usePathname } from '@/i18n/navigation';
 import { env } from '@/lib/env';
 import { portalHref } from '@/lib/portalLinks';
 
-type NavItem = { label: string; href: string; activeMatch?: string; external?: boolean };
+type NavItem = {
+  label: string;
+  href: string;
+  activeMatch?: string;
+  /** Homepage section id this item anchors to (drives the scroll-spy state). */
+  anchorId?: string;
+  external?: boolean;
+};
+
+/** Homepage section ids the anchor nav items point at, in document order. */
+const ANCHOR_IDS = ['features', 'faq'];
 
 /**
  * Sticky marketing top-nav. Surfaces Features, FAQ, Security and Blog on every
  * marketing page, plus the two front-door actions on the right: a Log in link
  * and the primary Start for free button (both link out to the portal). Carries
  * the language + theme toggles. Active state is derived from the locale-stripped
- * pathname.
+ * pathname for page links and from a scroll spy for the homepage anchor links;
+ * the header itself turns translucent + hairlined once the page scrolls.
  */
 export function MarketingHeader(): JSX.Element {
   const t = useTranslations('header');
   const tBrand = useTranslations('shared.brand');
   const locale = useLocale();
   const pathname = usePathname();
+  const scrolled = useScrollThreshold(8);
+  const activeSection = useScrollSpy(ANCHOR_IDS, pathname === '/');
 
   const navItems: NavItem[] = [
-    { label: t('features'), href: '/#features' },
-    { label: t('faq'), href: '/#faq' },
+    { label: t('features'), href: '/#features', anchorId: 'features' },
+    { label: t('faq'), href: '/#faq', anchorId: 'faq' },
     { label: t('security'), href: '/security', activeMatch: '/security' },
     { label: t('blog'), href: '/blog', activeMatch: '/blog' },
   ];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background">
+    <header
+      data-scrolled={scrolled}
+      className={cn(
+        'sticky top-0 z-40 border-b border-transparent bg-background',
+        'transition-[background-color,border-color,box-shadow] duration-300 motion-reduce:transition-none',
+        'data-[scrolled=true]:border-border data-[scrolled=true]:bg-background/85',
+        'data-[scrolled=true]:shadow-sm data-[scrolled=true]:backdrop-blur-md',
+      )}
+    >
       <div className="mx-auto flex w-full max-w-8xl items-center justify-between gap-4 px-6 py-3">
         <Link href="/" className="flex items-center gap-2 text-primary">
           <BrandMark size={40} />
@@ -47,16 +70,43 @@ export function MarketingHeader(): JSX.Element {
 
         <nav className="hidden items-center gap-6 md:flex">
           {navItems.map((item) => {
-            const active = item.activeMatch ? pathname.startsWith(item.activeMatch) : false;
-            const className = active
-              ? 'text-body2 font-semibold text-primary'
-              : 'text-body2 font-medium text-foreground-secondary transition-colors hover:text-primary';
+            const active = item.anchorId
+              ? activeSection === item.anchorId
+              : item.activeMatch
+                ? pathname.startsWith(item.activeMatch)
+                : false;
+            // Hairline underline that scales in from the left on the active
+            // item; the font/color treatment survives reduced motion (the
+            // underline is then present without the scale animation).
+            const className = cn(
+              'relative text-body2 transition-colors',
+              'after:absolute after:inset-x-0 after:-bottom-1.5 after:h-px after:origin-left',
+              'after:scale-x-0 after:bg-primary after:transition-transform after:duration-300',
+              'data-[active=true]:after:scale-x-100',
+              'motion-reduce:transition-none motion-reduce:after:transition-none',
+              active
+                ? 'font-semibold text-primary'
+                : 'font-medium text-foreground-secondary hover:text-primary',
+            );
+            const ariaCurrent = active ? (item.anchorId ? 'true' : 'page') : undefined;
             return item.external ? (
-              <a key={item.href} href={item.href} className={className}>
+              <a
+                key={item.href}
+                href={item.href}
+                data-active={active}
+                aria-current={ariaCurrent}
+                className={className}
+              >
                 {item.label}
               </a>
             ) : (
-              <Link key={item.href} href={item.href} className={className}>
+              <Link
+                key={item.href}
+                href={item.href}
+                data-active={active}
+                aria-current={ariaCurrent}
+                className={className}
+              >
                 {item.label}
               </Link>
             );

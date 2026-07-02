@@ -7,28 +7,40 @@ export const legalEnContent: LegalContent = {
   },
   privacy: {
     title: 'Privacy policy',
-    intro: 'BimDossier processes personal data from kwaliteitsborgers, contractors and project teams using the BimDossier portal. This policy describes which data we collect, for what purpose, and which rights you have under the GDPR.',
-    lastUpdated: '2026-05-10',
+    intro: 'BimDossier processes personal data from kwaliteitsborgers, contractors and project teams using the BimDossier portal. This policy describes who we are, which data we collect, for what purpose and on what legal basis, who we share it with, how long we keep it, and which rights you have under the GDPR.',
+    lastUpdated: '2026-07-02',
     sections: [
       {
+        title: 'Who we are',
+        body: 'BimDossier (trading name) is the controller for the personal data described in this policy. Contact us at info@bimdossier.nl for privacy questions, or security@bimdossier.nl to report a security concern. Our registered legal entity and Chamber of Commerce (KvK) number will be listed here once registration completes.',
+      },
+      {
         title: 'Data we process',
-        body: 'Account and contact data (name, email, organisation), project content you upload (IFC models, photos, documents), inspection findings and their metadata, and technical log data used to secure and improve the service.',
+        body: 'Account and contact data (name, email, organisation, language preference), project content you upload (IFC models, photos, documents, certificates — which may contain metadata such as capture time and, for photos, location), inspection findings and their metadata, and technical/security log data (IP address, device/user-agent, and audit events) used to secure and improve the service.',
       },
       {
         title: 'Purpose of the processing',
-        body: 'To run the Quality Assurance in Construction Act (Wkb) workflows you perform with us: managing assurance plans, inspections, findings and dossier preparation for the competent authority. We do not sell your data and do not use it for profiling or automated decision-making.',
+        body: 'To run the Quality Assurance in Construction Act (Wkb) workflows you perform with us: managing assurance plans, inspections, findings and dossier preparation for the competent authority. We also process data to secure your account, to keep the service reliable, and to understand product usage. We do not sell your data and do not use it for profiling or automated decision-making.',
+      },
+      {
+        title: 'Legal basis',
+        body: 'We rely on: performance of our contract with you (Art. 6(1)(b)) for account management and delivering the service; a legal obligation (Art. 6(1)(c)) for Wkb dossier and tax retention; and our legitimate interests (Art. 6(1)(f)) for securing the service (security logging and abuse prevention), product analytics, and error monitoring. Where we ask for consent (Art. 6(1)(a)), you may withdraw it at any time.',
+      },
+      {
+        title: 'Cookies',
+        body: 'We use one functional cookie (NEXT_LOCALE, valid for one year) to remember your language choice. We do not use advertising or cross-site tracking cookies. Our product analytics (see below) runs without cookies.',
       },
       {
         title: 'Retention',
-        body: 'Data that is part of a Quality Assurance in Construction Act (Wkb) dossier is retained for 10 years after delivery in line with statutory retention obligations. Account and billing data is kept as long as necessary to perform the contract and any applicable tax retention period.',
+        body: 'Data that is part of a Quality Assurance in Construction Act (Wkb) dossier is retained for 10 years after delivery in line with statutory retention obligations. Account and billing data is kept as long as necessary to perform the contract and any applicable tax retention period. Security logs, notifications, and marketing enquiries are kept only as long as needed and then deleted, per our data-retention schedule.',
       },
       {
         title: 'Your rights',
-        body: 'You have the right to access, correction, restriction of processing, data portability and (within the limits of statutory retention) deletion. Requests can be sent to info@bimdossier.nl. Complaints can also be filed with the Dutch Data Protection Authority.',
+        body: 'You have the right to access, correction, restriction of processing, data portability, objection to processing based on our legitimate interests (Art. 21), and (within the limits of statutory retention) deletion. Requests can be sent to info@bimdossier.nl. You can also lodge a complaint with the Dutch Data Protection Authority (Autoriteit Persoonsgegevens).',
       },
       {
-        title: 'Hosting and sub-processors',
-        body: 'All personal data is hosted within the EU. A current list of sub-processors (such as our email, payment and storage providers) is included in the Data Processing Agreement (DPA).',
+        title: 'Hosting, analytics and sub-processors',
+        body: 'All personal data is hosted within the EU. We use third parties to run the service: infrastructure/hosting and object storage (EU), PostHog for product analytics (EU-hosted, cookieless; for signed-in portal users this is linked to your account), Sentry for error monitoring (EU; no request bodies, no personal-data payloads), and an email provider for transactional messages. A current, named list of sub-processors is available on request and published in our legal centre.',
       },
     ],
   },

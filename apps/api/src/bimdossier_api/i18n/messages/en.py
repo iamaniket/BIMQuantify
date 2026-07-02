@@ -86,6 +86,21 @@ en_messages: Catalog = {
     # missed emails. Localized to the project's jurisdiction rather than
     # hardcoded English (L10).
     "deadlines.email.greeting": "Hi {name},",
+    # Free-tier idle-container deletion warning (sent once by the idle reaper's
+    # warn pass, single-locale via the owner's User.locale).
+    "free.idle_warning_email.subject": (
+        "Your unused models will be deleted in {days_until_delete} days"
+    ),
+    "free.idle_warning_email.body": (
+        "Hi {name},\n\n"
+        "The following models in your free BimDossier workspace haven't been "
+        "opened for {days_idle} days:\n\n{container_names}\n\n"
+        "Models that stay unused are automatically removed after a while to "
+        "keep the free tier fast for everyone. These will be deleted in about "
+        "{days_until_delete} days.\n\n"
+        "Want to keep them? Just open them in the viewer — that resets the "
+        "clock.\n"
+    ),
     # In-app notifications (single-locale: project's jurisdiction default).
     "deadlines.reminder_notification.title": "Deadline reminder: {deadline_label}",
     "deadlines.reminder_notification.body": (
@@ -145,6 +160,8 @@ en_messages: Catalog = {
     "notifications.report.dossier.body": "Dossier for the competent authority is being generated…",
     "notifications.report.snag_list.title": "Snag list — {name}",
     "notifications.report.snag_list.body": "Snag-list PDF is being generated…",
+    # Footer watermark rendered on free-tier snag-list PDFs (branding seam).
+    "reports.pooled_footer": "Made with BimDossier — bimdossier.com",
 
     # Job-status notifications (report pipeline). Absorbed from
     # routers/jobs_internal.py inline title/body maps.
@@ -332,9 +349,14 @@ en_messages: Catalog = {
     "errors.FREE_CREATE_FORBIDDEN": "Accounts that belong to a workspace can't create free projects.",
     "errors.FREE_STORAGE_CAP_REACHED": "You've reached the free storage limit. Delete a file or photo, or upgrade for more space.",
     "errors.FREE_MEMBER_CAP_REACHED": "This free project already has the maximum number of members.",
-    "errors.FREE_FINDING_CAP_REACHED": "You've reached the free findings limit. Resolve or delete a finding, or upgrade to add more.",
-    "errors.FREE_ACCOUNT_EXPIRED": "Your free trial has ended. Your projects are read-only — upgrade to keep creating and editing.",
+    "errors.FREE_FINDING_CAP_REACHED": "You've reached the lifetime findings limit for the free plan. Upgrade to keep adding findings.",
+    "errors.FREE_ACCOUNT_EXPIRED": "Your free trial has ended. You can keep logging findings and photos in your existing projects, but adding new projects, models, or files requires an upgrade.",
     "errors.FREE_FORBIDDEN": "You don't have permission to do that.",
+    "errors.FREE_REPORT_NOT_FOUND": "That report could not be found.",
+    "errors.FREE_REPORT_BUSY": (
+        "A report is already being generated for this workspace. "
+        "Wait for it to finish and try again."
+    ),
     "errors.FREE_MEMBER_NOT_FOUND": "That member could not be found.",
     "errors.FREE_CANNOT_INVITE_SELF": "You can't invite yourself.",
     "errors.FREE_MEMBER_ALREADY_EXISTS": "That person is already a member of this project.",

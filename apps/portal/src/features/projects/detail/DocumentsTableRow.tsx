@@ -328,16 +328,16 @@ export function DocumentsTableRow({
                 aria-label={t('selectAria', { name: document.name })}
               />
               <span
-                className="flex h-6 w-9 shrink-0 items-center justify-center rounded-md"
-                style={{ background: colors.bg, color: colors.fg }}
+                className="shrink-0"
+                style={{ color: colors.fg }}
                 title={kindLabel}
                 aria-label={kindLabel}
               >
                 {isUnknown
-                  ? <FileDashed className="h-4 w-4" aria-hidden />
+                  ? <FileDashed className="h-5 w-5" aria-hidden />
                   : isDrawing
-                    ? <Blueprint className="h-4 w-4" aria-hidden />
-                    : <Box className="h-4 w-4" aria-hidden />}
+                    ? <Blueprint className="h-5 w-5" aria-hidden />
+                    : <Box className="h-5 w-5" aria-hidden />}
               </span>
             </div>
           }

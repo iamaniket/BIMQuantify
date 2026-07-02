@@ -12,6 +12,8 @@ import { portalHref } from '@/lib/portalLinks';
 import { BrandAccentCta } from './BrandAccentCta';
 import { HeroPill } from './HeroPill';
 import { HeroShell } from './HeroShell';
+import { HeroBlueprint } from './hero/HeroBlueprint';
+import { HeroParallaxDriver } from './hero/HeroParallaxDriver';
 
 export function HeroSection(): JSX.Element {
   const t = useTranslations('hero');
@@ -21,7 +23,7 @@ export function HeroSection(): JSX.Element {
   const trustItems = t('trust').split(' · ');
 
   return (
-    <HeroShell size="splash" className="gap-6">
+    <HeroShell size="splash" stagger className="gap-6">
       <HeroPill>{t('badge')}</HeroPill>
 
       <h1 className="max-w-3xl text-h2 font-semibold text-white sm:text-h1">
@@ -58,6 +60,19 @@ export function HeroSection(): JSX.Element {
           </li>
         ))}
       </ul>
+
+      {/* Blueprint centerpiece — decorative, desktop-only. -z-10 puts it
+          behind the copy (HeroShell's content container isolates, so it still
+          paints above the backdrop); hero-parallax-art moves it counter to the
+          grid/glow for depth. data-hero-static opts it out of the stagger. */}
+      <div
+        aria-hidden
+        data-hero-static
+        className="hero-parallax-art pointer-events-none absolute inset-y-0 right-0 -z-10 hidden w-[44%] items-center justify-end lg:flex"
+      >
+        <HeroBlueprint />
+      </div>
+      <HeroParallaxDriver />
     </HeroShell>
   );
 }

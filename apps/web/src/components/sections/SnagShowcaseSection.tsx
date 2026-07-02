@@ -121,10 +121,11 @@ export function SnagShowcaseSection(): JSX.Element {
           canvas); lg turns the canvas into a full-height backdrop with the text
           overlaid on the left. */}
       <div className="relative flex flex-col lg:block lg:h-[75vh] lg:min-h-[640px] lg:max-h-[860px]">
-        {/* CANVAS LAYER */}
+        {/* CANVAS LAYER — blueprint-corners adds the 12px crosshair frame ticks
+            (one of exactly two placements, with the flagship Wkb card). */}
         <div
           ref={ref}
-          className="relative order-2 h-[55vh] min-h-[340px] w-full lg:order-none lg:absolute lg:inset-0 lg:h-full"
+          className="blueprint-corners relative order-2 h-[55vh] min-h-[340px] w-full lg:order-none lg:absolute lg:inset-0 lg:h-full"
         >
           {!webgl || failed ? (
             <ShowcaseFallback />

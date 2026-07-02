@@ -12,7 +12,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  IconTile,
   MediaRow,
 } from '@bimdossier/ui';
 import type { Locale } from '@bimdossier/i18n';
@@ -109,7 +108,7 @@ export function ReportsLauncherCard({ projectId }: { projectId: string }): JSX.E
             <MediaRow
               key={r.id}
               className="min-h-[34px] max-h-[48px] flex-1"
-              media={<IconTile tone="neutral" size="md"><Icon className="h-4 w-4" /></IconTile>}
+              media={<Icon className="h-5 w-5 shrink-0 text-foreground-tertiary" />}
               title={r.title}
               description={tReports(`types.${r.report_type}.title`)}
               // Reports aren't person-owned (only an optional signer), so unlike the

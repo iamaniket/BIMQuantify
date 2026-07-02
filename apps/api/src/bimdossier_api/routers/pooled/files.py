@@ -99,7 +99,7 @@ async def initiate_pooled_file_upload(
             detail="FREE_UPLOAD_TOO_LARGE",
         )
 
-    # Per-user aggregate storage cap (the 1 GB ceiling): the OWNER's model-file
+    # Per-user aggregate storage cap (the 3 GB ceiling): the OWNER's model-file
     # bytes PLUS attachment (photo) bytes (FSL-1) — uploads are owner-only here, so
     # the owner's RLS session sees all of their own bytes.
     used_bytes = await pooled_owner_used_bytes(session, user.id)
@@ -426,8 +426,10 @@ async def pooled_file_viewer_bundle(
     # Readiness = extraction succeeded (IFC writes fragments, PDF writes geometry).
     if row.extraction_status != "succeeded":
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="FREE_NOT_READY")
-    # Stamp last-viewed on the container so the idle reaper doesn't reap it.
+    # Stamp last-viewed on the container so the idle reaper doesn't reap it, and
+    # clear any pending deletion warning — viewing resets the idle clock.
     document.last_viewed_at = func.now()
+    document.idle_warning_sent_at = None
     return await _presign_pooled_bundle(row, storage)
 
 

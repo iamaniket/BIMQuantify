@@ -58,6 +58,16 @@ COPY --from=builder /app/dist ./dist
 RUN cp node_modules/web-ifc/web-ifc.wasm ./dist/web-ifc.wasm \
     && cp node_modules/web-ifc/web-ifc-mt.wasm ./dist/web-ifc-mt.wasm 2>/dev/null || true
 
+# Drop to the built-in non-root `node` user (uid 1000) so a compromise of the
+# Chromium render context (which runs with --no-sandbox) can't act as root in the
+# container (SEAM-DOCKER-ROOT-1 / CIS Docker 4.1). Chromium uses /tmp + /dev/shm,
+# both writable by `node`; the compose/task spec sets shm_size.
+RUN chown -R node:node /app
+USER node
+
 EXPOSE 8080
+# Liveness probe — the Fastify server exposes /healthz (SEAM-IMG-PIN-HC-1).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD node -e "require('http').get('http://127.0.0.1:8080/healthz',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/index.js"]

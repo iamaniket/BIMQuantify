@@ -80,6 +80,28 @@ describe('snag-list template', () => {
     expect(html).toContain('Vastgelegd'); // capturedAt caption label
   });
 
+  it('drops a photo whose data_url is not a safe base64 image (SEAM-XSS-SSRF-1)', () => {
+    const data = makeData();
+    // A crafted data_url that tries to break out of the src attribute / inject
+    // a non-image payload must never reach the rendered <img>.
+    data.findings[0]!.photos = [
+      {
+        storage_key: 'evil',
+        content_type: 'text/html',
+        data_url: 'data:text/html,<script>alert(1)</script>',
+      },
+      {
+        storage_key: 'breakout',
+        content_type: 'image/png',
+        data_url: 'data:image/png;base64,AA"><script>alert(2)</script>',
+      },
+    ];
+    const html = renderHtml(data);
+    expect(html).not.toContain('<script>alert(1)</script>');
+    expect(html).not.toContain('<script>alert(2)</script>');
+    expect(html).not.toContain('data:text/html');
+  });
+
   it('renders the resolution note when present', () => {
     const html = renderHtml(makeData());
     expect(html).toContain('Aangesloten en getest');

@@ -16,7 +16,7 @@ import { logger } from '../../log.js';
 import type { ProgressReporter, WorkerJob } from '../../queue/queue.js';
 import { downloadObject } from '../../storage/s3.js';
 import { runReportJob } from './index.js';
-import { reportProjectSchema, reportTemplateSchema } from './templates/_helpers.js';
+import { reportProjectSchema, reportTemplateSchema, safeImageDataUrl } from './templates/_helpers.js';
 import { renderHtml, type DossierData } from './templates/dossier.js';
 import { embedTemplateLogo, mergeTemplateCover } from './templateAssets.js';
 
@@ -112,7 +112,10 @@ async function prepare(payload: DossierPayload): Promise<DossierPayload> {
     for (const photo of finding.photos) {
       try {
         const bytes = await downloadObject(photo.storage_key);
-        photo.data_url = `data:${photo.content_type};base64,${Buffer.from(bytes).toString('base64')}`;
+        // SEAM-XSS-SSRF-1: MIME from a server-side image allowlist, not the
+        // caller-supplied content_type; a non-image yields null → no <img>.
+        const dataUrl = safeImageDataUrl(photo.content_type, bytes);
+        if (dataUrl) photo.data_url = dataUrl;
       } catch (err) {
         logger.warn({ err, key: photo.storage_key }, 'dossier: photo download failed, skipping');
       }

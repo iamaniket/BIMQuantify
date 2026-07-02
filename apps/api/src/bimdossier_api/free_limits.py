@@ -47,6 +47,7 @@ class FreeLimits:
     max_members_per_project: int
     max_documents: int
     storage_max_bytes: int
+    max_findings: int
     account_max_age_days: int
     expiry_exempt: bool
 
@@ -62,6 +63,7 @@ class FreeLimits:
     override_max_members_per_project: int | None
     override_max_documents: int | None
     override_storage_max_bytes: int | None
+    override_max_findings: int | None
     override_account_max_age_days: int | None
 
     # Global env defaults (so the form can render "default: N" next to each input).
@@ -69,6 +71,7 @@ class FreeLimits:
     default_max_members_per_project: int
     default_max_documents: int
     default_storage_max_bytes: int
+    default_max_findings: int
     default_account_max_age_days: int
 
 
@@ -83,6 +86,7 @@ def _build_limits(
     o_members = row.max_members_per_project if row is not None else None
     o_documents = row.max_documents if row is not None else None
     o_storage = row.storage_max_bytes if row is not None else None
+    o_findings = row.max_findings if row is not None else None
     o_age = row.account_max_age_days if row is not None else None
     exempt = bool(row.expiry_exempt) if row is not None else False
 
@@ -116,6 +120,9 @@ def _build_limits(
         storage_max_bytes=o_storage
         if o_storage is not None
         else settings.free_storage_max_bytes,
+        max_findings=o_findings
+        if o_findings is not None
+        else settings.free_max_findings_per_user,
         account_max_age_days=age_days,
         expiry_exempt=exempt,
         account_created_at=created,
@@ -126,11 +133,13 @@ def _build_limits(
         override_max_members_per_project=o_members,
         override_max_documents=o_documents,
         override_storage_max_bytes=o_storage,
+        override_max_findings=o_findings,
         override_account_max_age_days=o_age,
         default_max_projects=settings.free_max_projects_per_user,
         default_max_members_per_project=settings.free_max_members_per_project,
         default_max_documents=settings.free_max_documents_per_user,
         default_storage_max_bytes=settings.free_storage_max_bytes,
+        default_max_findings=settings.free_max_findings_per_user,
         default_account_max_age_days=settings.free_account_max_age_days,
     )
 
@@ -150,6 +159,21 @@ async def resolve_free_limits(
         async with get_session_maker()() as probe, probe.begin():
             row = await probe.get(FreeUserLimits, user.id)
     return _build_limits(user, row, settings, _utcnow())
+
+
+async def resolve_owner_finding_cap(
+    session: AsyncSession, owner_id: UUID, settings: Settings
+) -> int:
+    """Effective LIFETIME findings cap for a project OWNER (override ?? default).
+
+    The cap belongs to the owner, not the caller — a member filing a snag spends
+    the owner's quota. `session` MUST be a superuser probe (`free_user_limits`
+    has no `bim_app` grant); a PK get keyed on the owner satisfies the
+    owner-predicate hard rule for superuser pooled probes."""
+    row = await session.get(FreeUserLimits, owner_id)
+    if row is not None and row.max_findings is not None:
+        return row.max_findings
+    return settings.free_max_findings_per_user
 
 
 async def resolve_free_limits_batch(

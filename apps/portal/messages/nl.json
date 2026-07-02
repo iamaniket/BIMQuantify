@@ -29,9 +29,9 @@
   },
   "freeTrial": {
     "daysLeft": "Nog {days} dagen in je gratis proefperiode",
-    "endingBody": "Upgrade om te blijven aanmaken en bewerken zodra je proefperiode afloopt.",
+    "endingBody": "Upgrade om nieuwe projecten en modellen te kunnen blijven toevoegen zodra je proefperiode afloopt.",
     "expiredTitle": "Je gratis proefperiode is afgelopen",
-    "expiredBody": "Je projecten zijn alleen-lezen. Upgrade om te blijven aanmaken en bewerken.",
+    "expiredBody": "Je kunt bevindingen en foto's in bestaande projecten blijven vastleggen. Upgrade om nieuwe projecten en modellen toe te voegen.",
     "cta": "Toegang aanvragen"
   },
   "pooledViewer": {
@@ -531,6 +531,7 @@
       "projectsLabel": "Projecten",
       "containersLabel": "Containers",
       "findingsLabel": "Bevindingen",
+      "findingsLifetimeLabel": "Bevindingen (totaal ooit)",
       "usageValue": "{used} van {cap}",
       "usagePct": "{pct}%",
       "countOfCap": "{count} van {cap}",
@@ -1296,8 +1297,7 @@
       "editProject": "Project bewerken",
       "noAddress": "Geen adres ingesteld",
       "thumbnailAlt": "Miniatuur van {name}",
-      "mapPreviewAlt": "Kaartvoorbeeld van {name}",
-      "settings": "Instellingen"
+      "mapPreviewAlt": "Kaartvoorbeeld van {name}"
     },
     "tabs": {
       "readiness": {
@@ -1843,6 +1843,7 @@
         "eyebrow": "Compliance-data",
         "headerSubtitle": "{count, plural, =0 {Geen deadlines} =1 {1 deadline} other {# deadlines}}",
         "viewOnCalendar": "Bekijk in agenda",
+        "notificationSettings": "Meldingen",
         "heading": "Deadlines",
         "emptyTitle": "Nog geen deadlines",
         "emptyDescription": "Deadlines verschijnen automatisch zodra de benodigde datumvelden zijn ingevuld.",
@@ -1894,15 +1895,8 @@
       }
     },
     "settings": {
-      "title": "Projectinstellingen",
-      "description": "Configureer meldingen en weergavevoorkeuren voor dit project.",
-      "tabs": {
-        "notifications": "Meldingen",
-        "display": "Weergavevoorkeuren"
-      },
-      "display": {
-        "placeholder": "Weergavevoorkeuren binnenkort beschikbaar."
-      },
+      "title": "Meldingsinstellingen",
+      "description": "Configureer wanneer en aan wie deadline-herinneringen worden verzonden.",
       "save": "Opslaan",
       "cancel": "Annuleren",
       "resetDefaults": "Standaardwaarden herstellen"
@@ -2137,6 +2131,9 @@
     "export": {
       "csv": "CSV exporteren",
       "csvError": "Kon de bevindingen-CSV niet exporteren.",
+      "pdf": "Bevindingenrapport (PDF)",
+      "pdfPreparing": "PDF wordt voorbereid…",
+      "pdfError": "Kon het bevindingenrapport-PDF niet genereren.",
       "snag": "Bevindingenrapport",
       "dialogTitle": "Bevindingenrapport (PDF)",
       "dialogSubtitle": "Genereer een bevindingenlijst om aan een onderaannemer te geven. Verschijnt zodra klaar onder Rapporten van het project.",
@@ -3478,6 +3475,7 @@
         "projectsLabel": "Projecten",
         "membersLabel": "Leden / project",
         "containersLabel": "Containers",
+        "findingsCapLabel": "Bevindingen (totaal ooit)",
         "storageLabel": "Opslag (GB)",
         "trialDaysLabel": "Proefperiode (dagen)",
         "defaultHint": "standaard {value}",

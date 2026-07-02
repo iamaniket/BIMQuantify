@@ -47,17 +47,22 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
 
   let homeSaved = false;
   let offModelLoaded: (() => void) | null = null;
+  let disposed = false;
 
   return {
     name: NAME,
 
     install(ctx: ViewerContext) {
       const { commands } = ctx;
+      disposed = false;
 
       offModelLoaded = ctx.events.on('model:loaded', () => {
         // Defer one frame — Viewer.frameModel() sets the camera in
         // the same tick as model:loaded, so we snapshot after it lands.
+        // The viewer can be disposed between the event and the frame
+        // (unmount during load), after which the camera getter throws.
         requestAnimationFrame(() => {
+          if (disposed) return;
           ctx.cameraControls.saveState();
           homeSaved = true;
         });
@@ -381,6 +386,7 @@ export function cameraPlugin(options: CameraPluginOptions = {}): Plugin {
     },
 
     uninstall() {
+      disposed = true;
       offModelLoaded?.();
       offModelLoaded = null;
       homeSaved = false;

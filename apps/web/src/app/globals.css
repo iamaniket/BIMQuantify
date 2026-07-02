@@ -58,6 +58,20 @@
     overflow-x: hidden;
   }
 
+  /* Smooth in-page anchor scrolling — motion-permitting only. */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  /* Anchor targets (/#features, /#faq, …) land below the sticky header
+     (~64px) with breathing room. Blog MDX headings keep their own
+     scroll-mt-24 — this selector only matches section ids. */
+  section[id] {
+    scroll-margin-top: 5rem;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
@@ -100,11 +114,233 @@
   .animate-snag-pulse {
     animation: snagPulse 1700ms ease-out infinite;
   }
+
+  /* Blueprint corner ticks — 12px crosshair corners on a framed surface.
+     Applied in exactly two places (the snag-showcase canvas frame and the
+     flagship Wkb use-case card). Static and decorative; inherits any parent
+     Reveal fade for free. */
+  .blueprint-corners {
+    position: relative;
+  }
+
+  .blueprint-corners::before,
+  .blueprint-corners::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    pointer-events: none;
+    border: 0 solid rgb(var(--primary-rgb) / 0.35);
+  }
+
+  .blueprint-corners::before {
+    top: 0;
+    left: 0;
+    border-top-width: 1px;
+    border-left-width: 1px;
+  }
+
+  .blueprint-corners::after {
+    bottom: 0;
+    right: 0;
+    border-bottom-width: 1px;
+    border-right-width: 1px;
+  }
+
+  /* Footer ruler strip — a quiet measurement-tick line above the footer
+     content (one 1px tick every 24px, in the border tone). */
+  .footer-ticks {
+    background-image: repeating-linear-gradient(
+      90deg,
+      rgb(var(--border-rgb) / 1) 0 1px,
+      transparent 1px 24px
+    );
+  }
+
+  /* Workflow-demo drop pulse — a success ring that swells and fades once when
+     a card lands in a new column. See WorkflowDemoCard.tsx. Motion-gated in
+     the reduce block below. */
+  .animate-demo-drop {
+    animation: demoDropPulse 600ms ease-out;
+  }
+}
+
+@keyframes demoDropPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(var(--success-rgb) / 0.45);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgb(var(--success-rgb) / 0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-snag-pop,
-  .animate-snag-pulse {
+  .animate-snag-pulse,
+  .animate-demo-drop {
     animation: none;
+  }
+}
+
+/* The workflow-demo card's move button reveals on hover/focus for fine
+   pointers (Tailwind group classes on the button); touch users get it
+   permanently — there is no hover to discover it with. Unlayered on purpose:
+   it must win the same-specificity tie against the layered `opacity-0`. */
+@media (pointer: coarse) {
+  .workflow-demo-move {
+    opacity: 1;
+  }
+}
+
+/* Theme cross-fade: ThemeToggle (packages/ui) wraps the theme flip in
+   document.startViewTransition where available and motion is allowed. Keep the
+   crossfade brisk; browsers without the API keep today's instant flip. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+}
+
+/* Hero load stagger (opt-in via HeroShell's `stagger` prop): the hero's block
+   children rise in top-to-bottom, 60ms steps capped at 300ms. Everything lives
+   inside the no-preference media query, so reduced motion gets the full
+   content at first paint. LCP guard: the h1 rises without a fade — an element
+   at opacity 0 doesn't count toward LCP, so the headline must paint
+   immediately. Decorative children (the absolute hero art + the parallax
+   driver) opt out via `data-hero-static`. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes heroRise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes heroRiseSolid {
+    from {
+      transform: translateY(10px);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .hero-stagger > * {
+    animation: heroRise 500ms ease-out both;
+  }
+
+  .hero-stagger > :nth-child(2) {
+    animation-delay: 60ms;
+  }
+
+  .hero-stagger > :nth-child(3) {
+    animation-delay: 120ms;
+  }
+
+  .hero-stagger > :nth-child(4) {
+    animation-delay: 180ms;
+  }
+
+  .hero-stagger > :nth-child(5) {
+    animation-delay: 240ms;
+  }
+
+  .hero-stagger > :nth-child(n + 6) {
+    animation-delay: 300ms;
+  }
+
+  /* LCP guard: rise only, never opacity 0 (see comment above). */
+  .hero-stagger > h1 {
+    animation-name: heroRiseSolid;
+  }
+
+  /* Keep this rule last: exempt children snap in with no animation. */
+  .hero-stagger > [data-hero-static] {
+    animation: none;
+  }
+}
+
+/* Hero blueprint line drawing (HeroBlueprint.tsx). Every path carries
+   pathLength=1 so dasharray/offset animate in path-agnostic units; groups
+   stagger via the --draw-delay custom property, pins via --pin-delay. All of
+   it is gated behind no-preference, so reduced motion sees the finished
+   drawing: undashed paths, pins visible, and the ping ring hidden by its
+   opacity=0 base attribute. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes heroDraw {
+    from {
+      stroke-dashoffset: 1;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes heroPinPop {
+    from {
+      opacity: 0;
+      transform: scale(0);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes heroPinPing {
+    0% {
+      opacity: 0.7;
+      transform: scale(0.5);
+    }
+    70% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 0;
+      transform: scale(2.4);
+    }
+  }
+
+  .hero-draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: heroDraw 1100ms ease-in-out both;
+    animation-delay: var(--draw-delay, 0s);
+  }
+
+  .hero-pin {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: heroPinPop 350ms ease-out both;
+    animation-delay: var(--pin-delay, 2.2s);
+  }
+
+  .hero-pin-ping {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: heroPinPing 2200ms ease-out infinite;
+    animation-delay: var(--pin-delay, 3.1s);
+  }
+
+  /* Pointer parallax: HeroParallaxDriver lerps --hpx/--hpy (−1..1) onto the
+     hero <section>; the backdrop layers consume them at different depths.
+     Heroes that never mount the driver leave the vars unset, so these resolve
+     to translate3d(0, 0, 0) — zero behavior change. */
+  .hero-parallax-grid {
+    transform: translate3d(calc(var(--hpx, 0) * 4px), calc(var(--hpy, 0) * 4px), 0);
+    will-change: transform;
+  }
+
+  .hero-parallax-glow {
+    transform: translate3d(calc(var(--hpx, 0) * 10px), calc(var(--hpy, 0) * 10px), 0);
+    will-change: transform;
+  }
+
+  .hero-parallax-art {
+    transform: translate3d(calc(var(--hpx, 0) * -6px), calc(var(--hpy, 0) * -6px), 0);
+    will-change: transform;
   }
 }

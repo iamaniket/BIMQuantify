@@ -23,6 +23,7 @@ from sqlalchemy import func, select
 from bimdossier_api.models.pooled_attachment import PooledAttachment
 from bimdossier_api.models.pooled_document import PooledDocument
 from bimdossier_api.models.pooled_finding import PooledFinding
+from bimdossier_api.models.pooled_finding_counter import PooledFindingCounter
 from bimdossier_api.models.pooled_project import PooledProject
 from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.models.pooled_project_member import PooledProjectMember
@@ -170,6 +171,19 @@ async def compute_free_usage(
     ).all():
         member_of[uid] = count
 
+    # LIFETIME findings created (deletes don't free quota) — what the cap gate
+    # actually enforces against, unlike the live `snags` count above.
+    snags_lifetime: dict[UUID, int] = {}
+    for uid, lifetime in (
+        await session.execute(
+            select(
+                PooledFindingCounter.owner_user_id,
+                PooledFindingCounter.lifetime_created,
+            ).where(PooledFindingCounter.owner_user_id.in_(user_ids))
+        )
+    ).all():
+        snags_lifetime[uid] = int(lifetime or 0)
+
     limits_map = limits_by_user or {}
 
     def _cap(uid: UUID, attr: str, default: int) -> int:
@@ -188,6 +202,10 @@ async def compute_free_usage(
                 uid, "max_members_per_project", settings.free_max_members_per_project
             ),
             snag_count=snags.get(uid, 0),
+            # A missing counter row means nothing was ever created post-backfill;
+            # fall back to the live count for pre-counter rows seeded by raw SQL.
+            snags_created_lifetime=snags_lifetime.get(uid, snags.get(uid, 0)),
+            snag_cap=_cap(uid, "max_findings", settings.free_max_findings_per_user),
             member_of_count=member_of.get(uid, 0),
             last_activity_at=_max_dt(
                 file_activity.get(uid),

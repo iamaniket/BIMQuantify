@@ -524,6 +524,105 @@ def disable_pooled_attachment_rls_statements() -> list[str]:
     ]
 
 
+# ---------------------------------------------------------------------------
+# Lifetime findings counter: owner-OR-co-participant RLS (migration 0005)
+#
+# `public.pooled_finding_counters` is the monotonic record the LIFETIME findings
+# cap is enforced against (deletes don't free quota — see the model docstring).
+# The +1 upsert runs on the pooled `bim_app` session inside the snag-create
+# transaction, and a MEMBER may file a snag against the OWNER's quota — so the
+# policy must let any co-participant of one of the owner's projects touch the
+# owner's row. The SECURITY DEFINER helper reads pooled_projects +
+# pooled_project_members RLS-bypassed (same recursion-breaker pattern as
+# `pooled_is_member`).
+# ---------------------------------------------------------------------------
+
+
+def enable_pooled_finding_counter_rls_statements() -> list[str]:
+    """CREATE the scope helper + ENABLE + FORCE RLS on pooled_finding_counters.
+    Idempotent."""
+    return [
+        """
+        CREATE OR REPLACE FUNCTION public.pooled_counter_scope(p_owner uuid, p_user uuid)
+        RETURNS boolean
+        LANGUAGE sql
+        STABLE
+        SECURITY DEFINER
+        SET search_path = public, pg_temp
+        AS $$
+            SELECT p_owner = p_user OR EXISTS (
+                SELECT 1
+                FROM public.pooled_projects p
+                JOIN public.pooled_project_members m ON m.pooled_project_id = p.id
+                WHERE p.owner_user_id = p_owner AND m.user_id = p_user
+            );
+        $$;
+        """,
+        "ALTER TABLE public.pooled_finding_counters ENABLE ROW LEVEL SECURITY;",
+        "ALTER TABLE public.pooled_finding_counters FORCE ROW LEVEL SECURITY;",
+        "DROP POLICY IF EXISTS pooled_finding_counters_scope "
+        "ON public.pooled_finding_counters;",
+        f"""
+        CREATE POLICY pooled_finding_counters_scope ON public.pooled_finding_counters
+        USING (public.pooled_counter_scope(owner_user_id, {_POOLED_UID}))
+        WITH CHECK (public.pooled_counter_scope(owner_user_id, {_POOLED_UID}));
+        """,
+    ]
+
+
+def disable_pooled_finding_counter_rls_statements() -> list[str]:
+    """Reverse of `enable_pooled_finding_counter_rls_statements` (0005 downgrade /
+    test teardown)."""
+    return [
+        "DROP POLICY IF EXISTS pooled_finding_counters_scope "
+        "ON public.pooled_finding_counters;",
+        "ALTER TABLE public.pooled_finding_counters NO FORCE ROW LEVEL SECURITY;",
+        "ALTER TABLE public.pooled_finding_counters DISABLE ROW LEVEL SECURITY;",
+        "DROP FUNCTION IF EXISTS public.pooled_counter_scope(uuid, uuid);",
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Free-tier reports: owner-OR-member RLS (migration 0006)
+#
+# `public.pooled_reports` is project-scoped like `pooled_attachments`: the owner
+# via the denormalized `owner_user_id`, members via `pooled_is_member`. Members
+# may create a report (WITH CHECK matches USING); the owner/editor write split
+# is enforced in the router, not RLS.
+# ---------------------------------------------------------------------------
+
+
+def enable_pooled_report_rls_statements() -> list[str]:
+    """ENABLE + FORCE owner-OR-member RLS on pooled_reports. Idempotent.
+    Relies on `public.pooled_is_member` (free-member RLS, migration 0004)."""
+    return [
+        "ALTER TABLE public.pooled_reports ENABLE ROW LEVEL SECURITY;",
+        "ALTER TABLE public.pooled_reports FORCE ROW LEVEL SECURITY;",
+        "DROP POLICY IF EXISTS pooled_reports_owner_isolation ON public.pooled_reports;",
+        f"""
+        CREATE POLICY pooled_reports_owner_isolation ON public.pooled_reports
+        USING (
+            owner_user_id = {_POOLED_UID}
+            OR public.pooled_is_member(pooled_project_id, {_POOLED_UID})
+        )
+        WITH CHECK (
+            owner_user_id = {_POOLED_UID}
+            OR public.pooled_is_member(pooled_project_id, {_POOLED_UID})
+        );
+        """,
+    ]
+
+
+def disable_pooled_report_rls_statements() -> list[str]:
+    """Reverse of `enable_pooled_report_rls_statements` (0006 downgrade / test
+    teardown)."""
+    return [
+        "DROP POLICY IF EXISTS pooled_reports_owner_isolation ON public.pooled_reports;",
+        "ALTER TABLE public.pooled_reports NO FORCE ROW LEVEL SECURITY;",
+        "ALTER TABLE public.pooled_reports DISABLE ROW LEVEL SECURITY;",
+    ]
+
+
 # Every pooled free-tier table the app role needs DML on. The squashed master
 # baseline grants these in one shot AFTER create_all — mirroring the per-table
 # GRANTs the (now-squashed) free-tier deltas applied inline. Necessary because
@@ -537,6 +636,8 @@ POOLED_DML_TABLES = (
     *POOLED_NOTIFICATION_RLS_TABLES,
     "pooled_attachments",
     "pooled_finding_attachments",
+    "pooled_finding_counters",
+    "pooled_reports",
 )
 
 

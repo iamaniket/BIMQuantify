@@ -147,6 +147,13 @@
     "step6": {
       "title": "Dien op tijd in",
       "body": "E-mailherinneringen vóór elke deadline. Als het zover is, downloadt u het volledige dossierpakket en dient u uw gereedmelding in bij het Omgevingsloket."
+    },
+    "story": {
+      "scrollHint": "Scrol door. Het model volgt.",
+      "stepLabel": "Stap {current} van {total}",
+      "docCertificate": "Certificaat",
+      "docPhoto": "Foto van de bouwplaats",
+      "canvasLabel": "3D-modelrondgang door de zes stappen"
     }
   },
   "cta": {
@@ -241,6 +248,81 @@
       "bath": "Badkamer",
       "bed": "Slaapkamer",
       "hall": "Hal"
+    }
+  },
+  "workflowDemo": {
+    "eyebrow": "Probeer het hier",
+    "headline": "Verplaats een bevinding. Het dossier beweegt mee.",
+    "subtitle": "Dit is wat uw team ziet op een lopend project. Het bord volgt het werk, het dashboard volgt het dossier, en ze spreken elkaar nooit tegen.",
+    "hintDrag": "Sleep een bevinding naar Opgelost. Het dossier volgt.",
+    "demoBadge": "Demogegevens",
+    "reset": "Zet de demo terug",
+    "status": {
+      "moved": "Verplaatst naar {column}.",
+      "reset": "Demo teruggezet naar het beginpunt."
+    },
+    "columns": {
+      "open": "Open",
+      "in_progress": "In behandeling",
+      "resolved": "Opgelost"
+    },
+    "board": {
+      "ariaLabel": "Demobord met bevindingen",
+      "empty": "Geen bevindingen hier."
+    },
+    "card": {
+      "moveNext": "Verplaats {title} naar {column}",
+      "moveBack": "Verplaats {title} terug naar {column}",
+      "moveTo": "Naar {column}",
+      "backTo": "Terug naar {column}",
+      "bbl": "Bbl {article}",
+      "photos": "{count, plural, =1 {1 foto toegevoegd} other {# foto's toegevoegd}}"
+    },
+    "severity": {
+      "low": "Laag",
+      "medium": "Middel",
+      "high": "Hoog"
+    },
+    "findings": {
+      "kierdichting": "Kierdichting ontbreekt bij kozijn W-114",
+      "balustrade": "Balustradeanker niet geborgd",
+      "manchet": "Brandmanchet ontbreekt bij doorvoer",
+      "ventilatie": "Ventilatiedebiet onder eis",
+      "hwa": "HWA-uitloop niet aangesloten",
+      "dekking": "Betondekking onder minimum"
+    },
+    "disciplines": {
+      "structure": "Ruwbouw",
+      "installations": "Installaties",
+      "finishing": "Afbouw",
+      "facade": "Gevel"
+    },
+    "kpis": {
+      "completeness": {
+        "label": "Dossier gereed"
+      },
+      "openFindings": {
+        "label": "Open bevindingen"
+      },
+      "deadlines": {
+        "label": "Deadlines gehaald",
+        "value": "{met} van {total}"
+      },
+      "days": {
+        "label": "Dagen tot gereedmelding"
+      }
+    },
+    "donut": {
+      "centerLabel": "Gereed",
+      "complete": "Compleet",
+      "pending": "In behandeling",
+      "missing": "Ontbreekt"
+    },
+    "barsTitle": "Open bevindingen per discipline",
+    "project": {
+      "metaCity": "Demoproject in {city}",
+      "phase": "Afbouwfase",
+      "mapLabel": "Kaart van Nederland met het demoproject in {city}"
     }
   },
   "fromBlog": {

@@ -4,13 +4,14 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from bimdossier_api.models.checklist_item_result import InspectionVerdict
+from bimdossier_api.schemas._limits import BoundedAttachmentIds
 
 
 class ResultCreate(BaseModel):
     verdict: InspectionVerdict
     note: str | None = Field(default=None, max_length=4000)
-    photo_ids: list[str] | None = None
-    reference_attachment_ids: list[str] | None = None
+    photo_ids: BoundedAttachmentIds | None = None
+    reference_attachment_ids: BoundedAttachmentIds | None = None
 
 
 class ChecklistItemResultRead(BaseModel):

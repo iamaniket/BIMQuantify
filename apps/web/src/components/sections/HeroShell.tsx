@@ -25,6 +25,12 @@ const SIZE_CLASSES: Record<HeroSize, string> = {
 export type HeroShellProps = {
   size?: HeroSize;
   align?: 'start' | 'center';
+  /**
+   * Load-stagger the content container's direct children (`.hero-stagger` in
+   * globals.css: rise-in, 60ms steps; the h1 rises without a fade — LCP
+   * guard). Off by default; the home hero opts in.
+   */
+  stagger?: boolean;
   /** Extra classes for the inner content container (gap-*, max-w-* override, …). */
   className?: string;
   children: ReactNode;
@@ -36,24 +42,34 @@ export type HeroShellProps = {
  * container. Each hero passes its own content as children and keeps its own
  * typography; the shell owns the backdrop, height, width, and alignment so
  * every hero shares one look and feel and a language-independent height.
+ *
+ * The grid + glow layers carry `hero-parallax-*` classes that consume the
+ * `--hpx`/`--hpy` custom properties via `translate3d(calc(...))`. Only heroes
+ * that mount `HeroParallaxDriver` (the home hero) ever set those vars; every
+ * other hero resolves them to 0 — zero behavior change.
  */
 export function HeroShell({
   size = 'splash',
   align = 'start',
+  stagger = false,
   className,
   children,
 }: HeroShellProps): JSX.Element {
   return (
     <section className="relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-[var(--brand-gradient-start)] to-[var(--brand-gradient-end)]" />
-      <HeroGrid opacity={0.08} stroke="#ffffff" step={36} />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(95,217,158,0.15),transparent)]" />
+      <HeroGrid opacity={0.08} stroke="#ffffff" step={36} className="hero-parallax-grid" />
+      <div className="hero-parallax-glow absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(95,217,158,0.15),transparent)]" />
 
+      {/* `isolate` scopes children's z-indexes to this container, so the home
+          hero's -z-10 blueprint art sits behind the copy but above the
+          backdrop layers. */}
       <div
         className={cn(
-          'relative mx-auto flex w-full max-w-8xl flex-col justify-center px-6',
+          'relative isolate mx-auto flex w-full max-w-8xl flex-col justify-center px-6',
           SIZE_CLASSES[size],
           align === 'center' && 'items-center text-center',
+          stagger && 'hero-stagger',
           className,
         )}
       >

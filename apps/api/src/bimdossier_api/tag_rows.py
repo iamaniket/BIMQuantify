@@ -10,6 +10,11 @@ from __future__ import annotations
 
 from typing import Protocol, TypeVar
 
+# All tag/label name columns are varchar(64). Truncate defensively so a caller
+# that skips the schema-level per-tag cap (e.g. the superuser blog path) still
+# can't overflow the column into a Postgres value-too-long 500.
+_MAX_TAG_LEN = 64
+
 
 class _TagRow(Protocol):
     """Structural type for a tag row (OrgCertificateTag / BcfTopicLabel / ...)."""
@@ -40,7 +45,7 @@ def replace_tags(
     seen: set[str] = set()
     position = 0
     for raw in names or []:
-        name = raw.strip()
+        name = raw.strip()[:_MAX_TAG_LEN]
         if not name or name in seen:
             continue
         seen.add(name)

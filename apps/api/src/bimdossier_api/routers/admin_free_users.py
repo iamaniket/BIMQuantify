@@ -114,6 +114,7 @@ def _limits_read(limits: FreeLimits) -> FreeUserLimitsRead:
         max_members_per_project=limits.max_members_per_project,
         max_documents=limits.max_documents,
         storage_max_bytes=limits.storage_max_bytes,
+        max_findings=limits.max_findings,
         account_max_age_days=limits.account_max_age_days,
         expiry_exempt=limits.expiry_exempt,
         account_expires_at=limits.account_expires_at,
@@ -123,11 +124,13 @@ def _limits_read(limits: FreeLimits) -> FreeUserLimitsRead:
         override_max_members_per_project=limits.override_max_members_per_project,
         override_max_documents=limits.override_max_documents,
         override_storage_max_bytes=limits.override_storage_max_bytes,
+        override_max_findings=limits.override_max_findings,
         override_account_max_age_days=limits.override_account_max_age_days,
         default_max_projects=limits.default_max_projects,
         default_max_members_per_project=limits.default_max_members_per_project,
         default_max_documents=limits.default_max_documents,
         default_storage_max_bytes=limits.default_storage_max_bytes,
+        default_max_findings=limits.default_max_findings,
         default_account_max_age_days=limits.default_account_max_age_days,
     )
 
@@ -408,6 +411,7 @@ async def update_free_user_limits(
     row.max_members_per_project = payload.max_members_per_project
     row.max_documents = payload.max_documents
     row.storage_max_bytes = payload.storage_max_bytes
+    row.max_findings = payload.max_findings
     row.account_max_age_days = payload.account_max_age_days
     row.expiry_exempt = payload.expiry_exempt
     row.updated_by_user_id = requester.id

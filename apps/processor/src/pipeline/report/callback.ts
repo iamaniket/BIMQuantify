@@ -6,7 +6,7 @@
  * sit under /internal/jobs/* and share the same shared-secret bearer.
  */
 
-import { callbackBaseUrl } from '../../api/callbackContext.js';
+import { callbackBaseUrl, callbackPath } from '../../api/callbackContext.js';
 import { getConfig } from '../../config.js';
 import { logger } from '../../log.js';
 
@@ -35,7 +35,10 @@ export type ReportCallbackPayload = {
 
 export async function postReportCallback(payload: ReportCallbackPayload): Promise<void> {
   const cfg = getConfig();
-  const url = `${callbackBaseUrl()}/internal/jobs/reports/callback`;
+  // Per-job callback-path override (free-tier pooled reports set
+  // `payload.callback_path`); tenant report jobs carry none and keep the
+  // hardcoded tenant path. Mirrors pagesCallback.ts.
+  const url = `${callbackBaseUrl()}${callbackPath() ?? '/internal/jobs/reports/callback'}`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {

@@ -78,6 +78,13 @@ services:
     restart: unless-stopped
     mem_limit: 6g
     shm_size: 1g
+    # Least-privilege runtime (SEAM-DOCKER-ROOT-1): drop all Linux capabilities
+    # (Chromium runs --no-sandbox, needs none) and forbid privilege escalation.
+    # The production task/pod spec MUST mirror these.
+    security_opt:
+      - "no-new-privileges:true"
+    cap_drop:
+      - ALL
     environment:
       NODE_ENV: development
       PORT: "8080"
@@ -118,6 +125,11 @@ services:
       context: ./apps/arbiter
       dockerfile: Dockerfile
     container_name: bimdossier-arbiter
+    # Least-privilege runtime (SEAM-DOCKER-ROOT-2). Production must mirror.
+    security_opt:
+      - "no-new-privileges:true"
+    cap_drop:
+      - ALL
     environment:
       S3_ENDPOINT_URL: http://minio:9000
       S3_REGION: us-east-1

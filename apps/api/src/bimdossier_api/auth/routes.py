@@ -572,6 +572,13 @@ def build_auth_router() -> APIRouter:
         # it, so a replayed pre-switch refresh can't mint a fresh access scoped
         # to the previous org. Guard on `sub == user.id` defensively — a caller
         # can only ever revoke their own token, but assert it anyway.
+        #
+        # AUTH-SESS-1: inherit the presented refresh token's REMAINING life as an
+        # absolute-lifetime cap for the successor (mirrors auth/refresh.py rotation)
+        # so switching org context can never reset the 7-day session cap. Stays None
+        # when no refresh token is presented — the client (portal/mobile) always
+        # sends it here for the revoke below, so this closes the loop in practice.
+        refresh_ttl_override: int | None = None
         if payload.refresh_token:
             try:
                 old_refresh = decode_token_full(payload.refresh_token, "refresh")
@@ -584,6 +591,7 @@ def build_auth_router() -> APIRouter:
                 and old_refresh.jti is not None
             ):
                 ttl = max(old_refresh.exp - int(datetime.now(UTC).timestamp()), 1)
+                refresh_ttl_override = ttl
                 try:
                     await revoke_jti(redis, old_refresh.jti, ttl)
                 except RedisError as exc:
@@ -618,7 +626,10 @@ def build_auth_router() -> APIRouter:
                 user.id, "access", active_organization_id=payload.organization_id
             ),
             refresh_token=create_token(
-                user.id, "refresh", active_organization_id=payload.organization_id
+                user.id,
+                "refresh",
+                active_organization_id=payload.organization_id,
+                ttl_override_seconds=refresh_ttl_override,
             ),
         )
 
@@ -658,6 +669,9 @@ def build_auth_router() -> APIRouter:
                         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                         detail="SWITCH_REVOCATION_UNAVAILABLE",
                     ) from exc
+        # AUTH-SESS-1: inherit the presented refresh token's remaining life so
+        # dropping into the free workspace can't reset the absolute session cap.
+        refresh_ttl_override: int | None = None
         if payload.refresh_token:
             try:
                 old_refresh = decode_token_full(payload.refresh_token, "refresh")
@@ -669,6 +683,7 @@ def build_auth_router() -> APIRouter:
                 and old_refresh.jti is not None
             ):
                 ttl = max(old_refresh.exp - int(datetime.now(UTC).timestamp()), 1)
+                refresh_ttl_override = ttl
                 try:
                     await revoke_jti(redis, old_refresh.jti, ttl)
                 except RedisError as exc:
@@ -682,7 +697,12 @@ def build_auth_router() -> APIRouter:
         await session.commit()
         return TokenPair(
             access_token=create_token(user.id, "access", active_organization_id=None),
-            refresh_token=create_token(user.id, "refresh", active_organization_id=None),
+            refresh_token=create_token(
+                user.id,
+                "refresh",
+                active_organization_id=None,
+                ttl_override_seconds=refresh_ttl_override,
+            ),
         )
 
     router.include_router(me_router)

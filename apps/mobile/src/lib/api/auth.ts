@@ -45,14 +45,17 @@ export async function getAuthMe(accessToken: string): Promise<AuthMeResponse> {
   return apiClient.get('/auth/me', AuthMeResponseSchema, accessToken);
 }
 
-/** POST /auth/switch-organization — re-mints BOTH tokens; replace the pair atomically. */
+/** POST /auth/switch-organization — re-mints BOTH tokens; replace the pair atomically.
+ * Sends the current refresh token so the server revokes it and caps the successor to
+ * its remaining life (absolute session cap; AUTH-SESS-1). */
 export async function switchOrganization(
   organizationId: string,
   accessToken: string,
+  refreshToken: string,
 ): Promise<TokenPair> {
   return apiClient.post(
     '/auth/switch-organization',
-    { organization_id: organizationId },
+    { organization_id: organizationId, refresh_token: refreshToken },
     TokenPairSchema,
     accessToken,
   );

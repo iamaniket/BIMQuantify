@@ -289,6 +289,48 @@ async def test_switch_organization_revokes_old_refresh_token(
     assert ok.status_code == 200, ok.text
 
 
+async def test_switch_organization_inherits_refresh_expiry(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    """AUTH-SESS-1: the successor refresh token inherits the presented token's
+    REMAINING life (absolute-lifetime cap) rather than resetting to a full
+    JWT_REFRESH_TTL — otherwise switching org context could extend the 7-day
+    session indefinitely."""
+    from bimdossier_api.auth.tokens import decode_token_full
+
+    home = await _make_org(session, "CapFrom")
+    target = await _make_org(session, "CapTo")
+    user = await _make_user(session, "capped@example.com")
+    await _add_member(session, user=user, org=home)
+    await _add_member(session, user=user, org=target)
+    user.active_organization_id = home.id
+    await session.commit()
+
+    tokens = await _login(client, user.email)
+
+    # Present a refresh token that is already near the end of its life (2 min
+    # remaining) — a buggy fresh mint would jump to ~7 days.
+    short_refresh = create_token(
+        user.id,
+        "refresh",
+        active_organization_id=home.id,
+        ttl_override_seconds=120,
+    )
+    short_exp = decode_token_full(short_refresh, "refresh").exp
+
+    switched = await client.post(
+        "/auth/switch-organization",
+        json={"organization_id": str(target.id), "refresh_token": short_refresh},
+        headers=_auth(tokens["access_token"]),
+    )
+    assert switched.status_code == 200, switched.text
+
+    new_exp = decode_token_full(switched.json()["refresh_token"], "refresh").exp
+    # Capped to the presented token's remaining life (allow the 60s floor in
+    # create_token_with_jti + a few seconds of clock slack), never reset to 7d.
+    assert new_exp <= short_exp + 5, (new_exp, short_exp)
+
+
 async def test_patch_status_suspended_records_audit(
     client: AsyncClient,
     session: AsyncSession,

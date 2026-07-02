@@ -17,6 +17,7 @@ import {
   escapeHtml,
   fmtDate,
   fmtDay,
+  IMAGE_DATA_URL,
   or,
   renderSections,
   toLayoutBranding,
@@ -111,14 +112,17 @@ function findingLocation(f: SnagFinding, labels: SnagListLabels): string {
 }
 
 function renderPhotos(photos: SnagPhoto[], labels: SnagListLabels): string {
-  const withData = photos.filter((p) => p.data_url);
+  // Only embed data URLs that match the safe base64-image shape (defence in depth
+  // over safeImageDataUrl at prepare time); escapeHtml the value regardless so a
+  // future regression can't break out of the src attribute (SEAM-XSS-SSRF-1).
+  const withData = photos.filter((p) => p.data_url && IMAGE_DATA_URL.test(p.data_url));
   if (withData.length === 0) return '';
   const figs = withData
     .map((p) => {
       const caption = p.captured_at
         ? `<figcaption class="muted">${labels.capturedAt}: ${fmtDate(p.captured_at)}</figcaption>`
         : '';
-      return `<figure><img src="${p.data_url ?? ''}" alt="" />${caption}</figure>`;
+      return `<figure><img src="${escapeHtml(p.data_url ?? '')}" alt="" />${caption}</figure>`;
     })
     .join('');
   return `<div class="photo-grid">${figs}</div>`;

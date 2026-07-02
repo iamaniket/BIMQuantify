@@ -14,24 +14,19 @@ import {
   DialogHeader,
   DialogTitle,
   Skeleton,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
 } from '@bimdossier/ui';
-import { Settings } from '@bimdossier/ui/icons';
 
 import type {
   DeadlineNotificationSettingsUpdate,
   EffectiveDeadlineNotificationSettings,
 } from '@/lib/api/schemas/deadlines';
 
-import { DeadlineNotificationForm } from './deadlines/DeadlineNotificationForm';
+import { DeadlineNotificationForm } from './DeadlineNotificationForm';
 import {
   useDeleteProjectDeadlineSetting,
   useProjectDeadlineSettings,
   useUpsertProjectDeadlineSetting,
-} from './deadlines/useDeadlineNotificationSettings';
+} from './useDeadlineNotificationSettings';
 
 type Props = {
   open: boolean;
@@ -56,20 +51,7 @@ function hasSettingChanged(
   return false;
 }
 
-function DisplayTab(): JSX.Element {
-  const t = useTranslations('projectDetail.settings');
-
-  return (
-    <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-      <Settings className="h-8 w-8 text-foreground-tertiary" />
-      <p className="text-body2 text-foreground-tertiary">
-        {t('display.placeholder')}
-      </p>
-    </div>
-  );
-}
-
-export function ProjectSettingsDialog({
+export function NotificationSettingsDialog({
   open,
   onOpenChange,
   projectId,
@@ -193,33 +175,18 @@ export function ProjectSettingsDialog({
         </DialogHeader>
 
         <DialogBody className="min-h-0 flex-1 overflow-y-auto">
-          <Tabs defaultValue="notifications">
-            <TabsList className="mb-4 inline-flex w-auto">
-              <TabsTrigger value="notifications">
-                {t('tabs.notifications')}
-              </TabsTrigger>
-              <TabsTrigger value="display">
-                {t('tabs.display')}
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="notifications">
-              {settingsQuery.isLoading || !initialized ? (
-                <Skeleton className="h-32 w-full" />
-              ) : (
-                <DeadlineNotificationForm
-                  settings={localSettings}
-                  onUpdate={handleUpdate}
-                  onRevert={handleRevert}
-                  isUpdating={isSaving}
-                  showRevert
-                />
-              )}
-            </TabsContent>
-            <TabsContent value="display">
-              <DisplayTab />
-            </TabsContent>
-          </Tabs>
+          {settingsQuery.isLoading || !initialized ? (
+            <Skeleton className="h-32 w-full" />
+          ) : (
+            <DeadlineNotificationForm
+              settings={localSettings}
+              onUpdate={handleUpdate}
+              onRevert={handleRevert}
+              isUpdating={isSaving}
+              showRevert
+              hideHeader
+            />
+          )}
         </DialogBody>
 
         <DialogFooter className="justify-between">
@@ -230,7 +197,7 @@ export function ProjectSettingsDialog({
             disabled={(!hasProjectOverrides && !isDirty) || isSaving}
             onClick={handleResetAll}
           >
-            {('resetDefaults')}
+            {t('resetDefaults')}
           </Button>
           <div className="flex gap-2">
             <DialogClose asChild>

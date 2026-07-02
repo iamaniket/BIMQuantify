@@ -68,6 +68,7 @@ from bimdossier_api.models.pooled_finding_attachment import (
     POOLED_FINDING_ATTACHMENT_KINDS,
     PooledFindingAttachment,
 )
+from bimdossier_api.models.pooled_finding_counter import PooledFindingCounter
 from bimdossier_api.models.pooled_level import POOLED_LEVEL_SOURCES, PooledLevel
 from bimdossier_api.models.pooled_notification import (
     POOLED_NOTIFICATION_EVENT_TYPES,
@@ -88,6 +89,11 @@ from bimdossier_api.models.pooled_project_file import (
 from bimdossier_api.models.pooled_project_member import (
     POOLED_MEMBER_ROLES,
     PooledProjectMember,
+)
+from bimdossier_api.models.pooled_report import (
+    POOLED_REPORT_STATUSES,
+    POOLED_REPORT_TYPES,
+    PooledReport,
 )
 from bimdossier_api.models.free_user_limits import FreeUserLimits
 from bimdossier_api.models.job import _JOB_TERMINAL, Job, JobStatus, JobType
@@ -199,12 +205,16 @@ __all__ = [
     "PooledAttachment",
     "PooledDocument",
     "PooledFindingAttachment",
+    "PooledFindingCounter",
     "PooledLevel",
     "PooledNotification",
     "PooledNotificationUserState",
     "PooledProject",
     "PooledProjectFile",
     "PooledProjectMember",
+    "PooledReport",
+    "POOLED_REPORT_STATUSES",
+    "POOLED_REPORT_TYPES",
     "FreeUserLimits",
     "PooledFinding",
     "IfcSchema",

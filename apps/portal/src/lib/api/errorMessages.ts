@@ -15,7 +15,7 @@ const KNOWN_DETAILS: Record<string, string> = {
   DEFAULT_TEMPLATE_CONFLICT: 'Another template was just set as default. Please try again.',
   FINDING_TEMPLATE_NOT_FOUND: 'That template no longer exists.',
   FREE_ACCOUNT_EXPIRED:
-    'Your free trial has ended. Your projects are read-only — upgrade to keep creating and editing.',
+    'Your free trial has ended. You can keep logging findings and photos in your existing projects, but adding new projects, models, or files requires an upgrade.',
   // Project-role gating backstop. UI gating should keep users from triggering
   // this, but if a stale view lets one through, show a clear message instead of
   // the raw serialized detail object.

@@ -25,6 +25,9 @@ type Props = {
   /** Free tier: Readiness (dossier) + Deadlines are paid-only, so only the
    * Documents (Containers) tab is shown and the launcher grid is Findings-only. */
   isFree?: boolean;
+  /** Archived projects are read-only — disables the deadline notification-settings
+   * trigger inside the Deadlines tab. */
+  isArchived?: boolean;
 };
 
 export function RightColumnTabs({
@@ -34,6 +37,7 @@ export function RightColumnTabs({
   deadlinesTotal,
   dossier,
   isFree = false,
+  isArchived = false,
 }: Props): JSX.Element {
   const t = useTranslations('projectDetail.tabs');
   const [topTab, setTopTab] = useState('documents');
@@ -117,7 +121,9 @@ export function RightColumnTabs({
           {topTab === 'documents' && (
             <DocumentsTab projectId={projectId} documents={documents} />
           )}
-          {!isFree && topTab === 'deadlines' && <DeadlinesSection projectId={projectId} />}
+          {!isFree && topTab === 'deadlines' && (
+            <DeadlinesSection projectId={projectId} isArchived={isArchived} />
+          )}
         </div>
       </div>
     </div>

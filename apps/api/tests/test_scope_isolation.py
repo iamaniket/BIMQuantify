@@ -28,6 +28,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import ProgrammingError
 
 from bimdossier_api.models.pooled_finding import PooledFinding
+from bimdossier_api.models.pooled_finding_counter import PooledFindingCounter
 from bimdossier_api.models.pooled_project import PooledProject
 from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.models.user import User
@@ -115,11 +116,15 @@ async def test_free_session_cannot_read_other_free_users_pooled_rows(
     assert snag.status_code == 201, snag.text
 
     # C's pooled session sees none of B's rows — RLS keys on app.current_user_id=C.
+    # The lifetime findings counter (bumped by B's snag create above) is scoped
+    # to owner-or-co-participant, and C is neither.
     async with open_pooled_session(c_id) as s:
         n_proj = await s.scalar(select(func.count()).select_from(PooledProject))
         n_find = await s.scalar(select(func.count()).select_from(PooledFinding))
+        n_ctr = await s.scalar(select(func.count()).select_from(PooledFindingCounter))
     assert n_proj == 0
     assert n_find == 0
+    assert n_ctr == 0
 
 
 async def test_org_token_cannot_read_pooled_free_rows(

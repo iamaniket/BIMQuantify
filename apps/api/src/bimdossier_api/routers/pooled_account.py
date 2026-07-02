@@ -58,6 +58,7 @@ async def get_pooled_account_limits(
         max_members_per_project=limits.max_members_per_project,
         max_documents=limits.max_documents,
         storage_max_bytes=limits.storage_max_bytes,
+        max_findings=limits.max_findings,
         account_max_age_days=limits.account_max_age_days,
         account_expires_at=limits.account_expires_at,
         days_remaining=limits.days_remaining,

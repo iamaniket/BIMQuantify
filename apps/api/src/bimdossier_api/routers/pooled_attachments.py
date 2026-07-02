@@ -38,9 +38,7 @@ from bimdossier_api.models.pooled_attachment import PooledAttachment
 from bimdossier_api.models.pooled_project import PooledProject
 from bimdossier_api.models.project_file import ATTACHMENT_ALLOWED_EXTENSIONS
 from bimdossier_api.models.user import User
-from bimdossier_api.routers.free_access import (
-    assert_free_account_not_expired,
-    pooled_owner_used_bytes,
+from bimdossier_api.routers.free_access import (    pooled_owner_used_bytes,
     require_free_tier_enabled,
     require_pooled_write_role,
     resolve_pooled_role,
@@ -76,9 +74,12 @@ async def _project_owner_for_write(session: AsyncSession, project_id: UUID, user
     )
     if owner_id is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FREE_PROJECT_NOT_FOUND")
-    role = "owner" if owner_id == user.id else await resolve_pooled_role(session, project_id, user.id)
+    role = (
+        "owner"
+        if owner_id == user.id
+        else await resolve_pooled_role(session, project_id, user.id)
+    )
     require_pooled_write_role(role)
-    await assert_free_account_not_expired(user)
     return owner_id
 
 
@@ -150,7 +151,7 @@ async def initiate_pooled_attachment_upload(
                 expires_in=storage.presign_ttl,
             )
 
-    # FSL-1: photos count toward the same aggregate 1 GB ceiling as model files, so
+    # FSL-1: photos count toward the same aggregate 3 GB ceiling as model files, so
     # a free user can't bypass the cap with unbounded evidence. Serialize this
     # owner's concurrent initiates (transaction-scoped advisory lock, shared key
     # with the model-upload path), then read the owner's effective cap + total

@@ -149,7 +149,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (current === null) {
         throw new Error('Cannot switch organization without an active session');
       }
-      const nextTokens = await switchOrgApi(organizationId, current.access_token);
+      const nextTokens = await switchOrgApi(
+        organizationId,
+        current.access_token,
+        current.refresh_token,
+      );
       // Clear the previous org's cached data + pinned files before adopting the
       // new tenant context — the offline cache isn't org-scoped, so a switch
       // must reset it (and the prior tenant's BIM artifacts must leave disk).

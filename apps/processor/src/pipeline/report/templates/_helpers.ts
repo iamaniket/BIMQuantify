@@ -16,6 +16,40 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+// A base64 image data URL with an allow-listed raster MIME. Mirrors the logo
+// guard in _layout.ts. SEAM-XSS-SSRF-1: the photo `content_type` is caller-
+// controlled at upload, so it must never be interpolated raw into a data: URL /
+// <img src>. `image/svg+xml` is deliberately EXCLUDED — SVG can carry script.
+export const IMAGE_DATA_URL = /^data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+$/i;
+
+const _IMAGE_MIME_ALLOWLIST = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'image/avif',
+]);
+
+/**
+ * Build a safe base64 image data URL from a caller-supplied `content_type` and
+ * bytes, or return `null` when the type is not an allow-listed raster image.
+ * The MIME is taken from a server-side allowlist (not trusted from the stored
+ * value), and the base64 body's charset can't break out of an attribute — so the
+ * result always matches IMAGE_DATA_URL. Callers render no <img> for a null.
+ */
+export function safeImageDataUrl(
+  contentType: string | null | undefined,
+  bytes: Uint8Array | Buffer,
+): string | null {
+  const mime = (contentType ?? '').trim().toLowerCase();
+  const canonical = mime === 'image/jpg' ? 'image/jpeg' : mime;
+  if (!_IMAGE_MIME_ALLOWLIST.has(canonical)) return null;
+  const b64 = Buffer.from(bytes).toString('base64');
+  return `data:${canonical};base64,${b64}`;
+}
+
 /** Escaped value with a fallback for null/blank. */
 export function or(value: string | null | undefined, fallback = '—'): string {
   if (value === null || value === undefined) return fallback;

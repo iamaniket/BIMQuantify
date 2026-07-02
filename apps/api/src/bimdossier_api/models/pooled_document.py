@@ -106,6 +106,13 @@ class PooledDocument(PooledOwnedMixin, TimestampMixin, MasterBase):
         DateTime(timezone=True), nullable=True
     )
 
+    # One-time "idle models will be deleted soon" warning email stamp (set by
+    # the reaper's warn pass; reset to NULL whenever the container is viewed
+    # again — see routers/pooled/files.py viewer-bundle GET).
+    idle_warning_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
     )

@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from bimdossier_api import audit
+from bimdossier_api.csv_safety import csv_safe_mapping
 from bimdossier_api.access import (
     get_membership,
     load_project_or_404,
@@ -638,7 +639,9 @@ async def export_findings_csv(
         writer = csv.DictWriter(
             line, fieldnames=list(_FINDINGS_CSV_COLUMNS), extrasaction="ignore"
         )
-        writer.writerow(row)
+        # Neutralize CSV formula injection — title/description/resolution_note and
+        # assignee/creator display names are user-controlled. See csv_safety.py.
+        writer.writerow(csv_safe_mapping(row))
         return line.getvalue().encode("utf-8")
 
     async def _iter_csv() -> AsyncIterator[bytes]:

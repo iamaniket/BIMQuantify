@@ -35,3 +35,14 @@ export type {
 // `core/Raycaster` is pdfjs-free, so it's safe in this embed entry.
 export { pick, clientToNdc } from './core/Raycaster.js';
 export type { PickResult } from './core/Raycaster.js';
+
+// Clipping-plane helpers for host-side plugins that drive their own section
+// cut (e.g. the marketing scroll story's "dollhouse" sweep). Mirrors the
+// outlinePlugin precedent above: `shared/clipping` is pdfjs-free, and hosts
+// need the same plane construction the outline plugin uses to honour
+// `section:change`, so the cut and the fat-line edges clip identically.
+export {
+  buildClippingPlanes,
+  applyClippingPlanes,
+} from './plugins/3d/shared/clipping.js';
+export type { SectionPlaneData } from './plugins/3d/shared/clipping.js';

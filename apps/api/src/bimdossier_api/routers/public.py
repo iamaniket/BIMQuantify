@@ -120,7 +120,10 @@ async def _check_redis() -> bool:
 
 async def _check_storage() -> bool:
     try:
-        await get_storage().ensure_bucket()
+        # Read-only HEAD, not ensure_bucket — this is an unauthenticated public
+        # probe, so it must never perform a control-plane write per hit (A1-READY-1
+        # / PUBLIC-DOS).
+        await get_storage().check_bucket()
         return True
     except Exception:
         logger.warning("system-status storage check failed", exc_info=True)

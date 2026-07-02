@@ -1,19 +1,27 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from bimdossier_api.models.certificate import CertificateStatus, CertificateType
+from bimdossier_api.schemas._limits import MIME_TYPE_PATTERN
 
 _HEX_SHA256 = r"^[a-f0-9]{64}$"
+
+# Tag rows persist to OrgCertificateTag.name (varchar(64)); cap per-tag length so
+# an over-long tag is a 422, not a Postgres value-too-long 500, and cap the list
+# length so one request can't fan out to thousands of tag rows.
+TagStr = Annotated[str, StringConstraints(max_length=64)]
+_MAX_TAGS = 50
 
 
 class OrgCertificateInitiateRequest(BaseModel):
     filename: str = Field(min_length=1, max_length=512)
     size_bytes: int = Field(ge=1)
-    content_type: str = Field(min_length=1, max_length=255)
+    content_type: str = Field(min_length=1, max_length=255, pattern=MIME_TYPE_PATTERN)
     content_sha256: str = Field(pattern=_HEX_SHA256)
     certificate_type: CertificateType
     certificate_number: str | None = Field(default=None, max_length=255)
@@ -24,7 +32,7 @@ class OrgCertificateInitiateRequest(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     product_name: str | None = Field(default=None, max_length=255)
     supplier_name: str | None = Field(default=None, max_length=255)
-    tags: list[str] | None = None
+    tags: list[TagStr] | None = Field(default=None, max_length=_MAX_TAGS)
 
     @model_validator(mode="after")
     def _check_validity_window(self) -> OrgCertificateInitiateRequest:
@@ -81,7 +89,7 @@ class OrgCertificateUpdateRequest(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     product_name: str | None = Field(default=None, max_length=255)
     supplier_name: str | None = Field(default=None, max_length=255)
-    tags: list[str] | None = None
+    tags: list[TagStr] | None = Field(default=None, max_length=_MAX_TAGS)
 
     @model_validator(mode="after")
     def _check_validity_window(self) -> OrgCertificateUpdateRequest:

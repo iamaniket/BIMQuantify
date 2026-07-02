@@ -359,6 +359,34 @@ async def test_download_returns_presigned_url(
     assert "download_url" in resp.json()
 
 
+@pytest.mark.asyncio
+async def test_download_neutralizes_spoofed_content_type(
+    org_user: dict[str, str],
+    fake_storage_client: tuple[AsyncClient, FakeStorage],
+) -> None:
+    """CERT-XSS-1: a cert initiated declaring `text/html` is served with its canonical
+    extension-derived type and forced to `attachment` even when inline is requested, so
+    uploaded HTML can't execute inline on the shared storage origin (mirrors attachments)."""
+    client, fake = fake_storage_client
+    project = await _create_project(client, org_user["access_token"])
+    cert = await _initiate_cert(
+        client,
+        org_user["access_token"],
+        project["id"],
+        filename="cert.docx",
+        content_type="text/html",
+    )
+    await _complete_cert(client, fake, org_user["access_token"], project["id"], cert)
+    resp = await client.get(
+        f"/projects/{project['id']}/certificates/{cert['certificate_id']}/download?disposition=inline",
+        headers=_auth(org_user["access_token"]),
+    )
+    assert resp.status_code == 200, resp.text
+    url = resp.json()["download_url"]
+    assert "text/html" not in url
+    assert "disposition=attachment" in url
+
+
 # ---------------------------------------------------------------------------
 # Cross-project isolation
 # ---------------------------------------------------------------------------

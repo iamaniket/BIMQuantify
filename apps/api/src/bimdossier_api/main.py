@@ -94,6 +94,10 @@ from bimdossier_api.routers.pooled_conversion import router as pooled_conversion
 from bimdossier_api.routers.pooled_documents import internal_router as pooled_internal_router
 from bimdossier_api.routers.pooled_documents import router as pooled_documents_router
 from bimdossier_api.routers.pooled_projects import router as pooled_projects_router
+from bimdossier_api.routers.pooled_reports import (
+    internal_router as pooled_reports_internal_router,
+)
+from bimdossier_api.routers.pooled_reports import router as pooled_reports_router
 from bimdossier_api.routers.health import router as health_router
 from bimdossier_api.routers.inspection import router as inspection_router
 from bimdossier_api.routers.jobs import router as jobs_router
@@ -252,6 +256,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     pooled_idle_sweeper = IdlePooledContainerSweeper(
         settings.pooled_idle_sweep_interval_minutes,
         settings.pooled_document_idle_ttl_days,
+        settings.pooled_document_idle_warning_days,
     )
     pooled_idle_sweeper.start()
     # Data-lifecycle reapers (L11): abandoned pending uploads + expired/revoked
@@ -451,6 +456,8 @@ def create_app() -> FastAPI:
     app.include_router(pooled_projects_router)
     app.include_router(pooled_aligned_sheets_router)
     app.include_router(pooled_attachments_router)
+    app.include_router(pooled_reports_router)
+    app.include_router(pooled_reports_internal_router)
     app.include_router(pooled_internal_router)
     app.include_router(pooled_conversion_router)
     app.include_router(compliance_router)

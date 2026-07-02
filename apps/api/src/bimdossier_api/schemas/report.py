@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from bimdossier_api.models.report import ReportStatus, ReportType
+from bimdossier_api.schemas._limits import BoundedReportParams
 
 # ---------------------------------------------------------------------------
 # User-facing
@@ -30,8 +31,9 @@ class ReportCreateRequest(BaseModel):
     # none is set.
     template_id: UUID | None = Field(default=None)
     # Optional input filters — for compliance_report you can scope to specific
-    # files; omit for project-wide. Snapshotted into Report.params.
-    params: dict = Field(default_factory=dict)
+    # files; omit for project-wide. Snapshotted into Report.params. Byte-capped
+    # (BoundedReportParams) since it's persisted straight into a JSONB column.
+    params: BoundedReportParams = Field(default_factory=dict)
 
 
 class ReportResponse(BaseModel):

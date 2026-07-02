@@ -36,8 +36,13 @@ class SMTPEmailTransport:
             message,
             hostname=settings.smtp_host,
             port=settings.smtp_port,
-            start_tls=False,
-            use_tls=False,
+            # ENC-SMTP-1: TLS + optional AUTH are configurable. Dev/MailHog leaves
+            # both off (plaintext :1025); production enables STARTTLS (:587) or
+            # implicit TLS (:465) — enforced by validate_production_config.
+            start_tls=settings.smtp_start_tls,
+            use_tls=settings.smtp_use_tls,
+            username=settings.smtp_username,
+            password=settings.smtp_password,
             timeout=settings.smtp_timeout_seconds,
         )
 

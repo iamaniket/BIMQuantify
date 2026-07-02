@@ -30,6 +30,25 @@ export async function htmlToPdf(html: string, opts: PdfOptions): Promise<Uint8Ar
   // setContent to the same budget; the outer race below also bounds `page.pdf()`.
   page.setDefaultTimeout(JOB_TIMEOUT_MS);
 
+  // Render-context hardening (SEAM-XSS-SSRF-1). Report templates are fully
+  // self-contained HTML (inline CSS, base64 data-URL images) — no scripts, no
+  // remote resources. So:
+  //  - disable JavaScript: even if a template regresses and injects a <script>,
+  //    it cannot execute in the render context.
+  //  - deny-by-default network: allow only inline `data:` URLs and the initial
+  //    about:blank/document load; abort everything else so an injected remote
+  //    <img>/<iframe>/CSS/font can't reach internal services (SSRF).
+  await page.setJavaScriptEnabled(false);
+  await page.setRequestInterception(true);
+  page.on('request', (req) => {
+    const url = req.url();
+    if (url.startsWith('data:') || url.startsWith('about:') || url.startsWith('blob:')) {
+      void req.continue();
+    } else {
+      void req.abort().catch(() => undefined);
+    }
+  });
+
   let deadlineTimer: NodeJS.Timeout | null = null;
   const deadline = new Promise<never>((_, reject) => {
     deadlineTimer = setTimeout(() => {

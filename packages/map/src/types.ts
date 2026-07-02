@@ -13,6 +13,12 @@ export interface MapMarker {
   readonly count?: number;
   /** Override the marker dot/ring colour. Defaults to the brand primary. */
   readonly accent?: string;
+  /**
+   * Render the radial pulse halo permanently instead of only on hover.
+   * Still subject to `animatePulse` and the reduced-motion suppression.
+   * Defaults to `false` (hover-only pulse).
+   */
+  readonly pulse?: boolean;
 }
 
 /** Tuple of [x, y] pixel coordinates inside the map's SVG canvas. */

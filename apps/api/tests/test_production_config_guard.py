@@ -17,6 +17,18 @@ _SECURE_OVERRIDES = {
     "arbiter_shared_secret": "a-strong-random-arbiter-secret-value",
     "cors_origins": "https://app.example.com",
     "jwt_secret": "x" * 40,
+    # Transport security (ENC-TLS-1): token-bearing frontend URLs are https,
+    # internal links run on a trusted private network (escape hatch on).
+    "frontend_verify_url": "https://app.bimdossier.eu/auth/verify",
+    "frontend_reset_password_url": "https://app.bimdossier.eu/reset-password",
+    "frontend_activate_url": "https://app.bimdossier.eu/activate",
+    "frontend_invitations_url": "https://app.bimdossier.eu/account",
+    "frontend_project_url": "https://app.bimdossier.eu/projects",
+    "internal_plaintext_ok": True,
+    # Email (EMAIL-PROD-GUARD, ENC-SMTP-1): real relay, non-.dev sender, TLS on.
+    "smtp_host": "smtp.eu.example.com",
+    "smtp_from": "no-reply@bimdossier.eu",
+    "smtp_start_tls": True,
 }
 
 _INSECURE_OVERRIDES = {
@@ -265,6 +277,107 @@ def test_dev_region_allows_ws_lifetime_exceeding_access_ttl() -> None:
             **_INSECURE_OVERRIDES,
             "jwt_access_ttl_seconds": 900,
             "ws_max_lifetime_seconds": 3600,
+        }
+    )
+    assert validate_production_config(settings) == []
+
+
+# ---------------------------------------------------------------------------
+# Transport security + email + EU residency (ENC-TLS-1, ENC-SMTP-1,
+# EMAIL-PROD-GUARD, GDPR44-RES-1).
+# ---------------------------------------------------------------------------
+
+
+def test_prod_flags_plaintext_frontend_token_url() -> None:
+    settings = get_settings().model_copy(
+        update={
+            "deploy_region": "prod",
+            **_SECURE_OVERRIDES,
+            "frontend_reset_password_url": "http://app.bimdossier.eu/reset-password",
+        }
+    )
+    errors = validate_production_config(settings)
+    assert any("FRONTEND_RESET_PASSWORD_URL" in e for e in errors)
+
+
+def test_prod_flags_plaintext_internal_link_without_escape_hatch() -> None:
+    settings = get_settings().model_copy(
+        update={
+            "deploy_region": "prod",
+            **_SECURE_OVERRIDES,
+            "internal_plaintext_ok": False,
+            "processor_url": "http://processor.internal:8088",
+        }
+    )
+    errors = validate_production_config(settings)
+    assert any("PROCESSOR_URL" in e for e in errors)
+
+
+def test_prod_allows_plaintext_internal_link_with_escape_hatch() -> None:
+    settings = get_settings().model_copy(
+        update={
+            "deploy_region": "prod",
+            **_SECURE_OVERRIDES,  # internal_plaintext_ok True
+            "processor_url": "http://processor.internal:8088",
+        }
+    )
+    assert validate_production_config(settings) == []
+
+
+def test_prod_flags_localhost_smtp() -> None:
+    settings = get_settings().model_copy(
+        update={"deploy_region": "prod", **_SECURE_OVERRIDES, "smtp_host": "localhost"}
+    )
+    errors = validate_production_config(settings)
+    assert any("SMTP_HOST" in e for e in errors)
+
+
+def test_prod_flags_plaintext_smtp() -> None:
+    settings = get_settings().model_copy(
+        update={
+            "deploy_region": "prod",
+            **_SECURE_OVERRIDES,
+            "smtp_start_tls": False,
+            "smtp_use_tls": False,
+        }
+    )
+    errors = validate_production_config(settings)
+    assert any("SMTP transport is plaintext" in e for e in errors)
+
+
+def test_prod_flags_postmark_without_token() -> None:
+    settings = get_settings().model_copy(
+        update={
+            "deploy_region": "prod",
+            **_SECURE_OVERRIDES,
+            "email_transport": "postmark",
+            "postmark_server_token": None,
+        }
+    )
+    errors = validate_production_config(settings)
+    assert any("POSTMARK_SERVER_TOKEN" in e for e in errors)
+
+
+def test_prod_eu_residency_flags_non_eu_region() -> None:
+    settings = get_settings().model_copy(
+        update={
+            "deploy_region": "prod",
+            **_SECURE_OVERRIDES,
+            "data_residency": "eu",
+            "s3_region": "us-east-1",
+        }
+    )
+    errors = validate_production_config(settings)
+    assert any("S3_REGION" in e for e in errors)
+
+
+def test_prod_eu_residency_accepts_eu_region() -> None:
+    settings = get_settings().model_copy(
+        update={
+            "deploy_region": "prod",
+            **_SECURE_OVERRIDES,
+            "data_residency": "eu",
+            "s3_region": "eu-central-1",
         }
     )
     assert validate_production_config(settings) == []

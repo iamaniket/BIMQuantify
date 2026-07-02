@@ -270,7 +270,7 @@ async def test_free_attachment_cross_owner_isolation(
 
 
 # ---------------------------------------------------------------------------
-# FSL-1 — attachment (photo) bytes count toward the aggregate 1 GB free storage
+# FSL-1 — attachment (photo) bytes count toward the aggregate free storage
 # cap, so a free user can't bypass the ceiling with unbounded evidence, and the
 # displayed usage reflects them.
 # ---------------------------------------------------------------------------

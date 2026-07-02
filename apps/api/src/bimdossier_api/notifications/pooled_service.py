@@ -133,6 +133,58 @@ async def publish_pooled_notification(notification: PooledNotification) -> None:
         logger.exception("Failed to publish free notification to %s", channel)
 
 
+async def emit_pooled_report_notification(
+    *,
+    recipient_user_id: UUID,
+    event_type: str,
+    report_title: str,
+    locale: str,
+    project_id: UUID | None,
+    error: str | None = None,
+) -> None:
+    """Create + publish a free report (snag-list PDF) notification to the
+    REQUESTER only — a report is requester-centric, unlike a shared model
+    extraction. Best-effort (logged, never masking the worker callback); own
+    superuser session, post-commit publish. Reuses the paid `notifications.job.*`
+    catalog keys. ``pooled_file_id=None`` skips the per-file dedupe upsert."""
+    from bimdossier_api.db import get_session_maker
+    from bimdossier_api.i18n import coerce_locale
+
+    stem = "ready" if event_type == "job_succeeded" else "failed"
+    loc = coerce_locale(locale)
+    title = t(f"notifications.job.{stem}.title", loc)
+    if event_type == "job_failed":
+        body = t(
+            f"notifications.job.{stem}.body",
+            loc,
+            report_title=report_title,
+            error=(error or "")[:200],
+        )
+    else:
+        body = t(f"notifications.job.{stem}.body", loc, report_title=report_title)
+    try:
+        sm = get_session_maker()
+        async with sm() as session, session.begin():
+            notification = await _upsert_pooled_notification(
+                session,
+                recipient_user_id=recipient_user_id,
+                event_type=event_type,
+                title=title,
+                body=body,
+                pooled_project_id=project_id,
+                pooled_document_id=None,
+                pooled_file_id=None,
+            )
+        await publish_pooled_notification(notification)
+    except Exception:
+        logger.warning(
+            "Failed to emit free %s report notification for %s",
+            event_type,
+            recipient_user_id,
+            exc_info=True,
+        )
+
+
 async def emit_pooled_job_notification(
     *,
     recipients: list[UUID],

@@ -7,7 +7,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useState, type ComponentType, type JSX } from 'react';
 
 import {
-  Badge, Button, IconTile, MediaRow, type BadgeVariant,
+  Badge, Button, MediaRow, type BadgeVariant,
 } from '@bimdossier/ui';
 import type { Locale } from '@bimdossier/i18n';
 
@@ -91,7 +91,7 @@ export function CertificatesLauncherCard({ projectId }: { projectId: string }): 
             <MediaRow
               key={c.id}
               className="min-h-[34px] max-h-[48px] flex-1"
-              media={<IconTile tone="neutral" size="md"><Icon className="h-4 w-4" /></IconTile>}
+              media={<Icon className="h-5 w-5 shrink-0 text-foreground-tertiary" />}
               title={c.original_filename}
               description={description}
               trailing={(

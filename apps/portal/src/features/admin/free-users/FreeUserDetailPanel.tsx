@@ -165,6 +165,9 @@ function LimitsSection({
   const [containers, setContainers] = useState(
     limits.override_max_documents?.toString() ?? '',
   );
+  const [findings, setFindings] = useState(
+    limits.override_max_findings?.toString() ?? '',
+  );
   const [storageGb, setStorageGb] = useState(
     limits.override_storage_max_bytes !== null
       ? String(limits.override_storage_max_bytes / BYTES_PER_GB)
@@ -187,6 +190,7 @@ function LimitsSection({
           max_documents: _nullableInt(containers),
           storage_max_bytes:
             storageBytes !== null && Number.isFinite(storageBytes) ? storageBytes : null,
+          max_findings: _nullableInt(findings),
           account_max_age_days: _nullableInt(trialDays),
           expiry_exempt: exempt,
         },
@@ -196,7 +200,7 @@ function LimitsSection({
         onError: (e) => toast.error(getErrorMessage(e)),
       },
     );
-  }, [update, userId, projects, members, containers, storageGb, trialDays, exempt, t]);
+  }, [update, userId, projects, members, containers, findings, storageGb, trialDays, exempt, t]);
 
   const gbDefault = limits.default_storage_max_bytes / BYTES_PER_GB;
 
@@ -238,6 +242,12 @@ function LimitsSection({
           hint={t('defaultHint', { value: limits.default_max_documents })}
           value={containers}
           onChange={setContainers}
+        />
+        <LimitField
+          label={t('findingsCapLabel')}
+          hint={t('defaultHint', { value: limits.default_max_findings ?? '—' })}
+          value={findings}
+          onChange={setFindings}
         />
         <LimitField
           label={t('storageLabel')}

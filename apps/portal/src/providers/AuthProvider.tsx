@@ -219,7 +219,11 @@ export function AuthProvider({ children }: Props): JSX.Element {
       if (current === null) {
         throw new Error('Cannot switch organization without an active session');
       }
-      const nextTokens = await switchOrgApi(organizationId, current.access_token);
+      const nextTokens = await switchOrgApi(
+        organizationId,
+        current.access_token,
+        current.refresh_token,
+      );
       setTokens(nextTokens);
       await queryClient.invalidateQueries();
       track(PORTAL_EVENTS.ORGANIZATION_SWITCHED, { organization_id: organizationId });
@@ -233,7 +237,7 @@ export function AuthProvider({ children }: Props): JSX.Element {
     if (current === null) {
       throw new Error('Cannot switch to the free workspace without an active session');
     }
-    const nextTokens = await switchToFreeApi(current.access_token);
+    const nextTokens = await switchToFreeApi(current.access_token, current.refresh_token);
     setTokens(nextTokens);
     await queryClient.invalidateQueries();
     track(PORTAL_EVENTS.ORGANIZATION_SWITCHED, { organization_id: 'free' });

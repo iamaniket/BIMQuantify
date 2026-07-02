@@ -2,8 +2,10 @@
 
 Covers the new surface added alongside the pooled free tier:
   * `free_limits.resolve_free_limits` — override ?? env default + trial state.
-  * The 90-day trial gate making an expired free account READ-ONLY (writes 403
-    FREE_ACCOUNT_EXPIRED; reads still 200; deletes still allowed).
+  * The trial gate blocking NEW-ASSET creation once expired (project create /
+    container create / file uploads 403 FREE_ACCOUNT_EXPIRED) while the field
+    loop — snags, photos, invites, edits, reads, deletes — keeps working.
+  * The LIFETIME findings cap (deletes never free quota).
   * Per-user cap overrides letting a single account exceed the global cap.
   * `PATCH /admin/users/free/{id}/limits` (super-admin only) set / clear / exempt.
   * `GET /pooled/account/limits` — the caller's own caps + days-left for the banner.
@@ -12,6 +14,7 @@ Free users are created directly via the master session (the shortcut the other
 free/admin tests use), so we can stamp `created_at` to simulate an aged trial.
 """
 
+import hashlib
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
@@ -162,50 +165,124 @@ async def test_resolver_expiry_and_exempt(
 
 
 # ---------------------------------------------------------------------------
-# Trial gate — expired free account is read-only
+# Trial gate — expiry blocks NEW-ASSET creation only; the field loop (snags,
+# photos, invites, edits) keeps working forever on existing projects.
 # ---------------------------------------------------------------------------
 
 
-async def test_expired_account_is_read_only(
-    free_tier_storage_client: tuple[AsyncClient, FakeStorage],
-    session_maker: async_sessionmaker[AsyncSession],
+async def _age_past_trial(
+    session_maker: async_sessionmaker[AsyncSession], user_id: UUID
 ) -> None:
-    client, _ = free_tier_storage_client
     async with session_maker() as session:
-        # First, while still inside the trial, the user creates a project.
-        user = await _make_user(session, "trial@example.com")
-    token = await _login(client, "trial@example.com")
-    created = await _create_project(client, token, "Before")
-    assert created.status_code == 201, created.text
-    pid = created.json()["id"]
-
-    # Now age the account past the trial window.
-    async with session_maker() as session:
-        u = await session.get(User, user.id)
+        u = await session.get(User, user_id)
         assert u is not None
         u.created_at = datetime.now(UTC) - timedelta(days=400)
         await session.commit()
 
-    # Reads still work (read-only, not locked out).
+
+async def test_expired_account_keeps_field_loop(
+    free_tier_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """After trial expiry the field loop stays alive: snag create/update, photo
+    evidence, project rename, and member invites all keep working on EXISTING
+    projects — bounded by the lifetime/storage/member caps, not the trial clock."""
+    client, _ = free_tier_storage_client
+    async with session_maker() as session:
+        user = await _make_user(session, "fieldloop@example.com")
+        await _make_user(session, "fieldloop-mate@example.com")
+    token = await _login(client, "fieldloop@example.com")
+    created = await _create_project(client, token, "Before")
+    assert created.status_code == 201, created.text
+    pid = created.json()["id"]
+    did = await _create_document(client, token, pid)
+
+    await _age_past_trial(session_maker, user.id)
+
+    # Reads keep working.
     listed = await client.get("/pooled/projects", headers=_auth(token))
     assert listed.status_code == 200
-    detail = await client.get(f"/pooled/projects/{pid}", headers=_auth(token))
-    assert detail.status_code == 200
 
-    # Writes are blocked with the dedicated code.
-    blocked = await _create_project(client, token, "After")
-    assert blocked.status_code == 403
-    assert blocked.json()["detail"] == "FREE_ACCOUNT_EXPIRED"
+    # Snag create + update keep working.
+    snag = await _create_finding(client, token, did, title="post-expiry")
+    assert snag.status_code == 201, snag.text  # type: ignore[attr-defined]
+    fid = snag.json()["id"]  # type: ignore[attr-defined]
+    edited = await client.patch(
+        f"/pooled/findings/{fid}", json={"status": "resolved"}, headers=_auth(token)
+    )
+    assert edited.status_code == 200, edited.text
 
+    # Photo-evidence initiate keeps working (bounded by the storage cap).
+    photo = await client.post(
+        f"/pooled/projects/{pid}/attachments/initiate",
+        json={
+            "filename": "evidence.jpg",
+            "size_bytes": 2048,
+            "content_type": "image/jpeg",
+            "content_sha256": hashlib.sha256(b"evidence").hexdigest(),
+        },
+        headers=_auth(token),
+    )
+    assert photo.status_code == 201, photo.text
+
+    # Project metadata edits keep working.
     rename = await client.patch(
         f"/pooled/projects/{pid}", json={"name": "Renamed"}, headers=_auth(token)
     )
-    assert rename.status_code == 403
-    assert rename.json()["detail"] == "FREE_ACCOUNT_EXPIRED"
+    assert rename.status_code == 200, rename.text
+
+    # Member invites keep working (bounded by the member cap).
+    invited = await client.post(
+        f"/pooled/projects/{pid}/members",
+        json={"email": "fieldloop-mate@example.com", "role": "viewer"},
+        headers=_auth(token),
+    )
+    assert invited.status_code in (200, 201), invited.text
 
     # Deletes are still allowed (cleanup is never blocked).
-    removed = await client.delete(f"/pooled/projects/{pid}", headers=_auth(token))
+    removed = await client.delete(f"/pooled/findings/{fid}", headers=_auth(token))
     assert removed.status_code == 204
+
+
+async def test_expired_account_blocks_new_assets(
+    free_tier_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """Expiry's only teeth: creating NEW top-level assets — projects, containers,
+    model-file uploads — is blocked with FREE_ACCOUNT_EXPIRED."""
+    client, _ = free_tier_storage_client
+    async with session_maker() as session:
+        user = await _make_user(session, "expired-assets@example.com")
+    token = await _login(client, "expired-assets@example.com")
+    created = await _create_project(client, token, "Before")
+    assert created.status_code == 201, created.text
+    pid = created.json()["id"]
+    did = await _create_document(client, token, pid)
+
+    await _age_past_trial(session_maker, user.id)
+
+    blocked_project = await _create_project(client, token, "After")
+    assert blocked_project.status_code == 403
+    assert blocked_project.json()["detail"] == "FREE_ACCOUNT_EXPIRED"
+
+    blocked_container = await client.post(
+        f"/pooled/projects/{pid}/documents", json={"name": "New"}, headers=_auth(token)
+    )
+    assert blocked_container.status_code == 403
+    assert blocked_container.json()["detail"] == "FREE_ACCOUNT_EXPIRED"
+
+    blocked_upload = await client.post(
+        f"/pooled/projects/{pid}/documents/{did}/files/initiate",
+        json={
+            "filename": "house.ifc",
+            "size_bytes": 1000,
+            "content_type": "application/octet-stream",
+            "content_sha256": hashlib.sha256(b"house").hexdigest(),
+        },
+        headers=_auth(token),
+    )
+    assert blocked_upload.status_code == 403
+    assert blocked_upload.json()["detail"] == "FREE_ACCOUNT_EXPIRED"
 
 
 # ---------------------------------------------------------------------------
@@ -434,6 +511,152 @@ async def test_pooled_finding_cap_counts_owner_wide_for_a_member(
         get_settings.cache_clear()
 
 
+async def test_finding_cap_is_lifetime_delete_does_not_free_quota(
+    free_tier_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The findings cap counts every finding EVER created — deleting one does not
+    reclaim quota (create→delete cycling can't dodge the cap)."""
+    client, _ = free_tier_storage_client
+    async with session_maker() as session:
+        await _make_user(session, "lifetime@example.com")
+    token = await _login(client, "lifetime@example.com")
+    pid = (await _create_project(client, token, "Lifetime")).json()["id"]  # type: ignore[attr-defined]
+    did = await _create_document(client, token, pid)
+
+    monkeypatch.setenv("FREE_MAX_FINDINGS_PER_USER", "2")
+    get_settings.cache_clear()
+    try:
+        first = await _create_finding(client, token, did, title="f0")
+        assert first.status_code == 201, first.text  # type: ignore[attr-defined]
+        second = await _create_finding(client, token, did, title="f1")
+        assert second.status_code == 201, second.text  # type: ignore[attr-defined]
+
+        # Delete one — the live count drops to 1, the lifetime count stays 2.
+        fid = first.json()["id"]  # type: ignore[attr-defined]
+        removed = await client.delete(f"/pooled/findings/{fid}", headers=_auth(token))
+        assert removed.status_code == 204, removed.text
+
+        blocked = await _create_finding(client, token, did, title="recycled")
+        assert blocked.status_code == 403, blocked.text  # type: ignore[attr-defined]
+        assert blocked.json()["detail"] == "FREE_FINDING_CAP_REACHED"  # type: ignore[attr-defined]
+
+        # The usage card reflects the divergence: 1 live, 2 lifetime, cap 2.
+        usage = await client.get("/pooled/account/usage", headers=_auth(token))
+        assert usage.status_code == 200, usage.text
+        body = usage.json()
+        assert body["snag_count"] == 1
+        assert body["snags_created_lifetime"] == 2
+        assert body["snag_cap"] == 2
+    finally:
+        monkeypatch.delenv("FREE_MAX_FINDINGS_PER_USER", raising=False)
+        get_settings.cache_clear()
+
+
+async def test_finding_cap_lifetime_owner_wide_delete_does_not_unblock_member(
+    free_tier_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Owner-wide lifetime semantics: the owner deleting a snag doesn't hand a
+    member fresh quota — the counter never decrements."""
+    client, _ = free_tier_storage_client
+    async with session_maker() as session:
+        await _make_user(session, "lt-owner@example.com")
+        member = await _make_user(session, "lt-member@example.com")
+    owner_token = await _login(client, "lt-owner@example.com")
+    member_token = await _login(client, "lt-member@example.com")
+
+    pid = (await _create_project(client, owner_token, "Shared")).json()["id"]  # type: ignore[attr-defined]
+    did = await _create_document(client, owner_token, pid)
+
+    monkeypatch.setenv("FREE_MAX_FINDINGS_PER_USER", "2")
+    get_settings.cache_clear()
+    try:
+        created_ids: list[str] = []
+        for i in range(2):
+            r = await _create_finding(client, owner_token, did, title=f"s{i}")
+            assert r.status_code == 201, r.text  # type: ignore[attr-defined]
+            created_ids.append(r.json()["id"])  # type: ignore[attr-defined]
+
+        async with session_maker() as session:
+            session.add(
+                PooledProjectMember(
+                    pooled_project_id=UUID(pid), user_id=member.id, role="editor"
+                )
+            )
+            await session.commit()
+
+        # Owner frees a live slot — lifetime quota stays spent.
+        removed = await client.delete(
+            f"/pooled/findings/{created_ids[0]}", headers=_auth(owner_token)
+        )
+        assert removed.status_code == 204, removed.text
+
+        blocked = await _create_finding(client, member_token, did, title="member-try")
+        assert blocked.status_code == 403, blocked.text  # type: ignore[attr-defined]
+        assert blocked.json()["detail"] == "FREE_FINDING_CAP_REACHED"  # type: ignore[attr-defined]
+    finally:
+        monkeypatch.delenv("FREE_MAX_FINDINGS_PER_USER", raising=False)
+        get_settings.cache_clear()
+
+
+async def test_admin_override_raises_finding_cap(
+    free_tier_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`max_findings` is per-user overridable like the other caps: the global
+    default blocks, an admin override unblocks, clearing it re-blocks."""
+    client, _ = free_tier_storage_client
+    async with session_maker() as session:
+        user = await _make_user(session, "findover@example.com")
+        await _make_user(session, "root-findover@example.com", is_superuser=True)
+    token = await _login(client, "findover@example.com")
+    admin_token = await _login(client, "root-findover@example.com")
+    pid = (await _create_project(client, token, "Override")).json()["id"]  # type: ignore[attr-defined]
+    did = await _create_document(client, token, pid)
+
+    monkeypatch.setenv("FREE_MAX_FINDINGS_PER_USER", "1")
+    get_settings.cache_clear()
+    try:
+        first = await _create_finding(client, token, did, title="only")
+        assert first.status_code == 201, first.text  # type: ignore[attr-defined]
+        blocked = await _create_finding(client, token, did, title="over")
+        assert blocked.status_code == 403  # type: ignore[attr-defined]
+        assert blocked.json()["detail"] == "FREE_FINDING_CAP_REACHED"  # type: ignore[attr-defined]
+
+        patched = await client.patch(
+            f"/admin/users/free/{user.id}/limits",
+            json={"max_findings": 5, "expiry_exempt": False},
+            headers=_auth(admin_token),
+        )
+        assert patched.status_code == 200, patched.text
+        body = patched.json()
+        assert body["limits"]["max_findings"] == 5
+        assert body["limits"]["override_max_findings"] == 5
+        assert body["usage"]["snag_cap"] == 5
+
+        ok = await _create_finding(client, token, did, title="unblocked")
+        assert ok.status_code == 201, ok.text  # type: ignore[attr-defined]
+
+        cleared = await client.patch(
+            f"/admin/users/free/{user.id}/limits",
+            json={"max_findings": None, "expiry_exempt": False},
+            headers=_auth(admin_token),
+        )
+        assert cleared.status_code == 200
+        assert cleared.json()["limits"]["override_max_findings"] is None
+        assert cleared.json()["limits"]["max_findings"] == 1
+        # Back on the default cap (1) with 2 lifetime creates → blocked again.
+        reblocked = await _create_finding(client, token, did, title="reblocked")
+        assert reblocked.status_code == 403  # type: ignore[attr-defined]
+    finally:
+        monkeypatch.delenv("FREE_MAX_FINDINGS_PER_USER", raising=False)
+        get_settings.cache_clear()
+
+
 # ---------------------------------------------------------------------------
 # Self endpoint for the trial banner
 # ---------------------------------------------------------------------------
@@ -453,6 +676,7 @@ async def test_account_limits_self_endpoint(
     body = resp.json()
     s = get_settings()
     assert body["max_projects"] == s.free_max_projects_per_user
+    assert body["max_findings"] == s.free_max_findings_per_user
     assert body["expired"] is False
     # Fresh account: roughly the full window remains.
     assert body["days_remaining"] is not None

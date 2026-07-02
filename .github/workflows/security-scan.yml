@@ -1,0 +1,95 @@
+# Security scanning (CC8-SCAN-1): SAST (CodeQL), secret scanning (gitleaks), and
+# dependency vulnerability audits (pip-audit + pnpm audit). Runs on PRs to main,
+# pushes to main, and a weekly schedule so newly-disclosed CVEs surface even
+# without a code change. CodeQL + gitleaks GATE merges (a real vuln / leaked
+# secret must not land); the dependency audits are informational (an advisory on
+# a transitive dep must not block a hotfix) but still visible in the checks list.
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, python]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          language: ${{ matrix.language }}
+          queries: security-and-quality
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  gitleaks:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  pip-audit:
+    name: pip-audit (${{ matrix.dir }})
+    runs-on: ubuntu-latest
+    # Advisories on transitive deps shouldn't block a merge, but must be visible.
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: [apps/api, apps/arbiter]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+      - name: Export locked deps + audit
+        working-directory: ${{ matrix.dir }}
+        run: |
+          uv export --frozen --no-emit-project --no-dev -o requirements-audit.txt
+          uvx pip-audit -r requirements-audit.txt --strict
+
+  pnpm-audit:
+    name: pnpm audit (JS workspace)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Audit (high + critical, prod deps)
+        run: pnpm audit --audit-level=high --prod

@@ -130,7 +130,11 @@ class FreeUserUsage(BaseModel):
     document_cap: int
     # Per-project invited-member cap (effective: override ?? FREE_MAX_MEMBERS_PER_PROJECT).
     member_cap: int
+    # LIVE snags currently existing (display) vs LIFETIME created (what the cap
+    # gate enforces — deletes don't free quota). The two diverge after deletes.
     snag_count: int
+    snags_created_lifetime: int
+    snag_cap: int
     member_of_count: int
     # `last_activity_at` is a true "last did anything" signal: the MAX across all
     # owner content of project/container/file/snag `updated_at` and container
@@ -150,6 +154,7 @@ class FreeAccountLimits(BaseModel):
     max_members_per_project: int
     max_documents: int
     storage_max_bytes: int
+    max_findings: int
     account_max_age_days: int
     account_expires_at: datetime | None
     days_remaining: int | None
@@ -168,6 +173,7 @@ class FreeUserLimitsRead(BaseModel):
     max_members_per_project: int
     max_documents: int
     storage_max_bytes: int
+    max_findings: int
     account_max_age_days: int
     expiry_exempt: bool
     # Trial state (anchored on users.created_at).
@@ -179,12 +185,14 @@ class FreeUserLimitsRead(BaseModel):
     override_max_members_per_project: int | None
     override_max_documents: int | None
     override_storage_max_bytes: int | None
+    override_max_findings: int | None
     override_account_max_age_days: int | None
     # Global env defaults.
     default_max_projects: int
     default_max_members_per_project: int
     default_max_documents: int
     default_storage_max_bytes: int
+    default_max_findings: int
     default_account_max_age_days: int
 
 
@@ -199,6 +207,8 @@ class FreeUserLimitsUpdate(BaseModel):
     max_documents: int | None = Field(default=None, ge=1, le=100_000)
     # Storage floor of 1 MiB keeps an override from making every upload fail.
     storage_max_bytes: int | None = Field(default=None, ge=1024 * 1024)
+    # LIFETIME findings cap (deletes don't free quota).
+    max_findings: int | None = Field(default=None, ge=1, le=100_000)
     account_max_age_days: int | None = Field(default=None, ge=1, le=36_500)
     expiry_exempt: bool = False
 

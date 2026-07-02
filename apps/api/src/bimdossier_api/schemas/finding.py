@@ -8,6 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from bimdossier_api.models.finding import FindingSeverity, FindingStatus
+from bimdossier_api.schemas._limits import BoundedAttachmentIds, BoundedExtraData
 from bimdossier_api.schemas.anchor import validate_linked_anchor
 
 
@@ -42,13 +43,13 @@ class FindingCreate(FindingBase):
     # Attachment ids (photos) captured while logging the finding. A string list
     # on the wire — match ChecklistItemResult.photo_ids — normalized to link
     # rows server-side.
-    photo_ids: list[str] | None = None
-    reference_attachment_ids: list[str] | None = None
+    photo_ids: BoundedAttachmentIds | None = None
+    reference_attachment_ids: BoundedAttachmentIds | None = None
     # Custom form template (#templates): the template this finding is created
     # from (null = built-in standard form). `custom_values` are raw answers
     # validated + snapshotted server-side against the template's field defs.
     template_id: UUID | None = None
-    custom_values: dict[str, object] | None = None
+    custom_values: BoundedExtraData | None = None
 
     @model_validator(mode="after")
     def _validate_anchor(self) -> FindingCreate:
@@ -85,12 +86,12 @@ class FindingUpdate(BaseModel):
     anchor_z: float | None = None
     anchor_page: int | None = None
     # Replace the photo set (add/remove). Omit to leave unchanged.
-    photo_ids: list[str] | None = None
+    photo_ids: BoundedAttachmentIds | None = None
     # Resolution evidence (#26/#27): required (non-empty note + >=1 id) on a
     # transition into `resolved`; the gate is enforced in the router.
     resolution_note: str | None = Field(default=None, max_length=4000)
-    resolution_evidence_ids: list[str] | None = None
-    reference_attachment_ids: list[str] | None = None
+    resolution_evidence_ids: BoundedAttachmentIds | None = None
+    reference_attachment_ids: BoundedAttachmentIds | None = None
 
     @model_validator(mode="after")
     def _validate_anchor(self) -> FindingUpdate:

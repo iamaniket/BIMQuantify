@@ -6,9 +6,10 @@ ONE public door — a real, email-verified, ORG-LESS account — gated behind th
 FREE_TIER_ENABLED kill-switch (the route is not even mounted when off).
 
 Contract:
-  * disabled (default) → 404, the route does not exist
-  * enabled → always 202 (enumeration-safe), creates an org-less unverified
-    user, sends the activation email, and is NOT an org member
+  * enabled (the default — the flag is now an emergency kill-switch) → always
+    202 (enumeration-safe), creates an org-less unverified user, sends the
+    activation email, and is NOT an org member
+  * disabled (FREE_TIER_ENABLED=false) → 404, the route does not exist
   * the existing /auth/activate flow then verifies + sets the password, and the
     activated user logs in with NO `org` claim and an empty membership list
 """
@@ -64,11 +65,54 @@ async def _count_memberships(
         ) or 0
 
 
-async def test_signup_disabled_returns_404(client: AsyncClient) -> None:
-    """With FREE_TIER_ENABLED off (the default `client`), the route is not
-    mounted at all — the kill-switch physically closes the surface."""
-    resp = await client.post("/auth/signup", json={"email": "nope@example.com"})
-    assert resp.status_code == 404, resp.text
+async def test_signup_disabled_returns_404(
+    engine: AsyncEngine,
+    session_maker: async_sessionmaker[AsyncSession],
+    redis_client: Redis,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With FREE_TIER_ENABLED=false the route is not mounted at all — the
+    kill-switch physically closes the surface. The flag now defaults ON, so the
+    disabled posture needs an app built with the env explicitly off (env vars
+    outrank the ambient .env in pydantic-settings)."""
+    from bimdossier_api import db as db_module
+    from bimdossier_api.cache import client as cache_module
+    from bimdossier_api.config import get_settings
+    from bimdossier_api.main import create_app
+
+    db_module._engine = engine
+    db_module._session_maker = session_maker
+    cache_module._redis = redis_client
+
+    monkeypatch.setenv("FREE_TIER_ENABLED", "false")
+    get_settings.cache_clear()
+    try:
+        app = create_app()
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            resp = await ac.post("/auth/signup", json={"email": "nope@example.com"})
+        assert resp.status_code == 404, resp.text
+    finally:
+        monkeypatch.delenv("FREE_TIER_ENABLED", raising=False)
+        get_settings.cache_clear()
+
+
+async def test_free_tier_enabled_defaults_on() -> None:
+    """The code default for FREE_TIER_ENABLED is ON (launch surface); the flag
+    is an emergency off-switch. Pinned here so a stray default flip is caught
+    even when the ambient .env sets the flag explicitly."""
+    from bimdossier_api.config import Settings
+
+    assert Settings.model_fields["free_tier_enabled"].default is True
+
+
+async def test_signup_mounted_by_default(client: AsyncClient) -> None:
+    """The plain `client` (no explicit flag) mounts /auth/signup — the free
+    tier no longer ships dark."""
+    resp = await client.post(
+        "/auth/signup", json={"email": "default-on@example.com"}
+    )
+    assert resp.status_code == 202, resp.text
 
 
 async def test_signup_creates_orgless_user_and_sends_activation(

@@ -43,7 +43,6 @@ from bimdossier_api.models.project_file import (
 )
 from bimdossier_api.routers import pooled_documents
 from bimdossier_api.routers.free_access import require_free_tier_enabled
-from bimdossier_api.routers.project_files._shared import resolve_head_file_id
 from bimdossier_api.schemas.document import (
     DocumentCreate,
     DocumentRead,
@@ -375,6 +374,13 @@ async def update_document(
             .scalars()
             .all()
         )
+        # Local import breaks a module-load cycle: project_files/__init__ imports
+        # upload.py, which imports this module's _load_document_or_404, so importing
+        # project_files._shared at documents.py load time forms a circular import
+        # (see git history / prelaunch review). Deferred to call time — no cost after
+        # first import (module is cached in sys.modules).
+        from bimdossier_api.routers.project_files._shared import resolve_head_file_id
+
         head_id = resolve_head_file_id(document, list(versions))
         head = next((v for v in versions if v.id == head_id), None)
         if head is not None:

@@ -95,6 +95,9 @@ export function Footer(): JSX.Element {
 
   return (
     <footer className="border-t border-border bg-surface-low">
+      {/* Quiet blueprint ruler strip — a measurement-tick line above the
+          footer content (see .footer-ticks in globals.css). */}
+      <div aria-hidden className="footer-ticks h-1.5" />
       <div className="mx-auto w-full max-w-8xl px-6 py-12">
         <div
           className={`grid grid-cols-2 gap-8 ${
@@ -124,14 +127,14 @@ export function Footer(): JSX.Element {
                     {link.external ? (
                       <a
                         href={link.href}
-                        className="text-body3 text-foreground-secondary hover:text-primary"
+                        className="text-body3 text-foreground-secondary transition-colors hover:text-primary"
                       >
                         {link.label}
                       </a>
                     ) : (
                       <Link
                         href={link.href}
-                        className="text-body3 text-foreground-secondary hover:text-primary"
+                        className="text-body3 text-foreground-secondary transition-colors hover:text-primary"
                       >
                         {link.label}
                       </Link>

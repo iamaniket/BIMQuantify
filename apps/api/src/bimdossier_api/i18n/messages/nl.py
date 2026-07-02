@@ -63,6 +63,21 @@ nl_messages: Catalog = {
         "{due_date} verlopen en is niet afgehandeld.\n\nOnderneem zo snel mogelijk actie.\n\n"
         "Bekijk het project: {project_url}\n"
     ),
+    # Gratis-tier waarschuwing voor ongebruikte containers (eenmalig verstuurd
+    # door de warn-pass van de idle-reaper, enkel-locale via User.locale).
+    "free.idle_warning_email.subject": (
+        "Je ongebruikte modellen worden over {days_until_delete} dagen verwijderd"
+    ),
+    "free.idle_warning_email.body": (
+        "Hi {name},\n\n"
+        "De volgende modellen in je gratis BimDossier-werkruimte zijn al "
+        "{days_idle} dagen niet geopend:\n\n{container_names}\n\n"
+        "Modellen die ongebruikt blijven, worden na verloop van tijd automatisch "
+        "verwijderd om de gratis omgeving snel te houden voor iedereen. Deze "
+        "worden over ongeveer {days_until_delete} dagen verwijderd.\n\n"
+        "Wil je ze behouden? Open ze gewoon in de viewer — dat reset de "
+        "teller.\n"
+    ),
     # E-mailaanhef — gebruikt door reminder_engine.py voor de deadline-herinnerings-
     # en gemiste-deadline-e-mails. Gelokaliseerd naar de jurisdictie van het
     # project i.p.v. hardcoded Engels (L10).
@@ -121,6 +136,8 @@ nl_messages: Catalog = {
     "notifications.report.dossier.body": "Dossier bevoegd gezag wordt gegenereerd…",
     "notifications.report.snag_list.title": "Bevindingenlijst — {name}",
     "notifications.report.snag_list.body": "Bevindingenlijst-PDF wordt gegenereerd…",
+    # Voettekst-watermerk op gratis-tier bevindingenlijst-PDF's (branding-seam).
+    "reports.pooled_footer": "Gemaakt met BimDossier — bimdossier.com",
 
     "notifications.job.running.title": "Rapport wordt gegenereerd",
     "notifications.job.running.body": "{report_title} wordt gegenereerd…",
@@ -299,9 +316,14 @@ nl_messages: Catalog = {
     "errors.FREE_CREATE_FORBIDDEN": "Accounts die bij een werkruimte horen, kunnen geen gratis projecten aanmaken.",
     "errors.FREE_STORAGE_CAP_REACHED": "Je hebt de gratis opslaglimiet bereikt. Verwijder een bestand of foto, of upgrade voor meer ruimte.",
     "errors.FREE_MEMBER_CAP_REACHED": "Dit gratis project heeft al het maximale aantal leden.",
-    "errors.FREE_FINDING_CAP_REACHED": "Je hebt de limiet voor gratis bevindingen bereikt. Los een bevinding op of verwijder er een, of upgrade om er meer toe te voegen.",
-    "errors.FREE_ACCOUNT_EXPIRED": "Je gratis proefperiode is afgelopen. Je projecten zijn alleen-lezen — upgrade om te blijven aanmaken en bewerken.",
+    "errors.FREE_FINDING_CAP_REACHED": "Je hebt de totale bevindingenlimiet van het gratis abonnement bereikt. Upgrade om bevindingen te blijven toevoegen.",
+    "errors.FREE_ACCOUNT_EXPIRED": "Je gratis proefperiode is afgelopen. Je kunt bevindingen en foto's in bestaande projecten blijven vastleggen, maar voor nieuwe projecten, modellen of bestanden is een upgrade nodig.",
     "errors.FREE_FORBIDDEN": "Je hebt geen toestemming om dit te doen.",
+    "errors.FREE_REPORT_NOT_FOUND": "Dat rapport kon niet worden gevonden.",
+    "errors.FREE_REPORT_BUSY": (
+        "Er wordt al een rapport gegenereerd voor deze werkruimte. "
+        "Wacht tot het klaar is en probeer het opnieuw."
+    ),
     "errors.FREE_MEMBER_NOT_FOUND": "Dat lid kon niet worden gevonden.",
     "errors.FREE_CANNOT_INVITE_SELF": "Je kunt jezelf niet uitnodigen.",
     "errors.FREE_MEMBER_ALREADY_EXISTS": "Deze persoon is al lid van dit project.",

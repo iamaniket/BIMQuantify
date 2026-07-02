@@ -22,6 +22,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from bimdossier_api.config import get_settings
+from bimdossier_api.email.transport import InMemoryEmailTransport
 from bimdossier_api.models.pooled_document import PooledDocument
 from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.models.user import User
@@ -749,6 +750,110 @@ async def test_idle_free_container_reaper(
             .where(PooledProjectFile.pooled_document_id == UUID(did))
         )
     assert files == 0
+
+
+async def test_idle_warning_email_sent_once(
+    free_tier_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+    email_transport: InMemoryEmailTransport,
+) -> None:
+    """A container idle past the warning threshold (but under the TTL) triggers ONE
+    deletion-warning email to the owner, stamps `idle_warning_sent_at`, and is NOT
+    deleted; a second sweep sends nothing new."""
+    from bimdossier_api.pooled_reconcile import sweep_idle_pooled_containers
+
+    client, fake = free_tier_storage_client
+    email = "free-idle-warn@example.com"
+    token = await _free_token(client, session_maker, email)
+    pid = await _create_project(client, token)
+    did = await _create_document(client, token, pid, name="Dormant model")
+
+    async with session_maker() as s:
+        await s.execute(
+            text(
+                "UPDATE pooled_documents SET last_viewed_at = now() - interval '80 days' "
+                "WHERE id = :id"
+            ),
+            {"id": UUID(did)},
+        )
+        await s.commit()
+
+    reaped = await sweep_idle_pooled_containers(90, storage=fake, warning_days=76)
+    assert reaped == 0  # under the TTL — warned, not deleted
+
+    sent = email_transport.last_for(email)
+    assert sent is not None, "no idle-warning email sent"
+    assert "Dormant model" in sent.body
+
+    async with session_maker() as s:
+        stamped = await s.scalar(
+            text("SELECT idle_warning_sent_at FROM pooled_documents WHERE id = :id"),
+            {"id": UUID(did)},
+        )
+    assert stamped is not None
+
+    # Second sweep: already-warned container is skipped (one-time warning).
+    count_before = len(email_transport.sent)
+    await sweep_idle_pooled_containers(90, storage=fake, warning_days=76)
+    assert len(email_transport.sent) == count_before
+
+    # Still alive.
+    detail = await client.get(
+        f"/pooled/projects/{pid}/documents/{did}", headers=_auth(token)
+    )
+    assert detail.status_code == 200
+
+
+async def test_idle_warning_reset_on_view(
+    free_tier_storage_client: tuple[AsyncClient, FakeStorage],
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """Opening the container in the viewer clears the pending deletion warning —
+    the idle clock (and its one-time warning) resets on activity."""
+    client, fake = free_tier_storage_client
+    token = await _free_token(client, session_maker, "free-idle-reset@example.com")
+    pid = await _create_project(client, token)
+    did = await _create_document(client, token, pid)
+    init = await _initiate_file(client, token, pid, did)
+    file_id = init["file_id"]
+    fake.objects[init["storage_key"]] = _IFC_HEADER
+    await _complete_file(client, token, pid, did, file_id)
+    secret = get_settings().processor_shared_secret
+    prefix = init["storage_key"].rsplit("/", 1)[0]
+    ok = await client.post(
+        "/internal/jobs/pooled-callback",
+        json={
+            "file_id": file_id,
+            "status": "succeeded",
+            "fragments_key": f"{prefix}/source.frag",
+            "metadata_key": f"{prefix}/source.metadata.json",
+        },
+        headers={"Authorization": f"Bearer {secret}"},
+    )
+    assert ok.status_code == 200, ok.text
+
+    async with session_maker() as s:
+        await s.execute(
+            text(
+                "UPDATE pooled_documents SET idle_warning_sent_at = now() "
+                "WHERE id = :id"
+            ),
+            {"id": UUID(did)},
+        )
+        await s.commit()
+
+    bundle = await client.get(
+        f"/pooled/projects/{pid}/documents/{did}/files/{file_id}/viewer-bundle",
+        headers=_auth(token),
+    )
+    assert bundle.status_code == 200, bundle.text
+
+    async with session_maker() as s:
+        stamped = await s.scalar(
+            text("SELECT idle_warning_sent_at FROM pooled_documents WHERE id = :id"),
+            {"id": UUID(did)},
+        )
+    assert stamped is None
 
 
 async def test_free_data_purged_on_user_deletion(

@@ -61,17 +61,23 @@ export function TrustBandSection(): JSX.Element {
                     <div className="mt-auto flex flex-col gap-2">
                       <Link
                         href="/security"
-                        className="inline-flex items-center gap-1.5 text-body2 font-medium text-primary hover:underline"
+                        className="group inline-flex items-center gap-1.5 text-body2 font-medium text-primary hover:underline"
                       >
                         {t('securityLink')}
-                        <ArrowRight className="h-4 w-4" aria-hidden />
+                        <ArrowRight
+                          className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none"
+                          aria-hidden
+                        />
                       </Link>
                       <a
                         href={portalHref(locale, '/legal/dpa')}
-                        className="inline-flex items-center gap-1.5 text-body2 font-medium text-primary hover:underline"
+                        className="group inline-flex items-center gap-1.5 text-body2 font-medium text-primary hover:underline"
                       >
                         {t('dpaLink')}
-                        <ArrowRight className="h-4 w-4" aria-hidden />
+                        <ArrowRight
+                          className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none"
+                          aria-hidden
+                        />
                       </a>
                     </div>
                   ) : null}

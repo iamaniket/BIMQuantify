@@ -194,6 +194,102 @@ async def test_create_finding_reference_attachment_ids_round_trips(
     assert patched.json()["reference_attachment_ids"] == replacement
 
 
+async def test_update_finding_resend_same_attachment_ids_pin_move(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    # Regression: moving a finding's pin (or any edit) while the client re-sends
+    # the finding's *existing* photo/reference ids used to 422 ATTACHMENT_NOT_FOUND.
+    # replace_attachment_links deleted + re-inserted the identical
+    # (finding, attachment, kind) row in one flush, and SQLAlchemy emits the INSERT
+    # before the DELETE, tripping the uq_finding_attachment unique constraint. The
+    # portal always echoes the current id arrays on save, so this hit every pin
+    # move on a finding that already had an attachment. Re-sending an unchanged id
+    # set must be a no-op, not a 422.
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    photo_a = await _create_attachment_row(project["id"])
+    photo_b = await _create_attachment_row(project["id"])
+    ref_c = await _create_attachment_row(project["id"])
+
+    create = await client.post(
+        f"/projects/{project['id']}/findings",
+        json=_payload(photo_ids=[photo_a, photo_b], reference_attachment_ids=[ref_c]),
+        headers=_auth(token),
+    )
+    assert create.status_code == 201, create.text
+    finding_id = create.json()["id"]
+
+    patched = await client.patch(
+        f"/projects/{project['id']}/findings/{finding_id}",
+        json={
+            "title": "Bijgewerkte titel",
+            "photo_ids": [photo_a, photo_b],
+            "reference_attachment_ids": [ref_c],
+        },
+        headers=_auth(token),
+    )
+    assert patched.status_code == 200, patched.text
+    body = patched.json()
+    assert body["title"] == "Bijgewerkte titel"
+    assert body["photo_ids"] == [photo_a, photo_b]
+    assert body["reference_attachment_ids"] == [ref_c]
+
+
+async def test_update_finding_photo_ids_idempotent_resend(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    # Re-sending an unchanged photo set alone is a no-op, not a 422.
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    photo_ids = [
+        await _create_attachment_row(project["id"]),
+        await _create_attachment_row(project["id"]),
+    ]
+    create = await client.post(
+        f"/projects/{project['id']}/findings",
+        json=_payload(photo_ids=photo_ids),
+        headers=_auth(token),
+    )
+    assert create.status_code == 201, create.text
+    finding_id = create.json()["id"]
+
+    patched = await client.patch(
+        f"/projects/{project['id']}/findings/{finding_id}",
+        json={"photo_ids": photo_ids},
+        headers=_auth(token),
+    )
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["photo_ids"] == photo_ids
+
+
+async def test_update_finding_photo_ids_partial_overlap_reorder(
+    client: AsyncClient, org_user: dict[str, str]
+) -> None:
+    # Overlapping change: keep one existing id, drop one, add a new one; the result
+    # reflects the new order. Exercises the diff keep/remove/append reconcile path.
+    token = org_user["access_token"]
+    project = await _create_project(client, token)
+    photo_a = await _create_attachment_row(project["id"])
+    photo_b = await _create_attachment_row(project["id"])
+    photo_d = await _create_attachment_row(project["id"])
+
+    create = await client.post(
+        f"/projects/{project['id']}/findings",
+        json=_payload(photo_ids=[photo_a, photo_b]),
+        headers=_auth(token),
+    )
+    assert create.status_code == 201, create.text
+    finding_id = create.json()["id"]
+
+    patched = await client.patch(
+        f"/projects/{project['id']}/findings/{finding_id}",
+        json={"photo_ids": [photo_b, photo_d]},
+        headers=_auth(token),
+    )
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["photo_ids"] == [photo_b, photo_d]
+
+
 async def test_create_finding_reference_attachment_ids_default_null(
     client: AsyncClient, org_user: dict[str, str]
 ) -> None:

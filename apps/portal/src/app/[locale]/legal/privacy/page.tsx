@@ -14,5 +14,11 @@ export default async function PrivacyPage({ params }: Props): Promise<JSX.Elemen
   setRequestLocale(locale);
   const { privacy, meta } = getLegalContent(locale as Locale);
 
-  return <LegalArticle doc={privacy} lastUpdatedLabel={meta.lastUpdatedLabel} />;
+  return (
+    <LegalArticle
+      doc={privacy}
+      lastUpdatedLabel={meta.lastUpdatedLabel}
+      draftBanner={meta.draftBanner}
+    />
+  );
 }

@@ -5,6 +5,10 @@ import type { JSX } from 'react';
 import type { Locale } from '@bimdossier/i18n';
 
 import { BlogPostCard } from '@/components/blog/BlogPostCard';
+import { Reveal } from '@/components/shared/Reveal';
+// Icon via the client-reference shim: this is a server component, and the
+// Phosphor icons behind @bimdossier/ui/icons are client-only (useContext).
+import { ArrowRight } from '@/components/shared/clientIcons';
 import { Link } from '@/i18n/navigation';
 import { getAllPostsMerged } from '@/lib/blog/mdx';
 
@@ -26,18 +30,26 @@ export async function FromTheBlogSection({ locale }: Props): Promise<JSX.Element
   return (
     <section id="from-blog" className="bg-surface-main">
       <div className="mx-auto w-full max-w-8xl px-6 py-20">
-        <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
-          <div className="flex flex-col gap-3">
-            <Eyebrow size="sm">{t('eyebrow')}</Eyebrow>
-            <h2 className="text-h3 font-semibold text-foreground">{t('headline')}</h2>
+        {/* Bespoke header row (not SectionHeading), so it gets its own Reveal
+            wrap — headings reveal first, the cards below keep their stagger. */}
+        <Reveal>
+          <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+            <div className="flex flex-col gap-3">
+              <Eyebrow size="sm">{t('eyebrow')}</Eyebrow>
+              <h2 className="text-h3 font-semibold text-foreground">{t('headline')}</h2>
+            </div>
+            <Link
+              href="/blog"
+              className="group inline-flex items-center gap-1.5 text-body2 font-medium text-primary transition-colors hover:underline"
+            >
+              {t('readAll')}
+              <ArrowRight
+                className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none"
+                aria-hidden
+              />
+            </Link>
           </div>
-          <Link
-            href="/blog"
-            className="text-body2 font-medium text-primary transition-colors hover:underline"
-          >
-            {t('readAll')} →
-          </Link>
-        </div>
+        </Reveal>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((post) => (
             <BlogPostCard key={post.slug} post={post} locale={locale} />

@@ -117,7 +117,13 @@ export function CaptureUploadPage({ orgId, token }: Props): JSX.Element {
 
   const handleUploadAnother = useCallback(() => {
     if (state.kind === 'success') {
-      setState({ kind: 'ready', info: state.info });
+      // Carry the decremented count back onto `info` — otherwise the ready
+      // screen re-renders the stale count from the original validate call and
+      // the "remaining uses" counter appears frozen (oscillates original↔-1).
+      setState({
+        kind: 'ready',
+        info: { ...state.info, remaining_uses: state.remainingUses },
+      });
     }
   }, [state]);
 

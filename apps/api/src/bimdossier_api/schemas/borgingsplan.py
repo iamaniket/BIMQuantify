@@ -1,5 +1,4 @@
 from datetime import date, datetime
-from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -7,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from bimdossier_api.models.borgingsmoment import BorgingsmomentPhase, BorgingsmomentStatus
 from bimdossier_api.models.borgingsplan import BorgingsplanStatus
 from bimdossier_api.models.checklist_item import ChecklistItemType, EvidenceType
+from bimdossier_api.schemas._limits import BoundedExtraData
 
 # ----- ChecklistItem schemas -----
 
@@ -21,7 +21,7 @@ class ChecklistItemBase(BaseModel):
     pass_fail_criteria: str | None = Field(default=None, max_length=4000)
     linked_element_global_id: str | None = Field(default=None, max_length=22)
     linked_file_id: UUID | None = None
-    extra_data: dict[str, Any] | None = None
+    extra_data: BoundedExtraData | None = None
 
 
 class ChecklistItemCreate(ChecklistItemBase):
@@ -38,7 +38,7 @@ class ChecklistItemUpdate(BaseModel):
     pass_fail_criteria: str | None = Field(default=None, max_length=4000)
     linked_element_global_id: str | None = Field(default=None, max_length=22)
     linked_file_id: UUID | None = None
-    extra_data: dict[str, Any] | None = None
+    extra_data: BoundedExtraData | None = None
 
 
 class ChecklistItemRead(ChecklistItemBase):

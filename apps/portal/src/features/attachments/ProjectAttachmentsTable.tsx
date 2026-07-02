@@ -53,9 +53,7 @@ export function ProjectAttachmentsTable({
         const Icon = CATEGORY_ICON[att.attachment_category ?? 'other'];
         return (
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-high text-foreground-secondary">
-              <Icon className="h-4 w-4" />
-            </div>
+            <Icon className="h-5 w-5 shrink-0 text-foreground-secondary" />
             <span className="min-w-0 truncate font-medium text-foreground">{att.original_filename}</span>
           </div>
         );

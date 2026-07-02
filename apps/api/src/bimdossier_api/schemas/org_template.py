@@ -28,6 +28,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from bimdossier_api.models.report import ReportType
 from bimdossier_api.org_templates.registry import valid_section_keys
+from bimdossier_api.schemas._limits import MIME_TYPE_PATTERN, BoundedTemplateConfig
 
 # --- findings-kind constants (carried over from finding_template.py) ----------
 
@@ -255,7 +256,7 @@ class OrgTemplateCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=2000)
     is_default: bool = False
-    config: dict[str, Any] = Field(default_factory=dict)
+    config: BoundedTemplateConfig = Field(default_factory=dict)
 
 
 class OrgTemplateUpdate(BaseModel):
@@ -267,7 +268,7 @@ class OrgTemplateUpdate(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=2000)
-    config: dict[str, Any] | None = None
+    config: BoundedTemplateConfig | None = None
 
 
 class OrgTemplateRead(BaseModel):
@@ -314,7 +315,7 @@ class TemplateAssetKind(StrEnum):
 class TemplateAssetInitiateRequest(BaseModel):
     asset_kind: TemplateAssetKind
     filename: str = Field(min_length=1, max_length=255)
-    content_type: str = Field(min_length=1, max_length=128)
+    content_type: str = Field(min_length=1, max_length=128, pattern=MIME_TYPE_PATTERN)
     size_bytes: int = Field(ge=1)
 
 

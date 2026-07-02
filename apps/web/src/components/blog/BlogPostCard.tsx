@@ -16,7 +16,7 @@ export function BlogPostCard({ post, locale }: BlogPostCardProps): JSX.Element {
   return (
     <Link
       href={`/blog/${post.slug}`}
-      className="group flex flex-col overflow-hidden rounded-lg border border-border bg-background transition-all hover:border-border-hover hover:shadow-lg"
+      className="group flex flex-col overflow-hidden rounded-lg border border-border bg-background transition-all duration-300 ease-out hover:-translate-y-1 hover:border-border-hover hover:shadow-lg motion-reduce:transform-none motion-reduce:transition-none"
     >
       <BlogCardThumbnail
         slug={post.slug}

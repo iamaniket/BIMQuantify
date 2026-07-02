@@ -47,6 +47,7 @@ from bimdossier_api.models.organization_member import (
 from bimdossier_api.models.pooled_attachment import PooledAttachment
 from bimdossier_api.models.pooled_document import PooledDocument
 from bimdossier_api.models.pooled_finding import PooledFinding
+from bimdossier_api.models.pooled_finding_counter import PooledFindingCounter
 from bimdossier_api.models.pooled_project import PooledProject
 from bimdossier_api.models.pooled_project_file import PooledProjectFile
 from bimdossier_api.models.pooled_project_member import PooledProjectMember
@@ -73,8 +74,8 @@ def require_free_tier_enabled() -> None:
         kill-switch: "is the free data plane offered/served at all right now".
       * The per-account ENTITLEMENT — "is THIS principal on the free plan" — is
         ``entitlements.resolve_plan(...) == PLAN_FREE`` (today: org-less). The
-        free caps/trial gates (`assert_can_create_free_content`,
-        `assert_free_account_not_expired`) are that entitlement re-check.
+        free caps/trial gate (`assert_can_create_free_content`) is that
+        entitlement re-check.
     Conversion (free→paid) intentionally does NOT call this gate, so disabling
     sales never traps a user's data behind the upgrade funnel."""
     if not get_settings().free_tier_enabled:
@@ -179,7 +180,11 @@ async def assert_can_create_free_content(user: User) -> FreeLimits:
     existing one. Raises 403 FREE_CREATE_FORBIDDEN otherwise.
 
     Also enforces the free TRIAL window: once the account is past its (possibly
-    admin-overridden) max age it is read-only — raises 403 FREE_ACCOUNT_EXPIRED.
+    admin-overridden) max age, NEW-ASSET creation is blocked — raises 403
+    FREE_ACCOUNT_EXPIRED. This is deliberately the ONLY expiry gate: the field
+    loop (snags, photos, member invites, edits, calibration) keeps working
+    forever on existing projects — bounded by the lifetime findings cap, the
+    aggregate storage cap, and the member cap rather than the trial clock.
     The resolved `FreeLimits` is returned so the caller can enforce the numeric
     caps (projects / containers / storage) without re-reading the override row.
 
@@ -205,22 +210,6 @@ async def assert_can_create_free_content(user: User) -> FreeLimits:
             status_code=status.HTTP_403_FORBIDDEN, detail="FREE_ACCOUNT_EXPIRED"
         )
     return limits
-
-
-async def assert_free_account_not_expired(user: User) -> None:
-    """403 FREE_ACCOUNT_EXPIRED once the acting FREE account's trial window has
-    elapsed — the gate that makes an expired free account READ-ONLY on the
-    write/edit paths (snags, container edits, member invites, …). Reads never call
-    this. A no-op for non-free principals (paid users + superusers are never on the
-    free trial) — keyed off the entitlement `resolve_user_plan` — and for
-    admin-exempted / extended accounts (their `is_expired` is False)."""
-    if await resolve_user_plan(user) != PLAN_FREE:
-        return
-    limits = await resolve_free_limits(user)
-    if limits.is_expired:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="FREE_ACCOUNT_EXPIRED"
-        )
 
 
 async def resolve_pooled_role(
@@ -311,7 +300,7 @@ async def count_pooled_members(session: AsyncSession, project_id: UUID) -> int:
 
 async def pooled_owner_used_bytes(session: AsyncSession, owner_id: UUID) -> int:
     """Total active free storage footprint for an owner: model-file bytes +
-    attachment (photo/evidence) bytes (FSL-1). The 1 GB aggregate cap is enforced
+    attachment (photo/evidence) bytes (FSL-1). The 3 GB aggregate cap is enforced
     against this combined sum so photos can't bypass the ceiling. Both sums are
     owner-keyed; pass a SUPERUSER session when the caller isn't the owner (a
     member uploading evidence) so the RLS scope doesn't hide the owner's bytes in
@@ -336,7 +325,9 @@ async def pooled_owner_used_bytes(session: AsyncSession, owner_id: UUID) -> int:
 
 
 async def pooled_owner_finding_count(session: AsyncSession, owner_id: UUID) -> int:
-    """Total findings (snags) owned by `owner_id` across all their pooled projects.
+    """LIVE findings (snags) currently owned by `owner_id` across all their pooled
+    projects — display/diagnostic only; the cap gate uses the LIFETIME counter
+    (`pooled_owner_lifetime_finding_count`), which deletes never decrement.
 
     Owner-keyed like `pooled_owner_used_bytes` — a member may file a snag against the
     owner's project, so the count is keyed on the project OWNER (`owner_user_id`), and
@@ -350,3 +341,22 @@ async def pooled_owner_finding_count(session: AsyncSession, owner_id: UUID) -> i
             .where(PooledFinding.owner_user_id == owner_id)
         )
     ) or 0
+
+
+async def pooled_owner_lifetime_finding_count(
+    session: AsyncSession, owner_id: UUID
+) -> int:
+    """Findings EVER created against `owner_id`'s projects (open+closed+deleted) —
+    what the LIFETIME cap is enforced against. Reads the monotonic counter row;
+    a missing row falls back to the live count (defensive parity for rows seeded
+    by raw SQL before the counter existed — post-backfill absence means zero
+    anyway). Same superuser-probe + owner-predicate rules as
+    `pooled_owner_finding_count`."""
+    counted = await session.scalar(
+        select(PooledFindingCounter.lifetime_created).where(
+            PooledFindingCounter.owner_user_id == owner_id
+        )
+    )
+    if counted is not None:
+        return int(counted)
+    return await pooled_owner_finding_count(session, owner_id)

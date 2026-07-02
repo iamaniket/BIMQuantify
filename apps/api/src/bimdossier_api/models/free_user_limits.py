@@ -44,6 +44,9 @@ class FreeUserLimits(MasterBase):
     max_documents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     storage_max_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     account_max_age_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # LIFETIME findings cap (see pooled_finding_counter.py — deletes don't free
+    # quota). Keyed on the project OWNER like the enforcement itself.
+    max_findings: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Permanent free account: ignore the trial window entirely (never expires),
     # regardless of `account_max_age_days`. Distinct from a very large day count

@@ -61,6 +61,8 @@ class StorageBackend(Protocol):
 
     async def ensure_bucket(self, bucket: str | None = None) -> None: ...
 
+    async def check_bucket(self, bucket: str | None = None) -> None: ...
+
     @property
     def presign_ttl(self) -> int: ...
 
@@ -308,6 +310,19 @@ class S3Storage:
             Key=dest_key,
             CopySource={"Bucket": resolved, "Key": source_key},
         )
+
+    async def check_bucket(self, bucket: str | None = None) -> None:
+        """Read-only liveness probe for the storage backend (A1-READY-1).
+
+        A single ``HeadBucket`` — no writes. Used by ``/health/ready`` and the
+        public system-status probe so a least-privilege prod IAM role (no
+        ``s3:CreateBucket`` / ``s3:PutBucketCors``) doesn't flap readiness or DoS
+        the control plane on every probe. Bucket provisioning stays in
+        ``ensure_bucket`` (lifespan startup only). Raises on any failure.
+        """
+        resolved = self._resolve_bucket(bucket)
+        client = await self._get_client()
+        await client.head_bucket(Bucket=resolved)
 
     async def ensure_bucket(self, bucket: str | None = None) -> None:
         resolved = self._resolve_bucket(bucket)

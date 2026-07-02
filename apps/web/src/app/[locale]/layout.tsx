@@ -5,6 +5,8 @@ import { Fraunces } from 'next/font/google';
 import { notFound } from 'next/navigation';
 import type { JSX, ReactNode } from 'react';
 
+import '../globals.css';
+
 import { routing } from '@/i18n/routing';
 import { env } from '@/lib/env';
 import { PostHogProvider } from '@/providers/PostHogProvider';
@@ -52,6 +54,21 @@ export async function generateMetadata({
       card: 'summary_large_image',
       title: t('title'),
       description: t('description'),
+    },
+    // Theme-aware favicon (follows the OS `prefers-color-scheme`, i.e. the browser chrome):
+    // - favicon.svg embeds both marks and toggles via an in-SVG media query — this is what
+    //   makes Chrome/Firefox switch (Chrome ignores the link `media` attribute).
+    // - the light/dark PNGs cover Safari, which honors the link `media` attribute but
+    //   ignores SVG favicons.
+    // - favicon.ico is the plain legacy fallback (no `sizes:any`, so it can't outrank the SVG).
+    icons: {
+      icon: [
+        { url: '/favicon.svg', type: 'image/svg+xml' },
+        { url: '/favicon-light.png', type: 'image/png', media: '(prefers-color-scheme: light)' },
+        { url: '/favicon-dark.png', type: 'image/png', media: '(prefers-color-scheme: dark)' },
+        { url: '/favicon.ico', sizes: '48x48' },
+      ],
+      apple: { url: '/apple-icon.png', sizes: '180x180' },
     },
     alternates: {
       types: {

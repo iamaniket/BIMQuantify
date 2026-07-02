@@ -16,6 +16,7 @@ import {
   escapeHtml,
   fmtDate,
   fmtDay,
+  IMAGE_DATA_URL,
   or,
   renderSections,
   toLayoutBranding,
@@ -140,10 +141,12 @@ function renderMoments(moments: AssuranceMoment[], labels: DossierLabels): strin
 }
 
 function renderPhotos(photos: DossierPhoto[]): string {
-  const withData = photos.filter((p) => p.data_url);
+  // Safe-shape check + escape the src, defence-in-depth over safeImageDataUrl at
+  // prepare time (SEAM-XSS-SSRF-1).
+  const withData = photos.filter((p) => p.data_url && IMAGE_DATA_URL.test(p.data_url));
   if (withData.length === 0) return '';
   const figs = withData
-    .map((p) => `<figure><img src="${p.data_url ?? ''}" alt="" /></figure>`)
+    .map((p) => `<figure><img src="${escapeHtml(p.data_url ?? '')}" alt="" /></figure>`)
     .join('');
   return `<div class="photo-grid">${figs}</div>`;
 }

@@ -141,15 +141,28 @@ def create_token(
 
 def decode_token_full(token: str, expected_type: TokenType) -> DecodedToken:
     settings = get_settings()
-    try:
-        payload = jwt.decode(
-            token,
-            settings.jwt_secret,
-            algorithms=[ALGORITHM],
-            audience=_audience(expected_type),
-        )
-    except JWTError as exc:
-        raise TokenError(str(exc)) from exc
+    # ENC-KEY-1: try the current signing secret, then the previous one (if a
+    # rotation is in progress) so an in-flight token minted under the old secret
+    # still verifies. New tokens are always minted with `jwt_secret` (create_token),
+    # so `jwt_secret_previous` is verify-only.
+    secrets = [settings.jwt_secret]
+    if settings.jwt_secret_previous:
+        secrets.append(settings.jwt_secret_previous)
+    payload = None
+    last_exc: JWTError | None = None
+    for secret in secrets:
+        try:
+            payload = jwt.decode(
+                token,
+                secret,
+                algorithms=[ALGORITHM],
+                audience=_audience(expected_type),
+            )
+            break
+        except JWTError as exc:
+            last_exc = exc
+    if payload is None:
+        raise TokenError(str(last_exc))
 
     if payload.get("typ") != expected_type:
         raise TokenError(f"expected {expected_type} token, got {payload.get('typ')}")

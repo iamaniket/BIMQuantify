@@ -84,15 +84,19 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         create_app_role_statements,
         disable_pooled_aligned_sheet_rls_statements,
         disable_pooled_attachment_rls_statements,
+        disable_pooled_finding_counter_rls_statements,
         disable_pooled_level_rls_statements,
         disable_pooled_member_rls_statements,
         disable_pooled_notification_rls_statements,
+        disable_pooled_report_rls_statements,
         disable_rls_statements,
         enable_pooled_aligned_sheet_rls_statements,
         enable_pooled_attachment_rls_statements,
+        enable_pooled_finding_counter_rls_statements,
         enable_pooled_level_rls_statements,
         enable_pooled_member_rls_statements,
         enable_pooled_notification_rls_statements,
+        enable_pooled_report_rls_statements,
         enable_rls_statements,
     )
     from bimdossier_api.db import Base
@@ -136,6 +140,8 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         # the schema from metadata. `create_all` is DDL-only — RLS policies are
         # applied separately below to mirror what the migration does.
         for stmt in (
+            *disable_pooled_report_rls_statements(),
+            *disable_pooled_finding_counter_rls_statements(),
             *disable_pooled_attachment_rls_statements(),
             *disable_pooled_aligned_sheet_rls_statements(),
             *disable_pooled_level_rls_statements(),
@@ -235,6 +241,13 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         # Pooled free-attachments get owner-OR-member RLS (migration 0013).
         for stmt in enable_pooled_attachment_rls_statements():
             await conn.exec_driver_sql(stmt)
+        # Lifetime findings counter gets owner-OR-co-participant RLS (migration 0005
+        # of the retune chain) so the counter isolation tests run as bim_app.
+        for stmt in enable_pooled_finding_counter_rls_statements():
+            await conn.exec_driver_sql(stmt)
+        # Pooled reports get owner-OR-member RLS (migration 0006).
+        for stmt in enable_pooled_report_rls_statements():
+            await conn.exec_driver_sql(stmt)
 
     yield eng
 
@@ -245,6 +258,8 @@ async def engine(_ensure_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
         for (schema,) in rows.fetchall():
             await conn.exec_driver_sql(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
         for stmt in (
+            *disable_pooled_report_rls_statements(),
+            *disable_pooled_finding_counter_rls_statements(),
             *disable_pooled_attachment_rls_statements(),
             *disable_pooled_aligned_sheet_rls_statements(),
             *disable_pooled_level_rls_statements(),
@@ -358,7 +373,8 @@ async def _clean_tables(
                         "TRUNCATE TABLE checklist_item_results, checklist_items, "
                         "borgingsmomenten, borgingsplans, deadlines, "
                         "capture_links, blog_posts, pooled_finding_attachments, "
-                        "pooled_attachments, pooled_findings, pooled_project_files, "
+                        "pooled_attachments, pooled_finding_counters, pooled_reports, "
+                        "pooled_findings, pooled_project_files, "
                         "pooled_documents, pooled_project_members, pooled_projects, "
                         "risks, access_requests, reports, jobs, project_files, documents, "
                         "project_members, projects, notification_user_state, "
@@ -700,6 +716,9 @@ class FakeStorage:
     async def ensure_bucket(self, *, bucket: str | None = None) -> None:
         return
 
+    async def check_bucket(self, *, bucket: str | None = None) -> None:
+        return
+
 
 @pytest.fixture
 async def fake_storage_client(
@@ -715,6 +734,7 @@ async def fake_storage_client(
         CAPTURE_INITIATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
         FREE_FINDING_WRITE_LIMITER,
+        FREE_REPORT_GEN_LIMITER,
         FREE_UPLOAD_INITIATE_LIMITER,
         INVITE_LIMITER,
         REPORT_GEN_LIMITER,
@@ -1108,6 +1128,7 @@ async def client(
         CAPTURE_INITIATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
         FREE_FINDING_WRITE_LIMITER,
+        FREE_REPORT_GEN_LIMITER,
         FREE_UPLOAD_INITIATE_LIMITER,
         INVITE_LIMITER,
         REPORT_GEN_LIMITER,
@@ -1117,6 +1138,7 @@ async def client(
     from bimdossier_api.auth.routes import (
         FORGOT_RATE_LIMITER,
         LOGIN_RATE_LIMITER,
+        SIGNUP_RATE_LIMITER,
         VERIFY_REQUEST_RATE_LIMITER,
     )
     from bimdossier_api.cache import client as cache_module
@@ -1129,10 +1151,13 @@ async def client(
 
     app = create_app()
     # Disable rate limiting by default; tests covering rate limiting use `rate_limited_client`.
+    # SIGNUP_RATE_LIMITER is included because FREE_TIER_ENABLED now defaults ON,
+    # so the plain client mounts /auth/signup too.
     for limiter in (
         LOGIN_RATE_LIMITER,
         FORGOT_RATE_LIMITER,
         VERIFY_REQUEST_RATE_LIMITER,
+        SIGNUP_RATE_LIMITER,
         REFRESH_RATE_LIMITER,
         ACCESS_REQUEST_RATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
@@ -1157,16 +1182,19 @@ async def free_tier_client(
     redis_client: Redis,
     monkeypatch: pytest.MonkeyPatch,
 ) -> AsyncGenerator[AsyncClient, None]:
-    """Same as `client` but with FREE_TIER_ENABLED=true so the free-wedge
-    surfaces (public /auth/signup, /free/* endpoints) are mounted. The flag is a
-    registration-time kill-switch, so the app must be built AFTER the env is set
-    and the settings cache cleared — hence its own fixture rather than the shared
-    `client`. The default `client` (flag off) is what tests the disabled path."""
+    """Same as `client` but with FREE_TIER_ENABLED pinned to true (immune to the
+    ambient .env) so the free-wedge surfaces (public /auth/signup, /pooled/*
+    endpoints) are deterministically mounted. The flag is a registration-time
+    kill-switch, so the app must be built AFTER the env is set and the settings
+    cache cleared — hence its own fixture rather than the shared `client`. The
+    disabled posture is tested by building an app with the env explicitly false
+    (see test_signup.py)."""
     from bimdossier_api import db as db_module
     from bimdossier_api.auth.ratelimit import (
         CAPTURE_INITIATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
         FREE_FINDING_WRITE_LIMITER,
+        FREE_REPORT_GEN_LIMITER,
         FREE_UPLOAD_INITIATE_LIMITER,
         INVITE_LIMITER,
         REPORT_GEN_LIMITER,
@@ -1206,6 +1234,7 @@ async def free_tier_client(
             CAPTURE_INITIATE_LIMITER,
             FREE_UPLOAD_INITIATE_LIMITER,
             FREE_FINDING_WRITE_LIMITER,
+            FREE_REPORT_GEN_LIMITER,
         ):
             app.dependency_overrides[limiter] = lambda: None
 
@@ -1231,6 +1260,7 @@ async def free_tier_storage_client(
         CAPTURE_INITIATE_LIMITER,
         COMPLIANCE_CHECK_LIMITER,
         FREE_FINDING_WRITE_LIMITER,
+        FREE_REPORT_GEN_LIMITER,
         FREE_UPLOAD_INITIATE_LIMITER,
         INVITE_LIMITER,
         REPORT_GEN_LIMITER,
@@ -1273,6 +1303,7 @@ async def free_tier_storage_client(
             CAPTURE_INITIATE_LIMITER,
             FREE_UPLOAD_INITIATE_LIMITER,
             FREE_FINDING_WRITE_LIMITER,
+            FREE_REPORT_GEN_LIMITER,
         ):
             app.dependency_overrides[limiter] = lambda: None
 

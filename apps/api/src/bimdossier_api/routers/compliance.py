@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimdossier_api import audit
+from bimdossier_api.csv_safety import csv_safe_mapping
 from bimdossier_api.access import (
     load_project_or_404,
     require_membership,
@@ -355,7 +356,9 @@ async def export_compliance_csv(
     for item in details:
         if not isinstance(item, dict):
             continue
-        writer.writerow({col: item.get(col, "") for col in _CSV_COLUMNS})
+        # IFC-sourced element names/refs are user-controlled — neutralize formula
+        # injection before they reach a spreadsheet. See csv_safety.py.
+        writer.writerow(csv_safe_mapping({col: item.get(col, "") for col in _CSV_COLUMNS}))
 
     filename = f"compliance-{framework}-{file_id}.csv"
     return Response(
@@ -411,7 +414,7 @@ async def export_compliance_rules_csv(
     for rule in rules:
         if not isinstance(rule, dict):
             continue
-        writer.writerow({col: rule.get(col, "") for col in _RULES_CSV_COLUMNS})
+        writer.writerow(csv_safe_mapping({col: rule.get(col, "") for col in _RULES_CSV_COLUMNS}))
 
     filename = f"compliance-rules-{framework}-{file_id}.csv"
     return Response(

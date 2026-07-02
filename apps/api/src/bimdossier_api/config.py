@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     test_database_url: str | None = Field(default=None, alias="TEST_DATABASE_URL")
 
     jwt_secret: str = Field(alias="JWT_SECRET")
+    # ENC-KEY-1: optional previous JWT secret, accepted for VERIFY only (never mint)
+    # so the signing secret can be rotated without invalidating every live session.
+    # Rotation runbook: set JWT_SECRET_PREVIOUS = the old secret, JWT_SECRET = the
+    # new one, keep both for >= max(JWT_REFRESH_TTL_SECONDS, INVITE_TOKEN_TTL_SECONDS),
+    # then drop JWT_SECRET_PREVIOUS.
+    jwt_secret_previous: str | None = Field(default=None, alias="JWT_SECRET_PREVIOUS")
     jwt_access_ttl_seconds: int = Field(default=900, alias="JWT_ACCESS_TTL_SECONDS")
     jwt_refresh_ttl_seconds: int = Field(default=604800, alias="JWT_REFRESH_TTL_SECONDS")
     # Refresh-token rotation grace window (seconds). Each /auth/jwt/refresh call
@@ -89,6 +95,14 @@ class Settings(BaseSettings):
     # are best-effort (see email.transport.send_email_best_effort) so a timeout is
     # logged and swallowed, never surfaced to the caller.
     smtp_timeout_seconds: float = Field(default=10.0, alias="SMTP_TIMEOUT_SECONDS")
+    # SMTP transport security (ENC-SMTP-1). Dev/MailHog is plaintext on :1025, so
+    # both default off; production MUST enable one of STARTTLS (:587) or implicit
+    # TLS (:465) — emails carry activation + password-reset tokens. Optional AUTH
+    # credentials for an authenticated relay (e.g. Cyso / Postmark SMTP).
+    smtp_start_tls: bool = Field(default=False, alias="SMTP_START_TLS")
+    smtp_use_tls: bool = Field(default=False, alias="SMTP_USE_TLS")
+    smtp_username: str | None = Field(default=None, alias="SMTP_USERNAME")
+    smtp_password: str | None = Field(default=None, alias="SMTP_PASSWORD")
 
     email_transport: str = Field(default="smtp", alias="EMAIL_TRANSPORT")
     postmark_server_token: str | None = Field(default=None, alias="POSTMARK_SERVER_TOKEN")
@@ -205,7 +219,10 @@ class Settings(BaseSettings):
     # the Host header, so the URL must be presigned against the host the client
     # uses — it cannot be rewritten after signing.
     s3_public_endpoint_url: str | None = Field(default=None, alias="S3_PUBLIC_ENDPOINT_URL")
-    s3_region: str = Field(default="us-east-1", alias="S3_REGION")
+    # EU-first default (GDPR data residency) — the product claims "data never
+    # leaves the EU". MinIO ignores the region, so dev is unaffected; a real AWS
+    # deployment must set an EU region (eu-*) explicitly. See DATA_RESIDENCY.
+    s3_region: str = Field(default="eu-central-1", alias="S3_REGION")
     # No dev default: a missing value fails closed at construction (exactly like
     # jwt_secret), so a forgotten prod env var can never silently fall back to the
     # publicly-known MinIO root key. Dev/CI/tests supply these via .env /
@@ -281,11 +298,11 @@ class Settings(BaseSettings):
         default=1, alias="POOLED_EXTRACTION_CONCURRENCY_GLOBAL"
     )
     # Master kill-switch for the whole free-tier ("free wedge") surface: public
-    # signup route mounting, every /free/* endpoint, the portal route group. Off
-    # by default so the feature ships dark and is flipped on for a capped cohort
-    # at soft-launch. A flag only SOME surfaces honor is a half-open door — gate
-    # every surface on this. See docs/free-wedge-implementation-plan.md.
-    free_tier_enabled: bool = Field(default=False, alias="FREE_TIER_ENABLED")
+    # signup route mounting, every /pooled/* endpoint, the portal route group.
+    # ON by default — the free tier is a launch surface; this flag is now the
+    # emergency off-switch (set false to ship dark). A flag only SOME surfaces
+    # honor is a half-open door — gate every surface on this.
+    free_tier_enabled: bool = Field(default=True, alias="FREE_TIER_ENABLED")
     # Per-model size cap for free uploads (D4) — well under the 2 GB tenant cap,
     # covers the gevolgklasse-1 ICP while bounding processor + storage cost.
     free_upload_max_bytes: int = Field(
@@ -294,7 +311,7 @@ class Settings(BaseSettings):
     # Per-user CONTAINER cap (pooled_documents) — a coarse backstop alongside the
     # aggregate storage cap. (Each container holds versioned model files.)
     # Env alias kept as the legacy FREE_MAX_MODELS_PER_USER for back-compat.
-    free_max_documents_per_user: int = Field(default=5, alias="FREE_MAX_MODELS_PER_USER")
+    free_max_documents_per_user: int = Field(default=10, alias="FREE_MAX_MODELS_PER_USER")
     # Per-user PROJECT cap (owned pooled_projects; shared projects don't count). The
     # "multiple projects" allowance for a free user — tunable so the cohort limit
     # can be widened/narrowed without a code change. Enforced at project-create.
@@ -305,27 +322,31 @@ class Settings(BaseSettings):
     # total seats). The "add up to N collaborators" allowance — tunable. Enforced
     # at member-invite.
     free_max_members_per_project: int = Field(
-        default=3, alias="FREE_MAX_MEMBERS_PER_PROJECT"
+        default=9, alias="FREE_MAX_MEMBERS_PER_PROJECT"
     )
     # Per-user FINDINGS (snags) cap — a coarse backstop on the only otherwise
     # unbounded write on the shared public heap (findings carry no storage bytes,
-    # so they escape the aggregate byte cap). GLOBAL env cap (like
-    # `free_upload_max_bytes`), keyed on the project OWNER. Enforced at snag-create.
+    # so they escape the aggregate byte cap). LIFETIME semantics: counts every
+    # finding EVER created (open, closed, and deleted) via
+    # public.pooled_finding_counters — deletes do NOT free quota. Env default,
+    # per-user overridable via `free_user_limits.max_findings`, keyed on the
+    # project OWNER. Enforced at snag-create.
     free_max_findings_per_user: int = Field(
-        default=200, alias="FREE_MAX_FINDINGS_PER_USER"
+        default=2000, alias="FREE_MAX_FINDINGS_PER_USER"
     )
-    # Per-user AGGREGATE storage cap (the 1 GB ceiling) — the binding constraint
+    # Per-user AGGREGATE storage cap (the 3 GB ceiling) — the binding constraint
     # on a free user's footprint. Enforced at upload-initiate against the sum of
     # the owner's own model bytes (members can't upload, so it is owner-only).
     free_storage_max_bytes: int = Field(
-        default=1024 ** 3, alias="FREE_STORAGE_MAX_BYTES"
+        default=3 * 1024 ** 3, alias="FREE_STORAGE_MAX_BYTES"
     )
     # Free-account TRIAL window in days, anchored on `users.created_at`. After it
-    # elapses the account goes READ-ONLY (every free write returns 403
-    # FREE_ACCOUNT_EXPIRED) to nudge an upgrade; existing data stays viewable.
+    # elapses only NEW-ASSET creation is blocked (project create / container
+    # create / file uploads return 403 FREE_ACCOUNT_EXPIRED); the field loop —
+    # snags, photos, invites, edits — keeps working forever on existing projects,
+    # bounded by the lifetime findings / storage / member caps instead.
     # This is the GLOBAL default — a super-admin can override (or exempt) a single
-    # account via `public.free_user_limits`. Starts at 90; intended to tighten to
-    # ~30 later, which is a pure env change. See free_limits.resolve_free_limits.
+    # account via `public.free_user_limits`. See free_limits.resolve_free_limits.
     free_account_max_age_days: int = Field(
         default=90, alias="FREE_ACCOUNT_MAX_AGE_DAYS"
     )
@@ -338,19 +359,32 @@ class Settings(BaseSettings):
     rate_limit_free_finding_write_per_hour: int = Field(
         default=120, alias="RATE_LIMIT_FREE_FINDING_WRITE_PER_HOUR"
     )
+    # Per-user/hour budget on free snag-list PDF generation — each spins up a
+    # puppeteer render on the shared processor, so keep it modest (the paid
+    # report budget is 10/hour).
+    rate_limit_free_report_per_hour: int = Field(
+        default=5, alias="RATE_LIMIT_FREE_REPORT_PER_HOUR"
+    )
     # Max concurrent in-flight free extractions for a single user (queued+running).
     pooled_extraction_concurrency_per_user: int = Field(
         default=1, alias="POOLED_EXTRACTION_CONCURRENCY_PER_USER"
     )
-    # Geometry tessellation threshold for the FREE extraction path — higher than
-    # the paid default of 1 (which meshes every element) to shrink frag size +
-    # meshing time. The paid path keeps threshold 1 and its visibility test green.
+    # Geometry tessellation threshold for the FREE extraction path — parity with
+    # the paid default of 1 (every element meshed) so a free user's first 3D
+    # impression is not silently degraded. The free cost controls are the
+    # concurrency caps + queue priority above, not geometry quality.
     pooled_job_geometry_threshold: int = Field(
-        default=10, alias="POOLED_JOB_GEOMETRY_THRESHOLD"
+        default=1, alias="POOLED_JOB_GEOMETRY_THRESHOLD"
     )
     # A free container untouched (no viewer-bundle GET) for this many days is reaped.
     # Env alias kept as the legacy FREE_MODEL_IDLE_TTL_DAYS for back-compat.
-    pooled_document_idle_ttl_days: int = Field(default=30, alias="FREE_MODEL_IDLE_TTL_DAYS")
+    pooled_document_idle_ttl_days: int = Field(default=90, alias="FREE_MODEL_IDLE_TTL_DAYS")
+    # One-time "your idle models will be deleted" warning email is sent once a
+    # container has been idle this many days (must be < the TTL; 0 disables the
+    # warn pass). Default leaves ~14 days of notice before the 90-day reap.
+    pooled_document_idle_warning_days: int = Field(
+        default=76, alias="FREE_MODEL_IDLE_WARNING_DAYS"
+    )
     # How often the idle-free-model reaper runs (the TTL is in days, so a long
     # interval is fine). 0 disables it.
     pooled_idle_sweep_interval_minutes: int = Field(
@@ -370,6 +404,16 @@ class Settings(BaseSettings):
 
     deploy_region: str = Field(default="dev", alias="DEPLOY_REGION")
     deploy_node: str = Field(default="local", alias="DEPLOY_NODE")
+
+    # GDPR data-residency assertion (GDPR44-RES-1). Set DATA_RESIDENCY=eu to make
+    # the production guard enforce that the S3 region and any Sentry DSN look EU —
+    # substantiating the public "data never leaves the EU" claim. Empty = no check.
+    data_residency: str = Field(default="", alias="DATA_RESIDENCY")
+    # ENC-TLS-1 escape hatch: allow plaintext http:// on *internal* service links
+    # (S3_ENDPOINT_URL, PROCESSOR_URL, ARBITER_URL, API_BASE_URL) for deployments
+    # that terminate TLS at the edge and run a trusted private network between
+    # services. Token-bearing user-facing URLs are ALWAYS required to be https.
+    internal_plaintext_ok: bool = Field(default=False, alias="INTERNAL_PLAINTEXT_OK")
 
     @property
     def resolved_log_format(self) -> str:
@@ -445,6 +489,18 @@ def _dev_region_opted_in(settings: Settings) -> bool:
     return settings.deploy_region == "dev" and "deploy_region" in settings.model_fields_set
 
 
+def _looks_eu_region(region: str) -> bool:
+    """True when an S3 region string names an EU region (eu-*)."""
+    return region.strip().lower().startswith("eu-")
+
+
+def _sentry_dsn_is_eu(dsn: str) -> bool:
+    """True when a Sentry DSN targets the EU data region. Sentry EU ingest hosts
+    are under ``*.de.sentry.io`` (or a self-hosted EU host containing 'eu')."""
+    host = (urlparse(dsn).hostname or "").lower()
+    return host.endswith(".de.sentry.io") or "eu" in host
+
+
 def validate_production_config(settings: Settings) -> list[str]:
     """Return insecure-config errors unless ``DEPLOY_REGION`` is explicitly ``dev``.
 
@@ -482,6 +538,68 @@ def validate_production_config(settings: Settings) -> list[str]:
             "WS_MAX_LIFETIME_SECONDS exceeds JWT_ACCESS_TTL_SECONDS; a notification socket "
             "could outlive its access token, defeating the revalidation lifetime cap."
         )
+    # --- Transport security (ENC-TLS-1, GDPR Art.32) -------------------------
+    # User-facing, token-bearing URLs must be https — they carry activation /
+    # password-reset / invite tokens; there is no legitimate plaintext case in prod.
+    for attr, env_name in (
+        ("frontend_verify_url", "FRONTEND_VERIFY_URL"),
+        ("frontend_reset_password_url", "FRONTEND_RESET_PASSWORD_URL"),
+        ("frontend_activate_url", "FRONTEND_ACTIVATE_URL"),
+        ("frontend_invitations_url", "FRONTEND_INVITATIONS_URL"),
+        ("frontend_project_url", "FRONTEND_PROJECT_URL"),
+    ):
+        value = getattr(settings, attr)
+        if value and not value.lower().startswith("https://"):
+            errors.append(f"{env_name} must be https:// in production (it carries auth tokens).")
+    # Browser/mobile-facing presigned-download host must be https.
+    if settings.s3_public_endpoint_url and not settings.s3_public_endpoint_url.lower().startswith(
+        "https://"
+    ):
+        errors.append("S3_PUBLIC_ENDPOINT_URL must be https:// (browser/mobile-facing).")
+    # Internal service links: require https unless an operator explicitly opts into
+    # a trusted private network with INTERNAL_PLAINTEXT_OK=true.
+    if not settings.internal_plaintext_ok:
+        for attr, env_name in (
+            ("s3_endpoint_url", "S3_ENDPOINT_URL"),
+            ("processor_url", "PROCESSOR_URL"),
+            ("arbiter_url", "ARBITER_URL"),
+            ("api_base_url", "API_BASE_URL"),
+        ):
+            value = getattr(settings, attr)
+            if value and value.lower().startswith("http://"):
+                errors.append(
+                    f"{env_name} is plaintext http:// in production; use https:// or set "
+                    "INTERNAL_PLAINTEXT_OK=true for a trusted private network."
+                )
+    # --- Email transport (EMAIL-PROD-GUARD, ENC-SMTP-1) ----------------------
+    if settings.email_transport == "smtp":
+        smtp_host = settings.smtp_host.strip().lower()
+        if smtp_host in {"localhost", "127.0.0.1", "::1", ""}:
+            errors.append(
+                "EMAIL_TRANSPORT=smtp but SMTP_HOST is localhost in production; onboarding / "
+                "password-reset email would silently fail. Point at a real relay."
+            )
+        if str(settings.smtp_from).lower().endswith(".dev"):
+            errors.append("SMTP_FROM is the dev default (.dev); set a real sender address.")
+        if not (settings.smtp_start_tls or settings.smtp_use_tls):
+            errors.append(
+                "SMTP transport is plaintext in production (SMTP_START_TLS / SMTP_USE_TLS both "
+                "off); emails carry activation + reset tokens. Enable STARTTLS or implicit TLS."
+            )
+    elif settings.email_transport == "postmark" and not settings.postmark_server_token:
+        errors.append("EMAIL_TRANSPORT=postmark but POSTMARK_SERVER_TOKEN is unset.")
+    # --- EU data residency (GDPR44-RES-1) ------------------------------------
+    if settings.data_residency.strip().lower() == "eu":
+        if not _looks_eu_region(settings.s3_region):
+            errors.append(
+                f"DATA_RESIDENCY=eu but S3_REGION={settings.s3_region!r} is not an EU region; "
+                "set an eu-* region so object storage stays in the EU."
+            )
+        if settings.sentry_dsn and not _sentry_dsn_is_eu(settings.sentry_dsn):
+            errors.append(
+                "DATA_RESIDENCY=eu but SENTRY_DSN does not target Sentry's EU data region "
+                "(host should be *.de.sentry.io / an EU ingest host)."
+            )
     # Free-tier guardrails: only meaningful once the wedge is live. A free tier
     # with no real caps lets public signups starve the shared processor / blow up
     # storage, so refuse to boot with dangerous defaults (mirrors the dev-secret
@@ -530,6 +648,17 @@ def validate_production_config(settings: Settings) -> list[str]:
                 "FREE_TIER_ENABLED is on but FREE_ACCOUNT_MAX_AGE_DAYS < 1; set a "
                 "positive trial window (a free account needs at least one day "
                 "before it goes read-only), or grant individual exemptions."
+            )
+        if (
+            settings.pooled_document_idle_warning_days > 0
+            and settings.pooled_document_idle_warning_days
+            >= settings.pooled_document_idle_ttl_days
+        ):
+            errors.append(
+                "FREE_TIER_ENABLED is on but FREE_MODEL_IDLE_WARNING_DAYS is not "
+                "below FREE_MODEL_IDLE_TTL_DAYS; the idle-deletion warning would "
+                "fire at or after the deletion itself. Set warning < TTL, or 0 to "
+                "disable the warn pass."
             )
     return errors
 
@@ -596,3 +725,28 @@ def log_secret_sources(settings: Settings) -> None:
             "Redis must be highly available (managed/replicated with failover) and "
             "have AOF persistence enabled; a single-node Redis is a SPOF for auth."
         )
+
+    # Transport encryption for the two token/PII-bearing backend links (ENC-TLS-1).
+    # These are WARNINGs (not boot-blocking) because sslmode can be enforced at the
+    # server / network layer, but a plaintext link to a store holding refresh JWTs
+    # (Redis) or all tenant data (Postgres) deserves a loud boot signal in prod.
+    if not dev_skip:
+        if not settings.redis_url.lower().startswith("rediss://"):
+            logger.warning(
+                "  REDIS_URL is not rediss:// (TLS) — Redis holds live refresh JWTs and the "
+                "JWT blocklist; use a TLS connection in production."
+            )
+        db_lower = settings.database_url.lower()
+        if "sslmode=" not in db_lower and "ssl=" not in db_lower:
+            logger.warning(
+                "  DATABASE_URL carries no ssl/sslmode parameter — asyncpg's implicit 'prefer' "
+                "is downgrade-strippable; pin sslmode=require (or verify-full) for managed PG."
+            )
+        if settings.data_residency.strip().lower() != "eu" and not _looks_eu_region(
+            settings.s3_region
+        ):
+            logger.warning(
+                "  S3_REGION=%r is not an EU region — if you advertise EU-only data residency, "
+                "set an eu-* region (and DATA_RESIDENCY=eu to enforce it at boot).",
+                settings.s3_region,
+            )
